@@ -13,6 +13,24 @@ Atlas and Scout. Use unrounded probability: BUY at **50.01% or higher**
 strictly between those cutoffs. Do not substitute "above/below 50%" or restore
 wider probability-entry gates. This is `stock-direction-5001-4999-v3`.
 
+Effective tonight and every subsequent night until Jeremy changes this
+instruction, create the direction-only Gameplan using
+`gameplan_recipe_version=direction-live-quote-v1` and
+`execution_quantity_basis=live_broker_capacity`. This replaces the earlier
+estimated-price Gameplan creation method. Do not fit or generate a planning
+price path, price band or guessed execution midpoint for this recipe. Do not
+use those estimates, their projected ledger or their planned quantities to
+gate, size or cap new orders. Real order quantities and prices come from the
+trader's current broker cash, available shares, reservations and live quotes.
+
+An older completed Gameplan is historical evidence, not completion of tonight's
+new recipe. Reuse compatible fetched data, fitted models and probabilities;
+replace only the obsolete policy-dependent plan and handoff stages. Never
+silently select or deliver the older recipe as the current Gameplan. Preserve
+original historical bytes and known-order recovery. Correct the current
+selection through the reviewed revision path without adding another nightly
+approval or cross-trader readiness stage.
+
 The 15m, 1h and 4h horizons may sell available shares from any horizon owner.
 For 1h and 4h from October 19, do not apply longer-horizon-only donors,
 same-clock bullish ownership vetoes, fallback slot quotas or fallback daily
@@ -50,6 +68,7 @@ The authoritative shared policy is
 [Stock direction and horizon autonomy](STOCK_DIRECTION_AND_HORIZON_AUTONOMY.md),
 with the current operating section in [Nightly Gameplan](NIGHTLY_GAMEPLAN.md).
 New artifact audit fields are `direction_policy_version`,
-`direction_up_threshold`, `direction_down_threshold` and `stock_execution_policy`.
+`direction_up_threshold`, `direction_down_threshold`, `stock_execution_policy`,
+`gameplan_recipe_version` and `execution_quantity_basis`.
 These fields record the existing rules. Their absence in a historical artifact
 is not a reason to rewrite it or block nightly recovery or delivery.

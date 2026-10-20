@@ -73,6 +73,26 @@ def test_current_rule_matches_both_traders_and_preserves_saved_plan_scope(tab):
         assert tab.current_policy.pack_info()["fill"] == "x"
 
 
+def test_direction_only_instructions_disclose_live_quantity_instead_of_a_projection(tab, monkeypatch):
+    from dataclasses import replace
+    forecasts = tuple(replace(row, quantity=None) if row.action in {"BUY", "SELL"} else row
+                      for row in tab.plan.forecasts)
+    actions = tuple(replace(row, quantity=None) for row in tab.plan.actions if row.action in {"BUY", "SELL"})
+    tab.set_plan(replace(tab.plan, forecasts=forecasts, actions=actions, projection_status="DIRECTION_ONLY"))
+    assert tab.card_titles["entries"].cget("text") == "BUY instructions"
+    assert tab.card_titles["exits"].cget("text") == "SELL instructions"
+    assert tab.trade_button.cget("text") == f"Instructions {len(actions)}"
+    tab.trade_button.invoke()
+    assert tab.table_title.cget("text") == "Directional trade instructions"
+    _, _, journey, _ = tab._selection_content()
+    assert journey[0][2] == "Quantity determined live"
+    assert "current cash, eligible holdings, pending orders and live bid/ask" in tab.footer.cget("text")
+    shown = []
+    monkeypatch.setattr(tab, "_text_dialog", lambda title, text: shown.append(text))
+    tab.show_details()
+    assert "Quantity determined live" in shown[0] and "Direction-based shares:" not in shown[0]
+
+
 def test_gameplan_views_show_forecast_actions_without_price_columns(tab):
     from dataclasses import replace
     from app.ui.gameplan_data import ExecutionQuote

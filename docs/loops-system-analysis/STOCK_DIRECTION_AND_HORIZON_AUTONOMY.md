@@ -30,10 +30,21 @@ their existing cash, whole-share, order-size, timing and live-quote requirements
 Each sale reserves shares atomically and attributes actual fills to the original
 owners. A forecast direction is not a claim that an order was placed or filled.
 
-Gameplan no longer displays the estimated “Planning price” or “Execution mid”
-columns, estimated journey prices, or the comparison between them. Live orders
-continue to use current broker bid/ask/midpoint quotes under the existing order
-pricing rules. Historical saved publications and execution evidence remain intact.
+Effective tonight and every subsequent night until Jeremy changes the policy,
+the canonical Gameplan recipe is `direction-live-quote-v1`, with
+`execution_quantity_basis=live_broker_capacity`. It replaces the previous
+estimated-price creation method. Gameplan neither generates nor requires a
+forecast planning price path, price band or estimated execution midpoint.
+Its display omits those values, and new orders cannot be gated, sized or capped
+by their projected quantities. Quantities and execution prices are determined
+from current broker cash, available holdings, working-order reservations and
+live bid/ask/midpoint quotes.
+
+Older Gameplans remain immutable historical evidence. Their existence cannot
+complete a new nightly run or cause the current display, synthesis or delivery
+to select the superseded recipe. Compatible fetched data, fitted models and
+probabilities remain reusable; only obsolete policy-dependent stages need new
+outputs. Historical saved publications and known-order recovery remain intact.
 
 Forward Gameplan publications record the policy version, both thresholds and
 ownership context in their manifests and receipts. Saved historical evidence

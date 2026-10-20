@@ -13,16 +13,16 @@ def test_autonomous_bearish_sale_is_displayed_without_fallback_quota(tmp_path, h
     from gameplan_fixture import forecast
     from app.ui.gameplan_data import reason_text
     session = "2026-10-19"
-    row = forecast("ABCL", horizon, session=session, action="SELL", quantity=-527, probability=.4872)
+    row = forecast("AAPL", horizon, session=session, action="SELL", quantity=-503, probability=.48)
     row["direction_based_reason"] = "BEARISH_ACCOUNT_WIDE_SELL"
     ledger = dict(version="direction-based-gameplan-cash-ledger-v1", status="COMPLETE", events=[
-        dict(sequence=1, timestamp=row["target_window_start"].isoformat(), symbol="ABCL", horizon=horizon,
-             forecast_id=row["id"], action="SELL", quantity=527, price_base=11.93,
+        dict(sequence=1, timestamp=row["target_window_start"].isoformat(), symbol="AAPL", horizon=horizon,
+             forecast_id=row["id"], action="SELL", quantity=503, price_base=20.0,
              reason="BEARISH_ACCOUNT_WIDE_SELL")], ending_allocations=[],
         summary=dict(trade_events=1, buy_events=0, sell_events=1))
     write_plan(tmp_path, session=session, rows=[row], ledger=ledger)
-    action, = load_gameplan(tmp_path).actions
-    assert (action.action, action.quantity) == ("SELL", 527)
+    action, = load_gameplan(tmp_path, session).actions
+    assert (action.action, action.quantity) == ("SELL", 503)
     assert reason_text(action.reason) == "Bearish sale from available shares across horizons"
 
 
@@ -30,16 +30,16 @@ def test_autonomous_bearish_sale_is_displayed_without_fallback_quota(tmp_path, h
                                             ("1h", "2026-10-16")])
 def test_account_wide_sale_does_not_override_daily_weekly_or_historical_policy(tmp_path, horizon, session):
     from gameplan_fixture import forecast
-    row = forecast("ABCL", horizon, session=session, action="SELL", quantity=-1, probability=.4872)
+    row = forecast("AAPL", horizon, session=session, action="SELL", quantity=-1, probability=.48)
     row["direction_based_reason"] = "BEARISH_ACCOUNT_WIDE_SELL"
     ledger = dict(version="direction-based-gameplan-cash-ledger-v1", status="COMPLETE", events=[
-        dict(sequence=1, timestamp=row["target_window_start"].isoformat(), symbol="ABCL", horizon=horizon,
-             forecast_id=row["id"], action="SELL", quantity=1, price_base=11.93,
+        dict(sequence=1, timestamp=row["target_window_start"].isoformat(), symbol="AAPL", horizon=horizon,
+             forecast_id=row["id"], action="SELL", quantity=1, price_base=20.0,
              reason="BEARISH_ACCOUNT_WIDE_SELL")], ending_allocations=[],
         summary=dict(trade_events=1, buy_events=0, sell_events=1))
     write_plan(tmp_path, session=session, rows=[row], ledger=ledger)
     with pytest.raises(GameplanError, match="autonomous horizon"):
-        load_gameplan(tmp_path)
+        load_gameplan(tmp_path, session)
 
 
 def test_plan_edition_comes_from_verified_probability_contract(tmp_path):

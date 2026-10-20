@@ -27,6 +27,43 @@ def _assert_execution_deployment(root, publication, *, action_date):
         raise GameplanDeploymentUnavailable(str(exc)) from exc
 
 
+def _native_direction_frame(root: Path, *, action_date: str, source_run: Path):
+    """Read current derived calls while retaining the scientific source binding."""
+    from ml.artifacts import file_checksum, verify_manifest
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe
+    pointer = root / "ml/gameplan-trade-plan-latest/run.json"
+    if not pointer.is_file():
+        return None
+    selected = json.loads(pointer.read_text(encoding="utf-8"))
+    current = selected.get("current", {})
+    if current.get("action_date") != action_date:
+        return None
+    run = (root / str(current.get("run_path", ""))).resolve()
+    if run.parent != (root / "ml/gameplan-trade-plan-runs").resolve():
+        raise ValueError("Current direction Gameplan escapes its saved directory")
+    report = json.loads((run / "report.json").read_text(encoding="utf-8"))
+    if not is_current_gameplan_recipe(report):
+        return None
+    from app.ui.gameplan_data import load_gameplan
+    ui = load_gameplan(root, action_date)
+    if ui.run_directory != run:
+        raise ValueError("Current direction Gameplan differs from its selected display")
+    manifest = verify_manifest(run)
+    receipt_path = run / "receipt.json"
+    receipt_hash = file_checksum(receipt_path)
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    if (not is_current_gameplan_recipe(manifest.get("configuration", {}))
+            or not is_current_gameplan_recipe(receipt)
+            or (root / str(report.get("source_gameplan_run", ""))).resolve() != source_run
+            or report.get("source_receipt_sha256") != file_checksum(source_run / "receipt.json")):
+        raise ValueError("Current direction Gameplan differs from its frozen forecast source")
+    frame = pd.read_parquet(run / "trade-plan.parquet")
+    if file_checksum(receipt_path) != receipt_hash:
+        raise ValueError("Current direction Gameplan changed while being read")
+    frame.attrs["direction_source_files"] = (source_run / "receipt.json", receipt_path)
+    return frame
+
+
 def execution_frame(root: Path, *, action_date: str):
     root = Path(root).resolve()
     pointer = json.loads((root / "ml/nightly-gameplan-latest/run.json").read_text(encoding="utf-8"))
@@ -34,7 +71,9 @@ def execution_frame(root: Path, *, action_date: str):
     if run.parent != (root / "ml/nightly-gameplan-runs").resolve():
         raise ValueError("Gameplan run is outside its saved directory")
     _assert_execution_deployment(root, run, action_date=action_date)
-    frame = pd.read_parquet(run / "forecasts.parquet")
+    frame = _native_direction_frame(root, action_date=action_date, source_run=run)
+    if frame is None:
+        frame = pd.read_parquet(run / "forecasts.parquet")
     required = {"id", "symbol", "model_group", "direction", "calibrated_probability",
                 "target_window_start", "target_window_end", "execution_eligible", "action_date"}
     if required.difference(frame):
@@ -99,9 +138,10 @@ def load_execution_signals(root: Path, *, as_of):
     now = utc(as_of)
     local = now.tz_convert("America/Los_Angeles")
     frame, run = execution_frame(root, action_date=local.date().isoformat())
+    sources = frame.attrs.get("direction_source_files", ())
     start = local.floor("h").tz_convert("UTC")
     if not 4 <= local.hour < 17:
-        return {}, ()
+        return {}, sources
     due = frame.loc[frame.target_window_start.eq(start)]
     signals = {}
     for row, probability, abstention in _validated_instructions(due):
@@ -124,7 +164,7 @@ def load_execution_signals(root: Path, *, as_of):
         )
     # Execution records retain the saved run ID. No training files, reports or
     # planning estimates need to be hashed before asking the broker for a quote.
-    return signals, ()
+    return signals, sources
 
 
 def execution_preflight(root: Path, *, action_date):

@@ -580,9 +580,6 @@ def _direction_sell_capacities(signals, state, portfolio, exits, *, action_date=
                 order_cap = int(Decimal(str(portfolio.account_equity))
                                 * Decimal(str(policy.maximum_single_order_equity_fraction))/ask)
                 capacity = min(capacity, max(0, order_cap))
-        planned = getattr(signals[key], "planned_quantity", None)
-        if planned is not None:
-            capacity = min(capacity, planned)
         capacities[key] = capacity
         _consume_direction_inventory(owners, free, symbol, horizon, capacity, autonomous=autonomous)
         remaining[symbol] = max(0, remaining.get(symbol, 0) - capacities[key])
@@ -778,6 +775,9 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                     except (OSError, ValueError, RuntimeError) as exc:
                         raise _SubmissionStopped("GAMEPLAN_DEPLOYMENT_NOT_APPROVED: " + str(exc)) from exc
                     if decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY:
+                        if (decision.prediction.get("target_definition_version") == "accepted-gameplan-catchup-v1"
+                                or decision.prediction.get("catchup_components")):
+                            raise _SubmissionStopped("LEGACY_PROJECTED_INTENTION_REQUIRES_CURRENT_FORECAST")
                         action_date = utc(decision.prediction["target_window_start"]).tz_convert("America/Los_Angeles").date().isoformat()
                         try:
                             current_fallback, current_binding = _loaded_fallback_policy(root, source_gameplan_run, action_date)

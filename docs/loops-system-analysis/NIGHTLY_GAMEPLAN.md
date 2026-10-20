@@ -16,9 +16,17 @@ handoff descriptions retained below. The exact source of truth is
   real working or uncertain sell reservations and attribute fills to the owners.
   The 1d and 1w ownership rules remain unchanged.
 - Gameplan uses current live broker bid/ask/midpoint quotes for execution.
-  Do not display guessed Planning price or Execution mid values as useful trade
-  guidance. Model selection, calibration, hyperparameters and data recipes stay
-  local to each PC's own symbols and evidence.
+  Effective tonight and every subsequent night until Jeremy changes it,
+  `direction-live-quote-v1` replaces estimated-price Gameplan creation. Do not
+  generate or require planning price paths, bands or estimated Execution mid
+  values. Never use estimated projected quantities to gate, size or cap new
+  orders. Use `execution_quantity_basis=live_broker_capacity`.
+  Model selection, calibration, hyperparameters and data recipes stay local to
+  each PC's own symbols and evidence.
+- An old completed Gameplan cannot complete tonight's new recipe or become the
+  current display, synthesis or delivery selection. Reuse compatible data,
+  fitted models and probabilities; replace obsolete policy-dependent outputs.
+  Preserve original historical bytes and known-order recovery.
 - Preserve immutable saved forecasts, Stats, labels, receipts and completed
   outputs. New artifacts record the current direction policy and thresholds;
   completed-session Stats evaluates the policy saved with each forecast.

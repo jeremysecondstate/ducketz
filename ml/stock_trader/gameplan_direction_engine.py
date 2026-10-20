@@ -300,6 +300,8 @@ def build_gameplan_direction_trade_decisions(
             code = "HORIZON_LEDGER_UNRECONCILED"
         elif not ready:
             code = "FORECAST_PROBABILITY_INVALID"
+        elif signal.target_definition_version == "accepted-gameplan-catchup-v1" or getattr(signal, "catchup_components", ()):
+            code, reason = "LEGACY_PROJECTED_INTENTION", "Historical projected quantities cannot authorize a fresh Gameplan order."
         elif direction == "NO_EDGE":
             code, reason = "NEUTRAL_HOLD", "The probability is strictly between the 49.99% SELL and 50.01% BUY cutoffs."
         else:

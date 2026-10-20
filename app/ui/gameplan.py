@@ -124,6 +124,7 @@ class GameplanTab:
         self.cards = tk.Frame(self.body, background=BACKGROUND)
         self.cards.pack(fill="x", pady=(0, 12))
         self.card_widgets = []
+        self.card_titles = {}
         for key, title, icon, tip in (
             ("first", "First planned batch", "◷", "Earliest saved action in the current filters; this is not a live countdown."),
             ("entries", "Projected entries", "↗", "Saved direction-ledger buys, not standalone affordable quantities."),
@@ -133,7 +134,8 @@ class GameplanTab:
             card = panel(self.cards)
             card.columnconfigure(1, weight=1)
             label(card, icon, size=30, color=CYAN).grid(row=0, column=0, rowspan=3, padx=(15, 12), pady=10)
-            label(card, title, color=MUTED_TEXT).grid(row=0, column=1, sticky="w", pady=(10, 0))
+            self.card_titles[key] = label(card, title, color=MUTED_TEXT)
+            self.card_titles[key].grid(row=0, column=1, sticky="w", pady=(10, 0))
             label(card, textvariable=self.values[key], size=22, bold=True).grid(row=1, column=1, sticky="w")
             caption = label(card, textvariable=self.captions[key], size=9, color=MUTED_TEXT, wraplength=290, justify="left")
             caption.grid(row=2, column=1, sticky="w", padx=(0, 9), pady=(1, 9))
@@ -426,9 +428,14 @@ class GameplanTab:
         if self.selected_key not in {self._key(row) for row in self.visible_rows}:
             self.selected_key = self._key(self.visible_rows[0]) if self.visible_rows else None
         unavailable = self.plan is not None and not self.plan.projection_available
-        self.trade_button.configure(text="Trades unavailable" if unavailable else f"Trades {len(actions)}")
+        directional = self.plan is not None and self.plan.projection_status == "DIRECTION_ONLY"
+        self.card_titles["entries"].configure(text="BUY instructions" if directional else "Projected entries")
+        self.card_titles["exits"].configure(text="SELL instructions" if directional else "Projected sells")
+        self.trade_button.configure(text="Trades unavailable" if unavailable else f"{'Instructions' if directional else 'Trades'} {len(actions)}")
         self.forecast_button.configure(text=f"All forecasts {len(forecasts)}")
         self.table_title.configure(text="Scheduled trade plan" if self.view.get() == "trades" else "Saved forecast windows")
+        if directional and self.view.get() == "trades":
+            self.table_title.configure(text="Directional trade instructions")
         buys, sells = [row for row in actions if row.action == "BUY"], [row for row in actions if row.action == "SELL"]
         expiries = [row for row in actions if row.action == "EXPIRY"]
         if self.plan:
@@ -442,6 +449,8 @@ class GameplanTab:
             bearish_sales = sum(row.reason in {"BEARISH_SELL", "BEARISH_ACCOUNT_WIDE_SELL"} for row in sells)
             self.captions["exits"].set(f"{len(expiries)} remaining horizon expiries" if expiries else
                                       (f"{counted(scheduled_exits, 'scheduled exit')} · {counted(bearish_sales, 'bearish sale')}" if sells else "No projected sells"))
+            if directional:
+                self.captions["exits"].set("Available holdings and quantity checked live")
             if unavailable:
                 for key in ("first", "entries", "exits"):
                     self.values[key].set("—")
@@ -458,6 +467,8 @@ class GameplanTab:
                 f"Saved {self.plan.saved_at:%b %d, %H:%M %Z} · Projected trades; quantities and exits depend on actual fills."))
             if unavailable:
                 self.footer.configure(text="Saved forecasts remain available. Projected trades, quantities and exits require complete saved reference evidence.")
+            if directional:
+                self.footer.configure(text="BUY and SELL instructions · Order quantities use current cash, eligible holdings, pending orders and live bid/ask quotes.")
             if self.view.get() == "trades":
                 company_count = len({row.symbol for row in actions})
                 forecast_company_count = len({row.symbol for row in forecasts})
@@ -618,7 +629,8 @@ class GameplanTab:
             entry = next((item for item in related if item.action in {"BUY", "SELL"} and item.reason != "HORIZON_EXIT"), None)
             closing = next((item for item in related if item.reason == "HORIZON_EXIT" or item.action == "EXPIRY"), None)
             if entry:
-                journey.append((entry.when, f"Planned {entry.action.lower()}", f"{shares(entry.quantity)} shares", ACTION_COLORS[entry.action]))
+                detail = "Quantity determined live" if entry.quantity is None else f"{shares(entry.quantity)} shares"
+                journey.append((entry.when, f"Planned {entry.action.lower()}", detail, ACTION_COLORS[entry.action]))
             else:
                 journey.append((forecast.start, forecast.action.title(), reason_text(forecast.reason, forecast.fallback_donor_horizon), ACTION_COLORS[forecast.action]))
             if closing:
@@ -713,19 +725,24 @@ class GameplanTab:
         if forecast:
             action_text = f"Saved action: {forecast.action}" if self.plan.projection_available else (
                 "Projected action: Unavailable" if forecast.eligible else "Forecast context only")
+            quantity_text = ("Quantity determined live" if self.plan.projection_status == "DIRECTION_ONLY"
+                             else f"Direction-based shares: {shares(forecast.quantity)}")
             lines += [f"Published P(up): {forecast.probability:.2%}" if forecast.probability is not None else "Published probability: unavailable",
                       f"Saved direction: {forecast.direction.replace('NO_EDGE', 'NEUTRAL')}",
-                      f"{action_text} · Direction-based shares: {shares(forecast.quantity)}",
+                      f"{action_text} · {quantity_text}",
                       f"Reason: {reason_text(forecast.reason, forecast.fallback_donor_horizon)}", f"Model status: {forecast.model_status}",
                       f"Window start: {forecast.start:%a, %b %d, %Y %H:%M %Z}",
                       f"Window end: {forecast.end:%a, %b %d, %Y %H:%M %Z}",
                       f"Role: {forecast.role} · {'Entry window' if forecast.eligible else 'Context only'}", ""]
         if isinstance(row, PlannedAction):
-            lines += [f"Selected action: {row.action} · {shares(row.quantity)} shares",
+            quantity_text = "Quantity determined live" if row.quantity is None else f"{shares(row.quantity)} shares"
+            source_text = "Saved directional instruction" if self.plan.projection_status == "DIRECTION_ONLY" else (
+                "Saved direction ledger" if row.source == "ledger" else "Remaining horizon allocation")
+            lines += [f"Selected action: {row.action} · {quantity_text}",
                       f"Scheduled time: {row.when:%a, %b %d, %Y %H:%M %Z}",
                       f"Action reason: {reason_text(row.reason, row.fallback_donor_horizon)}",
-                      f"Source: {'Saved direction ledger' if row.source == 'ledger' else 'Remaining horizon allocation'}", ""]
-            if row.source != "ledger":
+                      f"Source: {source_text}", ""]
+            if row.source != "ledger" and row.quantity is not None:
                 lines += [f"Already reserved for sale: {shares(row.reserved)} shares",
                           f"Unreserved allocation: {shares(row.quantity-row.reserved)} shares",
                           "This expiry is not an additional simulated order or a projected future sale price.", ""]
