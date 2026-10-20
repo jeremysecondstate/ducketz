@@ -864,7 +864,7 @@ def test_market_context_queue_retry_is_own_session_evidence_not_worker_failure(t
     kwargs, calls, _ = scout_manual_fixture(tmp_path, monkeypatch)
     detail = {"reason": "queue_lock_contention", "error_type": "Timeout", "retry_after_seconds": 30.0}
     class Collector:
-        def run(self, *, stopped, pause, on_retry):
+        def run(self, *, stopped, pause, on_retry, on_recovery=None):
             assert not stopped()
             on_retry(detail)
             assert not stopped()
