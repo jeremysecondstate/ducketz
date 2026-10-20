@@ -236,7 +236,7 @@ def test_future_endpoints_never_become_training_labels():
     assert set(groups["1h"].route) == {"1h@gap", "1h@04:00"}
 
 
-@pytest.mark.parametrize("probability,direction", [(.499999, "BEARISH"), (.5, "NO_EDGE"), (.500001, "BULLISH")])
+@pytest.mark.parametrize("probability,direction", [(.4999, "BEARISH"), (.499999, "NO_EDGE"), (.5, "NO_EDGE"), (.500001, "NO_EDGE"), (.5001, "BULLISH")])
 def test_independent_finalization_preserves_contract_and_action_starts(probability, direction):
     sources = _sources(days=(date(2026, 9, 8),))
     groups = build_stock_current_groups(sources, feature_columns=())
@@ -253,8 +253,8 @@ def test_independent_finalization_preserves_contract_and_action_starts(probabili
     assert output.target_contract_version.eq(STOCK_TARGET_CONTRACT_VERSION).all()
     assert output.loc[output.model_status.eq("RESEARCH_NO_TARGET_HISTORY"), "direction"].eq("NO_EDGE").all()
     assert output.loc[output.model_status.eq("PROMOTED"), "direction"].eq(direction).all()
-    assert output.direction_policy_version.eq("stock-direction-50-v2").all()
-    assert output.direction_up_threshold.eq(.5).all() and output.direction_down_threshold.eq(.5).all()
+    assert output.direction_policy_version.eq("stock-direction-5001-4999-v3").all()
+    assert output.direction_up_threshold.eq(.5001).all() and output.direction_down_threshold.eq(.4999).all()
 
 
 def test_new_and_legacy_evaluation_cannot_exchange_labels():

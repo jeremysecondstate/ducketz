@@ -17,6 +17,7 @@ from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestam
 from ml.gameplan_probability_target import (
     observed_probability_target, probability_target_contract, probability_target_metadata,
 )
+from ml.gameplan_saved_direction import DIRECTION_POLICY_FIELDS, saved_gameplan_direction
 
 FIRST_GAMEPLAN_ACTION_DATE = "2026-09-04"
 EVALUATION_VERSION = "saved-gameplan-evaluations-v1"
@@ -26,6 +27,7 @@ EVALUATION_COLUMNS = (
     "predicted_probability", "observed_target", "observed_return", "brier_score",
     "direction_correct", "evaluation_status", "evaluated_at",
     "probability_target_contract", "gameplan_variant", "direction", "raw_direction_correct",
+    *DIRECTION_POLICY_FIELDS,
     "assumed_round_trip_cost", "observed_cost_adjusted_positive", "cost_adjusted_return",
     "target_price_source_contract", "target_price_dataset",
 )
@@ -142,15 +144,11 @@ def evaluate_forecasts(
         cost = forecast.get("assumed_round_trip_cost", .001)
         cost = .001 if pd.isna(cost) else float(cost)
         observed_probability_target(0., cost, contract)  # Validate costs even for pending forecasts.
-        direction = forecast.get("direction")
-        if pd.isna(direction):
-            direction = "BULLISH" if probability > .5 else "BEARISH" if probability < .5 else "NO_EDGE"
-        if direction not in {"BULLISH", "BEARISH", "NO_EDGE"}:
-            raise RuntimeError("Saved Gameplan contains an invalid direction")
+        direction, direction_metadata = saved_gameplan_direction(forecast, probability)
 
         def evidence(change):
             known = change is not None and pd.notna(change)
-            return {**metadata, "direction": direction, "assumed_round_trip_cost": cost,
+            return {**metadata, **direction_metadata, "direction": direction, "assumed_round_trip_cost": cost,
                     "raw_direction_correct": (bool(change > 0) if direction == "BULLISH" else bool(change < 0))
                     if known and direction != "NO_EDGE" else None,
                     "observed_cost_adjusted_positive": int(change > cost) if known else None,
@@ -165,6 +163,9 @@ def evaluate_forecasts(
                     or (pd.notna(old.get("assumed_round_trip_cost")) and float(old["assumed_round_trip_cost"]) != cost)
                     or (pd.notna(old.get("direction")) and old["direction"] != direction)):
                 raise RuntimeError("An evaluated immutable forecast changed")
+            for key in DIRECTION_POLICY_FIELDS:
+                if pd.notna(old.get(key)) and old[key] != direction_metadata[key]:
+                    raise RuntimeError("An evaluated immutable forecast changed its direction policy")
             # Retain the original scored target and errors. New descriptive
             # columns expose the same saved observation without relabeling OG.
             rows.append({**old, **evidence(old.get("observed_return"))})

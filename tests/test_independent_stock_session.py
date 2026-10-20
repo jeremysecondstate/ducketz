@@ -492,7 +492,7 @@ def test_manual_wait_cli_is_explicit_and_requires_session_mode(tmp_path, monkeyp
         return {"status": "SESSION_FINISHED"}
     monkeypatch.setattr(worker, "run_independent_stock_session", run)
     assert cli.main(["--datastore-target", "pc", "--target-horizon", "all", "--run-session", "--wait-for-open", "--execute"]) == 0
-    assert observed == [{"execute": True, "wait_for_open": True}]
+    assert observed == [{"execute": True, "sizing_policy": "gameplan-direction-current-market-v1", "wait_for_open": True}]
     assert cli.main(["--datastore-target", "pc", "--wait-for-open"]) == 1
     assert len(observed) == 1
 

@@ -393,14 +393,18 @@ class HorizonLedger:
     @classmethod
     def _snapshot(cls, db) -> LedgerSnapshot:
         reservations = tuple(cls._reservation(db, row[0]) for row in db.execute("SELECT id FROM reservations ORDER BY id"))
+        from ml.stock_trader.gameplan_inventory_slices import share_accounting
+        sliced, debits, pending = share_accounting(db, reservations)
         allocations = []
         for row in db.execute("SELECT * FROM allocations ORDER BY symbol,horizon,start,id"):
             orders = tuple(r for r in reservations if r.allocation_id == row["id"])
-            held = cls._assigned_shares(db, row["id"]) + sum(r.filled_quantity * (1 if r.side == "BUY" else -1) for r in orders)
+            held = (cls._assigned_shares(db, row["id"]) + sum(r.filled_quantity * (1 if r.side == "BUY" else -1)
+                    for r in orders if r.reservation_id not in sliced) - debits.get(row["id"], 0))
             allocations.append(AllocationState(row["id"], row["account"], row["symbol"], row["horizon"],
                 row["forecast"], row["start"], row["end"], row["status"], held,
                 sum(r.reserved_quantity for r in orders if r.side == "BUY"),
-                sum(r.reserved_quantity for r in orders if r.side == "SELL")))
+                sum(r.reserved_quantity for r in orders if r.side == "SELL" and r.reservation_id not in sliced)
+                + pending.get(row["id"], 0)))
         return LedgerSnapshot(tuple(allocations), reservations,
             tuple((row[0], row[1]) for row in db.execute("SELECT symbol,reason FROM blocks ORDER BY symbol")))
 
@@ -450,13 +454,18 @@ class HorizonLedger:
 
     @classmethod
     def _close_empty_allocations(cls, db) -> None:
-        for row in db.execute("SELECT id FROM allocations WHERE status='ACTIVE'").fetchall():
-            orders = db.execute("SELECT side,filled,status FROM reservations WHERE allocation=?", (row[0],)).fetchall()
-            owned = cls._assigned_shares(db, row[0]) + sum(r["filled"] * (1 if r["side"] == "BUY" else -1) for r in orders)
-            if owned < 0:
+        # Autonomous sales debit their actual owner slices, rather than the
+        # reservation's trigger allocation. Reuse the reconciled accounting.
+        state = cls._snapshot(db)
+        for allocation in state.allocations:
+            if allocation.status != "ACTIVE":
+                continue
+            orders = tuple(r for r in state.reservations if r.allocation_id == allocation.allocation_id)
+            if allocation.filled_shares < 0:
                 raise LedgerError("HORIZON_INVENTORY_WOULD_BECOME_NEGATIVE")
-            if orders and owned == 0 and all(r["status"] in _TERMINAL for r in orders):
-                db.execute("UPDATE allocations SET status='CLOSED' WHERE id=?", (row[0],))
+            if (orders and allocation.filled_shares == 0 and allocation.reserved_sell_shares == 0
+                    and all(r.status in _TERMINAL for r in orders)):
+                db.execute("UPDATE allocations SET status='CLOSED' WHERE id=?", (allocation.allocation_id,))
 
     def mark_submission(self, reservation_id: str, *, status: str, observed_at: str,
                         evidence_id: str, broker_order_id: str | None = None) -> ReservationState:
@@ -549,6 +558,8 @@ class HorizonLedger:
             db.execute("INSERT OR IGNORE INTO fills VALUES (?,?,?,?,?)", fill)
         db.execute("UPDATE reservations SET status=?,broker_order=?,filled=?,last_evidence_at=? WHERE id=?",
                    (status, broker_id, filled, observed, order.reservation_id))
+        from ml.stock_trader.gameplan_inventory_slices import attribute_fills
+        attribute_fills(db, order.reservation_id)
         self._release_unfilled_assignment(db, order.reservation_id, observed)
 
     def reconcile(self, portfolio: PortfolioEvidence, *, order_evidence: Sequence[OrderEvidence] = ()) -> ReconciliationResult:
@@ -746,7 +757,7 @@ class HorizonLedger:
     def _fallback_plan(self, db, *, symbol, horizon, forecast_id, target_start, target_end,
                        action_date, policy, source_fingerprint, snapshot_id, as_of, batch_id=None,
                        pending_sell_shares=0, pending_buy_shares=0, excluded_donor_horizons=(),
-                       reserved_donor_shares=None, preview=False):
+                       reserved_donor_shares=None, reserved_inventory_shares=None, preview=False):
         from ml.stock_trader.cross_horizon_fallback import donor_horizons, slot_index, slot_quota
 
         symbol, horizon, forecast_id = _name(symbol).upper(), _name(horizon), _name(forecast_id)
@@ -765,6 +776,9 @@ class HorizonLedger:
         draft = {h:_quantity(q) for h,q in (reserved_donor_shares or {}).items()}
         if any(h not in HORIZON_WEIGHTS for h in draft):
             raise LedgerError("FALLBACK_INVALID_DRAFT_DONOR")
+        inventory_draft = {h:_quantity(q) for h,q in (reserved_inventory_shares or {}).items()}
+        if any(h not in HORIZON_WEIGHTS for h in inventory_draft):
+            raise LedgerError("FALLBACK_INVALID_DRAFT_INVENTORY")
         portfolio = self._require_snapshot(db, snapshot_id, now, batch_id=batch_id)
         saved = db.execute("SELECT 1 FROM fallback_days WHERE account=? AND action_date=?",
                            (self.account_fingerprint, action_date)).fetchone()
@@ -828,7 +842,7 @@ class HorizonLedger:
                     continue
                 additional = draft.get(donor_horizon, 0)
                 remaining = max(0, min(frozen["daily_cap"]-donor_used.get(allocation.allocation_id, 0)-additional,
-                    allocation.filled_shares-allocation.reserved_sell_shares-additional))
+                    allocation.filled_shares-allocation.reserved_sell_shares-additional-inventory_draft.get(donor_horizon, 0)))
                 if not remaining:
                     continue
                 return {**result, "eligible":True, "reason":"ELIGIBLE_HIERARCHICAL_BEARISH_FALLBACK",
@@ -842,7 +856,7 @@ class HorizonLedger:
                                 target_end: str, action_date: str, policy: Mapping, source_fingerprint: str,
                                 snapshot_id: str, as_of: str, batch_id: str | None = None,
                                 pending_sell_shares=0, pending_buy_shares=0, excluded_donor_horizons=(),
-                                reserved_donor_shares=None, preview: bool = False) -> dict:
+                                reserved_donor_shares=None, reserved_inventory_shares=None, preview: bool = False) -> dict:
         """Read caps and the nearest eligible donor; never reserve or freeze a day."""
         with self._transaction() as db:
             return self._fallback_plan(db, symbol=symbol, horizon=horizon, forecast_id=forecast_id,
@@ -850,7 +864,7 @@ class HorizonLedger:
                 source_fingerprint=source_fingerprint, snapshot_id=snapshot_id, as_of=as_of, batch_id=batch_id,
                 pending_sell_shares=pending_sell_shares, pending_buy_shares=pending_buy_shares,
                 excluded_donor_horizons=excluded_donor_horizons, reserved_donor_shares=reserved_donor_shares,
-                preview=preview)
+                reserved_inventory_shares=reserved_inventory_shares, preview=preview)
 
     def reserve_fallback_direction_exit(self, *, symbol: str, horizon: str, forecast_id: str,
                                         target_start: str, target_end: str, action_date: str, policy: Mapping,
@@ -1019,6 +1033,13 @@ class HorizonLedger:
                 raise LedgerError("EXIT_EXCEEDS_OWN_UNRESERVED_HORIZON_SHARES")
             return self._insert_reservation(db, allocation_id, "SELL", quantity, price, key, batch, request)
 
+    def direction_sell_attribution(self, reservation_id: str) -> dict:
+        """Read immutable owner slices and actual fill debits for a sale."""
+        from ml.stock_trader.gameplan_inventory_slices import attribution
+        with self._transaction() as db:
+            self._reservation(db, reservation_id)
+            return attribution(db, reservation_id)
+
     def reserve_direction_exit(self, *, symbol: str, horizon: str, forecast_id: str,
                                target_start: str, target_end: str, quantity: int, limit_price,
                                snapshot_id: str, idempotency_key: str, batch_id: str, as_of: str,
@@ -1026,8 +1047,10 @@ class HorizonLedger:
         """Reserve a user-selected Gameplan sale of currently available stock.
 
         Existing shares are explicitly attributed to this sale with their
-        observed snapshot. Other horizon inventory and external working sells
-        remain protected. Only later broker fill evidence reduces holdings.
+        observed snapshot. From the autonomy effective date, 1h/4h can debit
+        stock owned by any horizon, using the same exact owner-slice accounting
+        as 15m. External working sells stay reserved. Only broker fills reduce
+        holdings; historical ownership and fill evidence never move.
         """
         symbol, horizon, forecast_id = _name(symbol).upper(), _name(horizon), _name(forecast_id)
         if not re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,14}", symbol) or horizon not in HORIZON_WEIGHTS:
@@ -1041,6 +1064,11 @@ class HorizonLedger:
         request = {"kind": "direction-exit", "symbol": symbol, "horizon": horizon, "forecast": forecast_id,
                    "start": start, "end": end, "quantity": quantity, "price": price,
                    "snapshot": snapshot_id, "batch": batch, "pending_sell_shares": str(pending)}
+        from ml.stock_trader.cross_horizon_fallback import autonomous_horizon, AUTONOMOUS_OWNERSHIP_POLICY_VERSION
+        action_date = datetime.fromisoformat(now).astimezone(ZoneInfo("America/Los_Angeles")).date().isoformat()
+        autonomous = autonomous_horizon(horizon, action_date)
+        if autonomous:
+            request["ownership_policy_version"] = AUTONOMOUS_OWNERSHIP_POLICY_VERSION
         with self._transaction() as db:
             existing = self._idempotent(db, key, request)
             if existing is not None:
@@ -1053,8 +1081,53 @@ class HorizonLedger:
             owned_reserved = sum(a.reserved_sell_shares for a in state.allocations if a.symbol == symbol)
             free = _number(portfolio["held_shares"].get(symbol, 0)) - owned - max(Decimal(0), pending - owned_reserved)
             allocation = next((a for a in state.allocations if a.symbol == symbol and a.horizon == horizon and a.status == "ACTIVE"), None)
-            if allocation and allocation.reserved_buy_shares:
+            if allocation and allocation.reserved_buy_shares and not autonomous:
                 raise LedgerError("DIRECTION_SALE_HAS_PENDING_HORIZON_BUY")
+            if autonomous:
+                available = max(Decimal(0), _number(portfolio["held_shares"].get(symbol, 0))
+                                - owned_reserved - max(Decimal(0), pending - owned_reserved))
+                if quantity > available:
+                    raise LedgerError("DIRECTION_SALE_EXCEEDS_AVAILABLE_HELD_STOCK")
+                allocation_id = allocation.allocation_id if allocation else _identity([
+                    self.account_fingerprint, symbol, horizon, forecast_id])
+                if not allocation:
+                    if db.execute("SELECT 1 FROM allocations WHERE id=?", (allocation_id,)).fetchone():
+                        raise LedgerError("DIRECTION_FORECAST_ALREADY_USED")
+                    db.execute("INSERT INTO allocations VALUES (?,?,?,?,?,?,?,'ACTIVE')",
+                               (allocation_id, self.account_fingerprint, symbol, horizon, forecast_id, start, end))
+                from ml.stock_trader.gameplan_inventory_slices import ensure_schema
+                ensure_schema(db)
+                reservation = self._insert_reservation(db, allocation_id, "SELL", quantity, price, key, batch, request)
+                remaining, ordinal = quantity, 0
+                # Own inventory first, followed by stable identity order. The
+                # order attributes fills; it never limits donor eligibility.
+                owners = sorted((a for a in state.allocations if a.symbol == symbol),
+                                key=lambda a: (a.allocation_id != allocation_id, a.allocation_id))
+                for owner in owners:
+                    taken = min(remaining, max(0, owner.filled_shares - owner.reserved_sell_shares))
+                    if taken:
+                        db.execute("INSERT INTO gameplan_sell_slices VALUES (?,?,?,?)",
+                                   (reservation.reservation_id, owner.allocation_id, taken, ordinal))
+                        remaining -= taken
+                        ordinal += 1
+                    if not remaining:
+                        break
+                if remaining:
+                    if remaining > max(Decimal(0), free):
+                        raise LedgerError("DIRECTION_SHARE_ACCOUNTING_DOES_NOT_BALANCE")
+                    db.execute("""CREATE TABLE IF NOT EXISTS inventory_assignments (
+                        id TEXT PRIMARY KEY, allocation TEXT NOT NULL REFERENCES allocations(id),
+                        snapshot_id TEXT NOT NULL REFERENCES snapshots(id), quantity INTEGER NOT NULL,
+                        observed_at TEXT NOT NULL)""")
+                    assignment_id = _identity(["gameplan-observed-opening-stock", key])
+                    db.execute("INSERT INTO inventory_assignments VALUES (?,?,?,?,?)",
+                               (assignment_id, allocation_id, snapshot_id, remaining, now))
+                    self._save_evidence(db, assignment_id, "gameplan-existing-stock-assignment", {
+                        "allocation_id": allocation_id, "snapshot_id": snapshot_id, "quantity": remaining,
+                        "observed_at": now, "reason": "Observed unallocated stock for an autonomous Gameplan sale"})
+                    db.execute("INSERT INTO gameplan_sell_slices VALUES (?,?,?,?)",
+                               (reservation.reservation_id, allocation_id, remaining, ordinal))
+                return reservation
             available = allocation.filled_shares - allocation.reserved_sell_shares if allocation else 0
             assigned = max(0, quantity - available)
             if assigned > max(Decimal(0), free):

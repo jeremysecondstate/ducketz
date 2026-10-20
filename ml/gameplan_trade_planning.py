@@ -1,13 +1,13 @@
-"""Account-aware nightly review artifacts; no order or trading-control authority.
+"""Current directional Gameplans; quantities and prices belong to live execution.
 
-Frozen forecasts remain immutable. This separate source-bound publication adds
-cash-only provisional quantities and empirical entry-price planning ranges.
-The existing live worker still revalidates ownership, cash and its ask LIMIT.
+Scientific forecasts remain immutable. New publications derive the exact current
+BUY/SELL/HOLD rule without estimated future prices, fills or quantity limits.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import asdict
 from decimal import Decimal, ROUND_CEILING
 from pathlib import Path
@@ -20,6 +20,7 @@ from ml.nightly_continuation import continuing, deadline_expired
 from ml.stock_trader.contracts import PredictionSignal, StockTraderPolicy, finite, utc
 from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS, fixed_budget_forecast_readiness
 from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION
+from ml.gameplan_execution_policy import current_gameplan_policy_metadata, direction_only_rows, DIRECTION_ONLY_STATUS
 
 
 VERSION = "cash-aware-gameplan-trade-planning-v4"
@@ -334,32 +335,116 @@ def _review_refresh_basis(root, prior_run, source, source_hash, action_date, now
             or any(item.get("status") != "COMPLETE" for item in (receipt, report))
             or current.get("source_receipt_sha256") != source_hash or current.get("action_date") != action_date):
         raise ValueError("Review refresh requires the complete current review of these exact frozen forecasts")
-    snapshot = json.loads((prior / "account-snapshot.json").read_text(encoding="utf-8"))
-    price_path = json.loads((prior / "planning-price-path.json").read_text(encoding="utf-8"))
-    asof = utc(price_path["observed_at"])
-    if snapshot != report.get("snapshot") or not utc(snapshot["observed_at"]) <= asof <= utc(receipt["completed_at"]) <= now:
-        raise ValueError("Review refresh requires consistent original snapshot and planning clocks")
+    snapshot_path = prior / "account-snapshot.json"
+    snapshot = json.loads(snapshot_path.read_text(encoding="utf-8")) if snapshot_path.exists() else None
+    if snapshot != report.get("snapshot") or utc(receipt["completed_at"]) > now:
+        raise ValueError("Review refresh requires consistent original observation evidence")
     evidence = {"base_run": prior.relative_to(root).as_posix(), "base_receipt_sha256": receipt_hash,
-                "refreshed_at": now.isoformat(), "account_snapshot_observed_at": snapshot["observed_at"],
-                "planning_price_asof": asof.isoformat(), "source_forecasts_unchanged": True,
-                "purpose": "Recalculate informational planning estimates from the original account snapshot and as-of cutoff"}
-    inputs = [prior / name for name in ("receipt.json", "manifest.json", "report.json", "account-snapshot.json", "planning-price-path.json")]
-    return snapshot, asof, evidence, inputs, pointer_hash
+                "refreshed_at": now.isoformat(), "account_snapshot_observed_at": snapshot.get("observed_at") if snapshot else None,
+                "source_forecasts_unchanged": True, "purpose": "Derive current directions from the same immutable predictions"}
+    inputs = [prior / name for name in ("receipt.json", "manifest.json", "report.json")]
+    if snapshot is not None:
+        inputs.append(snapshot_path)
+    return snapshot, now, evidence, inputs, pointer_hash
+
+
+def _publish_direction_plan(root, publication, forecasts, *, observed, deadline_at, clock,
+                            snapshot=None, producer_mode="DIRECTION_ONLY_SOURCE", producer_id=None,
+                            expected_source_receipt_sha256=None, publication_context=None,
+                            selection_guard=None):
+    """Publish current instructions without loading or estimating future prices."""
+    source, config = publication.run_directory, publication.manifest["configuration"]
+    day = publication.receipt["action_date"]
+    source_hash = expected_source_receipt_sha256 or file_checksum(source / "receipt.json")
+    if file_checksum(source / "receipt.json") != source_hash:
+        raise ValueError("Frozen Gameplan receipt changed during directional preparation")
+    pointer = root / "ml/gameplan-trade-plan-latest/run.json"
+    before = pointer.read_bytes() if pointer.exists() else None
+    run = create_timestamp_directory(root / "ml/gameplan-trade-plan-runs", timestamp=observed)
+    metadata = {"schema_version": VERSION, "action_date": day,
+        **current_gameplan_policy_metadata(day),
+        "publication_mode": producer_mode, "producer_id": producer_id,
+        "holding_policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
+        "cross_horizon_fallback_policy": config.get("cross_horizon_fallback_policy"),
+        "symbols": list(config["symbols"]), "source_gameplan_run": source.relative_to(root).as_posix(),
+        "source_receipt_sha256": source_hash, "execution_authority": AUTHORITY,
+        "orders_placed": 0, "broker_orders_enabled": False}
+    context = publication_context or {}
+    for key in ("deadline_at", "effective_deadline_at", "deadline_exception", "review_refresh",
+                "preparation_mode", "late_action_date", "account_config_sha256"):
+        if key in context:
+            metadata[key] = context[key]
+    from ml.gameplan_probability_target import probability_target_contract, probability_target_metadata
+    metadata.update(probability_target_metadata(probability_target_contract(config)))
+    rows, ledger = direction_only_rows(forecasts, action_date=day, snapshot=snapshot)
+    ledger["cross_horizon_fallback_policy"] = config.get("cross_horizon_fallback_policy")
+    rows.to_parquet(run / "trade-plan.parquet", index=False)
+    report = {**metadata, "status": "COMPLETE", "observed_at": observed.isoformat(),
+        "completed_at": utc(clock()).isoformat(), "deadline_at": metadata.get("deadline_at", deadline_at.isoformat()),
+        "forecast_rows": len(rows), "rows_by_symbol": rows.groupby("symbol").size().to_dict(),
+        "direction_projection_status": DIRECTION_ONLY_STATUS, "direction_based_projection": ledger,
+        "snapshot": snapshot, "snapshot_status": "OBSERVED_CONTEXT_ONLY" if snapshot else "QUANTITIES_DEFERRED_TO_EXECUTION",
+        "planning_note": "Directional instructions only. Live execution obtains current cash, eligible holdings, pending orders and bid/ask quotes."}
+    for name, value in (("report.json", report), ("direction-ledger.json", ledger)):
+        _write_json(run / name, value)
+    outputs = ["trade-plan.parquet", "report.json", "direction-ledger.json", "Gameplan.md"]
+    if snapshot is not None:
+        _write_json(run / "account-snapshot.json", snapshot)
+        outputs.append("account-snapshot.json")
+    lines = [f"# Gameplan — {day}", "", report["planning_note"], "",
+        "BUY at P(up) >= 50.01%; SELL at P(up) <= 49.99%; HOLD strictly between. Use unrounded probabilities.", "",
+        "| Company | Horizon | P(up) | Direction | Action | Reason |", "|---|---|---:|---|---|---|"]
+    for row in rows.to_dict("records"):
+        lines.append(f"| {row['symbol']} | {row['model_group']} | {row['calibrated_probability']:.17g} | {row['direction']} | {row['direction_based_action']} | {row['direction_based_reason']} |")
+    (run / "Gameplan.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    write_manifest(run, run_timestamp=observed,
+        input_files=[source / "receipt.json", source / "manifest.json", source / "forecasts.parquet"],
+        output_files=outputs, configuration=metadata, datastore_root=root)
+    verify_manifest(run)
+    receipt = {**metadata, "status": "COMPLETE", "run_path": run.relative_to(root).as_posix(),
+        "completed_at": report["completed_at"], "forecast_rows": len(rows),
+        "direction_projection_status": DIRECTION_ONLY_STATUS, "manifest_sha256": file_checksum(run / "manifest.json")}
+    _write_json(run / "receipt.json", receipt)
+    document = {"schema_version": VERSION, "current": {
+        "run_path": receipt["run_path"], "action_date": day, "source_receipt_sha256": source_hash,
+        "receipt_sha256": file_checksum(run / "receipt.json")}}
+    committed = (json.dumps(document, indent=2, sort_keys=True, default=str, allow_nan=False) + "\n").replace("\n", os.linesep).encode("utf-8")
+    def inputs_unchanged():
+        return (not deadline_expired(utc(clock()), deadline_at)
+            and file_checksum(source / "receipt.json") == source_hash
+            and (selection_guard is None or selection_guard()))
+    try:
+        if not inputs_unchanged() or (pointer.read_bytes() if pointer.exists() else None) != before:
+            raise ValueError("Direction-only publication source, binding, deadline or selected pointer changed")
+        _write_json(pointer, document)
+        if pointer.read_bytes() != committed or not inputs_unchanged():
+            raise ValueError("Direction-only publication changed during pointer selection")
+    except Exception:
+        # Restore only our exact selection. A concurrent writer keeps its bytes.
+        if pointer.exists() and pointer.read_bytes() == committed:
+            if before is None:
+                pointer.unlink()
+            else:
+                rollback = pointer.with_suffix(".rollback.tmp")
+                rollback.write_bytes(before)
+                if pointer.read_bytes() == committed:
+                    rollback.replace(pointer)
+                elif rollback.exists():
+                    rollback.unlink()
+        _write_json(run / "receipt.json", {**receipt, "status": "FAILED",
+            "failure_code": "DIRECTIONAL_PUBLICATION_INPUT_CHANGED"})
+        raise
+    return run
 
 
 def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: object | None = None,
                        snapshot_loader=None, price_loader=None, clock=utc_timestamp,
                        deadline_exception: Path | None = None, refresh_plan: Path | None = None,
-                       late_action_date: str | None = None) -> Path:
-    """Publish a separate immutable account/price review for one verified Gameplan."""
+                       late_action_date: str | None = None, research_producer_only: bool = False) -> Path:
+    """Publish current directions from one verified scientific Gameplan."""
     from ml.nightly_gameplan import read_gameplan_run
     from ml.stock_trader.independent_signals import _validated_independent_forecasts, verified_promoted_model_groups, late_publication_time
-    from ml.stock_target_prices import load_stock_target_prices
-    from ml.gameplan_price_bands import build_entry_price_bands, build_planning_price_path
-    from ml.gameplan_cash_ledger import project_direction_trades, UnavailablePlanningPricePath
     from ml.gameplan_trade_snapshot import capture_trade_planning_snapshot
-    from ml.gameplan_trade_review import render_trade_review
-    from ml.gameplan_actuals_review import previous_action_date
 
     root = Path(datastore_root).resolve()
     publication = read_gameplan_run(root, Path(gameplan_run))
@@ -373,6 +458,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy
     fallback_policy = validate_fallback_policy(config.get("cross_horizon_fallback_policy"), action_date)
     fallback_metadata = {"cross_horizon_fallback_policy": fallback_policy} if fallback_policy is not None else {}
+    execution_policy_metadata = current_gameplan_policy_metadata(action_date)
     source_receipt_hash = file_checksum(source / "receipt.json")
     expected_deadline = pd.Timestamp(action_date).tz_localize("America/Los_Angeles") + pd.Timedelta(hours=4)
     deadline_at = utc(deadline) if deadline is not None else expected_deadline.tz_convert("UTC")
@@ -443,169 +529,27 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
             or not intents.legs_json.isna().all() or not intents.candidate_key.isna().all()
             or not intents.strategy_source_run.isna().all()):
         raise ValueError("Trade planning requires matching non-executable stock-only option placeholders")
-    promoted = verified_promoted_model_groups(publication)
-    if any(row.model_group not in promoted for row in forecasts.loc[forecasts.model_status.eq("PROMOTED")].itertuples()):
-        raise ValueError("A forecast claims promotion without verified model authority")
-    run = create_timestamp_directory(root / "ml/gameplan-trade-plan-runs", timestamp=observed)
-    report = {"schema_version": VERSION, "observed_at": observed.isoformat(), "action_date": action_date,
-              **probability_metadata, **fallback_metadata,
-              "source_gameplan_run": source.relative_to(root).as_posix(), "source_receipt_sha256": source_receipt_hash,
-              "deadline_at": original_deadline.isoformat(), "effective_deadline_at":deadline_at.isoformat(),
-              "deadline_exception":exception_evidence, "execution_authority": AUTHORITY,
-              "orders_placed": 0, "broker_orders_enabled": False, "status": "RUNNING"}
-    if late_action_date is not None:
-        report.update(publication_mode="LATE_RECOVERY", late_action_date=late_action_date)
-    if refresh_evidence is not None:
-        report.update(publication_mode="INFORMATIONAL_REFRESH", review_refresh=refresh_evidence)
-    prior_action_date = previous_action_date(action_date)
-    report["previous_session_results_date"] = prior_action_date
-    report["previous_session_results_path"] = (root / "ml/gameplan-actuals-review-by-date" /
-                                                prior_action_date / "Gameplan-results.md").as_posix()
-    _write_json(run / "report.json", report)
-    phase = "ACCOUNT_SNAPSHOT"
-    try:
-        snapshot = refresh_snapshot if refresh_snapshot is not None else (snapshot_loader or capture_trade_planning_snapshot)(root, symbols=symbols)
-        _write_json(run / "account-snapshot.json", snapshot)
-        planning_snapshot, planning_override = _planning_snapshot(snapshot)
-        if (snapshot.get("status") != "OBSERVED" or snapshot.get("cash_status") != "CASH_ONLY_BOUNDED"
-                or snapshot.get("available_cash") is None):
-            raise ValueError("ACCOUNT_SNAPSHOT_UNAVAILABLE")
-        if snapshot.get("ownership", {}).get("safe_for_planning") is not True:
-            raise ValueError("OWNERSHIP_SNAPSHOT_UNAVAILABLE")
-        phase = "VERIFIED_PRICE_HISTORY"
-        prices, price_files, price_report = (price_loader or load_stock_target_prices)(
-            root, symbols=symbols, source_contract=config["target_price_source_contract"])
-        phase = "PRICE_BANDS_AND_BUDGETS"
-        band_asof = refresh_asof if refresh_asof is not None else utc(clock())
-        bands = build_entry_price_bands(prices, forecasts, observed_at=band_asof,
-                                        lookback_sessions=PLANNING_PRICE_LOOKBACK_SESSIONS,
-                                        allow_reference_forward_fill=True, allow_sparse_session_references=True)
-        price_path = build_planning_price_path(prices, forecasts, observed_at=band_asof, entry_bands=bands,
-                                                allow_reference_forward_fill=True, allow_sparse_session_references=True)
-        completion = bands["reference_completion"]
-        _write_json(run / "planning-reference-completion.json", completion)
-        synthetic = pd.DataFrame(completion["synthetic_bars"])
-        if synthetic.empty:
-            synthetic = pd.DataFrame(columns=["symbol", "timestamp", "open", "high", "low", "close",
-                                              "volume", "is_synthetic", "reason", "original_observed_at"])
-        synthetic.to_parquet(run / "synthetic-reference-bars.parquet", index=False)
-        policy = StockTraderPolicy()
-        rows = _plan_working_price_rows(forecasts, planning_snapshot, bands, price_path, policy=policy)
-        phase = "DIRECTION_BASED_CASH_AND_SHARE_PROJECTION"
+    # Frozen probabilities retain their scientific source; current trade intent
+    # neither estimates prices nor repeats model-promotion decisions.
+    snapshot = refresh_snapshot
+    if refresh_plan is None and not research_producer_only:
         try:
-            rows, direction_projection = project_direction_trades(rows, planning_snapshot, price_path, policy=policy,
-                signal_driven=True, cross_horizon_fallback_policy=fallback_policy)
-        except UnavailablePlanningPricePath as unavailable:
-            # Complete the informational report without manufacturing prices,
-            # fills, ending cash or ending holdings. Other validation errors
-            # continue to fail the publication.
-            direction_projection = {
-                **fallback_metadata,
-                "status":"UNAVAILABLE_PRICE_REFERENCES", "unavailable_points":unavailable.points,
-                "events":[], "hourly":[], "ending_positions":{}, "summary":{},
-                "orders_placed":0, "broker_orders_enabled":False,
-                "reason":"Required observed price references or historical pairs are missing; no shared cash projection was calculated.",
-            }
-        rows.to_parquet(run / "trade-plan.parquet", index=False)
-        _write_json(run / "price-bands.json", bands)
-        _write_json(run / "planning-price-path.json", price_path)
-        _write_json(run / "direction-ledger.json", direction_projection)
-        model_reports = json.loads((source / "model-reports.json").read_text(encoding="utf-8"))
-        report.update(status="COMPLETE", completed_at=utc(clock()).isoformat(), forecast_rows=len(rows),
-                      rows_by_symbol=rows.groupby("symbol").size().to_dict(), option_intent_rows=len(intents),
-                      provisional_buy_rows=int(rows.trade_quantity.gt(0).sum()),
-                      planned_notional=float(rows.trade_notional_reserved.sum()),
-                      quantity_sum=int(rows.trade_quantity.sum()),
-                      projected_quantity_rows=int(rows.projected_trade_quantity.gt(0).sum()),
-                      projected_quantity_semantics="Per-opportunity affordable horizon allocation; alternatives are not added as simultaneous orders",
-                      direction_policy_version=STOCK_DIRECTION_POLICY_VERSION,
-                      direction_up_threshold=BULLISH_PROBABILITY, direction_down_threshold=BEARISH_PROBABILITY,
-                      price_band_status_counts=rows.price_band_status.value_counts().to_dict(),
-                      trade_reason_counts=rows.trade_planning_reason.value_counts().to_dict(),
-                      snapshot=snapshot, planning_override=planning_override, sizing_policy=asdict(policy),
-                      direction_based_projection=direction_projection,
-                      direction_projection_status=direction_projection.get("status", "AVAILABLE"),
-                      opra_history=config.get("opra_history", {}),
-                      price_band_policy={k: v for k, v in bands.items() if k not in {"rows", "statistics", "reference_completion"}},
-                      planning_price_path={k: v for k, v in price_path.items() if k not in {"points", "reference_completion"}},
-                      reference_completion={k: v for k, v in completion.items() if k != "synthetic_bars"},
-                      target_price_source_contract=config["target_price_source_contract"],
-                      source_price_inventory=price_report,
-                      limitations=["Review projections only; the existing live worker revalidates all controls and capital.",
-                                   "Price and cash ranges are estimates only. Live orders use the current tradable quote, actual available cash and holdings even when those values are outside the estimates.",
-                                   "Planning closing marks may carry the same session's last actual close through up to four after-hours hours in a verified source window. Historical planning pairs disclose these closing carries too; entry prices stay observed. Zero volume is an assumption, not an exchange observation.",
-                                   "The direction-based cash/share projection depends on its projected purchase and bearish-sale fills; projected proceeds are not actual spendable broker cash.",
-                                   "The separate scheduled-entry preview uses current cash only and requires prior exit confirmation for later entries in a planned horizon."])
-        # Optional research assessments add context, never alter the pinned
-        # forecast or supply authority for a proposed quantity.
-        for pointer, folder, report_name, field in (
-            ("ml/gameplan-evaluation-latest/run.json", "ml/gameplan-evaluation-runs", "summary.json", "evaluation_summary"),
-            ("ml/stock-trader-model-latest/run.json", "ml/stock-trader-model-runs", "training-report.json", "enrichment_summary"),
-        ):
-            path = root / pointer
-            if path.is_file():
-                try:
-                    payload = json.loads(path.read_text(encoding="utf-8"))
-                    ref = payload.get("current", payload)
-                    related = (root / str(ref.get("run_path", ref.get("path", "")))).resolve()
-                    if related.parent == (root / folder).resolve():
-                        verify_manifest(related)
-                        detail = json.loads((related / report_name).read_text(encoding="utf-8"))
-                        if field != "enrichment_summary" or detail.get("source_gameplan_run") == source.relative_to(root).as_posix():
-                            report[field] = detail
-                except (OSError, ValueError, KeyError, RuntimeError):
-                    report[field + "_status"] = "UNAVAILABLE_OPTIONAL_CONTEXT"
-        phase = "REVIEW_AND_PUBLICATION"
-        _write_json(run / "report.json", report)
-        (run / "Gameplan.md").write_text(render_trade_review(rows, report, model_reports, source_gameplan=source.as_posix()), encoding="utf-8")
-        if deadline_expired(utc(clock()), deadline_at):
-            raise ValueError("TRADE_PLANNING_DEADLINE_PASSED")
-        if file_checksum(source / "receipt.json") != source_receipt_hash:
-            raise ValueError("PINNED_GAMEPLAN_RECEIPT_CHANGED")
-        outputs = ["trade-plan.parquet", "account-snapshot.json", "price-bands.json", "planning-price-path.json",
-                   "planning-reference-completion.json", "synthetic-reference-bars.parquet",
-                   "direction-ledger.json", "report.json", "Gameplan.md"]
-        write_manifest(run, run_timestamp=observed,
-                       input_files=[source / "receipt.json", source / "manifest.json", source / "forecasts.parquet", *price_files, *refresh_inputs],
-                       output_files=outputs, configuration={"schema_version": VERSION, "action_date": action_date,
-                       **probability_metadata, **fallback_metadata,
-                       "source_gameplan_run": report["source_gameplan_run"], "source_receipt_sha256": source_receipt_hash,
-                       "reference_completion_contract": completion["contract_version"],
-                       "allow_reference_forward_fill": True,
-                       "allow_sparse_session_references": True,
-                       "publication_mode": report.get("publication_mode", "NIGHTLY_REVIEW"),
-                       "review_refresh": refresh_evidence,
-                       "execution_authority": AUTHORITY, "broker_orders_enabled": False, "orders_placed": 0}, datastore_root=root)
-        verify_manifest(run)
-        if deadline_expired(utc(clock()), deadline_at):
-            raise ValueError("TRADE_PLANNING_DEADLINE_PASSED")
-        terminal = {"schema_version": VERSION, "status": "COMPLETE", "run_path": run.relative_to(root).as_posix(),
-                    **probability_metadata, **fallback_metadata,
-                    "action_date": action_date, "source_gameplan_run": report["source_gameplan_run"],
-                    "source_receipt_sha256": source_receipt_hash, "manifest_sha256": file_checksum(run / "manifest.json"),
-                    "forecast_rows": len(rows), "orders_placed": 0, "broker_orders_enabled": False,
-                    "execution_authority": AUTHORITY, "completed_at": utc(clock()).isoformat()}
-        _write_json(run / "receipt.json", terminal)
-        if deadline_expired(utc(clock()), deadline_at):
-            raise ValueError("TRADE_PLANNING_DEADLINE_PASSED")
-        if refresh_pointer_hash is not None and file_checksum(root / "ml/gameplan-trade-plan-latest/run.json") != refresh_pointer_hash:
-            raise ValueError("REFRESH_PLAN_CHANGED")
-        _write_json(root / "ml/gameplan-trade-plan-latest/run.json", {"schema_version": VERSION, "current": {
-            "run_path": terminal["run_path"], "action_date": action_date,
-            "source_receipt_sha256": source_receipt_hash, "receipt_sha256": file_checksum(run / "receipt.json")}})
-        return run
-    except Exception as exc:
-        # Do not serialize broker exception text, credentials or identifiers.
-        safe_codes = {"ACCOUNT_SNAPSHOT_UNAVAILABLE", "OWNERSHIP_SNAPSHOT_UNAVAILABLE",
-                      "TRADE_PLANNING_DEADLINE_PASSED", "PINNED_GAMEPLAN_RECEIPT_CHANGED", "REFRESH_PLAN_CHANGED"}
-        code = str(exc) if str(exc) in safe_codes else "TRADE_PLANNING_VALIDATION_FAILED"
-        report.update(status="FAILED", failure_type=type(exc).__name__, failure_phase=phase,
-                      failure_code=code, completed_at=utc(clock()).isoformat())
-        _write_json(run / "report.json", report)
-        _write_json(run / "receipt.json", {"schema_version": VERSION, "status": "FAILED", "failure_type": type(exc).__name__,
-                    "failure_code": code, "failure_phase": phase,
-                    "report_sha256": file_checksum(run / "report.json"), "orders_placed": 0, "broker_orders_enabled": False})
-        raise RuntimeError(f"Trade planning failed ({type(exc).__name__}); review {run / 'report.json'}") from None
+            observed_snapshot = (snapshot_loader or capture_trade_planning_snapshot)(root, symbols=symbols)
+            if observed_snapshot.get("status") == "OBSERVED":
+                snapshot = observed_snapshot
+        except (OSError, ValueError, RuntimeError):
+            snapshot = None
+    if refresh_pointer_hash is not None and file_checksum(root / "ml/gameplan-trade-plan-latest/run.json") != refresh_pointer_hash:
+        raise ValueError("Selected informational review changed before direction refresh")
+    return _publish_direction_plan(root, publication, forecasts, observed=observed,
+        deadline_at=deadline_at, clock=clock, snapshot=snapshot,
+        expected_source_receipt_sha256=source_receipt_hash,
+        publication_context={"deadline_at": original_deadline.isoformat(),
+            "effective_deadline_at": deadline_at.isoformat(), "deadline_exception": exception_evidence,
+            "review_refresh": refresh_evidence,
+            **({"late_action_date": late_action_date, "preparation_mode": "LATE_RECOVERY"} if late_action_date else {})},
+        producer_mode="RESEARCH_PRODUCER_SOURCE" if research_producer_only else "DIRECTION_ONLY_SOURCE",
+        producer_id="scout" if research_producer_only else None)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -620,7 +564,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--late-action-date", help="Explicit date-pinned late recovery using its frozen deadline")
     parser.add_argument('--deadline-exception', type=Path)
     parser.add_argument('--refresh-plan', type=Path,
-                        help="Recalculate the current informational review using its original snapshot and planning cutoff")
+                        help="Derive current directions from the same immutable predictions and optional observed context")
     args = parser.parse_args(argv)
     root = resolve_datastore_dir(root_dir=args.datastore, target=None if args.datastore else args.datastore_target)
     with exclusive_runtime_lock(root / "state/gameplan-trade-planning.lock", process_name="gameplan trade planning"):

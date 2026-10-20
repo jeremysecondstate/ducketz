@@ -92,6 +92,38 @@ def test_yg_stats_identifies_raw_probability_target(tab, tmp_path):
     assert tab.values["brier"].get() == "0.010"
 
 
+def test_stats_details_show_frozen_policy_and_definitions_cover_every_trader(tab, tmp_path, monkeypatch):
+    from ml.stock_direction_policy import STOCK_DIRECTION_POLICY_VERSION
+    row = forecast(probability=.4872)
+    row.update(direction_policy_version=STOCK_DIRECTION_POLICY_VERSION,
+               direction_up_threshold=.5001, direction_down_threshold=.4999)
+    write_review(tmp_path, [row], version="exact-policy")
+    tab.set_review(load_gameplan_stats(tmp_path))
+    shown = []
+    monkeypatch.setattr(tab, "_text_dialog", lambda title, text: shown.append(text))
+    tab._show_outcome("AAPL", 0, tab.review.outcomes[0])
+    assert "BUY at 50.01% or higher; SELL at 49.99% or lower; HOLD between" in shown[-1]
+    assert STOCK_DIRECTION_POLICY_VERSION in shown[-1]
+    tab.show_definitions()
+    assert "both 15-minute traders" in shown[-1]
+    assert "original saved calls without relabeling" in shown[-1]
+
+
+def test_stats_detail_explains_unrounded_probability_inside_exact_hold_gap(tab, tmp_path, monkeypatch):
+    from ml.stock_direction_policy import STOCK_DIRECTION_POLICY_VERSION
+    row = forecast(probability=.500099, direction="NO_EDGE")
+    row.update(direction_policy_version=STOCK_DIRECTION_POLICY_VERSION,
+               direction_up_threshold=.5001, direction_down_threshold=.4999)
+    write_review(tmp_path, [row], version="unrounded-policy")
+    tab.set_review(load_gameplan_stats(tmp_path))
+    shown = []
+    monkeypatch.setattr(tab, "_text_dialog", lambda title, text: shown.append(text))
+    tab._show_outcome("AAPL", 0, tab.review.outcomes[0])
+    assert "Saved call: Neutral" in shown[-1]
+    assert "Saved model probability: 50.01%" in shown[-1]
+    assert "Original unrounded P(up): 50.0099% (the exact policy uses this value)" in shown[-1]
+
+
 def test_date_change_clears_old_values_and_loads_requested_publication(tab, tmp_path):
     write_review(tmp_path, [forecast(session="2026-09-10")], session="2026-09-10", latest=False)
     tab.session.set("2026-09-10")

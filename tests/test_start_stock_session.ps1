@@ -16,6 +16,16 @@ if ($null -eq $argumentBuilder) { throw 'Session argument builder was not found.
 Invoke-Expression $argumentBuilder.Extent.Text
 
 $script:passed = 0
+$sizingParameter = $ast.ParamBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'SizingPolicy' }
+$defaultPolicy = $sizingParameter.DefaultValue.SafeGetValue()
+if ($defaultPolicy -cne 'gameplan-direction-current-market-v1') { throw 'Bare launcher must use current directional Gameplan execution.' }
+$acceptedPolicies = @($sizingParameter.Attributes | Where-Object { $_.TypeName.Name -eq 'ValidateSet' } | ForEach-Object { $_.PositionalArguments | ForEach-Object { $_.SafeGetValue() } })
+if ($acceptedPolicies.Count -ne 1 -or $acceptedPolicies[0] -cne $defaultPolicy) { throw 'New manual Gameplan starts must reject obsolete sizing policies.' }
+$defaultArguments = @(Get-StockSessionArguments -Policy $defaultPolicy -Wait $false)
+if (($defaultArguments -join ' ') -cne '-u -m ml.gameplan_stock_trader --datastore-target pc --execute --target-horizon all --sizing-policy gameplan-direction-current-market-v1 --run-session') {
+    throw 'Bare launcher arguments must select all horizons and current directional execution.'
+}
+$script:passed += 3
 $pythonPath = 'C:\test repo\.venv\Scripts\python.exe'
 $basePythonPath = 'C:\Python313\python.exe'
 $commandLine = '"' + $pythonPath + '" -u -m ml.gameplan_stock_trader --datastore-target pc --execute --target-horizon all --sizing-policy fixed-horizon-budget-v1 --run-session'

@@ -13,7 +13,9 @@ from ml.stock_trader.gameplan import (
     read_gameplan_stock_activation_intent,
 )
 from ml.stock_trader.runtime import StockTraderRunResult, run_stock_trader_once
-from ml.stock_trader.sizing_policy import LEARNED_SIZING_POLICY, SIZING_POLICIES, validate_sizing_policy
+from ml.stock_trader.sizing_policy import (
+    GAMEPLAN_SIZING_POLICY, LEARNED_SIZING_POLICY, SIZING_POLICIES, validate_sizing_policy,
+)
 
 
 def run_gameplan_stock_trader_once(
@@ -23,13 +25,15 @@ def run_gameplan_stock_trader_once(
     execute: bool = False,
     session: object | None = None,
     shadow_observe: bool = True,
-    target_horizon: str = "1h",
+    target_horizon: str = "all",
     runtime_clock=None,
-    sizing_policy: str = LEARNED_SIZING_POLICY,
+    sizing_policy: str = GAMEPLAN_SIZING_POLICY,
 ) -> StockTraderRunResult:
     """Run the proven stock execution engine from the immutable gameplan."""
 
     sizing_policy = validate_sizing_policy(sizing_policy)
+    if execute and sizing_policy != GAMEPLAN_SIZING_POLICY:
+        raise ValueError("New Gameplan orders require gameplan-direction-current-market-v1; legacy sizing is research-only")
     if target_horizon != "all" and sizing_policy != LEARNED_SIZING_POLICY:
         raise ValueError("Fixed horizon sizing requires --target-horizon all")
     if target_horizon == "all":
@@ -80,7 +84,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--target-horizon",
         choices=("1h", "4h", "all"),
-        default="1h",
+        default="all",
         help="Select one legacy horizon, or all due independent horizons with separate share ownership.",
     )
     parser.add_argument("--run-session", action="store_true",
@@ -90,8 +94,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument('--late-opening-date', help='Explicit one-session manual exception: allow the unconsumed 04:00 entry until 05:00 Pacific on YYYY-MM-DD')
     parser.add_argument('--resume-quote-run', help='Once-only recovery of one unsubmitted quote skip from this native decision run')
     parser.add_argument('--resume-quote-symbol', help='Exact symbol to recover with --resume-quote-run')
-    parser.add_argument("--sizing-policy", choices=SIZING_POLICIES, default=LEARNED_SIZING_POLICY,
-                        help="Explicitly select qualified learned sizing or conservative fixed horizon budgets.")
+    parser.add_argument("--sizing-policy", choices=SIZING_POLICIES, default=GAMEPLAN_SIZING_POLICY,
+                        help="Current directional execution with live broker capacity; legacy sizing is research-only.")
     parser.add_argument(
         "--no-shadow-observe",
         action="store_true",
@@ -103,6 +107,8 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
+        if args.execute and args.sizing_policy != GAMEPLAN_SIZING_POLICY:
+            raise ValueError("New Gameplan orders require gameplan-direction-current-market-v1; legacy sizing is research-only")
         root = resolve_datastore_dir(
             root_dir=args.root_dir,
             target=args.datastore_target,

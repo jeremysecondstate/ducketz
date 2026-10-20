@@ -517,12 +517,15 @@ def run_nightly_gameplan_once(
         str(key): int(value)
         for key, value in option_intents["plan_status"].value_counts().items()
     }
+    from ml.gameplan_execution_policy import current_gameplan_policy_metadata
+    execution_policy_metadata = current_gameplan_policy_metadata(action_date)
     fallback_metadata = ({FALLBACK_POLICY_FIELD: policy_for_action_date(action_date)}
         if independent_stock_horizons and policy_for_action_date(action_date) is not None else {})
     plan_payload = {
         "schema_version": GAMEPLAN_VERSION,
         **fallback_metadata,
         **probability_metadata,
+        **execution_policy_metadata,
         "preparation_scope": "STOCK_ONLY" if stock_only else "STOCK_AND_OPTIONS_RESEARCH",
         "forecast_contract_version": FORECAST_CONTRACT_VERSION,
         "target_contract_version": target_contract,
@@ -659,6 +662,7 @@ def run_nightly_gameplan_once(
             "schema_version": GAMEPLAN_VERSION,
             **fallback_metadata,
             **probability_metadata,
+            **execution_policy_metadata,
             **({"late_preparation": recovery} if recovery else {}),
             **({"training_information_cutoff": information_cutoff.isoformat()} if recovery or late_action_date else {}),
             "preparation_scope": "STOCK_ONLY" if stock_only else "STOCK_AND_OPTIONS_RESEARCH",
@@ -2050,7 +2054,7 @@ def _finalize_forecasts(
         ]
     from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION
     output["direction"] = np.select(
-        [probability.gt(BULLISH_PROBABILITY), probability.lt(BEARISH_PROBABILITY)],
+        [probability.ge(BULLISH_PROBABILITY), probability.le(BEARISH_PROBABILITY)],
         ["BULLISH", "BEARISH"],
         default="NO_EDGE",
     )
@@ -2483,8 +2487,10 @@ def _publish_gameplan(
     _verify_source_selection_metadata(run, manifest)
     _verify_probability_target_metadata(run, manifest)
     fallback_policy = verify_fallback_policy_metadata(run, manifest)
+    from ml.gameplan_execution_policy import saved_gameplan_policy_metadata
     receipt = {
         "schema_version": GAMEPLAN_RECEIPT_VERSION,
+        **saved_gameplan_policy_metadata(manifest.get("configuration", {})),
         **({FALLBACK_POLICY_FIELD: fallback_policy} if fallback_policy is not None else {}),
         **({key: manifest["configuration"][key] for key in ("probability_target_contract", "gameplan_variant")}
            if "probability_target_contract" in manifest.get("configuration", {}) else {}),

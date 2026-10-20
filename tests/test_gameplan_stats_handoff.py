@@ -53,6 +53,43 @@ def test_sanitized_packages_roundtrip_into_existing_stats_ui(tmp_path, packages)
     assert report["producers"]["Scout"]["package_sha256"] == file_checksum(paths["Scout"])
 
 
+def test_new_stock_policy_survives_sanitized_export_and_combined_stats(tmp_path, packages):
+    from ml.stock_direction_policy import STOCK_DIRECTION_POLICY_VERSION
+    paths, owners = packages
+    root = tmp_path / "new-policy"
+    rows = [forecast("DOCU", probability=.4999),
+            forecast("DOCU", hour=5, direction="NO_EDGE", probability=.50005)]
+    for row in rows:
+        row.update(direction_policy_version=STOCK_DIRECTION_POLICY_VERSION,
+                   direction_up_threshold=.5001, direction_down_threshold=.4999)
+    write_review(root, rows)
+    paths["Scout"] = export_stats_package(root, producer="Scout", symbols=owners["Scout"],
+                                          destination=tmp_path / "new-policy.json")
+    payload, frame = read_stats_package(paths["Scout"], expected_sha256=file_checksum(paths["Scout"]))
+    assert frame.direction_policy_version.eq(STOCK_DIRECTION_POLICY_VERSION).all()
+    assert frame.direction_up_threshold.eq(.5001).all() and frame.direction_down_threshold.eq(.4999).all()
+    adopt(tmp_path / "combined", paths, owners)
+    review = load_gameplan_stats(tmp_path / "combined")
+    current = review.rows(symbol="DOCU")
+    assert [row.direction for row in current] == ["BEARISH", "NO_EDGE"]
+    assert all(row.direction_policy_version == STOCK_DIRECTION_POLICY_VERSION for row in current)
+    assert "BUY at 50.01% or higher; SELL at 49.99% or lower" in current[0].direction_policy_description
+    assert all(row.direction_policy_version is None for row in review.rows(symbol="AAPL"))
+
+
+def test_handoff_rejects_current_policy_call_that_reintroduces_old_probability_band(tmp_path, packages):
+    from ml.stock_direction_policy import STOCK_DIRECTION_POLICY_VERSION
+    paths, owners = packages
+    payload = json.loads(paths["Scout"].read_text())
+    row = payload["rows"][0]
+    row.update(calibrated_probability=.4872, direction="NO_EDGE", direction_correct=None,
+               model_brier_score=.4872 ** 2, direction_policy_version=STOCK_DIRECTION_POLICY_VERSION,
+               direction_up_threshold=.5001, direction_down_threshold=.4999)
+    paths["Scout"].write_text(json.dumps(payload))
+    with pytest.raises(ValueError, match="direction disagrees with its declared policy"):
+        adopt(tmp_path / "combined", paths, owners)
+
+
 def test_package_hash_and_unknown_fields_fail_before_adoption(tmp_path, packages):
     paths, owners = packages
     before = file_checksum(paths["Scout"])

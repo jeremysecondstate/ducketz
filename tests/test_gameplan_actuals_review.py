@@ -50,6 +50,50 @@ def path(day="2026-09-09"):
                 for hour in range(4, 18)}}
 
 
+@pytest.mark.parametrize("probability,direction", [
+    (.5001, "BULLISH"), (.50005, "NO_EDGE"), (.49995, "NO_EDGE"), (.4999, "BEARISH"),
+])
+def test_actuals_carries_exact_frozen_direction_policy(probability, direction):
+    from ml.stock_direction_policy import STOCK_DIRECTION_POLICY_VERSION
+    source = forecasts().iloc[:1].copy()
+    source = source.assign(calibrated_probability=probability, direction=direction,
+                           direction_policy_version=STOCK_DIRECTION_POLICY_VERSION,
+                           direction_up_threshold=.5001, direction_down_threshold=.4999)
+    result = compare_forecasts(source, prices(), observed_at="2026-09-10T00:00Z").iloc[0]
+    assert result.direction == direction
+    assert result.direction_policy_version == STOCK_DIRECTION_POLICY_VERSION
+    assert result.direction_up_threshold == .5001 and result.direction_down_threshold == .4999
+    if direction == "NO_EDGE":
+        assert pd.isna(result.direction_correct)
+    else:
+        assert result.direction_correct == (direction == "BULLISH")
+    assert result.model_brier_score == pytest.approx((probability - 1) ** 2)
+
+
+def test_actuals_refuses_trade_plan_that_changes_saved_direction_cutoffs():
+    from ml.stock_direction_policy import STOCK_DIRECTION_POLICY_VERSION
+    source = forecasts().assign(direction_policy_version=STOCK_DIRECTION_POLICY_VERSION,
+                                direction_up_threshold=.5001, direction_down_threshold=.4999)
+    trades = source.copy()
+    trades["direction_down_threshold"] = .48
+    with pytest.raises(ValueError, match="changed a frozen forecast"):
+        compare_forecasts(source, prices(), observed_at="2026-09-10T00:00Z", trade_rows=trades)
+
+
+def test_no_history_research_call_stays_neutral_under_current_policy():
+    from ml.stock_direction_policy import STOCK_DIRECTION_POLICY_VERSION
+    source = forecasts().iloc[:1].assign(direction="NO_EDGE", model_status="RESEARCH_NO_TARGET_HISTORY",
+        direction_policy_version=STOCK_DIRECTION_POLICY_VERSION)
+    result = compare_forecasts(source, prices(), observed_at="2026-09-10T00:00Z").iloc[0]
+    assert result.direction == "NO_EDGE" and pd.isna(result.direction_correct)
+
+
+def test_actuals_does_not_invent_a_direction_for_unlabelled_historical_forecast():
+    source = forecasts().iloc[:1].drop(columns="direction")
+    result = compare_forecasts(source, prices(), observed_at="2026-09-10T00:00Z").iloc[0]
+    assert result.direction == "NO_EDGE" and pd.isna(result.direction_correct)
+
+
 def test_same_clock_actuals_keep_original_prices_and_future_forecasts():
     source = forecasts()
     original = source.copy(deep=True)

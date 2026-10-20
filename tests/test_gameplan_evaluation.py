@@ -21,8 +21,9 @@ def saved_plan(root, name, action_date, *, end="2026-09-10T20:00:00Z"):
         "model_group": "1d", "model_status": "PROMOTED",
     }])
     frame.to_parquet(run / "forecasts.parquet", index=False)
+    (run / "gameplan.json").write_text(json.dumps({"action_date": action_date}))
     write_manifest(run, run_timestamp="2026-09-04T10:00:00Z", input_files=(),
-                   output_files=("forecasts.parquet",), configuration={"action_date": action_date}, datastore_root=root)
+                   output_files=("forecasts.parquet", "gameplan.json"), configuration={"action_date": action_date}, datastore_root=root)
     _publish_gameplan(root, run=run, action_date=date.fromisoformat(action_date),
                       published_at=pd.Timestamp("2026-09-04T10:01:00Z"), source_loop_b="test", source_strategy="test")
     return run
@@ -112,8 +113,9 @@ def test_four_hour_evaluation_waits_for_an_actual_window_end_price(tmp_path):
         "calibrated_probability": 0.5, "model_group": "4h", "model_status": "PROMOTED",
     }])
     forecasts.to_parquet(run / "forecasts.parquet", index=False)
+    (run / "gameplan.json").write_text(json.dumps({"action_date": "2026-09-04"}))
     write_manifest(run, run_timestamp="2026-09-04T10:00:00Z", input_files=(),
-                   output_files=("forecasts.parquet",), configuration={"action_date": "2026-09-04"}, datastore_root=tmp_path)
+                   output_files=("forecasts.parquet", "gameplan.json"), configuration={"action_date": "2026-09-04"}, datastore_root=tmp_path)
     _publish_gameplan(tmp_path, run=run, action_date=date(2026, 9, 4),
                       published_at=pd.Timestamp("2026-09-04T10:01:00Z"), source_loop_b="test", source_strategy="test")
     sources = pd.DataFrame([{
@@ -147,6 +149,50 @@ def independent_forecast_and_outcome():
                 "action_date": "2026-09-10", "model_group": "1h",
                 "model_status": "PROMOTED", "calibrated_probability": 0.7}
     return forecast, {**common, "target": 1, "observed_return": 0.02}
+
+
+@pytest.mark.parametrize("probability,direction", [
+    (.5001, "BULLISH"), (.500099, "NO_EDGE"), (.5, "NO_EDGE"),
+    (.499901, "NO_EDGE"), (.4999, "BEARISH"), (.4872, "BEARISH"),
+])
+def test_evaluator_uses_declared_exact_stock_bands_without_changing_probability_score(probability, direction):
+    from ml.stock_direction_policy import STOCK_DIRECTION_POLICY_VERSION
+    forecast, outcome = independent_forecast_and_outcome()
+    forecast.update(calibrated_probability=probability, direction_policy_version=STOCK_DIRECTION_POLICY_VERSION,
+                    direction_up_threshold=.5001, direction_down_threshold=.4999)
+    result = evaluate_forecasts(pd.DataFrame([forecast]),
+        observed_groups={"actual": pd.DataFrame([outcome])}, evaluated_at="2026-09-11T01:00:00Z").iloc[0]
+    assert result.direction == direction
+    assert result.direction_policy_version == STOCK_DIRECTION_POLICY_VERSION
+    assert result.direction_up_threshold == .5001 and result.direction_down_threshold == .4999
+    assert result.brier_score == pytest.approx((probability - 1) ** 2)
+    if direction == "NO_EDGE":
+        assert pd.isna(result.raw_direction_correct)
+    else:
+        assert result.raw_direction_correct == (direction == "BULLISH")
+
+
+def test_evaluator_keeps_original_historical_call_and_legacy_absent_direction_fallback():
+    original, outcome = independent_forecast_and_outcome()
+    original.update(calibrated_probability=.50005, direction="NO_EDGE")
+    missing = {**original, "source_gameplan_run": "legacy-absent", "direction": None}
+    result = evaluate_forecasts(pd.DataFrame([original, missing]),
+        observed_groups={"actual": pd.DataFrame([outcome])}, evaluated_at="2026-09-11T01:00:00Z")
+    assert result.direction.tolist() == ["NO_EDGE", "BULLISH"]
+    assert result.direction_policy_version.isna().all()
+
+
+def test_evaluator_rejects_changed_declared_policy_in_previously_scored_row():
+    from ml.stock_direction_policy import STOCK_DIRECTION_POLICY_VERSION
+    forecast, outcome = independent_forecast_and_outcome()
+    forecast.update(direction="BULLISH", direction_policy_version=STOCK_DIRECTION_POLICY_VERSION,
+                    direction_up_threshold=.5001, direction_down_threshold=.4999)
+    original = evaluate_forecasts(pd.DataFrame([forecast]),
+        observed_groups={"actual": pd.DataFrame([outcome])}, evaluated_at="2026-09-11T01:00:00Z")
+    changed = {**forecast, "direction_policy_version": "historical-policy", "direction_up_threshold": .55}
+    with pytest.raises(RuntimeError, match="changed its direction policy"):
+        evaluate_forecasts(pd.DataFrame([changed]), observed_groups={},
+                          previous=original, evaluated_at="2026-09-12T01:00:00Z")
 
 
 @pytest.mark.parametrize("forecast_selection,outcome_selection", [

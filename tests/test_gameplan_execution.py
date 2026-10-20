@@ -13,7 +13,19 @@ from ml.stock_trader.gameplan_execution import load_execution_signals, execution
 from ml.stock_trader.sizing_policy import GAMEPLAN_SIZING_POLICY
 
 
-@pytest.mark.parametrize('probability,direction', [(.499999, 'BEARISH'), (.5, 'NO_EDGE'), (.500001, 'BULLISH')])
+@pytest.mark.parametrize("probability,direction", [(.499999, "BEARISH"), (.500001, "BULLISH")])
+def test_prior_saved_direction_labels_do_not_block_new_neutral_decisions(probability, direction):
+    from ml.stock_direction_policy import stock_action
+    from ml.stock_trader.gameplan_execution import _validated_instructions
+    frame = pd.DataFrame([dict(id="prior", symbol="ABCL", model_group="1h",
+        target_window_start="2026-10-19T11:00:00Z", calibrated_probability=probability,
+        direction=direction, direction_policy_version="stock-direction-50-v2")])
+    instructions = _validated_instructions(frame)
+    assert len(instructions) == 1
+    assert stock_action(instructions[0][1]) == "HOLD"
+
+
+@pytest.mark.parametrize('probability,direction', [(.4999, 'BEARISH'), (.499999, 'NO_EDGE'), (.5, 'NO_EDGE'), (.500001, 'NO_EDGE'), (.5001, 'BULLISH')])
 def test_saved_instructions_do_not_need_receipts_models_contract_hashes_or_planning_prices(tmp_path, probability, direction):
     run = tmp_path / 'ml/nightly-gameplan-runs/20260908T090000.000000Z'
     run.mkdir(parents=True)

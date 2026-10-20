@@ -1,3 +1,8 @@
+"""Historical projected-ledger arithmetic; current composition is tested separately.
+
+The compose fixture remains current for cross-module imports. These historical
+price/cash projection cases explicitly call the retained legacy constructor.
+"""
 from copy import deepcopy
 from dataclasses import replace
 import json
@@ -5,6 +10,7 @@ import json
 import pandas as pd
 import pytest
 
+from ml.joint_capital_plan import _compose_legacy_joint_plan
 from ml.joint_capital_plan import (build_owner_package, compose_joint_plan,
     content_sha256, publish_joint_plan, load_joint_plan, publish_owner_package, load_owner_package, RANKING_POLICY)
 from ml.stock_trader.contracts import StockTraderPolicy
@@ -80,8 +86,17 @@ def compose(packages=None, state=None, **changes):
     return compose_joint_plan(packages, state if state is not None else snapshot(), **settings)
 
 
+def legacy_compose(packages=None, state=None, **changes):
+    packages = packages if packages is not None else [package(), package("atlas", "AAPL", .7)]
+    settings = dict(action_date=DAY, expected_universes={"scout": ["ABCL"], "atlas": ["AAPL"]},
+        expected_package_sha256={item["owner_id"]: item["package_sha256"] for item in packages},
+        account_scope_sha256=SCOPE, as_of=NOW, executor_owner="atlas", policy=POLICY)
+    settings.update(changes)
+    return _compose_legacy_joint_plan(packages, state if state is not None else snapshot(), **settings)
+
+
 def test_two_plans_cannot_each_spend_the_same_starting_cash():
-    plan = compose()
+    plan = legacy_compose()
     assert plan["ledger"]["summary"]["starting_cash"] == 20
     assert plan["ledger"]["summary"]["buy_events"] == 1
     assert plan["ledger"]["events"][0]["symbol"] == "AAPL"
@@ -98,7 +113,7 @@ def test_cash_released_by_other_owners_sale_funds_only_conditional_projection():
     state["held_shares"]["ABCL"] = 2
     state["symbol_exposure"]["ABCL"] = state["stock_market_value_by_symbol"]["ABCL"] = 20
     state["gross_exposure"] = 20
-    plan = compose([package(probability=.4), package("atlas", "AAPL", .7, hour=5)], state)
+    plan = legacy_compose([package(probability=.4), package("atlas", "AAPL", .7, hour=5)], state)
     events = plan["ledger"]["events"]
     assert [(event["owner_id"], event["action"], event["quantity"]) for event in events] == [("scout", "SELL", 2), ("atlas", "BUY", 1)]
     assert all(event["fill_basis"] == "CONDITIONAL_PLANNING_FILL" for event in events)
@@ -112,7 +127,7 @@ def test_cash_released_by_other_owners_sale_funds_only_conditional_projection():
 def test_source_ids_can_overlap_between_owners_but_global_ids_and_views_are_bound():
     inputs = [package(), package("atlas", "AAPL")]
     before = deepcopy(inputs)
-    plan = compose(inputs)
+    plan = legacy_compose(inputs)
     assert inputs == before
     assert len({row["id"] for row in plan["forecasts"]}) == 48
     assert len({row["original_forecast_id"] for row in plan["forecasts"]}) == 24
@@ -125,14 +140,14 @@ def test_source_ids_can_overlap_between_owners_but_global_ids_and_views_are_boun
     for owner, view in plan["owner_views"].items():
         assert view["plan_id"] == plan["plan_id"]
         assert len(view["forecast_ids"]) == 24
-    assert compose(list(reversed(inputs))) == plan
+    assert legacy_compose(list(reversed(inputs))) == plan
 
 
 def test_saved_abstention_remains_neutral_despite_bearish_probability():
     rows = records("ABCL", .49)
     rows[0].update(direction="NO_EDGE", model_status="RESEARCH_NO_TARGET_HISTORY", symbol_fitted_target_rows=0,
                    symbol_route_fitted_target_rows=0)
-    plan = compose([package(rows=rows), package("atlas", "AAPL")])
+    plan = legacy_compose([package(rows=rows), package("atlas", "AAPL")])
     abstention = next(row for row in plan["forecasts"] if row["owner_id"] == "scout" and row["calibrated_probability"] == .49)
     assert abstention["calibrated_probability"] == .49
     assert abstention["direction"] == "NO_EDGE"
@@ -152,16 +167,16 @@ def test_rejects_ambiguous_joint_scope(mutation):
     elif mutation == "wrong-date": settings["action_date"] = "2026-09-10"
     elif mutation == "wrong-universe": settings["expected_universes"] = {"scout": ["DBX"], "atlas": ["AAPL"]}
     else: settings["executor_owner"] = "third-pc"
-    with pytest.raises(ValueError): compose(inputs, **settings)
+    with pytest.raises(ValueError): legacy_compose(inputs, **settings)
 
 
 def test_tampered_or_resigned_package_cannot_replace_independently_selected_bytes():
     inputs = [package(), package("atlas", "AAPL")]
     trusted = {item["owner_id"]: item["package_sha256"] for item in inputs}
     inputs[0]["source_revision"] = "c" * 40
-    with pytest.raises(ValueError, match="digest"): compose(inputs, expected_package_sha256=trusted)
+    with pytest.raises(ValueError, match="digest"): legacy_compose(inputs, expected_package_sha256=trusted)
     inputs[0]["package_sha256"] = content_sha256({k: v for k, v in inputs[0].items() if k != "package_sha256"})
-    with pytest.raises(ValueError, match="independently selected"): compose(inputs, expected_package_sha256=trusted)
+    with pytest.raises(ValueError, match="independently selected"): legacy_compose(inputs, expected_package_sha256=trusted)
 
 
 @pytest.mark.parametrize("field,value", [("available_cash", float("nan")), ("available_cash", float("inf")),
@@ -169,7 +184,7 @@ def test_tampered_or_resigned_package_cannot_replace_independently_selected_byte
 def test_invalid_account_numbers_never_reach_projection(field, value):
     state = snapshot()
     state[field] = value
-    with pytest.raises(ValueError): compose(state=state)
+    with pytest.raises(ValueError): legacy_compose(state=state)
 
 
 @pytest.mark.parametrize("mutation", ["scope", "stale", "future", "missing-holding", "unsafe-ownership", "duplicate-allocation"])
@@ -182,7 +197,7 @@ def test_rejects_unusable_authoritative_snapshot(mutation):
     elif mutation == "unsafe-ownership": state["ownership"]["safe_for_planning"] = False
     else:
         state["ownership"]["active_allocations"] = [{"symbol": "ABCL", "horizon": "1h", "owned_shares": 0}] * 2
-    with pytest.raises(ValueError): compose(state=state)
+    with pytest.raises(ValueError): legacy_compose(state=state)
 
 
 @pytest.mark.parametrize("mutation", ["duplicate-id", "missing-row", "probability-nan", "probability-bool", "probability-large", "direction", "naive-time"])
@@ -195,14 +210,14 @@ def test_invalid_frozen_forecasts_fail_before_a_plan_is_returned(mutation):
     elif mutation == "probability-large": rows[0]["calibrated_probability"] = 2
     elif mutation == "direction": rows[0]["direction"] = "BEARISH"
     else: rows[0]["target_window_start"] = "2026-09-09T04:00:00"
-    with pytest.raises(ValueError): compose([package(rows=rows), package("atlas", "AAPL")])
+    with pytest.raises(ValueError): legacy_compose([package(rows=rows), package("atlas", "AAPL")])
 
 
 def test_optional_missing_forecast_values_normalize_without_altering_required_probability():
     rows = records("ABCL")
     rows[0]["optional_metric"] = float("nan")
     rows[0]["optional_label"] = pd.NA
-    plan = compose([package(rows=rows), package("atlas", "AAPL")])
+    plan = legacy_compose([package(rows=rows), package("atlas", "AAPL")])
     row = next(row for row in plan["forecasts"] if row["owner_id"] == "scout" and row["calibrated_probability"] == .6)
     assert row["optional_metric"] is None and row["optional_label"] is None
     assert row["calibrated_probability"] == .6
@@ -214,15 +229,15 @@ def test_different_price_capture_times_allowed_but_policy_mismatch_rejected():
     first["reference_completion"] = {"symbols": ["ABCL"]}
     second["reference_completion"] = {"symbols": ["AAPL"]}
     second["observed_at"] = "2026-09-09T09:58:00Z"
-    compose([package(path=first), package("atlas", "AAPL", path=second)])
+    legacy_compose([package(path=first), package("atlas", "AAPL", path=second)])
     second["lookback_sessions"] = 120
-    with pytest.raises(ValueError, match="price policies"): compose([package(path=first), package("atlas", "AAPL", path=second)])
+    with pytest.raises(ValueError, match="price policies"): legacy_compose([package(path=first), package("atlas", "AAPL", path=second)])
 
 
 def test_package_future_or_stale_and_future_price_evidence_are_rejected():
     inputs = [package(), package("atlas", "AAPL")]
-    with pytest.raises(ValueError, match="stale or future"): compose(inputs, as_of="2026-09-09T09:59:00Z")
-    with pytest.raises(ValueError, match="stale or future"): compose(inputs, as_of="2026-09-17T10:00:00Z")
+    with pytest.raises(ValueError, match="stale or future"): legacy_compose(inputs, as_of="2026-09-09T09:59:00Z")
+    with pytest.raises(ValueError, match="stale or future"): legacy_compose(inputs, as_of="2026-09-17T10:00:00Z")
     path = prices("ABCL")
     path["observed_at"] = "2026-09-09T10:00:01Z"
     with pytest.raises(ValueError, match="postdates"): package(path=path)
@@ -232,11 +247,11 @@ def test_unsupported_cross_horizon_policy_is_not_silently_omitted():
     source = package()
     source["cross_horizon_fallback_policy"] = {"enabled": True}
     source["package_sha256"] = content_sha256({k: v for k, v in source.items() if k != "package_sha256"})
-    with pytest.raises(ValueError, match="Unsupported or premature"): compose([source, package("atlas", "AAPL")])
+    with pytest.raises(ValueError, match="Unsupported or premature"): legacy_compose([source, package("atlas", "AAPL")])
 
 
 def test_bounded_json_publication_is_immutable_and_round_trips(tmp_path):
-    plan = compose()
+    plan = legacy_compose()
     path = publish_joint_plan(tmp_path, plan)
     assert load_joint_plan(tmp_path, path, expected_sha256=plan["plan_sha256"]) == plan
     with pytest.raises(FileExistsError): publish_joint_plan(tmp_path, plan)
@@ -246,7 +261,7 @@ def test_bounded_json_publication_is_immutable_and_round_trips(tmp_path):
 
 
 def test_reader_rejects_escape_missing_and_oversize_files(tmp_path, monkeypatch):
-    plan = compose()
+    plan = legacy_compose()
     path = publish_joint_plan(tmp_path, plan)
     with pytest.raises(ValueError, match="escapes"): load_joint_plan(tmp_path / "child", path, expected_sha256=plan["plan_sha256"])
     with pytest.raises(FileNotFoundError): load_joint_plan(tmp_path, tmp_path / "absent.json", expected_sha256=plan["plan_sha256"])
@@ -266,7 +281,7 @@ def test_native_grid_and_causal_price_evidence_are_required(mutation):
     elif mutation == "unknown-price-contract": path["contract_version"] = "arbitrary"
     elif mutation == "missing-completion": path["contract_version"] = "conditional-hourly-planning-price-path-v3"
     else: path["price_dataset"] = "OTHER"
-    with pytest.raises(ValueError): compose([package(rows=rows, path=path), package("atlas", "AAPL")])
+    with pytest.raises(ValueError): legacy_compose([package(rows=rows, path=path), package("atlas", "AAPL")])
 
 
 def test_unrecorded_source_revision_and_exact_provenance_are_preserved():
@@ -308,16 +323,16 @@ def test_matching_native_fallback_policy_is_applied_once_globally(monkeypatch):
     state["gross_exposure"] = 480
     state["ownership"]["active_allocations"] = [{"symbol": "ABCL", "horizon": "1w", "owned_shares": 48,
         "target_end": "2026-10-09T00:00:00Z", "allocation_id_sha256": "9" * 64}]
-    plan = compose(inputs, state)
+    plan = legacy_compose(inputs, state)
     assert plan["cross_horizon_fallback_policy"] == fallback
     events = plan["ledger"]["events"]
     assert len(events) == 1 and events[0]["reason"] == "BEARISH_CROSS_HORIZON_FALLBACK"
     assert events[0]["quantity"] == 1
     del state["ownership"]["active_allocations"][0]["allocation_id_sha256"]
-    with pytest.raises(ValueError, match="allocation identity"): compose(inputs, state)
+    with pytest.raises(ValueError, match="allocation identity"): legacy_compose(inputs, state)
     inputs[0]["cross_horizon_fallback_policy"] = None
     inputs[0]["package_sha256"] = content_sha256({k: v for k, v in inputs[0].items() if k != "package_sha256"})
-    with pytest.raises(ValueError, match="fallback policies disagree"): compose(inputs)
+    with pytest.raises(ValueError, match="fallback policies disagree"): legacy_compose(inputs)
 
 
 @pytest.mark.parametrize("mutation", ["zero-samples", "missing-anchor", "future-anchor", "zero-width", "wrong-midpoint", "missing-sample-count"])
@@ -356,7 +371,7 @@ def test_all_22_symbols_share_one_capital_plan_across_pacific_dst(monkeypatch, d
     options = dict(action_date=day, expected_universes=universes,
         expected_package_sha256={source["owner_id"]: source["package_sha256"] for source in inputs},
         account_scope_sha256=SCOPE, as_of=NOW, executor_owner="atlas", policy=replace(POLICY, maximum_orders_per_wake=1))
-    plan = compose_joint_plan(inputs, state, **options)
+    plan = _compose_legacy_joint_plan(inputs, state, **options)
     assert len(plan["forecasts"]) == 528
     assert all(len(view["forecast_ids"]) == 264 for view in plan["owner_views"].values())
     assert {row["model_group"] for row in plan["forecasts"]} == {"1h", "4h", "1d", "1w"}
@@ -368,4 +383,4 @@ def test_all_22_symbols_share_one_capital_plan_across_pacific_dst(monkeypatch, d
     assert [event["symbol"] for event in events] == sorted(event["symbol"] for event in events)
     assert all(pd.Timestamp(event["timestamp"]).hour == utc_hour for event in events)
     assert all(event["executor_owner"] == "atlas" for event in events)
-    assert compose_joint_plan(list(reversed(inputs)), state, **options) == plan
+    assert _compose_legacy_joint_plan(list(reversed(inputs)), state, **options) == plan

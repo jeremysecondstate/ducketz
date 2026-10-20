@@ -18,6 +18,7 @@ from typing import Mapping, Sequence
 import numpy as np
 import pandas as pd
 
+from ml.stock_direction_policy import STOCK_DIRECTION_POLICY_VERSION, stock_action
 from technicals.hyperliquid_features import SharedCalculations
 from .data import validate_candles
 from .prediction import ContractError, STEP, TARGET_VERSION, UnresolvedPolicy, digest, encoded, identity, instant, number
@@ -437,7 +438,7 @@ def evaluate_size(forecast, indicators, *, symbol_policy=None, hourly_reference=
             or instant(saved["target_open"]) != reference + 2 * STEP
             or instant(saved["target_close"]) != reference + 3 * STEP):
         raise ContractError("Sizing cannot move an exact target or precede its forecast")
-    side = "BUY" if probability >= number("0.50") else "SELL"
+    side = stock_action(probability)
     snapshot = indicators.payload()
     if (snapshot["forecast_snapshot_hash"] != saved["snapshot_hash"] or snapshot["symbol"] != saved["symbol"]
             or instant(snapshot["reference_at"]) != reference or instant(snapshot["data_cutoff"]) != instant(saved["training_cutoff"])):
@@ -447,6 +448,7 @@ def evaluate_size(forecast, indicators, *, symbol_policy=None, hourly_reference=
                 or saved.get("source_id") != snapshot["source_id"] or saved.get("source_dataset") != snapshot["source_dataset"]):
             raise ContractError("Sizing reference price or source differs from its forecast")
     value = {"version": VERSION, "forecast_id": forecast_id, "symbol": saved["symbol"], "side": side,
+             "direction_policy_version": STOCK_DIRECTION_POLICY_VERSION,
              "reference_at": saved["reference_at"], "target_open": saved["target_open"], "target_close": saved["target_close"],
              "calculated_at": at.isoformat(), "indicator_snapshot_id": indicators.snapshot_id,
              "forecast_snapshot_hash": saved["snapshot_hash"], "status": "unresolved", "reason": None,
@@ -457,6 +459,9 @@ def evaluate_size(forecast, indicators, *, symbol_policy=None, hourly_reference=
     def finish(status, reason):
         value.update(status=status, reason=reason)
         return SizingResult(digest(value), encoded(value))
+    if side == "HOLD":
+        value["execution_disposition"] = "hold"
+        return finish("unavailable", "probability_between_action_cutoffs")
     if symbol_policy is None:
         return finish("unresolved", "symbol_sizing_policy_missing")
     symbol_policy.validate()

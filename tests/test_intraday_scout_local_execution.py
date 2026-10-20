@@ -97,6 +97,45 @@ def record(env, saved=None):
     return env.executor.journal.get(execution.PREFIX + (saved or env.forecast)['forecast_id'])
 
 
+def old_neutral_intention(env, monkeypatch, probability):
+    from ml.intraday import intentions
+    saved = forecast(env, advance=True, probability=probability)
+    with monkeypatch.context() as previous_policy:
+        previous_policy.setattr(intentions, 'stock_action', lambda probability: 'BUY' if probability >= .5 else 'SELL')
+        value = dict(status='sized', forecast_id=saved['forecast_id'], symbol=saved['symbol'],
+            side='BUY' if probability >= .5 else 'SELL', desired_quantity=4,
+            calculated_at=env.state.now.isoformat())
+        original = env.executor.intents.save_sizing(saved, SizingResult(digest(value), encoded(value)))
+    return saved, original
+
+
+@pytest.mark.parametrize('probability', [.499900001, .5, .500099999])
+def test_saved_old_neutral_intention_cannot_create_a_new_post(env, monkeypatch, probability):
+    saved, original = old_neutral_intention(env, monkeypatch, probability)
+    result = env.executor.step(saved)
+    assert result['disposition'] == 'probability_between_action_cutoffs'
+    assert env.broker.posts == [] and record(env, saved) is None
+    assert env.executor.intents.get(saved['forecast_id']) == original
+
+
+def test_old_neutral_order_recovery_retains_known_fills_without_a_new_post(env, monkeypatch):
+    from ml.intraday import local_forecast
+    saved, original = old_neutral_intention(env, monkeypatch, .5)
+    # Reconstruct an order accepted under the previous execution cutoff.
+    with monkeypatch.context() as previous_policy:
+        previous_policy.setattr(local_forecast, 'stock_action', lambda probability: 'BUY')
+        assert env.executor.step(saved)['disposition'] == 'submitted'
+    assert len(env.broker.posts) == 1
+    env.fill_time = env.state.now + timedelta(seconds=1)
+    env.state.now += timedelta(seconds=2)
+    env.broker.orders = [raw_order(env, status='PARTIALLY_FILLED', filled=1)]
+    recovered, = env.executor.recover()
+    assert recovered['filled_quantity'] == 1 and recovered['submitted_quantity'] == 2
+    assert env.executor.step(saved)['disposition'] == 'probability_between_action_cutoffs'
+    assert len(env.broker.posts) == 1 and env.broker.deletes == []
+    assert env.executor.intents.get(saved['forecast_id']) == original
+
+
 def test_local_preflight_uses_existing_broker_without_gameplan_config_atlas_or_enrollment(env):
     assert env.proof['mode'] == execution.MODE and env.proof['ready'] is True
     assert env.proof['local_proof']['broker_identity_verified'] is True

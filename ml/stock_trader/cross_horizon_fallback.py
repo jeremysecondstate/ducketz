@@ -16,6 +16,8 @@ import pandas as pd
 
 POLICY_VERSION = "hierarchical-bearish-fallback-v1"
 EFFECTIVE_ACTION_DATE = "2026-10-01"
+AUTONOMY_EFFECTIVE_ACTION_DATE = "2026-10-19"
+AUTONOMOUS_OWNERSHIP_POLICY_VERSION = "account-wide-1h-4h-directional-ownership-v1"
 POLICY_FIELD = "cross_horizon_fallback_policy"
 _HORIZONS = ("1h", "4h", "1d", "1w")
 _WEIGHTS = {"1h": 1, "4h": 2, "1d": 3}
@@ -57,6 +59,15 @@ def _date(value: object) -> str:
 def policy_for_action_date(action_date: object) -> dict | None:
     """Policy for new publications only; never infer a saved source's policy."""
     return deepcopy(_POLICY) if _date(action_date) >= EFFECTIVE_ACTION_DATE else None
+
+
+def autonomous_horizon(horizon: str, action_date: object) -> bool:
+    """Current human authority for account-wide 1h/4h inventory competition.
+
+    This operates independently of immutable saved fallback policies. Historical
+    plans retain their original bytes and 1d/1w retain the hierarchical rules.
+    """
+    return horizon in {"1h", "4h"} and _date(action_date) >= AUTONOMY_EFFECTIVE_ACTION_DATE
 
 
 def validate_fallback_policy(value: object, action_date: object) -> dict | None:

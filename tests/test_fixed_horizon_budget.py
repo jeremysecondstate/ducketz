@@ -60,7 +60,7 @@ def test_horizon_weights_and_existing_order_cap_are_preserved():
     assert sum(item.order_notional for item in results) <= 15000.
 
 
-@pytest.mark.parametrize("probability", [0., .3, .46, .499999, .5])
+@pytest.mark.parametrize("probability", [0., .3, .46, .4999, .499999, .5, .500001])
 def test_qualified_bearish_or_neutral_is_ready_without_an_entry_or_short(probability):
     prediction = signal(probability=probability)
     readiness = fixed_budget_forecast_readiness(prediction, forecast_promoted=True)
@@ -74,11 +74,18 @@ def test_qualified_bearish_or_neutral_is_ready_without_an_entry_or_short(probabi
     assert result.reason_code == "NO_BULLISH_ENTRY_SIGNAL"
 
 
-@pytest.mark.parametrize("probability", [.500001, .51, .539999])
+@pytest.mark.parametrize("probability", [.5001, .51, .539999])
 def test_former_neutral_bullish_forecasts_are_entry_signals(probability):
     readiness = fixed_budget_forecast_readiness(signal(probability=probability), forecast_promoted=True)
     assert readiness["entry_signal"] is True
-    assert readiness["minimum_forecast_probability"] == .5
+    assert readiness["minimum_forecast_probability"] == .5001
+
+
+def test_direction_cutoff_is_not_raised_by_a_legacy_probability_gate():
+    readiness = fixed_budget_forecast_readiness(signal(probability=.5001), forecast_promoted=True,
+        policy=replace(StockTraderPolicy(), minimum_trade_probability=.9))
+    assert readiness["entry_signal"] is True
+    assert readiness["minimum_forecast_probability"] == .5001
 
 
 @pytest.mark.parametrize("kwargs,code", [

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import time
 import tkinter as tk
 import weakref
@@ -25,8 +26,16 @@ def tab(tmp_path):
     view = plan_ui.GameplanTab(root, frame, datastore_root=tmp_path, auto_load=False)
     write_plan(tmp_path)
     view.set_plan(load_gameplan(tmp_path))
-    yield view
-    root.destroy()
+    reference = weakref.ref(view)
+    try:
+        # Pytest caches the yielded value until after fixture finalization. Keep
+        # its cache weak so all Tk resources can be reclaimed on this thread.
+        yield weakref.proxy(view)
+    finally:
+        root.destroy()
+        del view, frame, root
+        gc.collect()
+        assert reference() is None, "Gameplan fixture retained its destroyed Tk view"
 
 
 def finish_refresh(tab):
@@ -47,20 +56,89 @@ def test_heading_identifies_og_and_yg_without_changing_session_or_filters(tab):
     assert tab.plan.session == session and tab.visible_rows == tab.plan.rows()
 
 
-def test_planned_and_execution_mid_prices_are_adjacent_in_both_views(tab):
+def test_current_rule_matches_both_traders_and_preserves_saved_plan_scope(tab):
+    text = tab.current_policy.cget("text")
+    assert "All 22 symbols · Gameplan, Atlas 15m and Scout 15m" in text
+    assert "BUY at P(up) ≥ 50.01%; SELL at P(up) ≤ 49.99%; HOLD strictly between." in text
+    assert "1h and 4h may sell available shares from any Gameplan horizon" in text
+    assert "without fallback quotas or a bullish donor veto" in text
+    assert "1d and 1w keep their ownership rules" in text
+    assert "live quotes, cash, holdings and pending orders" in text
+    # Policy universe does not replace counts obtained from the selected artifact.
+    assert tab.captions["coverage"].get() == "7 forecasts · 3 companies"
+    assert "Planning price" not in text and "Execution mid" not in text
+    for width in (820, 1400):
+        tab._resize(SimpleNamespace(width=width))
+        assert int(tab.current_policy.cget("wraplength")) == width - 12
+        assert tab.current_policy.pack_info()["fill"] == "x"
+
+
+def test_direction_only_instructions_disclose_live_quantity_instead_of_a_projection(tab, monkeypatch):
+    from dataclasses import replace
+    forecasts = tuple(replace(row, quantity=None) if row.action in {"BUY", "SELL"} else row
+                      for row in tab.plan.forecasts)
+    actions = tuple(replace(row, quantity=None) for row in tab.plan.actions if row.action in {"BUY", "SELL"})
+    tab.set_plan(replace(tab.plan, forecasts=forecasts, actions=actions, projection_status="DIRECTION_ONLY"))
+    assert tab.card_titles["entries"].cget("text") == "BUY instructions"
+    assert tab.card_titles["exits"].cget("text") == "SELL instructions"
+    assert tab.trade_button.cget("text") == f"Instructions {len(actions)}"
+    tab.trade_button.invoke()
+    assert tab.table_title.cget("text") == "Directional trade instructions"
+    _, _, journey, _ = tab._selection_content()
+    assert journey[0][2] == "Quantity determined live"
+    assert "current cash, eligible holdings, pending orders and live bid/ask" in tab.footer.cget("text")
+    shown = []
+    monkeypatch.setattr(tab, "_text_dialog", lambda title, text: shown.append(text))
+    tab.show_details()
+    assert "Quantity determined live" in shown[0] and "Direction-based shares:" not in shown[0]
+
+
+def test_gameplan_views_show_forecast_actions_without_price_columns(tab):
+    from dataclasses import replace
+    from app.ui.gameplan_data import ExecutionQuote
+    forecast = tab.plan.forecast(tab.plan.actions[0].forecast_id)
+    quote = ExecutionQuote(forecast.forecast_id, 127.22, forecast.start, 127.24, 15.)
+    tab.set_plan(replace(tab.plan, execution_quotes=(quote,)))
+    expected_headers = {
+        "trades": ["Time", "Company", "Action", "Horizon", "Shares", "Reason"],
+        "forecasts": ["Window (Pacific)", "Company", "Direction", "Horizon", "P(up)", "Action", "Reason"],
+    }
+    for view, expected in expected_headers.items():
+        tab.view.set(view)
+        tab.render()
+        headers = [tab.table_header.itemcget(i, "text") for i in tab.table_header.find_all()
+                   if tab.table_header.type(i) == "text"]
+        assert headers == expected
+        cells = [tab.table.itemcget(i, "text") for i in tab.table.find_all() if tab.table.type(i) == "text"]
+        assert "BUY" in cells
+        assert not any("$" in cell for cell in cells)
+        # Removing two columns must keep the action badge in its action column.
+        action_cells = [i for i in tab.table.find_all()
+                        if tab.table.type(i) == "text" and tab.table.itemcget(i, "text") == "BUY"]
+        assert all(tab.table.itemcget(i, "fill") == plan_ui.SUCCESS for i in action_cells)
+    # The saved execution evidence remains available to consumers of the plan.
+    assert tab.plan.execution_quote(forecast.forecast_id) == quote
+
+
+def test_selected_journey_and_details_omit_saved_prices(tab, monkeypatch):
     from dataclasses import replace
     from app.ui.gameplan_data import ExecutionQuote
     tab.trade_button.invoke()
-    forecast=tab.plan.forecast(tab.visible_rows[0].forecast_id)
-    quote=ExecutionQuote(forecast.forecast_id,127.22,forecast.start,127.24,15.)
-    tab.set_plan(replace(tab.plan,execution_quotes=(quote,)))
-    for view in ('trades','forecasts'):
-        tab.view.set(view)
-        tab.render()
-        headers=[tab.table_header.itemcget(i,'text') for i in tab.table_header.find_all() if tab.table_header.type(i)=='text']
-        assert headers[headers.index('Planning price')+1] == 'Execution mid'
-        cells=[tab.table.itemcget(i,'text') for i in tab.table.find_all() if tab.table.type(i)=='text']
-        assert '$127.22' in cells
+    forecast = tab.plan.forecast(tab.selected_row.forecast_id)
+    quote = ExecutionQuote(forecast.forecast_id, 127.22, forecast.start, 127.24, 15.)
+    tab.set_plan(replace(tab.plan, execution_quotes=(quote,)))
+    _, _, journey, note = tab._selection_content()
+    assert journey[0][2] == "17 shares"
+    assert journey[1][2] == "17 shares"
+    assert "midpoint" not in note.lower() and "planned price" not in note.lower()
+    assert not any("$" in detail for _, _, detail, _ in journey)
+    shown = []
+    monkeypatch.setattr(tab, "_text_dialog", lambda title, text: shown.append(text))
+    tab.show_details()
+    assert "Selected action: BUY · 17 shares" in shown[-1]
+    assert "Execution uses live bid/ask quotes." in shown[-1]
+    assert "Planning price" not in shown[-1] and "Execution mid" not in shown[-1]
+    assert "$" not in shown[-1]
 
 
 def test_filtered_cards_table_and_forecasts_have_consistent_scope(tab):
@@ -168,7 +246,8 @@ def test_later_existing_expiry_never_borrows_a_current_forecast_or_price(tab, mo
     tab.show_details()
     assert "Sep 15, 2026 07:00 PDT" in shown[-1]
     assert "Unreserved allocation: 3 shares" in shown[-1]
-    assert "Planning price: —" in shown[-1]
+    assert "Planning price" not in shown[-1]
+    assert "$" not in shown[-1]
     assert "Published P(up)" not in shown[-1]
 
 
@@ -259,7 +338,6 @@ def test_cross_session_clock_and_fractional_share_formatting():
     assert plan_ui.shares(0) == "0"
     assert plan_ui.shares(-17) == "17"
     assert plan_ui.shares(.5) == "0.5"
-    assert plan_ui.money(None) == "—"
     stamp = datetime.fromisoformat("2026-09-15T07:00:00-07:00")
     assert "Sep 15" in plan_ui.clock_text(stamp, "2026-09-14")
 
