@@ -74,7 +74,8 @@ def _saved_abstention(row):
 
 def _validated_instructions(frame):
     """Validate every selected slot, including rows that emit no signal."""
-    from ml.stock_direction_policy import stock_direction
+    from ml.stock_direction_policy import stock_direction_for_policy
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe
 
     seen = set()
     instructions = []
@@ -86,8 +87,9 @@ def _validated_instructions(frame):
         probability = finite(row["calibrated_probability"])
         if probability is None or not 0 <= probability <= 1:
             raise ValueError("Gameplan probability is invalid for " + str(row["id"]))
-        abstention = _saved_abstention(row)
-        expected = stock_direction(probability)
+        abstention = False if is_current_gameplan_recipe(row) else _saved_abstention(row)
+        version = row.get("direction_policy_version")
+        expected = stock_direction_for_policy(probability, None if version is None or pd.isna(version) else version)
         direction = str(row["direction"]).upper()
         if not abstention and direction != expected and not (direction == "NEUTRAL" and expected == "NO_EDGE"):
             raise ValueError("Gameplan direction disagrees with its saved probability for " + str(row["id"]))
