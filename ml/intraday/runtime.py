@@ -680,7 +680,7 @@ class ShadowRunner:
 class LiveHistories:
     """Read-only existing Databento access; original DATASTORE files stay intact."""
     def __init__(self,*,histories,provider,store,journal,reference_at,clock=utcnow,sleep=time.sleep,bounded=False,
-                 stopped=None,reuse_saved=False,population_contract=None):
+                 stopped=None,reuse_saved=False,population_contract=None,restore_eagerly=True):
         self.histories=histories
         self.provider=provider
         self.store=store
@@ -701,10 +701,13 @@ class LiveHistories:
         self.candle_source_id = "multi:databento-schwab-fmp:15m" if self.recovery_enabled else f"databento:{provider.dataset}:ohlcv-1m"
         self.candle_dataset = "MULTI_PROVIDER" if self.recovery_enabled else provider.dataset
         self.cycle_id=None
-        for symbol in tuple(histories):
-            if self.stopped():
-                raise InterruptedError("Candle acquisition stopped before history restoration")
-            self._refresh_symbol(symbol)
+        # Live callers restore in get(), inside the requested symbol's worker.
+        # Restore-only callers retain the original eager constructor behavior.
+        if restore_eagerly:
+            for symbol in tuple(histories):
+                if self.stopped():
+                    raise InterruptedError("Candle acquisition stopped before history restoration")
+                self._refresh_symbol(symbol)
 
     def _refresh_symbol(self, symbol):
         from .data import History, completed_15m_observation, synthetic_continuity_verified
