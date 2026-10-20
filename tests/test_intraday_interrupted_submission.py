@@ -46,8 +46,9 @@ def test_interrupted_post_preserves_cause_stop_and_unknown_commitment(env, failu
     assert any(frame["function"] == "interrupted" for location in detail["exception_locations"] for frame in location["frames"])
     assert "private-interruption" not in raw
     advance(env)
-    with pytest.raises(OrderHistoryError, match="WITHOUT_EXACT"):
-        env.executor.step(forecast)
+    assert env.executor.step(forecast)["disposition"] == "recover_existing_intention"
+    assert account(env).read_state()["reservations"][0]["status"] == "UNKNOWN"
+    assert native(env).snapshot().reservations[0].status == "RESERVED"
     assert len(posts) == 1 and env.broker.cancellations == []
 
 

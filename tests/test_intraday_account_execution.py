@@ -216,8 +216,9 @@ def test_unknown_post_retains_both_commitments_and_never_guesses_or_reposts(env)
     assert [r.status for r in native(env).snapshot().reservations] == ["UNKNOWN"]
     assert [r["status"] for r in account(env).read_state()["reservations"]] == ["UNKNOWN"]
     advance(env)
-    with pytest.raises(OrderHistoryError, match="WITHOUT_EXACT"):
-        env.executor.step(forecast)
+    assert env.executor.step(forecast)["disposition"] == "recover_existing_intention"
+    assert [r.status for r in native(env).snapshot().reservations] == ["UNKNOWN"]
+    assert [r["status"] for r in account(env).read_state()["reservations"]] == ["UNKNOWN"]
     assert len(env.broker.submissions) == 1 and env.broker.cancellations == []
 
 
