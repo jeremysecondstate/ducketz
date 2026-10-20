@@ -263,24 +263,39 @@ def test_missing_or_malformed_database_is_not_created_repaired_or_exposed(tmp_pa
         assert target.read_bytes() == contents
 
 
-def test_exclusive_database_lock_fails_immediately_with_read_only_zero_timeout(tmp_path, monkeypatch):
+def test_exclusive_database_lock_exhausts_bounded_read_only_zero_timeout_retries(tmp_path, monkeypatch):
     case = make_case(tmp_path)
     real_connect = sqlite3.connect
-    seen = []
+    seen, pauses, elapsed = [], [], [0.0]
 
     def audited_connect(*args, **kwargs):
         seen.append((args, kwargs))
         return real_connect(*args, **kwargs)
 
+    def pause(seconds):
+        pauses.append(seconds)
+        elapsed[0] += seconds
+
     monkeypatch.setattr(local_forecast.sqlite3, "connect", audited_connect)
+    monkeypatch.setattr(local_forecast.time, "monotonic", lambda: elapsed[0])
+    monkeypatch.setattr(local_forecast.time, "sleep", pause)
     with real_connect(case.store.path) as writer:
         writer.execute("PRAGMA journal_mode=DELETE")
+        before = case.store.path.read_bytes()
         writer.execute("BEGIN EXCLUSIVE")
-        with pytest.raises(ContractError):
+        with pytest.raises(ContractError) as error:
             read_saved(case)
-    assert len(seen) == 1
-    assert seen[0][0][0].endswith("?mode=ro")
-    assert seen[0][1] == dict(uri=True, timeout=0)
+    assert isinstance(error.value.__cause__, sqlite3.OperationalError)
+    assert str(case.store.path) not in str(error.value)
+    assert len(seen) == local_forecast._READ_MAX_ATTEMPTS
+    assert pauses == [local_forecast._READ_RETRY_PAUSE_SECONDS] * (len(seen) - 1)
+    assert elapsed[0] < local_forecast._READ_RETRY_SECONDS
+    assert case.store.path.read_bytes() == before
+    assert read_saved(case) is None
+    assert len(seen) == local_forecast._READ_MAX_ATTEMPTS + 1
+    assert all(args[0].endswith("?mode=ro") and kwargs == dict(uri=True, timeout=0)
+               for args, kwargs in seen)
+    assert case.store.path.read_bytes() == before
 
 
 @pytest.mark.parametrize("forecast", [{}, None, {"forecast_id": []}])
