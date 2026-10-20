@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T07:16:43.788327Z",
+  "id": "20261020T071643Z-3fd62d94e81048e086a25a43e98b2d46",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed permanent direction-only Gameplan repair and completed the nightly exchange"
+}
