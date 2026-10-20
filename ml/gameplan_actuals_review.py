@@ -87,11 +87,12 @@ def _number(value) -> float | None:
     return number if np.isfinite(number) else None
 
 
-def _observed_prices(prices: pd.DataFrame, forecasts: pd.DataFrame, observed_at: object) -> dict:
+def _observed_prices(prices: pd.DataFrame, forecasts: pd.DataFrame, observed_at: object,
+                     *, evidence_available_at: object | None = None) -> dict:
     _source_identity(prices, forecasts)
     now = _aware_timestamp(observed_at, "observed_at")
     from ml.stock_observation_sources import completed_observation_bars
-    bars = completed_observation_bars(prices, now)
+    bars = completed_observation_bars(prices, now, evidence_available_at=evidence_available_at)
     bars["timestamp"] = pd.to_datetime(bars.timestamp, utc=True, errors="raise")
     bars["symbol"] = bars.symbol.astype(str).str.upper()
     # The close of a minute is not available until that minute has completed.
@@ -227,7 +228,8 @@ def _match_trade_rows(forecasts: pd.DataFrame, trades: pd.DataFrame) -> None:
 
 
 def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed_at: object,
-                      trade_rows: pd.DataFrame | None = None) -> pd.DataFrame:
+                      trade_rows: pd.DataFrame | None = None,
+                      evidence_available_at: object | None = None) -> pd.DataFrame:
     """Retain every frozen row, admitting only genuine, mature endpoint prices."""
     now = _aware_timestamp(observed_at, "observed_at")
     if forecasts.empty or forecasts.id.duplicated().any():
@@ -236,7 +238,7 @@ def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed
     target_metadata = probability_target_metadata(target_contract)
     if "gameplan_variant" in forecasts and not forecasts.gameplan_variant.eq(target_metadata["gameplan_variant"]).all():
         raise ValueError("Saved Gameplan variant disagrees with its probability target")
-    by_symbol = _observed_prices(prices, forecasts, now)
+    by_symbol = _observed_prices(prices, forecasts, now, evidence_available_at=evidence_available_at)
     inventory = prices.attrs.get("stock_price_source", {})
     if trade_rows is not None:
         _match_trade_rows(forecasts, trade_rows)
@@ -305,11 +307,12 @@ def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed
 
 
 def compare_price_points(forecasts: pd.DataFrame, prices: pd.DataFrame, *, action_date: str,
-                         observed_at: object, planning_path: Mapping | None = None) -> pd.DataFrame:
+                         observed_at: object, planning_path: Mapping | None = None,
+                         evidence_available_at: object | None = None) -> pd.DataFrame:
     """Compare the saved 04:00-17:00 working estimates with the same market clocks."""
     now = _aware_timestamp(observed_at, "observed_at")
     contract, dataset = _source_identity(prices, forecasts)
-    by_symbol = _observed_prices(prices, forecasts, now)
+    by_symbol = _observed_prices(prices, forecasts, now, evidence_available_at=evidence_available_at)
     inventory = prices.attrs.get("stock_price_source", {})
     if planning_path is not None and (planning_path.get("price_source_contract") != contract
                                       or planning_path.get("price_dataset") != dataset
@@ -601,9 +604,10 @@ def _publish_session_review(root: Path, *, report: dict, inputs: list,
         contract = original.manifest["configuration"]["target_price_source_contract"]
         prices, price_files, inventory = (price_loader or load_stock_target_prices)(
             root, symbols=tuple(sorted(forecasts.symbol.unique())), source_contract=contract)
-        results = compare_forecasts(forecasts, prices, observed_at=cutoff, trade_rows=trades[1] if trades else None)
+        results = compare_forecasts(forecasts, prices, observed_at=cutoff, trade_rows=trades[1] if trades else None,
+                                    evidence_available_at=now)
         price_results = compare_price_points(forecasts, prices, observed_at=cutoff, action_date=action_date,
-                                            planning_path=trades[2] if trades else None)
+                                            planning_path=trades[2] if trades else None, evidence_available_at=now)
         inputs += [original.run_directory / "receipt.json", original.run_directory / "manifest.json",
                    original.run_directory / "forecasts.parquet", *price_files]
         if trades:
@@ -614,6 +618,8 @@ def _publish_session_review(root: Path, *, report: dict, inputs: list,
                       **probability_target_metadata(probability_target_contract(forecasts)),
                       source_gameplan_path=original.run_directory.as_posix(),
                       source_trade_plan_path=trades[0].as_posix() if trades else None,
+                      price_evidence_available_at=now.isoformat(),
+                      price_clock_policy="completed-session-events-through-outcomes-cutoff; receipts-through-actual-review-time",
                       target_price_source_contract=contract, price_inventory=inventory,
                       forecasts={"total": len(results), "evaluated": int(results.actuals_status.eq("EVALUATED").sum()),
                                  "pending_maturity": int(results.actuals_status.eq("PENDING_MATURITY").sum()),
