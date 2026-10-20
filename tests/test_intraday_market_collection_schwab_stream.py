@@ -49,7 +49,9 @@ class Socket:
                 self.pending.append({"data": [{"service": "ACCT_ACTIVITY", "content": [{"key": "PRIVATE_ACCOUNT_NEVER_WRITE"}]}]})
             if self.scenario == "futures":
                 content = ([{"key": "/ES", "1": MILLIS-1000, "2": 1, "3": 2, "4": .5, "5": 1.5, "6": 10}]
-                    if service == "CHART_FUTURES" else [{"key": "/ES", "10": MILLIS, "34": "/ESZ26", "1": 10, "2": 11}])
+                    if service == "CHART_FUTURES" else [
+                        {"key": "/ES", "10": MILLIS, "34": "/ESZ26", "1": 10, "2": 11},
+                        {"key": "/ES", "10": MILLIS+1, "1": 10.25, "2": 11.25}])
                 self.pending.append({"data": [{"service": service, "timestamp": MILLIS, "content": content}]})
             else:
                 self.pending.append({"data": [{"service": service, "timestamp": MILLIS,
@@ -125,6 +127,10 @@ def test_futures_identity_is_not_backfilled_into_earlier_chart(tmp_path):
     assert rows["CHART_FUTURES"][0]["root_symbol"] is None
     assert rows["LEVELONE_FUTURES"][0]["symbol"] == "/ESZ26"
     assert rows["LEVELONE_FUTURES"][0]["sequence"] == 1
+    # Final contract projection must not change the digest of bytes already
+    # persisted for the connection's state checkpoint.
+    checkpoint = json.loads((tmp_path/"stream.state.json").read_bytes())
+    assert evidence["state_checkpoint_sha256"] == hashlib.sha256(canonical(checkpoint)).hexdigest()
     with pytest.raises(ValueError, match="root"):
         normalize("LEVELONE_FUTURES", {"key": "/ES", "10": MILLIS, "34": "/NQZ26"},
             receipt_at=NOW.isoformat(), scope={"/ES": None})
