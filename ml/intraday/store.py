@@ -5,6 +5,7 @@ cycle summaries may advance; every transition also has an append-only event.
 """
 from __future__ import annotations
 
+from collections import OrderedDict
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -13,7 +14,17 @@ import json
 from pathlib import Path
 import sqlite3
 
+from ml.stock_direction_policy import (
+    BEARISH_PROBABILITY, BULLISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION,
+    stock_direction, stock_direction_for_policy,
+)
+
 from .prediction import ContractError, STEP, TARGET_VERSION, digest, encoded, instant, number
+
+
+_DIRECTION_POLICY_FIELDS = (
+    "direction", "direction_policy_version", "direction_up_threshold", "direction_down_threshold",
+)
 
 
 def utcnow():
@@ -170,41 +181,69 @@ class ShadowStore:
                               where + " ORDER BY rowid", parameters).fetchall()
         return [self._forecast_value(row) for row in rows]
 
-    def scoring_forecasts(self, *, pc, observed_candidates, as_of, stopped=lambda: False):
-        """Validate immutable bytes, decoding model payloads only for new work.
-
-        SQLite still reads forecast bytes. Canonical content written by this
-        store can be hashed without constructing its large Python model trees;
-        other encodings retain the existing full semantic validation path.
-        """
+    def _forecast_projection(self, row):
+        """Cache only scalar headers of exact semantically validated evidence."""
         fields = ("forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at",
-                  "mode", "target_open", "target_close", "population_contract", "source_dataset", "source_id")
-        paths = ",".join("'$." + field + "'" for field in fields)
+                  "mode", "ensemble_status", "target_open", "target_close",
+                  "population_contract", "source_dataset", "source_id")
+        cache = getattr(self, "_forecast_header_cache", None)
+        if cache is None:
+            cache = self._forecast_header_cache = OrderedDict()
+        # A hash of unsorted JSON is not proof of the semantic digest. New
+        # payloads and indexed identities always take the full validator.
+        # BLOB/irregular SQLite values retain its original behavior too.
+        signature = (*row[:6], hashlib.sha256(row[6].encode()).digest()) if isinstance(row[6], str) else None
+        previous = cache.get(row[0])
+        if signature is not None and previous is not None and previous[0] == signature:
+            return dict(previous[1]), None
+        value = self._forecast_value(row)
+        projection = {field: value[field] for field in fields if field in value}
+        if signature is not None and all(item is None or isinstance(item, str) for item in projection.values()):
+            cache[row[0]] = (signature, tuple(projection.items()))
+            if len(cache) > 4096:
+                cache.popitem(last=False)
+        return dict(projection), value
+
+    def execution_forecast_headers(self, *, pc, symbol, forecast_ids=None):
+        """Validate own history, reusing unchanged headers on repeated scans.
+
+        All bytes are still read and hashed. The bounded cache belongs to this
+        store instance, not a database or another trader, and does not survive
+        a process restart. Every changed row is fully validated again.
+        """
+        clauses, parameters = ["pc=?", "symbol=?"], [pc, symbol]
+        if forecast_ids is not None:
+            identities = tuple(dict.fromkeys(forecast_ids))
+            if not identities:
+                return []
+            clauses.append("id IN (SELECT value FROM json_each(?))")
+            parameters.append(encoded(identities))
+        headers = []
+        with self.connect() as db:
+            rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                "FROM forecasts WHERE " + " AND ".join(clauses) + " ORDER BY rowid", parameters)
+            for row in rows:
+                projection, _ = self._forecast_projection(row)
+                headers.append(projection)
+        return headers
+
+    def scoring_forecasts(self, *, pc, observed_candidates, as_of, stopped=lambda: False):
+        """Validate immutable bytes, reusing unchanged history after first read.
+
+        First reads and changed rows take the full semantic validator. Repeated
+        scans still read/hash all bytes but decode model trees only for selected
+        work; small validated headers retain the original selection behavior.
+        """
         now = instant(as_of)
         selected = []
         with self.connect() as db:
-            db.create_function("scoring_content_sha256", 1,
-                               lambda raw: hashlib.sha256(raw.encode()).hexdigest())
-            rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,"
-                "CASE WHEN json_valid(payload) THEN scoring_content_sha256(json_remove(payload,'$.forecast_id')) END,"
-                "CASE WHEN json_valid(payload) THEN json_extract(payload," + paths + ") END "
+            rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
                 "FROM forecasts WHERE pc=? ORDER BY rowid", (pc,))
             for row in rows:
                 if stopped():
                     return []
-                key, actor, symbol, cycle, reference, issued, fingerprint, raw_projection = row
-                full = None
-                projection = dict(zip(fields, json.loads(raw_projection))) if raw_projection else {}
-                if (fingerprint != key or any(projection.get(field) != indexed for field, indexed in
-                        zip(fields[:6], (key, actor, symbol, cycle, reference, issued)))
-                        or any(not isinstance(projection.get(field), str) for field in
-                               ("mode", "target_open", "target_close"))
-                        or any(projection.get(field) is not None and not isinstance(projection[field], str)
-                               for field in ("population_contract", "source_dataset", "source_id"))):
-                    original = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
-                                          "FROM forecasts WHERE id=?", (key,)).fetchone()
-                    full = self._forecast_value(original)
-                    projection = full
+                key, _, symbol = row[:3]
+                projection, full = self._forecast_projection(row)
                 if projection["mode"] != "live" or instant(projection["target_close"]) > now:
                     continue
                 # Retain validation of every prior revision, including a corrupt
@@ -232,6 +271,81 @@ class ShadowStore:
         # Release the read transaction before the caller acquires provider data
         # or records an outcome on another connection.
         return selected
+
+    def retained_session_scoring_targets(self, *, pc, session_id, as_of, stopped=lambda: False):
+        """Validate ready targets for this manual session without model inventory reads.
+
+        The ordinary full-history scorer retains older-session work and its
+        corruption checks. This priority path reads lightweight own headers,
+        then validates the exact selected original, all revisions and candle.
+        Timestamp joins use actual instants rather than ISO text equality.
+        """
+        from .data import completed_15m_observation, synthetic_continuity_verified
+        now = instant(as_of)
+        if stopped():
+            return []
+        with self.connect() as db:
+            headers = db.execute("SELECT f.id,f.symbol,f.reference_at FROM forecasts f "
+                "JOIN cycles c ON c.id=f.cycle_id WHERE f.pc=? AND c.pc=? "
+                "AND json_extract(c.payload,'$.experiment')=? ORDER BY f.rowid",
+                (pc, pc, session_id)).fetchall()
+            targets = {}
+            for key, symbol, reference in headers:
+                if stopped():
+                    return []
+                targets.setdefault((symbol, instant(reference) + 2 * STEP), []).append(key)
+            if not targets:
+                return []
+            # Only scalar candle headers are scanned; unrelated model trees
+            # and candle payloads never enter this ready-target lookup.
+            candle_headers = db.execute("SELECT id,symbol,opened_at,available_at FROM candles "
+                                        "ORDER BY available_at,rowid").fetchall()
+            candidates = {}
+            for key, symbol, opened, available in candle_headers:
+                if stopped():
+                    return []
+                target = (symbol, instant(opened))
+                if target not in targets or instant(available) > now:
+                    continue
+                raw = db.execute("SELECT payload FROM candles WHERE id=?", (key,)).fetchone()[0]
+                value = json.loads(raw)
+                if digest(value) != key:
+                    raise ContractError("Persisted candle evidence hash changed")
+                if (value.get("availability_kind") == "actual"
+                        and completed_15m_observation(value) and synthetic_continuity_verified(value)
+                        and instant(value["available_at"]) <= now):
+                    candidates.setdefault((value["symbol"], instant(value["opened_at"])), []).append(value)
+            result = []
+            for target, keys in targets.items():
+                if stopped():
+                    return []
+                values = candidates.get(target, [])
+                if not values:
+                    continue
+                for key in keys:
+                    if stopped():
+                        return []
+                    row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                                     "FROM forecasts WHERE id=?", (key,)).fetchone()
+                    projection, full = self._forecast_projection(row)
+                    if projection["mode"] != "live" or instant(projection["target_close"]) > now:
+                        continue
+                    revisions = self.revisions(key)
+                    observed = next((value for value in reversed(values)
+                        if value.get("population_contract") == projection.get("population_contract")
+                        and all(not projection.get(field) or value.get(field) == projection[field]
+                                for field in ("source_dataset", "source_id"))), None)
+                    if observed is None:
+                        continue
+                    latest = revisions[-1] if revisions else None
+                    if (latest is not None and latest["status"] in {"scored", "synthetic"}
+                            and latest.get("candle_id") == digest(observed)
+                            and instant(latest["observed_at"]) <= now):
+                        continue
+                    if full is None:
+                        full = self._forecast_value(row)
+                    result.append((full, observed))
+        return result
 
     def save_forecast(self, payload, *, intent=None):
         # Return exactly the persisted JSON representation. Model metadata can
@@ -273,28 +387,44 @@ class ShadowStore:
         value["execution_eligibility"] = ("manual_live_checks_required" if value["mode"] == "live"
                                           else "unresolved_shadow_only")
         value.pop("forecast_id", None)
-        key = digest(value)
-        value["forecast_id"] = key
-        intent_value = self._intent(key, value, intent)
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             old = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE cycle_id=? AND symbol=?", (value["cycle_id"], value["symbol"])).fetchone()
             previous = self._forecast_value(old) if old else None
-            if previous is not None and previous != value:
-                raise ContractError("Issued forecast is immutable")
-            if old:
+            if previous is not None:
+                # A raw producer retry has no policy fields. Retain the first
+                # issue's recorded policy, including its historical absence;
+                # supplied changes still participate in the exact comparison.
+                for field in _DIRECTION_POLICY_FIELDS:
+                    if field not in value and field in previous:
+                        value[field] = previous[field]
+                value["forecast_id"] = digest(value)
+                if previous != value:
+                    raise ContractError("Issued forecast is immutable")
                 return previous
+            policy = dict(direction=stock_direction_for_policy(value["probability_not_down"], STOCK_DIRECTION_POLICY_VERSION),
+                          direction_policy_version=STOCK_DIRECTION_POLICY_VERSION,
+                          direction_up_threshold=BULLISH_PROBABILITY,
+                          direction_down_threshold=BEARISH_PROBABILITY)
+            if any(field in value and value[field] != expected for field, expected in policy.items()):
+                raise ContractError("New forecast direction policy differs from the current policy")
+            value.update(policy)
+            key = digest(value)
+            value["forecast_id"] = key
+            intent_value = self._intent(key, value, intent)
             db.execute("INSERT INTO forecasts VALUES(?,?,?,?,?,?,?)", (key, value["pc"], value["symbol"], value["cycle_id"], value["reference_at"], value["issued_at"], encoded(value)))
             db.execute("INSERT INTO intents VALUES(?,?,?,?)", (digest(intent_value), key, value["issued_at"], encoded(intent_value)))
         return value
 
     @staticmethod
     def _intent(key, forecast, supplied):
-        side = "BUY" if float(forecast["probability_not_down"]) >= .5 else "SELL"
+        side = {"BULLISH": "BUY", "BEARISH": "SELL"}.get(stock_direction(forecast["probability_not_down"]), "HOLD")
         value = dict(supplied or {})
         if value.get("side", side) != side:
             raise ContractError("Intent direction disagrees with the forecast")
         desired, adjusted = value.get("desired_quantity"), value.get("adjusted_quantity")
+        if side == "HOLD" and (desired not in (None, 0) or adjusted not in (None, 0)):
+            raise ContractError("A neutral forecast cannot request a trade")
         if desired is None:
             if adjusted is not None:
                 raise ContractError("Adjusted quantity needs a desired quantity")
