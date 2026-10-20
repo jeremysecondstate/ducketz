@@ -304,6 +304,60 @@ def _replace_file_durably(source: Path, destination: Path) -> None:
         os.close(directory_descriptor)
 
 
+def _windows_current_user_sid() -> str:
+    """Return TokenUser, which stays the same across UAC elevation."""
+
+    advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    get_current_process = kernel32.GetCurrentProcess
+    get_current_process.argtypes = []
+    get_current_process.restype = ctypes.c_void_p
+    open_process_token = advapi32.OpenProcessToken
+    open_process_token.argtypes = [
+        ctypes.c_void_p, ctypes.c_uint, ctypes.POINTER(ctypes.c_void_p)
+    ]
+    open_process_token.restype = ctypes.c_int
+    get_token_information = advapi32.GetTokenInformation
+    get_token_information.argtypes = [
+        ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p, ctypes.c_uint,
+        ctypes.POINTER(ctypes.c_uint),
+    ]
+    get_token_information.restype = ctypes.c_int
+    sid_to_string = advapi32.ConvertSidToStringSidW
+    sid_to_string.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+    sid_to_string.restype = ctypes.c_int
+    close_handle = kernel32.CloseHandle
+    close_handle.argtypes = [ctypes.c_void_p]
+    close_handle.restype = ctypes.c_int
+    local_free = kernel32.LocalFree
+    local_free.argtypes = [ctypes.c_void_p]
+    local_free.restype = ctypes.c_void_p
+
+    token, sid_text = ctypes.c_void_p(), ctypes.c_void_p()
+    if not open_process_token(get_current_process(), 0x0008, ctypes.byref(token)):
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        required = ctypes.c_uint()
+        if not get_token_information(token, 1, None, 0, ctypes.byref(required)):
+            error = ctypes.get_last_error()
+            if error != 122:  # ERROR_INSUFFICIENT_BUFFER is the sizing probe.
+                raise ctypes.WinError(error)
+        if not required.value:
+            raise RuntimeError("Windows TokenUser buffer is empty")
+        user = ctypes.create_string_buffer(required.value)
+        if not get_token_information(token, 1, user, len(user), ctypes.byref(required)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        # TOKEN_USER begins with SID_AND_ATTRIBUTES, whose first member is PSID.
+        user_sid = ctypes.c_void_p.from_buffer(user).value
+        if not sid_to_string(user_sid, ctypes.byref(sid_text)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        return ctypes.wstring_at(sid_text)
+    finally:
+        if sid_text.value:
+            local_free(sid_text)
+        close_handle(token)
+
+
 def _protect_token_path(path: Path, *, directory: bool = False) -> None:
     """Restrict a credential file or directory to its owner."""
 
@@ -336,8 +390,11 @@ def _protect_token_path(path: Path, *, directory: bool = False) -> None:
     local_free.argtypes = [ctypes.c_void_p]
     local_free.restype = ctypes.c_void_p
 
+    # Elevated creation may default the owner to Administrators. Pin the owner
+    # to TokenUser so this same account's unelevated sessions retain access.
     # OW is Windows' OWNER RIGHTS SID. P disables inherited ACEs.
-    dacl = "D:P(A;OICI;FA;;;OW)" if directory else "D:P(A;;FA;;;OW)"
+    owner = _windows_current_user_sid()
+    dacl = f"O:{owner}" + ("D:P(A;OICI;FA;;;OW)" if directory else "D:P(A;;FA;;;OW)")
     if not convert_descriptor(
         dacl,
         1,
@@ -346,11 +403,22 @@ def _protect_token_path(path: Path, *, directory: bool = False) -> None:
     ):
         raise ctypes.WinError(ctypes.get_last_error())
     try:
+        owner_security_information = 0x00000001
         dacl_security_information = 0x00000004
         protected_dacl_security_information = 0x80000000
+        # A newly created file can inherit Modify access without WRITE_OWNER.
+        # Its owner can set the DACL, but a combined owner/DACL call would fail.
+        # Grant the existing owner full control before pinning TokenUser; no
+        # credential bytes are written until both protection calls succeed.
         if not set_file_security(
             str(path),
             dacl_security_information | protected_dacl_security_information,
+            security_descriptor,
+        ):
+            raise ctypes.WinError(ctypes.get_last_error())
+        if not set_file_security(
+            str(path),
+            owner_security_information | dacl_security_information | protected_dacl_security_information,
             security_descriptor,
         ):
             raise ctypes.WinError(ctypes.get_last_error())
