@@ -14,9 +14,17 @@ import json
 from pathlib import Path
 import sqlite3
 
-from ml.stock_direction_policy import stock_direction
+from ml.stock_direction_policy import (
+    BEARISH_PROBABILITY, BULLISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION,
+    stock_direction, stock_direction_for_policy,
+)
 
 from .prediction import ContractError, STEP, TARGET_VERSION, digest, encoded, instant, number
+
+
+_DIRECTION_POLICY_FIELDS = (
+    "direction", "direction_policy_version", "direction_up_threshold", "direction_down_threshold",
+)
 
 
 def utcnow():
@@ -304,16 +312,30 @@ class ShadowStore:
         value["execution_eligibility"] = ("manual_live_checks_required" if value["mode"] == "live"
                                           else "unresolved_shadow_only")
         value.pop("forecast_id", None)
-        key = digest(value)
-        value["forecast_id"] = key
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             old = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE cycle_id=? AND symbol=?", (value["cycle_id"], value["symbol"])).fetchone()
             previous = self._forecast_value(old) if old else None
-            if previous is not None and previous != value:
-                raise ContractError("Issued forecast is immutable")
-            if old:
+            if previous is not None:
+                # A raw producer retry has no policy fields. Retain the first
+                # issue's recorded policy, including its historical absence;
+                # supplied changes still participate in the exact comparison.
+                for field in _DIRECTION_POLICY_FIELDS:
+                    if field not in value and field in previous:
+                        value[field] = previous[field]
+                value["forecast_id"] = digest(value)
+                if previous != value:
+                    raise ContractError("Issued forecast is immutable")
                 return previous
+            policy = dict(direction=stock_direction_for_policy(value["probability_not_down"], STOCK_DIRECTION_POLICY_VERSION),
+                          direction_policy_version=STOCK_DIRECTION_POLICY_VERSION,
+                          direction_up_threshold=BULLISH_PROBABILITY,
+                          direction_down_threshold=BEARISH_PROBABILITY)
+            if any(field in value and value[field] != expected for field, expected in policy.items()):
+                raise ContractError("New forecast direction policy differs from the current policy")
+            value.update(policy)
+            key = digest(value)
+            value["forecast_id"] = key
             intent_value = self._intent(key, value, intent)
             db.execute("INSERT INTO forecasts VALUES(?,?,?,?,?,?,?)", (key, value["pc"], value["symbol"], value["cycle_id"], value["reference_at"], value["issued_at"], encoded(value)))
             db.execute("INSERT INTO intents VALUES(?,?,?,?)", (digest(intent_value), key, value["issued_at"], encoded(intent_value)))
