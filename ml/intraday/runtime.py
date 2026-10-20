@@ -77,6 +77,11 @@ def _frame(history):
 
 
 def _jsonable(value):
+    # Preserve the scalar .item() projection without visiting every coordinate
+    # in Python. Other arrays retain their existing recursive/error behavior.
+    if (type(value) is np.ndarray and value.ndim > 0 and value.dtype.kind in "biuf"
+            and np.isfinite(value).all()):
+        return value.tolist()
     if isinstance(value, dict):
         return {str(k): _jsonable(v) for k, v in value.items()}
     if isinstance(value, (list, tuple, np.ndarray, pd.Index)):
@@ -374,11 +379,20 @@ class ShadowRunner:
                 self.store.freeze_inputs(cycle_id,symbol,{"status":"session_edge_policy_unresolved","reference_at":reference.isoformat(),
                     "next_session_target":None,"candles":json.loads(final.to_json(orient="records",date_format="iso"))})
             raise UnresolvedPolicy("04:00 opening and final16:45 cycle/submission contracts remain unresolved; inputs preserved")
+        preprocessing_profile={"version":"intraday-preprocessing-phases-v1",
+            "input_source":"frozen_snapshot", "history_load_seconds":0.0,
+            "dataset_build_seconds":0.0, "snapshot_projection_seconds":0.0,
+            "candle_retention_seconds":0.0, "snapshot_freeze_seconds":0.0}
         begun=time.perf_counter()
         frozen=self.store.inputs(cycle_id,symbol)
+        preprocessing_profile["initial_snapshot_read_seconds"]=time.perf_counter()-begun
+        preprocessing_profile["initial_snapshot_read_in_preprocessing"]=frozen is not None
         if frozen is None:
+            preprocessing_profile["input_source"]="new_snapshot"
             if callable(history):
+                phase_started=time.perf_counter()
                 history=history()
+                preprocessing_profile["history_load_seconds"]=time.perf_counter()-phase_started
             if history is None:
                 raise ContractError("No history provided for configured local symbol")
             begun=time.perf_counter()
@@ -388,8 +402,11 @@ class ShadowRunner:
             builder=self.dataset_builder or build_dataset
             scope = (supervised_policy["dataset_scope_by_symbol"][symbol] if supervised_policy is not None
                      else _dataset_scope(asdict(self.config)))
+            phase_started=time.perf_counter()
             dataset=builder(_frame(history),cutoff=cutoff,reference_at=reference,
                             **scope)
+            preprocessing_profile["dataset_build_seconds"]=time.perf_counter()-phase_started
+            phase_started=time.perf_counter()
             inference=_jsonable(dataset.inference)
             if mode in {"shadow", "live"} and inference.get("availability_kind")!="actual":
                 raise ContractError("Current shadow cycle requires actually observed reference availability")
@@ -408,6 +425,8 @@ class ShadowRunner:
                     "policy_sha256": supervised_policy["sha256"],
                     "active_policy_sha256": supervised_policy.get("policy_identities_by_symbol", {}).get(symbol),
                     "selection": "supervised" if selected_specs is not None else "configured_defaults"}
+            preprocessing_profile["snapshot_projection_seconds"]=time.perf_counter()-phase_started
+            phase_started=time.perf_counter()
             # Retain the actual observations used, rather than only transformed features.
             frame=_frame(history)
             available=pd.to_datetime(frame.available_at,utc=True)
@@ -419,7 +438,11 @@ class ShadowRunner:
                 snapshot["candles"] = _clean(used.to_dict(orient="records"))
             else:
                 snapshot["candles"]=json.loads(used.to_json(orient="records",date_format="iso"))
+            preprocessing_profile["candle_retention_seconds"]=time.perf_counter()-phase_started
+            phase_started=time.perf_counter()
             frozen=self.store.freeze_inputs(cycle_id,symbol,snapshot)
+            preprocessing_profile["snapshot_freeze_seconds"]=time.perf_counter()-phase_started
+        phase_started=time.perf_counter()
         snapshot_hash,snapshot=frozen
         if (snapshot.get("manifest", {}).get("preparation_only")
                 or snapshot.get("inference", {}).get("preparation_only")
@@ -433,7 +456,17 @@ class ShadowRunner:
         dataset_scope = _dataset_scope({**fallback_scope, **snapshot.get("dataset_scope", {}),
                                        **{key: snapshot["manifest"][key] for key in fallback_scope
                                           if key in snapshot["manifest"]}})
-        prep_seconds=time.perf_counter()-begun
+        preprocessing_finished=time.perf_counter()
+        preprocessing_profile["snapshot_validation_seconds"]=preprocessing_finished-phase_started
+        prep_seconds=preprocessing_finished-begun
+        accounted=sum(preprocessing_profile[key] for key in (
+            "dataset_build_seconds", "snapshot_projection_seconds", "candle_retention_seconds",
+            "snapshot_freeze_seconds", "snapshot_validation_seconds"))
+        if preprocessing_profile["initial_snapshot_read_in_preprocessing"]:
+            accounted+=preprocessing_profile["initial_snapshot_read_seconds"]
+        # The established total excludes history loading and the initial lookup
+        # for new inputs; resumed snapshots include their read and verification.
+        preprocessing_profile["unattributed_preprocessing_seconds"]=max(0.0,prep_seconds-accounted)
         inf=snapshot["inference"]
         if instant(inf["reference_at"]) != reference:
             raise ContractError("Inference snapshot changed cycle reference")
@@ -474,7 +507,8 @@ class ShadowRunner:
                  "models":fitted["outputs"],"probability_not_down":fitted["probability_not_down"],
                  "configured_count":fitted["configured_count"],"successful_count":fitted["successful_count"],
                  "ensemble_status":"full" if fitted["complete"] else "incomplete",
-                 "preprocessing_seconds":prep_seconds,"training_seconds":fitted["training_seconds"],
+                 "preprocessing_seconds":prep_seconds,"preprocessing_profile":preprocessing_profile,
+                 "training_seconds":fitted["training_seconds"],
                  "inference_seconds":fitted["inference_seconds"],"symbol_seconds_before_persistence":measured,
                  "training_started_at":training_start.isoformat(),"training_completed_at":finished.isoformat(),
                  "issue_after_target":issued>=reference+3*STEP,"dataset_manifest":snapshot["manifest"],
