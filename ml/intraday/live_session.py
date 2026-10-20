@@ -159,15 +159,15 @@ class ExecutionQueue:
             return []
         with self.store.connect() as db:
             # Newer forecasts supersede unsent queued work for the same symbol.
-            rows = db.execute("""SELECT q.forecast_id FROM intraday_live_queue q JOIN forecasts f ON f.id=q.forecast_id
+            rows = db.execute("""SELECT f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,f.payload
+                FROM intraday_live_queue q JOIN forecasts f ON f.id=q.forecast_id
                 WHERE q.session_id=? AND f.pc=? AND q.status='pending' AND q.next_attempt_at<=?
                 AND NOT EXISTS(SELECT 1 FROM intraday_live_queue n JOIN forecasts nf ON nf.id=n.forecast_id
                     WHERE n.session_id=q.session_id AND nf.pc=f.pc AND n.symbol=q.symbol
                     AND (nf.reference_at>f.reference_at OR (nf.reference_at=f.reference_at AND n.issued_at>q.issued_at)))
-                ORDER BY f.reference_at,q.symbol""",
+                ORDER BY f.rowid""",
                               (self.session_id,self.pc,current)).fetchall()
-        ids = {row[0] for row in rows}
-        return [f for f in self.store.forecasts(pc=self.pc) if f["forecast_id"] in ids]
+        return [self.store._forecast_value(row) for row in rows]
 
     def broker_due(self, now):
         with self.store.connect() as db:
