@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T18:21:45.143322Z",
+  "id": "20261020T182145Z-37dd39bf6c8c4271bcfc0fcc9bae8535",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: safe startup diagnostics installed and ready for source review"
+}

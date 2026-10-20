@@ -1,0 +1,33 @@
+{
+  "author": "Atlas",
+  "change_id": "20261020T181923Z-8b47a8feb33544e39a84eec7ec9ecf8e",
+  "files": [
+    "ml/intraday/live_session.py",
+    "tests/test_intraday_startup_diagnostics.py"
+  ],
+  "limitations": [
+    "Stacked on prior independent-runtime source PR273; main integration and peer installation remain separate.",
+    "Offline fixture clients only; no broker/provider requests, trader starts, restarts or orders.",
+    "Full live startup recovery remains unproven; original historical failure evidence preserved."
+  ],
+  "local_installation": "Exact reviewed source installed in Atlas checkout; no running process restarted.",
+  "peer_applicability": "Generic shared startup diagnostics only; preserve each PC models, symbols, local bindings and manual-start authority.",
+  "pr_url": "https://github.com/jeremysecondstate/ducketz/pull/281",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "New manually started sessions save bounded startup phase, cause chains, code locations and numeric OS codes without arbitrary messages, directory paths or locals. Cleanup errors remain secondary and manual controls are preserved.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261020T181923Z-8b47a8feb33544e39a84eec7ec9ecf8e",
+  "source_sha": "020b256b6dd29b791f4d7e9533be1ee6556434ea",
+  "summary": "Atlas: safe startup diagnostics installed and ready for source review",
+  "tests": [
+    {
+      "at": "2026-10-20T18:20:13.883582Z",
+      "kind": "installed network-denied isolated verifier",
+      "result": "8 passed"
+    },
+    {
+      "kind": "network-denied local and exact-base adjacent fixtures",
+      "result": "32 passed on each source"
+    }
+  ]
+}
