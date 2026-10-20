@@ -27,6 +27,51 @@ from ml.stock_trader.sizing_policy import LEARNED_SIZING_POLICY, FIXED_SIZING_PO
 from ml.stock_trader.publication import _write_json_atomic
 
 
+def _worker_error_diagnostics(error: Exception) -> dict:
+    """Retain bounded code locations and OS codes, never runtime values."""
+    source_root = Path(__file__).resolve().parents[2]
+    chain, seen = [], set()
+    current = error
+    while current is not None and len(chain) < 8 and id(current) not in seen:
+        seen.add(id(current))
+        name = type(current).__name__
+        item = {"error_type": name if name.isascii() and name.isidentifier() and len(name) <= 80 else "Exception"}
+        for key in ("errno", "winerror"):
+            try:
+                value = getattr(current, key, None)
+            except Exception:
+                value = None
+            if type(value) is int and -(2 ** 31) <= value < 2 ** 31:
+                item[key] = value
+        frames, count = [], 0
+        trace = current.__traceback__
+        while trace is not None:
+            code = trace.tb_frame.f_code
+            try:
+                relative = Path(code.co_filename).resolve().relative_to(source_root)
+                local_source = (bool(relative.parts) and relative.parts[0] in {"app", "ml", "datafetching", "tools", "tests"}
+                                and relative.suffix == ".py"
+                                and len(relative.as_posix()) <= 240
+                                and all(part.isascii() and all(c.isalnum() or c in "_-." for c in part)
+                                        for part in relative.parts))
+                filename = relative.as_posix() if local_source else "<external>"
+            except (OSError, ValueError, TypeError):
+                filename = "<external>"
+            function = code.co_name
+            function = function if function.isascii() and function.isidentifier() and len(function) <= 80 else "<code>"
+            frames.append({"file": filename, "function": function, "line": trace.tb_lineno})
+            frames = frames[-8:]
+            count += 1
+            trace = trace.tb_next
+        item.update(frames=frames, frames_truncated=count > 8)
+        chain.append(item)
+        current = (current.__cause__ if current.__cause__ is not None else
+                   None if current.__suppress_context__ else current.__context__)
+    return {"schema_version": "gameplan-worker-error-diagnostics-v1", "chain": chain,
+            "chain_truncated": current is not None and id(current) not in seen,
+            "chain_cycle": current is not None and id(current) in seen}
+
+
 def _is_hourly_lock_contention(error: Exception, root: Path) -> bool:
     """Recognize only the shared lock's unacquired, already-owned failure.
 
@@ -242,6 +287,7 @@ def run_independent_stock_session(
     calls = submitted = 0
     failed_cycles = consecutive_failures = 0
     last_cycle = None
+    worker_error_diagnostics = None
     runtime_lock_wait = None
     deferred_entry_slot = None
     status_path = root / "state/independent-stock-trader/session-status.json"
@@ -258,6 +304,8 @@ def run_independent_stock_session(
             "calls": calls, "orders_submitted": submitted, "failed_cycles": failed_cycles,
             "consecutive_failures": consecutive_failures, "last_cycle": last_cycle,
             "runtime_lock_wait": runtime_lock_wait}
+        if worker_error_diagnostics is not None:
+            payload["worker_error_diagnostics"] = worker_error_diagnostics
         _write_json_atomic(status_path, payload)
 
     with exclusive_runtime_lock(root / "locks/independent-stock-session.lock", process_name="independent-stock-session"):
@@ -361,6 +409,11 @@ def run_independent_stock_session(
                             sleep(seconds)
                         continue
                     last_cycle = {"status": "UNHANDLED_WORKER_ERROR", "error_type": type(exc).__name__}
+                    try:
+                        worker_error_diagnostics = _worker_error_diagnostics(exc)
+                    except Exception:
+                        worker_error_diagnostics = {"schema_version": "gameplan-worker-error-diagnostics-v1",
+                                                    "unavailable": True}
                     failed_cycles += 1
                     consecutive_failures += 1
                     publish_status("FAILED")
