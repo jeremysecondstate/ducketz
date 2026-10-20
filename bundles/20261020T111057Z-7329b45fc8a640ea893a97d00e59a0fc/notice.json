@@ -1,0 +1,69 @@
+{
+  "author": "Scout",
+  "base_commit": "fc4451015548f2ea4f92365b130298e940e1b5a3",
+  "branch": "codex/scout/20261020T110541Z-4062c38955c6435080b06540732122fa",
+  "change_id": "20261020T110541Z-4062c38955c6435080b06540732122fa",
+  "commit_sha": "cf52a2f115e594cf2652d4e05b83a04f31cf9131",
+  "details": [
+    "Task scout-15m-first-live-session-watch: freeze the persisted stream checkpoint checksum before final futures identity projection.",
+    "Shared correctness repair verifies the exact historical futures alias case against preserved native bytes while rejecting unrelated checkpoint, response, identity and causal corruption.",
+    "Applies to the common stream collector on either PC while preserving each PC model recipe, genuine-observation qualification, source coverage, live capacity policy and manual trader controls."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/market_collection_schwab_stream.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_market_collection_schwab_stream.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_stream_checkpoint_integrity.py"
+    }
+  ],
+  "limitations": [
+    "Offline fixtures and preserved-input replay validate the processing repair; affected live behavior remains unconfirmed.",
+    "Combined local-installation validation remains a separate operation; this notice does not claim installation or loaded-runtime recovery.",
+    "Original historical inputs and artifacts remain unchanged; no observations, coverage or qualification were fabricated.",
+    "Draft stacked source PR only; no main integration, merge or peer installation claimed."
+  ],
+  "peer_applicability": "Common collector correctness applies to either PC; preserve own local model recipe, genuine-observation requirements, current operating bindings and manual trader controls.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/274",
+  "remote_sha": "cf52a2f115e594cf2652d4e05b83a04f31cf9131",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Requires separate local installation preserving current source dependencies and saved model recipe. A manually started trader must reload the changed collector before affected behavior can be observed.",
+  "scope": "shared",
+  "stacked_on": "https://github.com/jeremysecondstate/ducketz/pull/255",
+  "summary": "Scout stream checkpoint hash stability and verified legacy futures recovery",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-20T11:06:08.410359Z",
+      "import_audit_sha256": "c650842df611c832cfa8f8136bd7f788eb92c5c2a43ade85650ed3f0a3cf3581",
+      "import_violations": 0,
+      "imported_source_files": 117,
+      "network": "denied by pinned offline harness",
+      "output_sha256": "70dc3aa2248a42bad2f768f42fd9cbb792c80ff42487de7757405df82176474c",
+      "result": "330 passed; 5 joblib NumPy deprecation warnings",
+      "stage": "reviewed_source",
+      "started_at_utc": "2026-10-20T11:05:41.464731Z",
+      "suites": 11
+    },
+    {
+      "completed_at_utc": "2026-10-20T11:08:11.385053Z",
+      "import_audit_sha256": "c650842df611c832cfa8f8136bd7f788eb92c5c2a43ade85650ed3f0a3cf3581",
+      "import_violations": 0,
+      "imported_source_files": 117,
+      "network": "denied by pinned offline harness",
+      "output_sha256": "c2e4740f3a5dfd29544fe55b34dee260a58691f36f4644e3cb184744162a5c95",
+      "result": "330 passed; 5 joblib NumPy deprecation warnings",
+      "stage": "publication_candidate",
+      "started_at_utc": "2026-10-20T11:07:44.504632Z",
+      "suites": 11
+    }
+  ]
+}
