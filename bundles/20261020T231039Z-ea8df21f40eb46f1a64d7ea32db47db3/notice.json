@@ -1,0 +1,52 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261020T230653Z-7c6ac01dbc274158aa244648fea961fb",
+  "change_id": "20261020T230653Z-7c6ac01dbc274158aa244648fea961fb",
+  "commit_sha": "9b98b60d86eba3332fb59b0fde84191504e7dc4f",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py",
+      "sha256": "1f7f7ce592f2b97a285305f1249f2556a6f38c8a5e3d6cf7f23a6b4d6984cae9"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_unknown_commitment_containment.py",
+      "sha256": "d38f139e41632e774f8ce86f59a053f0d59b38cdfb7d0de98c692e0bcf1adb0e"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_account_execution.py",
+      "sha256": "00acd73f3ea898e86b23631eebc4d98f72effe8b1597051f934bdd2abba15954"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_unknown_commitment.py",
+      "sha256": "160978d32891712dd43843579e0d91c377d1c593a77c20fe889c48912b95d0db"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_interrupted_submission.py",
+      "sha256": "de9f6ac77b0954e2eebb03217eb3a991890a6b786201d5025d887f81f2068036"
+    }
+  ],
+  "limitations": [
+    "The original uncertain acceptance remains unresolved without exact original acceptance or audited no-send evidence; its full commitment is retained.",
+    "Existing manual worker predates installation; installed source is not loaded or live affected-branch exercise.",
+    "Draft PR is stacked on the reviewed interruption diagnostic change; no main integration or peer installation claimed.",
+    "No broker/provider calls, trader controls, orders, credentials, private account data or raw operating evidence are included."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/294"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas installed the field-composed repair while preserving the entire separately reviewed interruption diagnostic tail. Each PC independently adopts within its own state and manual controls. Human manual loading is needed for an already running intraday worker; no automatic restart, shared ledger, peer acceptance or nightly-operation prerequisite.",
+  "scope": "Shared correctness for each PC own independent 15-minute trader; local symbols, model policy and runtime bindings preserved",
+  "summary": "Atlas: uncertain own-commitment containment published and installed",
+  "tests": {
+    "installed_Atlas": "227 passed on actual installed local source graph with network denied",
+    "isolated_candidate": "227 passed on exact immutable candidate, candidate import assertions and network denial",
+    "regressions": "23 containment cases plus four interruption cases; six original-source containment failures retained",
+    "sealed_source": "227 passed, network denied; all 107 source/dependency bytes pinned"
+  }
+}

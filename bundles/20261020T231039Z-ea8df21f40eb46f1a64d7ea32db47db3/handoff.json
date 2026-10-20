@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T23:10:39.251199Z",
+  "id": "20261020T231039Z-ea8df21f40eb46f1a64d7ea32db47db3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: uncertain own-commitment containment published and installed"
+}
