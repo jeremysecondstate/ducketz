@@ -1,0 +1,136 @@
+{
+  "author": "Scout",
+  "base_commit": "c5f9ef357c6c85287422511e0c780a12fd8cec99",
+  "branch": "codex/scout/20261020T202048Z-e38449b43e99474fa748081beae95e9e",
+  "change_id": "20261020T202048Z-e38449b43e99474fa748081beae95e9e",
+  "commit_sha": "50a1fc1d4bc063730134792fbf450c5a04ace18d",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/scout_broker.py",
+      "sha256": "82b4ae2625ed5b112427861a147a428c9a98b0dfff15ef1001b320cecd14101d"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_scout_initial_local_window.py",
+      "sha256": "e163ca0b2f3389f20fab7b9ce3fb4f3a883ec8204b1df206273e8edb073dc9fd"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/pretransport_clearance.py",
+      "sha256": "a1c23dfb00f0d68ee91c2cfbbd72b2dd85a22f23d1122f63d81c4a2fa1ca3c61"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_closed_window_clearance.py",
+      "sha256": "a7bbe996f20bcad6126f230a5576f00fed04d8402cf51f3f685aab71878a9dd4"
+    }
+  ],
+  "limitations": [
+    "Original UNKNOWN/send token remains unchanged and never replayable. Historical clearance requires exact frozen source/frames, expired permit, clean original manual stop and original process ended; the private proof remains local.",
+    "One documented unchanged stale source test asserts a single SQLite read and is deselected; dedicated bounded-contention retry regressions are included. Initial source failure is retained. Installed runtime tests pass separately without deselection.",
+    "Source and candidate counts overlap; installation and loaded affected-operation recovery remain separate."
+  ],
+  "local_installation": {
+    "actor": "Scout",
+    "check_counts_are_unique": false,
+    "installed_check_results": [
+      942,
+      221
+    ],
+    "launcher_check": "passed",
+    "loaded": false,
+    "manifest_sha256": "117d41957cf74fcc099ec7554bc220750034c93ea82eaa807b26e8538da69142",
+    "manual_restart_required": true,
+    "other_source_and_recipe_preserved": true,
+    "source_files": 457,
+    "stage": "installed_for_next_manual_restart",
+    "trader_controls_untouched": true
+  },
+  "peer_applicability": "Common execution correctness where this executor is used. Preserve each PC own symbols, private model recipes, qualification, actual capacity and operating bindings. Historical profile applies only to exact frozen original source.",
+  "producer": "human-authorized-development",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/286",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Selected immutable repair requires the existing human-controlled manual trader restart to load code. Maintenance starts no trader and submits no order.",
+  "scope": "shared",
+  "summary": "Preserve definite unsent proof for initial local execution-window refusal",
+  "task": "scout-15m-first-live-session-watch",
+  "tests": [
+    {
+      "bound_file_count": 820,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_initial_local_window.py",
+        "tests/test_intraday_closed_window_clearance.py",
+        "tests/test_intraday_pretransport_clearance.py",
+        "tests/test_intraday_initial_gate_clearance.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_broker.py",
+        "tests/test_intraday_scout_client.py",
+        "tests/test_intraday_scout_journal.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "tests/test_intraday_commitment_clearance.py",
+        "tests/test_intraday_local_forecast.py",
+        "tests/test_intraday_saved_forecast_busy.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--tb=short",
+        "-k",
+        "not test_exclusive_database_lock_fails_immediately_with_read_only_zero_timeout"
+      ],
+      "completed_at_utc": "2026-10-20T20:23:08.847216Z",
+      "exit_code": 0,
+      "network_connections": "disabled",
+      "output_sha256": "34ca828327f05bc4cdd162665ff8ae8c7998087e7045b7a5927dd3a13f199fb8",
+      "result": "962 passed, 1 deselected in 138.43s (0:02:18)",
+      "stage": "source",
+      "started_at_utc": "2026-10-20T20:20:49.352115Z"
+    },
+    {
+      "bound_file_count": 820,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_initial_local_window.py",
+        "tests/test_intraday_closed_window_clearance.py",
+        "tests/test_intraday_pretransport_clearance.py",
+        "tests/test_intraday_initial_gate_clearance.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_broker.py",
+        "tests/test_intraday_scout_client.py",
+        "tests/test_intraday_scout_journal.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "tests/test_intraday_commitment_clearance.py",
+        "tests/test_intraday_local_forecast.py",
+        "tests/test_intraday_saved_forecast_busy.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--tb=short",
+        "-k",
+        "not test_exclusive_database_lock_fails_immediately_with_read_only_zero_timeout"
+      ],
+      "completed_at_utc": "2026-10-20T20:26:53.654766Z",
+      "exit_code": 0,
+      "network_connections": "disabled",
+      "output_sha256": "ef6094237a712f3b8549c67120f9b108a537dfb68b2c36bf61342ac1f6f752b0",
+      "result": "962 passed, 1 deselected in 138.04s (0:02:18)",
+      "stage": "publication_candidate",
+      "started_at_utc": "2026-10-20T20:24:34.547986Z"
+    }
+  ],
+  "verified_remote_sha": "50a1fc1d4bc063730134792fbf450c5a04ace18d"
+}

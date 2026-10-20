@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T20:30:11.339109Z",
+  "id": "20261020T203011Z-0c5fc2132ac540ca87128933cbb09945",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Preserve definite unsent proof for initial local execution-window refusal"
+}
