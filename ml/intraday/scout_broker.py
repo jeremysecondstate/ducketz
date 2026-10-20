@@ -179,7 +179,15 @@ class ScoutBrokerAdapter:
         self.initial_gate_failure = None
         self.native_before_post_failure = None
         sending = self._record(request, grant, "SENDING")
-        window = self._current(request, grant)
+        try:
+            window = self._current(request, grant)
+        except Exception as error:
+            # This completed local validation precedes even the opaque account
+            # preparer. Bind its no-transport observation to the verified claim;
+            # preparer, payload and sender exceptions remain outside this proof.
+            self.initial_gate_failure = InitialGateFailure(
+                request.sha256, grant.sha256, canonical_sha256(sending), error)
+            raise
         context = self.broker.prepare_order_submission()
         payload = build_schwab_stock_order_payload(symbol=request.symbol, instruction=request.side,
             order_type="LIMIT", time_in_force=window.time_in_force, position_effect="AUTO",
