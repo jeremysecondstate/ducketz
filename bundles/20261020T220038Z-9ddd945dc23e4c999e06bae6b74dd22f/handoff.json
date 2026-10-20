@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T22:00:38.422473Z",
+  "id": "20261020T220038Z-9ddd945dc23e4c999e06bae6b74dd22f",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: retained manual-session target scoring repair published and installed"
+}

@@ -1,0 +1,51 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261020T215621Z-8a8fe169778749c4a5e1bf01b471f305",
+  "change_id": "20261020T215621Z-8a8fe169778749c4a5e1bf01b471f305",
+  "commit_sha": "78942f8536b2f4c47fb85f3c1632c7b09ea94664",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/live_session.py",
+      "sha256": "607aee2d0131b56b91038a66942ee38a0f8e2c5ed879dd86b85cba8ac70253f9"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/store.py",
+      "sha256": "f2d887bb96ea6bd7df02e0967fba14c3d29a18ad39487cf9305b237e7d061b91"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_direction_policy.py",
+      "sha256": "dd90c71de9a1165043f912b5d19c5b0eb5b445b74a397710238c3c16844015ff"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_retained_target_priority.py",
+      "sha256": "85dbb05b7d76c1aeab5e8ded7f0bb9e0c6666a173b2e9e23ee56acaabeb9c82f"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_retained_scoring.py",
+      "sha256": "51b8d9a9cca972d4950ad1da3a3efa242b0f737552a8a26ebc37ac43767a98c7"
+    }
+  ],
+  "limitations": [
+    "Current Atlas worker predates installation; source installation is not loaded prevention evidence.",
+    "Main has a different runtime lineage; draft PR is stacked and no main merge is claimed.",
+    "No broker/provider calls, training, trader start/restart, order or raw private evidence is included."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/291"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Review/apply the narrow retained target helper and loop drains to each local source while preserving local symbols, models, current policy aliases and source-validation semantics. Atlas source installed, current worker loading awaits human manual start. Peer installation/loading remain separate facts and never gate nightly or trader operation.",
+  "scope": "Shared scoring scheduling correctness for each own manual session; no shared trader state or model policy change",
+  "summary": "Atlas: retained manual-session target scoring repair published and installed",
+  "tests": {
+    "installed_Atlas": "70 passed on installed local graph; no worker control",
+    "isolated_candidate": "70 passed; exact immutable candidate bytes and import guard",
+    "regressions": "15 synthetic priority, provenance, cache, correction, actor/session and interruption cases; original source fails two ordering reproductions",
+    "sealed_source": "70 passed; network denied; full imported candidate dependency closure pinned"
+  }
+}
