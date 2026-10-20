@@ -185,7 +185,8 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
         incoming = LiveHistories(histories=histories,provider=provider,store=runner.store,journal=journal,
                                 reference_at=reference,clock=clock,sleep=pause,bounded=True,
                                 stopped=lambda: stopped() or (close_at is not None and instant(clock()) >= instant(close_at)),
-                                reuse_saved=True,population_contract=getattr(runner.config,"population_contract",None))
+                                reuse_saved=True,population_contract=getattr(runner.config,"population_contract",None),
+                                restore_eagerly=False)
         if close_at is not None and instant(clock()) >= instant(close_at):
             return
         result = runner.run_cycle(incoming,reference_at=reference,mode="live",experiment=queue.session_id,
@@ -244,10 +245,11 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
             symbol = forecast["symbol"]
             if symbol not in histories:
                 continue
-            incoming = LiveHistories(histories=dict(histories),provider=provider,store=store,journal=journal,
+            incoming = LiveHistories(histories={symbol:histories[symbol]},provider=provider,store=store,journal=journal,
                 reference_at=forecast["target_open"],clock=clock,sleep=pause,bounded=True,
                 stopped=lambda: stopped() or (close_at is not None and instant(clock()) >= instant(close_at)),
-                reuse_saved=True,population_contract=forecast.get("population_contract") or "legacy")
+                reuse_saved=True,population_contract=forecast.get("population_contract") or "legacy",
+                restore_eagerly=False)
             incoming.bind_cycle("score:" + forecast["forecast_id"])
             try:
                 history = incoming.get(symbol)
