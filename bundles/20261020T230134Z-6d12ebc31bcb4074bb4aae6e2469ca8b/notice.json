@@ -1,0 +1,36 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261020T225921Z-803aea8b419b4546bb88dadc033ea51a",
+  "change_id": "20261020T225921Z-803aea8b419b4546bb88dadc033ea51a",
+  "commit_sha": "b53539aa9c05f1bb21b679a6696bc6a867cfff25",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py",
+      "sha256": "96992a17013ef80da7ae696c917cd425062daf89e169a57ddd59a3f78854835b"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_interrupted_submission.py",
+      "sha256": "feb3eec5bd2ea6125b78c17c1379c6ed43f3c4c2bb8eb5ce4ee314bda3d65e92"
+    }
+  ],
+  "limitations": [
+    "Historical uncertain acceptance has no saved exact response or audited no-send receipt; diagnostics do not establish recovery.",
+    "Existing manually started process retains loaded code; no restart, hotpatch, order, provider call or trading-state mutation.",
+    "Stacked draft PR targets prior diagnostic lineage; no main merge or peer installation claimed."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/293"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Apply the narrow own submission-interruption event to local source under existing authority while preserving manual starts/stops, UNKNOWN commitments, exact acceptance and order controls. Source installation and actual loaded operation remain separate facts; no restart or cross-trader prerequisite.",
+  "scope": "Shared interruption diagnostics for each independently operated local 15-minute trader; no shared state or local model policy change",
+  "summary": "Atlas 15m: interrupted submission diagnostics published and locally installed",
+  "tests": {
+    "independent_review": "Read-only whole owned diff review found no issue",
+    "installed_local": "42 targeted and adjacent cases passed",
+    "isolated_candidate": "4 regressions passed; same exact own source bytes and imported dependency closure",
+    "sealed_source": "4 regressions passed with network denied;98 exact source and dependency hashes"
+  }
+}

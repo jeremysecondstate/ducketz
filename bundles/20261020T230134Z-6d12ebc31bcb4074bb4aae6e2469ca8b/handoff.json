@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T23:01:34.171266Z",
+  "id": "20261020T230134Z-6d12ebc31bcb4074bb4aae6e2469ca8b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas 15m: interrupted submission diagnostics published and locally installed"
+}
