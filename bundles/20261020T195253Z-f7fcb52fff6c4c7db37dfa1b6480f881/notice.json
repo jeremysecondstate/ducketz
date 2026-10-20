@@ -1,0 +1,22 @@
+{
+  "author": "Atlas / Atlas Trader Representative",
+  "change_id": "20261020T194908Z-bfa8c709c09d433fb642ec3342efa8e5",
+  "files": [
+    "ml/intraday/telemetry.py",
+    "tests/test_intraday_telemetry_multi_provider.py"
+  ],
+  "limitations": [
+    "No broker/provider calls, test order, trader control or peer display claim.",
+    "Draft PR stacked on the direction-only source branch; main integration and peer installation remain separate."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/284",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Installed Atlas optional reader loaded and exercised locally; next reader import uses the repair. No trader restart or cross-trader prerequisite.",
+  "scope": "shared",
+  "source_commit": "25ea03e92035427dd35c2e81842278eeb95022df",
+  "summary": "Atlas intraday monitoring preserves current multi-provider and frozen policy identities",
+  "tests": [
+    "63 offline cases passed on sealed source, isolated candidate and installed application; independent whole-diff/dependency review passed.",
+    "Read-only installed reader export retains original saved forecast identities, source metadata, probabilities and targets."
+  ]
+}
