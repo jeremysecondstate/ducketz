@@ -326,6 +326,42 @@ def score_saved_session_outcomes(store, *, session_id, actor, symbols, as_of, st
     return result
 
 
+_STARTUP_STAGES = frozenset({
+    "environment", "history_load", "provider_setup", "acquisition_journal",
+    "runner_setup", "market_inputs_start", "broker_session", "executor_setup",
+    "market_inputs_close",
+})
+
+
+def _startup_failure_evidence(exc, *, stage):
+    """Save bounded code metadata and OS codes, never messages, paths or locals."""
+    from collections import deque
+
+    chain, seen = [], set()
+    current = exc
+    while current is not None and id(current) not in seen and len(chain) < 8:
+        seen.add(id(current))
+        frames = deque(maxlen=8)
+        trace = current.__traceback__
+        while trace is not None:
+            code = trace.tb_frame.f_code
+            frames.append({"file": code.co_filename.replace("\\", "/").rsplit("/", 1)[-1][:120],
+                           "function": code.co_name[:120], "line": trace.tb_lineno})
+            trace = trace.tb_next
+        item = {"error_type": type(current).__name__[:80], "frames": list(frames)}
+        if isinstance(current, OSError):
+            for name in ("errno", "winerror"):
+                value = getattr(current, name, None)
+                if type(value) is int:
+                    item[name] = value
+        chain.append(item)
+        current = (current.__cause__ if current.__cause__ is not None else
+                   None if current.__suppress_context__ else current.__context__)
+    return {"startup_stage": stage if stage in _STARTUP_STAGES else "unknown",
+            "exception_chain": chain, "root_cause": chain[-1],
+            "exception_chain_truncated": current is not None}
+
+
 def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcnow, sleep=time.sleep):
     from .account_execution import IntradayAccountExecutor, execution_failure_evidence
     from .local_execution import load_local_binding
@@ -376,8 +412,10 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             sleep(min(1,max(0,end-time.monotonic())))
     with exclusive_runtime_lock(root / "locks/intraday-manual-session.lock",process_name="intraday-manual-session"):
         status("STARTING")
+        startup_stage = "environment"
         try:
             load_dotenv(repository / ".env")
+            startup_stage = "history_load"
             histories = {}
             history_load_cutoff = instant(clock())
             for symbol in symbols:
@@ -387,13 +425,17 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                         **({"recovery_cutoff":history_load_cutoff} if config.population_contract == RECOVERY_POPULATION_CONTRACT else {}))
                 except Exception as exc:
                     store.event(session_id,"history_unavailable",{"error_type":type(exc).__name__,"message":str(exc)},symbol=symbol)
+            startup_stage = "provider_setup"
             provider = DatabentoMarketDataProvider()
             if provider.dataset != config.source_dataset:
                 raise ContractError("Provider binding differs from selected single source")
+            startup_stage = "acquisition_journal"
             journal = AcquisitionJournal(root / "intraday/acquisition.sqlite3")
+            startup_stage = "runner_setup"
             runner = ShadowRunner(store=store,pc=pc,symbols=symbols,config=config,clock=clock,
                 stopped=lambda: stopped.is_set() or instant(clock()) >= close_at)
             if config.market_inputs_enabled:
+                startup_stage = "market_inputs_start"
                 try:
                     from .market_inputs import MarketInputCollector
                     market_collector = MarketInputCollector(root, symbols)
@@ -402,16 +444,29 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 except Exception as exc:
                     store.event(session_id,"market_inputs_start_error",{"error_type":type(exc).__name__,
                         "core_forecasts_continue":True})
-            executor = IntradayAccountExecutor(datastore=root,store=store,broker=SchwabSession(),local_symbols=symbols,
+            startup_stage = "broker_session"
+            broker = SchwabSession()
+            startup_stage = "executor_setup"
+            executor = IntradayAccountExecutor(datastore=root,store=store,broker=broker,local_symbols=symbols,
                 session_started_at=started,clock=clock,manual_authority=manual_authority,actor=pc,stopped=stopped.is_set)
         except BaseException as exc:
+            diagnostics = _startup_failure_evidence(exc, stage=startup_stage)
+            cleanup_diagnostics = None
             if market_collector is not None:
-                market_collector.close()
+                try:
+                    market_collector.close()
+                except Exception as cleanup_exc:
+                    cleanup_diagnostics = _startup_failure_evidence(cleanup_exc, stage="market_inputs_close")
             stopped.set()
             status("STOPPED" if isinstance(exc,KeyboardInterrupt) else "FAILED",
                    stop_reason="manual_stop" if isinstance(exc,KeyboardInterrupt) else "startup_failure",
                    error_type=type(exc).__name__,broker_orders_automatically_cancelled=False)
-            store.event(session_id,"manual_startup_stopped",{"error_type":type(exc).__name__,"message":str(exc)})
+            failure = {"error_type":type(exc).__name__,
+                       "message":"Startup interrupted" if isinstance(exc,KeyboardInterrupt) else "Startup failed",
+                       "diagnostics":diagnostics}
+            if cleanup_diagnostics is not None:
+                failure["cleanup_diagnostics"] = cleanup_diagnostics
+            store.event(session_id,"manual_startup_stopped",failure)
             if isinstance(exc,KeyboardInterrupt):
                 return {"session_id":session_id,"status":"STOPPED"}
             raise
