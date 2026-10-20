@@ -1,0 +1,49 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261020T111409Z-3961a58523214f568ff85760ca43e559",
+  "change_id": "20261020T111409Z-3961a58523214f568ff85760ca43e559",
+  "commit_sha": "cf68d4ed0ef75af009dc46b96c89bdf7d581b2ff",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_local_forecast.py",
+      "sha256": "45e161408d4118d663d0cecd21bd49781d0d197a4af8366dcc4c9f081f8eaa4f"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/local_forecast.py",
+      "sha256": "786c0c11e1a1bcdfb50b0b36541a92d6b6288220b9b8b11fc6168532934f9b6b"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_saved_forecast_busy.py",
+      "sha256": "63bd90a474977e03a3ef8ae4a3ae7346965613f2513f680714328baee5836e70"
+    }
+  ],
+  "limitations": [
+    "Stacked draft PR; no main integration or peer installation established.",
+    "Offline fixture validation; no live orders or runtime observation performed."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/275",
+    "https://github.com/jeremysecondstate/ducketz/commit/cf68d4ed0ef75af009dc46b96c89bdf7d581b2ff"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Fresh read-only zero-timeout attempts retry native SQLite contention up to eight attempts within a0.25-second budget while preserving exact direction and immutable evidence validation. The helper matches existing selected runtime bytes; test alignment itself requires no restart.",
+  "scope": "shared correctness for either PC; local model recipes, qualifications and live bindings preserved",
+  "summary": "Preserve exact direction policy with bounded saved forecast read retries and aligned lock regression",
+  "tests": [
+    {
+      "candidate_imports_bound": true,
+      "completed_at_utc": "2026-10-20T11:15:53.504736Z",
+      "name": "local forecast, saved forecast busy, local execution and exact direction suites",
+      "network_disabled": true,
+      "output_sha256": "0e1bfc25f82acdc532e1e0546b68f0e9ec6e69e5787c929d85b972d892913000",
+      "result": "178 passed",
+      "started_at_utc": "2026-10-20T11:15:37.934601Z"
+    }
+  ]
+}

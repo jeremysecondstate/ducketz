@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T11:17:33.555440Z",
+  "id": "20261020T111733Z-5d9a7135b6014172b6651ad448589e59",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Preserve exact direction policy with bounded saved forecast read retries and aligned lock regression"
+}
