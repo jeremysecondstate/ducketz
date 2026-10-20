@@ -8,6 +8,7 @@ This is a current observation window, never historical quarter reconstruction.
 """
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -25,6 +26,7 @@ NORMALIZATION_VERSION = "intraday-schwab-normalization-v3"
 SCOPE_VERSION = "intraday-schwab-fair-option-scope-v2"
 BOOTSTRAP_VERSION = "intraday-schwab-chain-bootstrap-receipt-v1"
 MAX_BOOTSTRAP_BYTES = 32 * 1024 * 1024
+MAX_STREAM_EVIDENCE_BYTES = 64 * 1024 * 1024
 FIELDS = {"LEVELONE_EQUITIES": 52, "LEVELONE_OPTIONS": 56,
           "LEVELONE_FUTURES": 41, "CHART_EQUITY": 9, "CHART_FUTURES": 7,
           "NYSE_BOOK": 4, "NASDAQ_BOOK": 4, "OPTIONS_BOOK": 4}
@@ -64,11 +66,120 @@ def _store_bootstrap(root, *, symbol, started_at, ended_at, start, end, payload,
         "raw_payload_present": response_received, "contract": BOOTSTRAP_VERSION}
 
 
+def _bounded_stream_bytes(path):
+    with Path(path).open("rb") as handle:
+        raw = handle.read(MAX_STREAM_EVIDENCE_BYTES + 1)
+    if not raw or len(raw) > MAX_STREAM_EVIDENCE_BYTES:
+        raise ValueError("Stream evidence exceeds its verification bound")
+    return raw
+
+
+def _legacy_checkpoint_projection(checkpoint, evidence):
+    """Verify the historical post-write alias bug without changing old bytes.
+
+    Only the old causal futures projection may explain a checksum difference.
+    Native capture bytes supply identities; neither a new provider response nor
+    an arbitrary replacement checksum can authorize the saved checkpoint.
+    """
+    from .market_state import StreamState, VERSION as state_version
+    if (evidence.get("mode") != "current_stream_snapshot" or evidence.get("completed") is not True
+            or evidence.get("projection_version") != VERSION
+            or evidence.get("normalization_version") != NORMALIZATION_VERSION
+            or checkpoint.get("version") != state_version or evidence.get("state_version") != state_version
+            or checkpoint.get("completed") is not True or checkpoint.get("reusable_on_reconnect") is not False
+            or not checkpoint.get("connection_id") or checkpoint["connection_id"] != evidence.get("connection_id")):
+        raise ValueError("Stream state checkpoint checksum changed")
+    size = evidence.get("raw_bytes")
+    if type(size) is not int or not 0 < size <= MAX_STREAM_EVIDENCE_BYTES:
+        raise ValueError("Legacy stream evidence size is invalid")
+    raw = _bounded_stream_bytes(evidence.get("raw_path", ""))
+    digest = hashlib.sha256(raw).hexdigest()
+    if len(raw) != size or digest != evidence.get("raw_sha256"):
+        raise ValueError("Legacy stream evidence checksum changed")
+    identities, count, future_sequence = {}, 0, 0
+    native_state = StreamState(checkpoint["connection_id"])
+    last_transport = None
+    try:
+        for line in raw.splitlines():
+            message = json.loads(line)
+            if not isinstance(message, dict) or not isinstance(message.get("message"), dict):
+                raise ValueError("Invalid legacy stream message")
+            received = instant(message["received_at"]).isoformat()
+            last_transport = received
+            blocks = message["message"].get("data", [])
+            if not isinstance(blocks, list):
+                raise ValueError("Invalid legacy stream data")
+            for block in blocks:
+                if (not isinstance(block, dict) or block.get("service") not in FIELDS
+                        or not isinstance(block.get("content"), list)):
+                    raise ValueError("Invalid legacy stream service")
+                count += len(block["content"])
+                if count > 100_000:
+                    raise ValueError("Legacy stream record bound exceeded")
+                if block["service"] != "LEVELONE_FUTURES":
+                    continue
+                for native in block["content"]:
+                    if not isinstance(native, dict) or not isinstance(native.get("key"), str):
+                        raise ValueError("Invalid legacy futures identity")
+                    row = normalize("LEVELONE_FUTURES", native, receipt_at=received, scope={native["key"]: None})
+                    future_sequence += 1
+                    row["stream_message_timestamp"] = _utc_ms(block.get("timestamp"))
+                    row["sequence"] = future_sequence
+                    row["identity_basis"] = "connection-local received market record sequence; not an exchange sequence"
+                    native_state.observe("LEVELONE_FUTURES", row)
+                    if row.get("active_contract_symbol"):
+                        identities.setdefault(row["provider_symbol"], []).append({
+                            "contract": row["active_contract_symbol"], "receipt_at": received,
+                            "event_at": row.get("event_at")})
+        projected = deepcopy(checkpoint)
+        states = projected["states"]
+        if (not isinstance(states, dict) or set(states).difference(FIELDS)
+                or any(not isinstance(rows, list) for rows in states.values())
+                or sum(map(len, states.values())) > 100_000):
+            raise ValueError("Invalid legacy checkpoint state")
+        # The original projection overwrote identity fields. Rebuild the full
+        # preprojection futures state first so corruption in those fields cannot
+        # disappear during verification. Chart records never enter StreamState.
+        if states.get("CHART_FUTURES"):
+            raise ValueError("Unexpected chart checkpoint state")
+        accepted = evidence["service_results"]["LEVELONE_FUTURES"]["acknowledged_scope"]
+        if (not isinstance(accepted, list) or any(not isinstance(key, str) for key in accepted)
+                or len(accepted) > 50_000 or last_transport is None):
+            raise ValueError("Invalid legacy futures acknowledgement scope")
+        rebuilt = native_state.checkpoint({"LEVELONE_FUTURES": accepted},
+            ended_at=checkpoint["disconnected_at"], healthy=True, transport_confirmed_at=last_transport)
+        if rebuilt.get("LEVELONE_FUTURES", []) != states.get("LEVELONE_FUTURES", []):
+            raise ValueError("Legacy futures checkpoint differs from native evidence")
+        for service in ("LEVELONE_FUTURES",):
+            for row in states.get(service, []):
+                if not isinstance(row, dict):
+                    raise ValueError("Invalid legacy checkpoint row")
+                history = identities.get(row["provider_symbol"], [])
+                contracts = {item["contract"] for item in history}
+                prior = [item for item in history if item["event_at"] and row.get("event_at")
+                    and instant(item["event_at"]) <= instant(row["event_at"])
+                    and instant(item["receipt_at"]) <= instant(row["stream_receipt_at"])]
+                if len(contracts) == 1 and prior:
+                    row.update(symbol=prior[-1]["contract"], active_contract_symbol=prior[-1]["contract"])
+                else:
+                    row["root_symbol"] = None
+    except (KeyError, TypeError, AttributeError) as exc:
+        raise ValueError("Invalid legacy stream checkpoint evidence") from exc
+    expected = evidence.get("state_checkpoint_sha256")
+    if _sha(projected) != expected:
+        raise ValueError("Stream state checkpoint checksum changed")
+    return {"mode": "legacy_futures_projection_alias", "original_checkpoint_sha256": _sha(checkpoint),
+        "recorded_checkpoint_sha256": expected, "raw_sha256": digest, "raw_bytes": len(raw),
+        "original_artifacts_preserved": True,
+        "scope": "Exact historical projection verified; no rows, clocks or source coverage changed"}
+
+
 def _verify_bootstrap(evidence):
+    recovery = None
     if evidence.get("state_checkpoint_path"):
-        checkpoint = json.loads(Path(evidence["state_checkpoint_path"]).read_text(encoding="utf-8"))
+        checkpoint = json.loads(_bounded_stream_bytes(evidence["state_checkpoint_path"]))
         if _sha(checkpoint) != evidence.get("state_checkpoint_sha256"):
-            raise ValueError("Stream state checkpoint checksum changed")
+            recovery = _legacy_checkpoint_projection(checkpoint, evidence)
     for symbol, receipt in evidence.get("chain_bootstrap_receipts", {}).items():
         path = Path(receipt["path"])
         if not 0 < path.stat().st_size == receipt["bytes"] <= MAX_BOOTSTRAP_BYTES:
@@ -81,6 +192,7 @@ def _verify_bootstrap(evidence):
                 or value.get("request_started_at") != receipt["request_started_at"]
                 or value.get("request_ended_at") != receipt["request_ended_at"]):
             raise ValueError("Option bootstrap archive identity changed")
+    return recovery
 
 
 def _scope_keys(service, scopes, observed_at):
@@ -485,6 +597,7 @@ def capture(session, subscriptions, raw_path, *, capture_seconds=5, timeout_seco
         "disconnected_at": ended_at, "reusable_on_reconnect": False, "states": states}
     state_path = raw_path.with_suffix(".state.json")
     _atomic(state_path, checkpoint)
+    checkpoint_sha256 = _sha(checkpoint)
     for service, result in results.items():
         observed = {row["provider_symbol"] for row in rows[service]}
         confirmed = {row["provider_symbol"] for row in states.get(service, ())
@@ -513,7 +626,7 @@ def capture(session, subscriptions, raw_path, *, capture_seconds=5, timeout_seco
         "acknowledgements": list(acknowledgements.values()),
         "followup_controls": followup_controls,
         "state_version": state_version, "state_checkpoint_path": str(state_path),
-        "state_checkpoint_sha256": _sha(checkpoint), "connection_id": connection_id,
+        "state_checkpoint_sha256": checkpoint_sha256, "connection_id": connection_id,
         "baseline_wait_limit_seconds": 30, "continuity_terminated": True,
         "reconnect_policy": "new_connection_requires_new_instrument_baseline; persisted_state_is_audit_only",
         "coverage_claim": "Actual current stream observation window only; no complete quarter, market, or missed-event replay claim",
@@ -551,7 +664,9 @@ class SchwabStreamCollector:
                     claimed = saved.pop("response_sha256")
                     if claimed != _sha(saved):
                         raise ValueError("Schwab stream response checksum mismatch")
-                    _verify_bootstrap(saved["evidence"])
+                    recovery = _verify_bootstrap(saved["evidence"])
+                    if recovery is not None:
+                        saved["evidence"] = {**saved["evidence"], "checkpoint_verification": recovery}
                     self.cache[identity] = saved["rows"], saved["evidence"]
                 else:
                     subscriptions, chains, excluded, bootstrap, archive_errors = {}, {}, {}, {}, {}
