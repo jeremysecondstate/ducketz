@@ -1,0 +1,39 @@
+{
+  "author": "Atlas / Atlas Trader Representative",
+  "change_id": "20261020T001107Z-a6826e223f7143a389913638078e57a6",
+  "completion_record": "20261020T001107Z-a6826e223f7143a389913638078e57a6",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/telemetry.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_direction_policy_provenance.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_direction_policy.py"
+    }
+  ],
+  "limitations": [
+    "Final evidence must come from a fresh network-disabled candidate test run over final exact source; scaffolding is not test or review evidence.",
+    "Offline synthetic forecast/storage/telemetry fixtures; no brokers, providers, live orders, historical rewriting or trader controls.",
+    "Published branch and tested stacked PR do not establish main integration, peer installation or live process loading."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/265",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "New independent fifteen-minute forecast writes require a future Jeremy-controlled manual start or restart to load the store/telemetry change. Retain all existing saved records and running-session facts. No Gameplan restart required for this metadata-only change; no Scout restart inferred. The carried direction helper is unchanged installed bytes. Preparation never starts or restarts a trader.",
+  "scope": "shared",
+  "source_commit": "f6b7db34de6c957ba5eb3ff2cafad68a609afad5",
+  "summary": "Atlas: Save direction policy with independent intraday forecasts",
+  "tests": [
+    "Sealed 153 passed in 8.47s",
+    "Isolated 153 passed in 7.12s",
+    "Installed 153 passed in 8.66s with stable source and package metadata"
+  ]
+}

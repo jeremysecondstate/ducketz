@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T00:13:43.678948Z",
+  "id": "20261020T001343Z-e22dfb5da10543f98c4af0bb915d1c64",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: Save direction policy with independent intraday forecasts"
+}
