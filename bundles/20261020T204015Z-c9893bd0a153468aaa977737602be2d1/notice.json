@@ -1,0 +1,34 @@
+{
+  "author": "Atlas",
+  "change_id": "20261020T203741Z-90de810227364e4b8d7faf93b32b475e",
+  "files": [
+    "ml/intraday/account_execution.py",
+    "tests/test_intraday_execution_error_locations.py"
+  ],
+  "limitations": [
+    "Stacked draft PR288 on reviewed PR252; current main lacks prerequisite independent executor. No main merge or peer installation claimed.",
+    "Historical discarded tracebacks cannot be recovered; new diagnostics alone do not establish live execution recovery.",
+    "No broker/provider requests, training, observer orders or trader starts/restarts."
+  ],
+  "local_installation": "Exact reviewed source and regression bytes installed in Atlas checkout; manual stops preserved and no runtime hotpatch/restart.",
+  "peer_applicability": "Shared diagnostic correctness; preserve local models, symbols, bindings, private records, trader independence and manual controls.",
+  "pr_url": "https://github.com/jeremysecondstate/ducketz/pull/288",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Future normal manual-session imports append bounded basename/function/line code locations and numeric OS codes while preserving existing cause dictionaries, independent operation, policy and manual controls.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261020T203741Z-90de810227364e4b8d7faf93b32b475e",
+  "source_sha": "ee9fb0fd740a062fc2028a63200935e7787aa452",
+  "summary": "Atlas: preserve safe code locations and OS codes for independent execution errors",
+  "tests": [
+    {
+      "kind": "final local targeted and adjacent offline regressions",
+      "recorded_at": "2026-10-20T20:36:15.337765+00:00",
+      "result": "38 passed"
+    },
+    {
+      "at": "2026-10-20T20:38:14.191156Z",
+      "kind": "network-denied exact source and isolated candidate checks",
+      "result": "3 passed each"
+    }
+  ]
+}

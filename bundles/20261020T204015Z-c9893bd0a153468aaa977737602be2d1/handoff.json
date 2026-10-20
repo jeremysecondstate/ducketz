@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T20:40:15.550032Z",
+  "id": "20261020T204015Z-c9893bd0a153468aaa977737602be2d1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: preserve safe code locations and OS codes for independent execution errors"
+}
