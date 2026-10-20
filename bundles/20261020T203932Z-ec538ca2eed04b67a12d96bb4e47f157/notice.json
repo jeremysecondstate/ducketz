@@ -1,0 +1,83 @@
+{
+  "actor": "Atlas",
+  "applicability": "Shared Windows manual-launcher UX. The 15-minute wrapper applies to each PC's independent local trader; the Gameplan wrapper applies to the PC that owns Gameplan execution. Preserve local symbols, bindings, state and manual controls.",
+  "author": "Atlas / Atlas Trader Representative",
+  "base_sha": "d84302ef813154cd14b5014f9dc0253d6f9deb6e",
+  "branch": "codex/atlas/20261020T203633Z-53ccf339e76f4cd894cb55fb1ca6c9b1",
+  "change_id": "20261020T203633Z-53ccf339e76f4cd894cb55fb1ca6c9b1",
+  "commit_sha": "86bf5e2c89bac80b190dd4501926a1b691ff01a7",
+  "completion_record": "20261020T203633Z-53ccf339e76f4cd894cb55fb1ca6c9b1",
+  "files": [
+    {
+      "bytes": 730,
+      "operation": "modify",
+      "path": "Start-15m-Trader.cmd",
+      "sha256": "57776b40e17b67644aadf024ec400fcfb3a9b116c67e1a443abd1145bc9b67d2"
+    },
+    {
+      "bytes": 871,
+      "operation": "modify",
+      "path": "Start-Gameplan-Trader.cmd",
+      "sha256": "7f1ebd2584d7db9043462be9d503e3b341a41735c70e08d950c005a35ed434c6"
+    },
+    {
+      "bytes": 8328,
+      "operation": "add",
+      "path": "tests/test_manual_trader_launchers.py",
+      "sha256": "a9ce45555aed524ed623c53c1cb6c3dd64ff55e5cab29cf25f6c9a92e82a2aad"
+    }
+  ],
+  "limitations": [
+    "Tests execute copied command wrappers with synthetic runtimes. They establish quoting, manual arguments, pause behavior and exit status, and provide no live trader or broker execution evidence.",
+    "The synthetic executable fixture requires the Windows .NET Framework compiler.",
+    "Source availability, main integration, local installation and loaded runtime evidence remain separate facts.",
+    "No peer installation or peer loaded-runtime claim is made."
+  ],
+  "local_installation_disposition": "Exact three reviewed files installed on Atlas. Six copied-wrapper tests pass on installed source. Both actual traders remain stopped for the human manual start; live loading and startup not claimed.",
+  "practical_changes": [
+    "Both manual command launchers display distinct trader titles and explain that selected console text should be cleared with Esc before Ctrl+C.",
+    "The 15-minute launcher keeps missing-environment and worker-error output visible until a key is pressed, preserving the original worker exit code.",
+    "Working-directory quoting and runtime invocation flags are preserved. The existing Gameplan failure handler and reviewed worker identity protections are unchanged.",
+    "Six offline Windows regressions use disposable copied launchers, a synthetic executable and a synthetic PowerShell script."
+  ],
+  "producer": "human-authorized-development",
+  "publication_disposition": "Published own Atlas branch with exact remote SHA readback. Draft PR stacked on reviewed launcher PR283; no main integration.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/287",
+  "remote_sha": "86bf5e2c89bac80b190dd4501926a1b691ff01a7",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Updated wrapper text and failure handling load on the next human invocation. No worker-module change is included. This publication performs no trader start, restart, order, provider call, manual-stop change, schedule change or additional operating gate.",
+  "scope": "shared",
+  "source_commit": "86bf5e2c89bac80b190dd4501926a1b691ff01a7",
+  "summary": "Atlas shared manual launchers label both traders and keep startup failures visible",
+  "task": "manual-trader-double-click-launchers",
+  "tests": [
+    {
+      "checked_behavior": [
+        "Local synthetic executable selection from unrelated working directory and a checkout path containing spaces and ampersand.",
+        "Preserved 15-minute flags and a spaced forwarded argument.",
+        "Worker failures 7 and 23 remain open until input and preserve exit status; missing environment remains open and returns 2.",
+        "Gameplan manual flags and existing failure reason remain intact; success returns without a failure pause."
+      ],
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "--noconftest",
+        "-p",
+        "no:cacheprovider",
+        "-q",
+        "tests/test_manual_trader_launchers.py"
+      ],
+      "isolated_candidate_completed_at_utc": "2026-10-20T20:38:22.211392Z",
+      "isolated_candidate_output_sha256": "427723a13bda9d02f1df2ac795a24595190600d5c6243eeefe61c176be091ce1",
+      "isolated_candidate_started_at_utc": "2026-10-20T20:38:19.548323Z",
+      "name": "Six Windows manual command-launcher regressions",
+      "result": "6 passed",
+      "sealed_check_completed_at_utc": "2026-10-20T20:36:36.531250Z",
+      "sealed_check_started_at_utc": "2026-10-20T20:36:33.757923Z",
+      "sealed_output_sha256": "20bf8f39b4cd679000a3c2f13edbbf903f53f9eeda1820452f7b1ae5363fb340",
+      "status": "passed"
+    }
+  ]
+}

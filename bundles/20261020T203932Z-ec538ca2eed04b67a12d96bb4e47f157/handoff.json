@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T20:39:32.362420Z",
+  "id": "20261020T203932Z-ec538ca2eed04b67a12d96bb4e47f157",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas shared manual launchers label both traders and keep startup failures visible"
+}
