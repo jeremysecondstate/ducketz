@@ -622,7 +622,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 return
             try:
                 market_collector.run(stopped=should_stop, pause=pause,
-                    on_retry=lambda detail: store.event(session_id, "market_context_queue_retry", detail))
+                    on_retry=lambda detail: store.event(session_id, "market_context_queue_retry", detail),
+                    on_recovery=lambda detail: store.event(session_id, "market_context_queue_recovered", detail))
             except InterruptedError:
                 pass
             except BaseException as exc:

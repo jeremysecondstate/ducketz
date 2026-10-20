@@ -339,8 +339,9 @@ class QuarterHourMarketCollector:
         self.enqueue(end - STEP)
         return self.step(max_requests=max_requests)
 
-    def run(self, stopped, pause, *, max_requests=8, on_retry=None):
+    def run(self, stopped, pause, *, max_requests=8, on_retry=None, on_recovery=None):
         """The host supplies cancellation and sleep; this worker has no trader dependency."""
+        queue_lock_retries = 0
         while not stopped():
             if collection_window_open(self.clock()):
                 try:
@@ -352,6 +353,7 @@ class QuarterHourMarketCollector:
                     # Other lock failures retain their original exception.
                     if Path(exc.lock_file).resolve() != Path(self.lock.lock_file).resolve():
                         raise
+                    queue_lock_retries += 1
                     delay = min(30.0, self.retry_seconds)
                     if on_retry is not None:
                         on_retry({"reason": "queue_lock_contention", "error_type": "Timeout",
@@ -359,6 +361,17 @@ class QuarterHourMarketCollector:
                     if not stopped():
                         pause(delay)
                     continue
+                if queue_lock_retries:
+                    # A completed collect proves the queue operation resumed,
+                    # including an empty return. Provider outcomes remain in
+                    # their receipts; no market-data success is inferred here.
+                    detail = {"reason": "queue_lock_contention_recovered", "operation": "collect",
+                              "consecutive_retry_count": queue_lock_retries,
+                              "returned_snapshot_count": len(results),
+                              "coverage_claim": "Queue collection completed; provider-data success and coverage are not implied"}
+                    queue_lock_retries = 0
+                    if on_recovery is not None:
+                        on_recovery(detail)
                 pause(1.0 if results else 30.0)
             else:
                 pause(30.0)
