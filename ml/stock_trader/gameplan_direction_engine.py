@@ -109,6 +109,9 @@ def _make_decision(signal, portfolio, activation, policy, timestamp, *, action, 
         **({"cross_horizon_fallback_policy": fallback_policy} if fallback_policy is not None else {}),
         **({"fallback_source_binding": fallback_source_binding} if fallback_source_binding is not None else {}),
         **({"cross_horizon_fallback": dict(fallback_plan)} if fallback_plan is not None else {})}
+    from ml.stock_trader.cross_horizon_fallback import autonomous_horizon, AUTONOMOUS_OWNERSHIP_POLICY_VERSION
+    if autonomous_horizon(signal.primary_horizon, timestamp.tz_convert("America/Los_Angeles").date().isoformat()):
+        prediction["ownership_policy_version"] = AUTONOMOUS_OWNERSHIP_POLICY_VERSION
     fingerprint = _fingerprint(policy, maximum_quote_age_seconds, fallback_policy, fallback_source_binding)
     identifier = decision_identifier({"decided_at": timestamp.isoformat(), "symbol": signal.symbol,
         "prediction": prediction, "policy_fingerprint": fingerprint,
@@ -241,8 +244,6 @@ def build_gameplan_direction_trade_decisions(
     for key, signal in signals.items():
         if key != (signal.symbol, signal.primary_horizon) or signal.primary_horizon not in FIXED_HORIZON_WEIGHTS:
             raise ValueError("Gameplan signal key differs from its stock/horizon")
-        if signal.planned_quantity is not None and (type(signal.planned_quantity) is not int or signal.planned_quantity <= 0):
-            raise ValueError("Accepted-plan quantity must be positive whole shares")
     timestamp = utc(decided_at)
     fallback_sell_plans = dict(fallback_sell_plans or {})
     if fallback_policy is not None:
@@ -299,8 +300,10 @@ def build_gameplan_direction_trade_decisions(
             code = "HORIZON_LEDGER_UNRECONCILED"
         elif not ready:
             code = "FORECAST_PROBABILITY_INVALID"
+        elif signal.target_definition_version == "accepted-gameplan-catchup-v1" or signal.catchup_components:
+            code, reason = "LEGACY_PROJECTED_INTENTION", "Historical projected quantities cannot authorize a fresh Gameplan order."
         elif direction == "NO_EDGE":
-            code, reason = "NEUTRAL_HOLD", "An exact 50% probability has no directional signal."
+            code, reason = "NEUTRAL_HOLD", "The probability is strictly between the 49.99% SELL and 50.01% BUY cutoffs."
         else:
             start, end = utc(signal.target_window_start), utc(signal.target_window_end)
             deadline = min(utc(signal.actionable_until), end)
@@ -314,14 +317,16 @@ def build_gameplan_direction_trade_decisions(
                     single_cap = _shares(_money(portfolio.account_equity) * _money(active_policy.maximum_single_order_equity_fraction),
                         max(price, _money(portfolio.quotes[signal.symbol].ask)))
                     hypothetical = min(sell_capacity, single_cap)
-                    if signal.planned_quantity is not None:
-                        hypothetical = min(hypothetical, signal.planned_quantity)
                     quantity = min(hypothetical, sell_remaining.get(signal.symbol, 0))
                     if not quantity:
                         code = "NO_AUTHORIZED_SELL_SHARES"
                     elif fallback_plan is not None:
                         code = "ELIGIBLE_BOUNDED_CROSS_HORIZON_FALLBACK"
                         reason = "The saved daily fallback policy permits a bounded sale from the recorded longer-horizon owner."
+                    else:
+                        from ml.stock_trader.cross_horizon_fallback import autonomous_horizon
+                        if autonomous_horizon(key[1], timestamp.tz_convert("America/Los_Angeles").date().isoformat()):
+                            reason = "The bearish instruction can sell actual available account shares from any horizon owner."
                 elif budget_error:
                     code = "JOINT_PORTFOLIO_BUDGET_INVALID"
                 else:
@@ -332,8 +337,6 @@ def build_gameplan_direction_trade_decisions(
                     # even when the operator's limit is the lower midpoint.
                     valuation = max(price, _money(portfolio.quotes[signal.symbol].ask))
                     hypothetical = _shares(ceiling, valuation)
-                    if signal.planned_quantity is not None:
-                        hypothetical = min(hypothetical, signal.planned_quantity)
                     quantity = min(hypothetical, _shares(available, price),
                                    _shares(symbol_remaining.get(signal.symbol, _ZERO), valuation))
                     if not quantity or quantity * price < _money(active_policy.minimum_order_notional):

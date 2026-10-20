@@ -1,3 +1,15 @@
+# Canonical publisher tests use direction-live-quote-v1. Pure historical
+# price arithmetic and immutable historical reader fixtures remain tested.
+# Retired estimated-publisher cases have these current-contract replacements:
+# test_source_price_preparation_has_no_account_snapshot_and_exports_verified_bundle:
+#   test_gameplan_direction_recipe.py::test_price_free_producer_handoff_composition_and_ui_keep_real_probabilities
+# test_preparing_ui_explains_shared_projection_without_fake_holds_or_cash:
+#   test_gameplan_direction_recipe_optional.py::test_current_joint_recipe_adopts_and_displays_intents_without_any_price_file
+# test_native_actuals_retains_original_price_estimates_from_producer_only_output:
+#   test_gameplan_direction_recipe.py::test_stats_accepts_verified_current_derivation_without_relabelling_scientific_history
+# test_source_only_price_failure_preserves_previous_pointer:
+#   test_gameplan_direction_recipe.py::test_producer_does_not_load_price_history_or_capture_scout_account
+
 from copy import deepcopy
 import json
 
@@ -51,59 +63,10 @@ def publish(case, **changes):
     return publish_trade_plan(case.root, **kwargs)
 
 
-def test_source_price_preparation_has_no_account_snapshot_and_exports_verified_bundle(producer_case):
-    case = producer_case
-    before = {file: file_checksum(file) for file in case.source.iterdir()}
-    run = publish(case)
-    manifest = verify_manifest(run)
-    assert "account-snapshot.json" not in manifest["output_files"] and not (run / "account-snapshot.json").exists()
-    rows = pd.read_parquet(run / "trade-plan.parquet")
-    _match_trade_rows(pd.read_parquet(case.source / "forecasts.parquet"), rows)
-    assert len(rows) == 24
-    assert rows.trade_quantity.isna().all() and rows.projected_trade_quantity.isna().all()
-    assert rows.direction_based_trade_quantity.isna().all() and rows.projected_cash_after_base.isna().all()
-    assert rows.loc[rows.execution_eligible, "trade_price_mid"].eq(10).all()
-    report = json.loads((run / "report.json").read_text())
-    assert report["snapshot"] is None and report["snapshot_status"] == "NOT_CAPTURED_PRODUCER_ONLY"
-    assert report["direction_projection_status"] == "UNAVAILABLE_SHARED_ACCOUNT_PROJECTION"
-    assert "observed 2026-10-02T16:50:00-07:00" in (run / "Gameplan.md").read_text()
-    bundle = export_source_bundle(case.root, gameplan_run=case.source, trade_plan_run=run,
-        destination=case.root / "portable-source-only", producer_id="pc-original", expected_symbols=["AAPL"])
-    assert bundle.ownership is None and bundle.metadata["planning_mode"] == "ACCOUNT_PRODUCER_SOURCE"
-    assert bundle.metadata["planning_config_sha256"] == load_account_config(case.root).fingerprint
-    assert len(bundle.price_path["points"]) == 14
-    assert {file: file_checksum(file) for file in before} == before
 
 
-def test_preparing_ui_explains_shared_projection_without_fake_holds_or_cash(producer_case):
-    case = producer_case
-    run = publish(case)
-    plan = load_gameplan(case.root)
-    assert plan.run_directory == run and not plan.projection_available and plan.actions == ()
-    assert "Shared account projection" in plan.projection_note
-    assert all(row.quantity is None and row.cash_after_base is None for row in plan.forecasts)
-    assert all(row.reason == "UNAVAILABLE_SHARED_ACCOUNT_PROJECTION" for row in plan.forecasts if row.eligible)
 
 
-def test_native_actuals_retains_original_price_estimates_from_producer_only_output(producer_case):
-    from ml.nightly_gameplan import read_gameplan_run
-    from ml.gameplan_actuals_review import compare_forecasts, compare_price_points
-    from test_gameplan_actuals_review import prices
-    case = producer_case
-    run = publish(case)
-    selected, rows, path = _saved_trade_plan(case.root, read_gameplan_run(case.root, case.source))
-    assert selected == run and len(rows) == 24 and len(path["points"]) == 14
-    assert rows.loc[rows.execution_eligible, "trade_price_mid"].eq(10).all()
-    assert rows.trade_quantity.isna().all()
-    observed = prices([("2026-10-05T11:00:00Z", 10., 10.), ("2026-10-05T11:59:00Z", 10.5, 11.)])
-    forecasts = pd.read_parquet(case.source / "forecasts.parquet")
-    outcomes = compare_forecasts(forecasts, observed, observed_at="2026-10-06T00:00:00Z", trade_rows=rows)
-    hourly = outcomes.loc[outcomes.route.eq("1h@04:00")].iloc[0]
-    assert hourly.actual_return == pytest.approx(.1) and hourly.trade_price_mid == 10
-    assert hourly.direction_correct == True
-    assert outcomes.loc[outcomes.route.eq("1w@D+5"), "actuals_status"].iloc[0] == "PENDING_MATURITY"
-    comparisons = compare_price_points(forecasts, observed, observed_at="2026-10-06T00:00:00Z", action_date=DAY, planning_path=path)
-    assert len(comparisons) == 14
 
 
 @pytest.mark.parametrize("failure", ["binding", "snapshot", "refresh", "deadline", "universe"])
@@ -124,14 +87,6 @@ def test_producer_mode_cannot_bypass_binding_or_change_source_scope(producer_cas
         publish(case, **kwargs)
 
 
-def test_source_only_price_failure_preserves_previous_pointer(producer_case):
-    case = producer_case
-    first = publish(case)
-    pointer = case.root / "ml/gameplan-trade-plan-latest/run.json"
-    before = pointer.read_bytes()
-    with pytest.raises(RuntimeError, match="Producer price preparation failed"):
-        publish(case, price_loader=lambda *a, **k: (_ for _ in ()).throw(ValueError("invalid source")))
-    assert pointer.read_bytes() == before and verify_manifest(first)
 
 
 @pytest.mark.parametrize("failure", ["deadline", "config", "foreign_before", "foreign_after"])
@@ -159,7 +114,7 @@ def test_source_only_pointer_commit_guard_preserves_prior_or_independent_bytes(p
                 pointer.write_bytes(foreign)
         return result
     monkeypatch.setattr(planning, "_write_json", write_then_change)
-    with pytest.raises(RuntimeError, match="Producer price preparation failed"):
+    with pytest.raises(ValueError, match="changed"):
         publish(case, clock=lambda: now[0])
     assert pointer.read_bytes() == (foreign if failure.startswith("foreign") else previous)
     assert verify_manifest(first)

@@ -31,6 +31,7 @@ PACIFIC = ZoneInfo("America/Los_Angeles")
 HORIZONS = ("1h", "4h", "1d", "1w")
 REASONS = {
     "BULLISH_BUY": "Bullish entry", "BEARISH_SELL": "Bearish sale",
+    "BEARISH_ACCOUNT_WIDE_SELL": "Bearish sale from available shares across horizons",
     "HORIZON_EXIT": "Scheduled horizon exit", "LATER_EXPIRY": "Later horizon expiry",
     "UNRESOLVED_EXPIRY": "Unresolved horizon expiry", "NEUTRAL": "Neutral forecast",
     "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON": "No eligible shares in this horizon",
@@ -94,7 +95,7 @@ class PlannedAction:
     symbol: str
     horizon: str
     action: str
-    quantity: float
+    quantity: float | None
     price: float | None
     reason: str
     forecast_id: str
@@ -144,7 +145,7 @@ class Gameplan:
 
     @property
     def projection_available(self) -> bool:
-        return self.projection_status == "COMPLETE"
+        return self.projection_status in {"COMPLETE", "DIRECTION_ONLY"}
 
     @property
     def symbols(self) -> tuple[str, ...]:
@@ -303,6 +304,8 @@ def plan_sessions(datastore_root: Path | None = None) -> tuple[str, ...]:
 
 
 def _forecast(row: dict, *, projection_available: bool = True, unavailable_reason: str = "PRICE_REFERENCES_UNAVAILABLE") -> PlanForecast:
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe
+    direction_only = is_current_gameplan_recipe(row)
     probability = _number(row["calibrated_probability"], optional=True)
     eligible = row["execution_eligible"]
     if not isinstance(eligible, bool) or (probability is not None and probability > 1):
@@ -320,6 +323,12 @@ def _forecast(row: dict, *, projection_available: bool = True, unavailable_reaso
         reason = unavailable_reason if eligible else "NON_ENTRY_CONTEXT"
     if horizon not in HORIZONS or direction not in {"BULLISH", "BEARISH", "NO_EDGE"}:
         raise GameplanError("Unsupported forecast horizon or direction")
+    if direction_only and eligible:
+        from ml.stock_direction_policy import stock_action
+        from ml.stock_trader.gameplan_execution import _saved_abstention
+        expected_action = "HOLD" if _saved_abstention(row) else stock_action(probability)
+        if action != expected_action:
+            raise GameplanError("Current directional instruction disagrees with its probability")
     allowed = {"BUY", "SELL", "HOLD", "CONTEXT"} if projection_available else {"UNAVAILABLE", "CONTEXT"}
     if (action not in allowed
             or (eligible and action == "CONTEXT") or (not eligible and action != "CONTEXT")):
@@ -327,8 +336,8 @@ def _forecast(row: dict, *, projection_available: bool = True, unavailable_reaso
     start, end = _timestamp(row["target_window_start"]), _timestamp(row["target_window_end"])
     if start >= end:
         raise GameplanError("Invalid forecast target window")
-    if ((action == "BUY" and (quantity is None or quantity <= 0))
-            or (action == "SELL" and (quantity is None or quantity >= 0))
+    if ((action == "BUY" and (quantity is not None if direction_only else quantity is None or quantity <= 0))
+            or (action == "SELL" and (quantity is not None if direction_only else quantity is None or quantity >= 0))
             or (action == "HOLD" and quantity != 0)
             or (action == "CONTEXT" and quantity is not None)):
         raise GameplanError("Projected action and direction-based quantity disagree")
@@ -353,8 +362,24 @@ def _forecast(row: dict, *, projection_available: bool = True, unavailable_reaso
                         *(_number(row.get(f"projected_cash_after_{key}"), optional=True) for key in ("low", "base", "high")))
 
 
+def _direction_actions(forecasts):
+    """Known BUY/SELL instructions with quantities determined only at execution."""
+    return tuple(PlannedAction("direction:" + row.forecast_id, sequence, row.start,
+        row.symbol, row.horizon, row.action, None, None, row.reason, row.forecast_id,
+        source="direction_intent") for sequence, row in enumerate(
+            (item for item in forecasts if item.eligible and item.action in {"BUY", "SELL"}), 1))
+
+
 def _projection_metadata(ledger: dict, report: dict, frame: pd.DataFrame) -> tuple[str, str]:
     status = ledger.get("status")
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe, DIRECTION_ONLY_STATUS
+    if status == DIRECTION_ONLY_STATUS:
+        if (not is_current_gameplan_recipe(report) or not is_current_gameplan_recipe(ledger)
+                or any(not is_current_gameplan_recipe(row) for row in frame.to_dict("records"))
+                or report.get("direction_based_projection") != ledger or ledger.get("events") != []
+                or ledger.get("hourly") != []):
+            raise GameplanError("Current directional plan recipe or empty projection ledger disagrees")
+        return status, "BUY/SELL directions are saved; quantities use live broker cash, holdings, pending orders and quotes."
     if report.get("direction_projection_status", "COMPLETE") != status:
         raise GameplanError("Saved report and direction ledger projection statuses disagree")
     if status == "COMPLETE":
@@ -488,11 +513,16 @@ def _actions(ledger: dict, forecasts: tuple[PlanForecast, ...], session: str) ->
         sequences.add(sequence)
         action, reason = event["action"], event["reason"]
         if (action, reason) not in {("BUY", "BULLISH_BUY"), ("SELL", "BEARISH_SELL"), ("SELL", "HORIZON_EXIT"),
-                                   ("SELL", "BEARISH_CROSS_HORIZON_FALLBACK")}:
+                                   ("SELL", "BEARISH_CROSS_HORIZON_FALLBACK"),
+                                   ("SELL", "BEARISH_ACCOUNT_WIDE_SELL")}:
             raise GameplanError("Unsupported projected trade action")
         symbol, horizon, identifier = str(event["symbol"]), event["horizon"], str(event["forecast_id"])
         if symbol not in symbols or horizon not in HORIZONS:
             raise GameplanError("Unknown trade company or horizon")
+        if reason == "BEARISH_ACCOUNT_WIDE_SELL":
+            from ml.stock_trader.cross_horizon_fallback import autonomous_horizon
+            if not autonomous_horizon(horizon, session):
+                raise GameplanError("Account-wide sale requires an autonomous horizon")
         quantity = _number(event["quantity"])
         if quantity <= 0:
             raise GameplanError("Projected trade quantities must be positive")
@@ -554,6 +584,9 @@ def _actions(ledger: dict, forecasts: tuple[PlanForecast, ...], session: str) ->
 
 
 def _planning_note(report: dict, symbols: set[str]) -> str:
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe
+    if is_current_gameplan_recipe(report):
+        return "BUY/SELL directions are saved; quantities are determined from live broker capacity."
     completion = report.get("reference_completion", {})
     carried = []
     for reference in completion.get("references", {}).values():
@@ -746,7 +779,14 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
             combined_date = requested or (combined_dates[0] if combined_dates else None)
             accepted = read_accepted_joint_plan(root, combined_date, historical_display=True) if combined_date else None
             joint_selected = bool(accepted and (requested or not current or combined_date >= current["action_date"]))
-            account_pointer = _account_pointer(root, accepted_joint=joint_selected,
+            from ml.gameplan_execution_policy import is_current_gameplan_recipe
+            local_current_recipe = bool(current and is_current_gameplan_recipe(
+                _json(_run_path(root, current["run_path"]) / "receipt.json")))
+            if not requested and local_current_recipe and accepted and not is_current_gameplan_recipe(accepted[0]):
+                joint_selected = False
+            prefer_current_recipe = (not requested and (local_current_recipe
+                or joint_selected and is_current_gameplan_recipe(accepted[0])))
+            account_pointer = None if prefer_current_recipe else _account_pointer(root, accepted_joint=joint_selected,
                 pending_session=requested or (current["action_date"] if current else None))
             # A damaged account publication still fails closed. Once verified, its
             # old session cannot shadow a newer local or accepted joint publication.
@@ -757,14 +797,18 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
             if joint_selected:
                 combined, binding, run = accepted
                 from ml.joint_capital_plan import PLAN_ONLY_MODE
+                from ml.gameplan_execution_policy import is_current_gameplan_recipe
+                direction_only = is_current_gameplan_recipe(combined)
+                if not requested and combined_date >= "2026-10-19" and not direction_only:
+                    raise GameplanError("The selected plan uses the retired estimated-price recipe. Prepare current directions; choose its saved date to view history.")
                 plan_only = combined.get("composition_mode") == PLAN_ONLY_MODE
                 note = "Merged Atlas and Scout instructions. Order quantities are sized from actual account capacity at execution."
-                forecasts = tuple(sorted((_forecast(row, projection_available=not plan_only,
+                forecasts = tuple(sorted((_forecast(row, projection_available=direction_only or not plan_only,
                     unavailable_reason=note) for row in combined["forecasts"]),
                     key=lambda row: (row.start, HORIZONS.index(row.horizon), row.symbol, row.route)))
                 return Gameplan(combined_date, _timestamp(combined["as_of"]), _timestamp(binding["accepted_at"]),
-                    run, run / "joint-plan.json", forecasts, () if plan_only else _actions(combined["ledger"], forecasts, combined_date),
-                    "NOT_PROJECTED" if plan_only else "COMPLETE", note if plan_only else "",
+                    run, run / "joint-plan.json", forecasts, _direction_actions(forecasts) if direction_only else () if plan_only else _actions(combined["ledger"], forecasts, combined_date),
+                    "DIRECTION_ONLY" if direction_only else "NOT_PROJECTED" if plan_only else "COMPLETE", note if plan_only else "",
                     note if plan_only else "Combined plan: one account-wide budget; quantities remain subject to actual fills and cash.",
                     _execution_quotes(root, forecasts), combined["holding_policy"],
                     probability_target_contract(pd.DataFrame(combined["forecasts"])))
@@ -772,6 +816,8 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
                 if requested and requested <= account.session:
                     return _load_account_view(root, account_pointer, requested)
                 if not requested and (not current or account.session >= current["action_date"]):
+                    if account.session >= "2026-10-19" and account.projection_status != "DIRECTION_ONLY":
+                        raise GameplanError("The selected account plan uses the retired estimated-price recipe. Prepare current directions; choose its saved date to view history.")
                     return account
             pointer = current if current and (requested is None or requested == current["action_date"]) else None
             if pointer:
@@ -788,6 +834,9 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
         if pointer and receipt_hash != pointer.get("receipt_sha256"):
             raise GameplanError("Gameplan receipt does not match its latest pointer")
         receipt = _json(receipt_path)
+        from ml.gameplan_execution_policy import is_current_gameplan_recipe
+        if run_directory is None and not session and selected >= "2026-10-19" and not is_current_gameplan_recipe(receipt):
+            raise GameplanError("The selected local plan uses the retired estimated-price recipe. Prepare current directions; choose its saved date to view history.")
         if (receipt.get("schema_version") != VERSION or receipt.get("status") != "COMPLETE"
                 or receipt.get("action_date") != selected or _run_path(root, receipt.get("run_path")) != run
                 or receipt.get("manifest_sha256") != file_checksum(run / "manifest.json")):
@@ -846,12 +895,12 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
                     or read_gameplan_fallback_policy(source, selected) != fallback_policy):
                 raise GameplanError("Saved fallback policy differs from its pinned source")
         projection_status, projection_note = _projection_metadata(ledger, report, frame)
-        available = projection_status == "COMPLETE"
+        available = projection_status in {"COMPLETE", "DIRECTION_ONLY"}
         forecasts = tuple(sorted((_forecast(row, projection_available=available,
                                            unavailable_reason=SHARED_PROJECTION_UNAVAILABLE if projection_status == SHARED_PROJECTION_UNAVAILABLE else "PRICE_REFERENCES_UNAVAILABLE")
                                   for row in frame.to_dict("records")),
                                  key=lambda row: (row.start, HORIZONS.index(row.horizon), row.symbol, row.route)))
-        actions = _actions(ledger, forecasts, selected) if available else ()
+        actions = _direction_actions(forecasts) if projection_status == "DIRECTION_ONLY" else _actions(ledger, forecasts, selected) if available else ()
         if file_checksum(receipt_path) != receipt_hash:
             raise GameplanError("Saved Gameplan changed while it was being read. Refresh again.")
         return Gameplan(selected, _timestamp(report["observed_at"]), _timestamp(receipt["completed_at"]),

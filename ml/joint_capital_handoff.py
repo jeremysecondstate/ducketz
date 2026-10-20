@@ -32,6 +32,8 @@ _FORECAST_FIELDS = frozenset({
     "target_price_source_contract", "target_price_dataset", "execution_authority", "broker_orders_enabled",
     "symbol_fitted_target_rows", "symbol_route_fitted_target_rows", "assumed_round_trip_cost",
     "probability_target_contract", "gameplan_variant",
+    "direction_policy_version", "direction_up_threshold", "direction_down_threshold",
+    "gameplan_recipe_version", "execution_quantity_basis", "source_saved_direction", "source_saved_direction_policy_version",
 })
 _PRICE_FIELDS = frozenset({
     "contract_version", "observed_at", "price_source_contract", "price_dataset", "working_half_width_bps",
@@ -207,7 +209,6 @@ def export_owner_package(datastore_root: Path, *, gameplan_run: Path, trade_plan
         raise ValueError("Required forecast fields cannot be null")
     if frame.frozen_at.gt(published).any():
         raise ValueError("Frozen forecasts postdate their publication")
-    _validated_instructions(frame)
     from ml.gameplan_probability_target import probability_target_contract, probability_target_metadata
     metadata = probability_target_metadata(probability_target_contract(config))
     if (probability_target_contract(frame) != metadata["probability_target_contract"]
@@ -237,6 +238,39 @@ def export_owner_package(datastore_root: Path, *, gameplan_run: Path, trade_plan
     fallback = config.get("cross_horizon_fallback_policy")
     if any(item.get("cross_horizon_fallback_policy") != fallback for item in (receipt, trade_config, trade_receipt)):
         raise ValueError("Frozen fallback policy differs between publications")
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe, direction_only_rows
+    if is_current_gameplan_recipe(trade_config):
+        if not is_current_gameplan_recipe(trade_receipt):
+            raise ValueError("Current trade-plan recipe differs from its receipt")
+        derived_bytes = _output(trade, root, trade_manifest, "trade-plan.parquet", maximum=_PARQUET_LIMIT)
+        inputs[trade / "trade-plan.parquet"] = sha256(derived_bytes).hexdigest()
+        derived = pd.read_parquet(BytesIO(derived_bytes))
+        expected, _ = direction_only_rows(frame, action_date=day)
+        public_fields = [name for name in expected if name in _FORECAST_FIELDS]
+        compare_fields = [name for name in public_fields if name != "id"]
+        for field in ("target_window_start", "target_window_end", "decision_timestamp", "information_available_at", "frozen_at"):
+            if field in compare_fields:
+                derived[field] = pd.to_datetime(derived[field], utc=True)
+                expected[field] = pd.to_datetime(expected[field], utc=True)
+        if (set(derived.id) != set(expected.id) or derived.id.duplicated().any()
+                or derived.set_index("id")[compare_fields].sort_index().to_json(date_format="iso")
+                != expected.set_index("id")[compare_fields].sort_index().to_json(date_format="iso")):
+            raise ValueError("Current derived directions differ from their immutable predictions")
+        revision, reference = _source_reference(root, config, receipt, sha256(receipt_bytes).hexdigest(),
+            sha256(manifest_bytes).hexdigest(), revision=source_revision, provenance=source_provenance,
+            provenance_hash=source_provenance_sha256)
+        package = build_owner_package(owner_id=owner_id, run_id=game.name, source_revision=revision,
+            action_date=day, frozen_symbols=symbols, created_at=created.isoformat(),
+            source_hashes={"receipt_sha256": sha256(receipt_bytes).hexdigest(), "manifest_sha256": sha256(manifest_bytes).hexdigest(),
+                "forecasts_sha256": sha256(forecast_bytes).hexdigest()},
+            forecasts=expected[public_fields].to_dict("records"), source_reference=reference,
+            cross_horizon_fallback_policy=fallback, late_publication_at=late_published, direction_only=True)
+        for path, digest in inputs.items():
+            if sha256(_read(path, root, maximum=_PARQUET_LIMIT if path.suffix == ".parquet" else _JSON_LIMIT)).hexdigest() != digest:
+                raise ValueError("Selected handoff input changed during validation")
+        _ordinary(Path(output_root), Path(output_root), directory=True)
+        return publish_owner_package(Path(output_root), package)
+    _validated_instructions(frame)
     price_bytes = _output(trade, root, trade_manifest, "planning-price-path.json", maximum=MAX_NATIVE_PRICE_BYTES)
     inputs[trade / "planning-price-path.json"] = sha256(price_bytes).hexdigest()
     prices = _object(price_bytes)

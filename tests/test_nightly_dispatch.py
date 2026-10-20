@@ -343,3 +343,87 @@ def test_recovery_planning_uses_exact_prediction_pin_and_correct_publication_rou
     report = json.loads((result / "stage-report.json").read_text())
     assert report["deadline_at"] == "2026-10-12T11:00:00+00:00"
     assert report["effective_deadline_at"] == "2026-10-12T19:00:00+00:00"
+
+
+@pytest.mark.parametrize("split", [False, True])
+def test_current_night_old_recipe_republishes_only_planning_tail(config, split):
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe
+    now = "2026-10-20T04:05Z"
+    callback = lambda *args: {"files": {}}
+    if split:
+        for role in dispatch.RESPONSIBILITIES:
+            original = run(config, role, callback, now=now)
+    else:
+        original = workflow.run_workflow(config, now=now, execute_step=callback,
+            identity=identity, supervise=False)
+    path = Path(config["state_root"]) / "runs/2026-10-20/state.json"
+    artifact = Path(config["datastore"]) / "retained-model-evidence.bin"
+    artifact.write_bytes(b"unchanged model and data evidence")
+    original["steps"]["train_and_plan"]["output"]["files"][str(artifact)] = file_checksum(artifact)
+    original.pop("gameplan_recipe_version")
+    original.pop("execution_quantity_basis")
+    workflow._write(path, original)
+    before = path.read_bytes()
+    previous_training = json.loads(json.dumps(original["steps"]["train_and_plan"]))
+    previous_stats = json.loads(json.dumps(original["steps"]["prepare_stats"]))
+    decision = workflow.dispatch_status(config, now="2026-10-20T04:10Z")
+    assert decision["dispatch"] and decision["responsibility"] == "gameplan"
+    assert decision["recipe_refresh_required"] and path.read_bytes() == before
+    calls = []
+    def produce(config, state, step, save):
+        calls.append(step)
+        assert state["steps"]["train_and_plan"] == previous_training
+        assert state["steps"]["prepare_stats"] == previous_stats
+        return {"files": {}}
+    refreshed = run(config, "gameplan", produce, now="2026-10-20T04:10Z")
+    assert calls == ["local_gameplan"]
+    refreshed = run(config, "display", produce, now="2026-10-20T04:11Z")
+    assert calls == ["local_gameplan", "verify_display", "local_handoff"]
+    assert refreshed["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
+    assert is_current_gameplan_recipe(refreshed)
+    assert refreshed["run_id"] == original["run_id"]
+    assert refreshed["source_identity"] == original["source_identity"]
+    assert refreshed["steps"]["train_and_plan"] == previous_training
+    assert Path(refreshed["recipe_transitions"][0]["before_state"]).read_bytes() == before
+    assert artifact.read_bytes() == b"unchanged model and data evidence"
+    assert not workflow.dispatch_status(config, now="2026-10-20T04:12Z")["dispatch"]
+    run(config, "display", lambda *a: pytest.fail("Current completed recipe replayed"), now="2026-10-20T04:12Z")
+
+
+def test_previous_completed_night_keeps_original_recipe_and_receipt(config):
+    original = workflow.run_workflow(config, now="2026-10-17T04:05Z", identity=identity,
+        execute_step=lambda *args: {"files": {}}, supervise=False)
+    path = Path(config["state_root"]) / "runs/2026-10-19/state.json"
+    original.pop("gameplan_recipe_version")
+    original.pop("execution_quantity_basis")
+    workflow._write(path, original)
+    before = path.read_bytes()
+    result = workflow.run_workflow(config, resume_action_date="2026-10-19", now="2026-10-20T04:10Z",
+        identity=identity, execute_step=lambda *a: pytest.fail("Historical completed night replayed"), supervise=False)
+    assert result == original and path.read_bytes() == before
+    assert not (path.parent / "recipe-history").exists()
+
+
+def test_recipe_refresh_recovers_completed_fit_after_interrupted_outer_save(config):
+    original = workflow.run_workflow(config, now="2026-10-20T04:05Z", identity=identity,
+        execute_step=lambda *args: {"files": {}}, supervise=False)
+    native = Path(config["datastore"]) / "ml/overnight-runs/completed-fit"
+    native.mkdir(parents=True)
+    report = native / "stage-report.json"
+    report.write_text(json.dumps({"status": "COMPLETE", "enrichment_gameplan": {
+        "action_date": "2026-10-20", "run_path": "ml/nightly-gameplan-runs/original-forecasts",
+        "receipt_sha256": "b" * 64}}))
+    (native / "receipt.json").write_text(json.dumps({"status": "COMPLETE",
+        "stage_report_checksum_sha256": file_checksum(report), "logs": {}}))
+    original.pop("gameplan_recipe_version")
+    original.pop("execution_quantity_basis")
+    original.update(status="RUNNING", current_step="train_and_plan", owner_pid=None)
+    original["steps"]["train_and_plan"] = {"status": "RUNNING", "native_run": str(native)}
+    path = Path(config["state_root"]) / "runs/2026-10-20/state.json"
+    workflow._write(path, original)
+    calls = []
+    result = run(config, "gameplan", lambda c, s, step, save: calls.append(step) or {"files": {}},
+                 now="2026-10-20T04:10Z")
+    assert calls == ["local_gameplan"]
+    assert result["steps"]["train_and_plan"]["status"] == "COMPLETE"
+    assert result["steps"]["train_and_plan"]["output"]["native_run"] == str(native)

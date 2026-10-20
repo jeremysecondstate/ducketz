@@ -110,6 +110,43 @@ def _accepted_account_plan(root, selected, config, day):
     return AccountPlan(run, file_checksum(run / "accepted-plan.json"), rows, report, joint["ledger"])
 
 
+def _native_direction_frame(root: Path, *, action_date: str, source_run: Path):
+    """Read current derived calls while retaining the scientific source binding."""
+    from ml.artifacts import file_checksum, verify_manifest
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe
+    pointer = root / "ml/gameplan-trade-plan-latest/run.json"
+    if not pointer.is_file():
+        return None
+    selected = json.loads(pointer.read_text(encoding="utf-8"))
+    current = selected.get("current", {})
+    if current.get("action_date") != action_date:
+        return None
+    run = (root / str(current.get("run_path", ""))).resolve()
+    if run.parent != (root / "ml/gameplan-trade-plan-runs").resolve():
+        raise ValueError("Current direction Gameplan escapes its saved directory")
+    report = json.loads((run / "report.json").read_text(encoding="utf-8"))
+    if not is_current_gameplan_recipe(report):
+        return None
+    from app.ui.gameplan_data import load_gameplan
+    ui = load_gameplan(root, action_date)
+    if ui.run_directory != run:
+        raise ValueError("Current direction Gameplan differs from its selected display")
+    manifest = verify_manifest(run)
+    receipt_path = run / "receipt.json"
+    receipt_hash = file_checksum(receipt_path)
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    if (not is_current_gameplan_recipe(manifest.get("configuration", {}))
+            or not is_current_gameplan_recipe(receipt)
+            or (root / str(report.get("source_gameplan_run", ""))).resolve() != source_run
+            or report.get("source_receipt_sha256") != file_checksum(source_run / "receipt.json")):
+        raise ValueError("Current direction Gameplan differs from its frozen forecast source")
+    frame = pd.read_parquet(run / "trade-plan.parquet")
+    if file_checksum(receipt_path) != receipt_hash:
+        raise ValueError("Current direction Gameplan changed while being read")
+    frame.attrs["direction_source_files"] = (source_run / "receipt.json", receipt_path)
+    return frame
+
+
 def execution_frame(root: Path, *, action_date: str):
     root = Path(root).resolve()
     from ml.account_gameplan.config import load_account_config
@@ -132,7 +169,9 @@ def execution_frame(root: Path, *, action_date: str):
         if run.parent != (root / "ml/nightly-gameplan-runs").resolve():
             raise ValueError("Gameplan run is outside its saved directory")
         _assert_execution_deployment(root, run, action_date=action_date)
-        frame = pd.read_parquet(run / "forecasts.parquet")
+        frame = _native_direction_frame(root, action_date=action_date, source_run=run)
+        if frame is None:
+            frame = pd.read_parquet(run / "forecasts.parquet")
         symbols = STOCK_TRADER_SYMBOLS
     required = {"id", "symbol", "model_group", "direction", "calibrated_probability",
                 "target_window_start", "target_window_end", "execution_eligible", "action_date"}
@@ -197,24 +236,15 @@ def _validated_instructions(frame):
 def load_execution_signals(root: Path, *, as_of):
     now = utc(as_of)
     local = now.tz_convert("America/Los_Angeles")
-    from ml.joint_capital_adoption import read_accepted_joint_plan
-    selected = read_accepted_joint_plan(root, local.date().isoformat())
     sources = ()
-    if selected:
-        plan, _, run = selected
-        _assert_execution_deployment(root, run, action_date=local.date().isoformat())
-        sources = (run / "accepted-plan.json", run / "joint-plan.json")
-        from ml.joint_capital_plan import PLAN_ONLY_MODE
-        if plan.get("composition_mode") != PLAN_ONLY_MODE:
-            from ml.stock_trader.catchup import catchup_signals
-            return catchup_signals(plan, as_of=now, source_fingerprint=run.name), sources
     frame, run = execution_frame(root, action_date=local.date().isoformat())
-    from ml.stock_trader.catchup import catchup_signals, native_catchup_plan
-    native = (native_catchup_plan(root, action_date=local.date().isoformat(), source_run=run)
-              if run.parent == (Path(root) / "ml/nightly-gameplan-runs").resolve() else None)
-    if native:
-        plan, _, sources = native
-        return catchup_signals(plan, as_of=now, source_fingerprint=run.name), sources
+    sources = frame.attrs.get("direction_source_files", ())
+    if (run / "accepted-plan.json").is_file():
+        sources = (run / "accepted-plan.json", run / "joint-plan.json")
+    # Historical projected fills are accounting evidence, never fresh order
+    # quantities or synthetic 0/1 probabilities. Current orders use the original
+    # forecast, live cash/shares and current bid/ask. The runtime ledger retains
+    # existing reservations and actual fills for recovery and deduplication.
     start = local.floor("h").tz_convert("UTC")
     if not 4 <= local.hour < 17:
         return {}, sources
