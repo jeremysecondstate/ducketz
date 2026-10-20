@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T19:08:56.035265Z",
+  "id": "20261020T190856Z-0e0b33ccf94f4576889ab59063702cfb",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Block expired Scout cancellation after final journal writes"
+}

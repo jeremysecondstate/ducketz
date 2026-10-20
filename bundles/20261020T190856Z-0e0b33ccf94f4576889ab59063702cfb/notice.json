@@ -1,0 +1,171 @@
+{
+  "author": "Scout",
+  "base_commit": "f5c9654464260d5d3568bb4e9238b4d06e61c3c9",
+  "branch": "codex/scout/20261020T190329Z-703219633844411096be03afa5f89af1",
+  "change_id": "20261020T190329Z-703219633844411096be03afa5f89af1",
+  "commit_sha": "c5f9ef357c6c85287422511e0c780a12fd8cec99",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/scout_local_execution.py",
+      "sha256": "4e18b853f4523889bfd43cd73cd08371c083ed163aaa661e827e7471da200206"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_scout_cancellation_final_expiry.py",
+      "sha256": "48d2f450c610ce1d49a38b70c5a21cdc9b85d412c4787c4e1b72f3feb975f3aa"
+    }
+  ],
+  "limitations": [
+    "Final cancellation I/O expiry reproduced offline with mocked native transport; no expired production DELETE is asserted.",
+    "Installed additional guard awaits manual loading and affected-operation observation; original expired forecasts are never replayed.",
+    "Historical input gaps and uncertain submissions retain their original evidence."
+  ],
+  "local_installation": {
+    "actor": "Scout",
+    "check_counts_are_unique": false,
+    "installed_check_results": [
+      64,
+      713,
+      126
+    ],
+    "launcher_check": "passed",
+    "loaded": false,
+    "manifest_sha256": "c2e38a25983932ac84152d13a8115e12f80cd0ef88ba56a9b46b2f8b60a5474f",
+    "manual_restart_required": true,
+    "other_source_and_recipe_preserved": true,
+    "source_files": 455,
+    "stage": "installed_for_next_manual_restart",
+    "trader_controls_untouched": true
+  },
+  "peer_applicability": "Execution correctness where this local executor is used; preserve own symbols, private model recipes, current direction policy, broker bindings and manual controls.",
+  "producer": "human-authorized-development",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/282",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "New immutable local release is selected for the existing manual launcher. The running session retains preceding code until the human manually restarts it; no trader or order action is performed by maintenance.",
+  "scope": "shared",
+  "summary": "Block expired Scout cancellation after final journal writes",
+  "task": "scout-15m-first-live-session-watch",
+  "tests": [
+    {
+      "bound_file_count": 818,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--tb=short"
+      ],
+      "completed_at_utc": "2026-10-20T19:03:53.079110Z",
+      "exit_code": 0,
+      "network_connections": "disabled",
+      "output_sha256": "c053b94402e8de77597188cfa28ea0d6b7bff3c9df21d5bb26af51ad26f2230f",
+      "result": "64 passed in 21.89s",
+      "stage": "source",
+      "started_at_utc": "2026-10-20T19:03:30.185835Z"
+    },
+    {
+      "bound_file_count": 818,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_broker.py",
+        "tests/test_intraday_scout_client.py",
+        "tests/test_intraday_scout_journal.py",
+        "tests/test_intraday_local_forecast.py",
+        "tests/test_intraday_intentions.py",
+        "tests/test_intraday_capacity.py",
+        "tests/test_intraday_starter_sizing.py",
+        "tests/test_intraday_scout_protocol.py",
+        "tests/test_intraday_scout_session_books.py",
+        "tests/test_intraday_local_executor_dependencies.py",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_saved_forecast_busy.py",
+        "-k",
+        "not test_exclusive_database_lock_fails_immediately_with_read_only_zero_timeout",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--tb=short"
+      ],
+      "completed_at_utc": "2026-10-20T19:04:55.185992Z",
+      "exit_code": 0,
+      "network_connections": "disabled",
+      "output_sha256": "82d062a7daa72b01b3b9f6de12167f979fa61bf0359e695352e7d5e64b9492a9",
+      "result": "715 passed, 1 deselected in 59.74s",
+      "stage": "source",
+      "started_at_utc": "2026-10-20T19:03:54.004225Z"
+    },
+    {
+      "bound_file_count": 818,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--tb=short"
+      ],
+      "completed_at_utc": "2026-10-20T19:06:20.594387Z",
+      "exit_code": 0,
+      "network_connections": "disabled",
+      "output_sha256": "53b671d5fa14285d1a0896e7e94d1e34859b2e4d659daf424497439cff05e321",
+      "result": "64 passed in 21.66s",
+      "stage": "publication_candidate",
+      "started_at_utc": "2026-10-20T19:05:57.926973Z"
+    },
+    {
+      "bound_file_count": 818,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_broker.py",
+        "tests/test_intraday_scout_client.py",
+        "tests/test_intraday_scout_journal.py",
+        "tests/test_intraday_local_forecast.py",
+        "tests/test_intraday_intentions.py",
+        "tests/test_intraday_capacity.py",
+        "tests/test_intraday_starter_sizing.py",
+        "tests/test_intraday_scout_protocol.py",
+        "tests/test_intraday_scout_session_books.py",
+        "tests/test_intraday_local_executor_dependencies.py",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_saved_forecast_busy.py",
+        "-k",
+        "not test_exclusive_database_lock_fails_immediately_with_read_only_zero_timeout",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--tb=short"
+      ],
+      "completed_at_utc": "2026-10-20T19:07:22.056402Z",
+      "exit_code": 0,
+      "network_connections": "disabled",
+      "output_sha256": "7c99dc4ef254f9b9106c4d45f6a124e045a58413c01453698c4e3bc57c7326b3",
+      "result": "715 passed, 1 deselected in 59.07s",
+      "stage": "publication_candidate",
+      "started_at_utc": "2026-10-20T19:06:21.529827Z"
+    }
+  ],
+  "verified_remote_sha": "c5f9ef357c6c85287422511e0c780a12fd8cec99"
+}
