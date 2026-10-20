@@ -867,3 +867,19 @@ class IntradayAccountExecutor:
                     order=self.ledger.lookup_reservation(native.reservation_id), evidence={**diagnostics,"error_type":type(exc).__name__,
                         "proven_unsent_retry_eligible":unsent,"retry_after_seconds":delay})
             raise
+        except BaseException as exc:
+            # Manual interruption must still propagate, including an interrupted
+            # POST whose acceptance is unknown. Keep its bounded original cause
+            # without projecting RESERVED as unsent or inventing an order ID.
+            try:
+                self.store.event(forecast["cycle_id"], "submission_interrupted", {
+                    "forecast_id":forecast["forecast_id"],
+                    "native_reservation_id":native.reservation_id if native else None,
+                    "account_reservation_id":account.reservation_id if account else None,
+                    "diagnostics":_submission_failure_evidence(exc, stage),
+                    "acceptance_requires_exact_evidence":True,
+                }, symbol=forecast["symbol"])
+            except Exception:
+                # An unavailable diagnostic sink cannot consume a manual stop.
+                pass
+            raise
