@@ -1,0 +1,34 @@
+{
+  "author": "Atlas",
+  "change_id": "20261020T200645Z-9e94638b23cb4ecbadf5b9ea0dbdb4c0",
+  "files": [
+    "ml/intraday/market_input_schwab_stream.py",
+    "tests/test_intraday_chain_rejection_progress.py"
+  ],
+  "limitations": [
+    "Stacked on prior runtime source PR273; no main merge or peer installation claimed.",
+    "No broker/provider requests, training, trader starts, restarts or observer orders.",
+    "Running collector retains its loaded code; live partition recovery is unproven. Original rejected scope remains incomplete."
+  ],
+  "local_installation": "Exact reviewed source installed in Atlas checkout; no running process hotpatched or restarted.",
+  "peer_applicability": "Shared adapter correctness; retain local model policy, source scope, independent trader and manual-start boundaries.",
+  "pr_url": "https://github.com/jeremysecondstate/ducketz/pull/285",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Future normal manual-session imports advance independent expiration scopes, retain permanent rejected scope evidence and distinguish partial coverage from prior complete provenance. Preserve each PC models, symbols, bindings and independent manual controls.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261020T200645Z-9e94638b23cb4ecbadf5b9ea0dbdb4c0",
+  "source_sha": "3f1e671a97262d775ab85877bf583d3754c11ca1",
+  "summary": "Atlas: rejected chain partitions retain evidence while independent scopes continue",
+  "tests": [
+    {
+      "at": "2026-10-20T20:06:00Z",
+      "kind": "final local offline chain and recovery fixtures",
+      "result": "67 passed"
+    },
+    {
+      "at": "2026-10-20T20:08:29.102376Z",
+      "kind": "network-denied exact source and isolated candidate verifiers",
+      "result": "6 passed each"
+    }
+  ]
+}

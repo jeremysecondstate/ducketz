@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T20:09:26.907633Z",
+  "id": "20261020T200926Z-28770fabd6bb4dd8b4d670a5935f1084",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: rejected chain partitions retain evidence while independent scopes continue"
+}
