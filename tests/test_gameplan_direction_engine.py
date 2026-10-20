@@ -112,7 +112,7 @@ def test_estimate_price_and_cash_ranges_cannot_veto_or_price_current_market_orde
 
 
 @pytest.mark.parametrize("probability,expected", [(.0, "SELL"), (.46, "SELL"), (.460001, "SELL"),
-    (.499999, "SELL"), (.5, "NO_TRADE"), (.500001, "BUY"), (.539999, "BUY"), (.54, "BUY"), (1., "BUY")])
+    (.4999, "SELL"), (.499999, "NO_TRADE"), (.5, "NO_TRADE"), (.500001, "NO_TRADE"), (.5001, "BUY"), (.539999, "BUY"), (.54, "BUY"), (1., "BUY")])
 def test_50_percent_direction_split_ignores_learned_probability_setting(probability, expected):
     signals, portfolio = inputs(probability=probability)
     signals = {("AAPL", "1h"): signals["AAPL", "1h"]}
