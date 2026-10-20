@@ -382,6 +382,75 @@ class SchwabMarketStream:
         response.raise_for_status()
         return response.json()
 
+    @staticmethod
+    def _dated_chain_params(symbol, expiry):
+        return {"symbol": symbol, "contractType": "ALL", "includeUnderlyingQuote": "true",
+                "strategy": "SINGLE", "range": "ALL", "fromDate": expiry, "toDate": expiry}
+
+    @staticmethod
+    def _chain_scope_key(endpoint, params):
+        return hashlib.sha256(_bytes({"endpoint": endpoint, "params": params})).hexdigest()
+
+    def _partition_progress(self, symbol, partition):
+        """Finish traversal without making a rejected dated scope successful."""
+        rejected = partition.get("rejected_scopes", {})
+        dates = partition["expirations"]
+        while partition["index"] < len(dates):
+            params = self._dated_chain_params(symbol, dates[partition["index"]])
+            if self._chain_scope_key("chains", params) not in rejected:
+                break
+            partition["index"] += 1
+        missing = [date for date in dates if self._chain_scope_key(
+            "chains", self._dated_chain_params(symbol, date)) in rejected]
+        partition["missing_expirations"] = missing
+        partition["attempted_complete"] = partition["index"] == len(dates)
+        partition["coverage_complete"] = partition["attempted_complete"] and not missing
+        partition["complete"] = partition["coverage_complete"]
+
+    def _reject_dated_partition(self, symbol, partition, params, state, raw_ref):
+        rejected = partition.setdefault("rejected_scopes", {})
+        key = self._chain_scope_key("chains", params)
+        if key not in rejected:
+            if len(rejected) >= 200:
+                raise ValueError("Rejected chain history exceeds explicit200-scope bound")
+            rejected[key] = {"endpoint": "chains", "params": dict(params),
+                "error": copy.deepcopy(state.get("error")),
+                "received_at": state.get("last_received_at"),
+                "attempt_number": state.get("attempt_count"), "raw_ref": raw_ref}
+        self._partition_progress(symbol, partition)
+        self._save_partitions()
+        # The failed scope remains rejected in partition evidence. Only a
+        # different expiry (or subsequent expiration discovery) may use this
+        # symbol's existing ledger key again.
+        if not partition["attempted_complete"]:
+            self._chain_retry.defer("schwab_chain:" + symbol, reason="next_scope_after_rejected_partition")
+
+    def _chain_partition_evidence(self, symbol):
+        partition = self._chain_partitions.get(symbol)
+        if not partition:
+            return None
+        missing = partition.get("missing_expirations", [])
+        rejected = [copy.deepcopy(value) for value in partition.get("rejected_scopes", {}).values()
+                    if value["params"].get("fromDate") in missing]
+        return {"phase": partition["phase"], "round_slot": partition["round_slot"],
+            "discovered_at": partition.get("discovered_at"),
+            "attempted_complete": bool(partition.get("attempted_complete", partition.get("complete"))),
+            "coverage_complete": bool(partition.get("coverage_complete", partition.get("complete"))),
+            "missing_expirations": list(missing), "rejected_scopes": rejected,
+            "discovered_expiration_count": len(partition.get("expirations", [])),
+            "successful_partition_count": len(partition.get("receipts", [])),
+            "latest_success_received_at": max((r["received_at"] for r in partition.get("receipts", [])), default=None)}
+
+    def _chain_evidence_refs(self, symbol):
+        partition, complete = self._chain_partitions.get(symbol, {}), self._chain_details.get(symbol, {})
+        refs = [self._chain_refs.get(symbol), complete.get("raw_ref")]
+        previous = partition.get("previous_partition") or {}
+        for record in (*partition.get("receipts", []),
+                *previous.get("receipts", []),
+                *complete.get("partition_receipts", []), *partition.get("rejected_scopes", {}).values()):
+            refs.append(record.get("raw_ref"))
+        return [ref for ref in refs if isinstance(ref, dict)]
+
     def _refresh_one_chain(self):
         """One bounded request; temporary failures continue after their due time.
 
@@ -408,27 +477,47 @@ class SchwabMarketStream:
         outcome = "unavailable"
         params = {"symbol": symbol, "contractType": "ALL", "includeUnderlyingQuote": "true", "strategy": "SINGLE", "range": "ALL"}
         partition=self._chain_partitions.get(symbol)
-        if partition and partition.get("complete") and (partition.get("round_slot")!=slot or symbol not in self._chains):
-            partition={"phase":"expirations","round_slot":slot}
+        if partition and (partition.get("complete") or partition.get("attempted_complete")) and (
+                partition.get("round_slot") != slot or (partition.get("complete") and symbol not in self._chains)):
+            previous = {k: copy.deepcopy(partition[k]) for k in ("expirations", "index", "keys",
+                "provider_contract_rows", "receipts", "discovered_at", "missing_expirations",
+                "attempted_complete", "coverage_complete", "complete") if k in partition}
+            partition={"phase":"expirations","round_slot":slot,
+                "rejected_scopes":partition.get("rejected_scopes", {}), "previous_partition":previous}
             self._chain_partitions[symbol]=partition;self._save_partitions()
         endpoint="chains"
         if partition:
             if partition["phase"]=="expirations":
                 endpoint,params="expirationchain",{"symbol":symbol}
-            elif partition.get("complete"):
+            elif partition.get("complete") or partition.get("attempted_complete"):
                 return False
             else:
                 expiry=partition["expirations"][partition["index"]]
-                params.update(fromDate=expiry,toDate=expiry)
+                params=self._dated_chain_params(symbol, expiry)
         try:
+            attempt_ref = None
             def retain_attempt(event):
+                nonlocal attempt_ref
                 with self._lock:
                     ref = self._persist(event.get("payload", {"error": event.get("error")}),
                         kind=("option_chain_expirations" if endpoint=="expirationchain" else "option_chain") if event["status"] == "ok" else "option_chain_attempt",
                         received=_utc(event["received_at"]), request={"endpoint": endpoint, "params": params,
                         "attempt_number": event["attempt_number"], "started_at": event["started_at"]})
+                    attempt_ref = ref
                     if event["status"] == "ok":
                         self._chain_refs[symbol] = ref
+            prior_state = self._chain_retry.state("schwab_chain:" + symbol)
+            if prior_state.get("status") == "request_rejected" and partition:
+                # A process may stop after saving the rejected partition but
+                # before deferring its symbol ledger. Never attribute that
+                # saved failure to the next independent request scope.
+                for rejected in partition.get("rejected_scopes", {}).values():
+                    if (rejected.get("attempt_number") == prior_state.get("attempt_count")
+                            and rejected.get("received_at") == prior_state.get("last_received_at")
+                            and rejected.get("error") == prior_state.get("error")
+                            and (rejected["endpoint"], rejected["params"]) != (endpoint, params)):
+                        self._chain_retry.reset("schwab_chain:" + symbol)
+                        break
             result = self._chain_retry.run("schwab_chain:" + symbol, lambda: self._http(endpoint, params),
                 retain_attempt, stop_event=self._stop, max_attempts=1, deadline=now + timedelta(seconds=1),
                 secrets=self._sensitive)
@@ -441,6 +530,10 @@ class SchwabMarketStream:
                     self._chain_partitions[symbol]={"phase":"expirations","round_slot":slot}
                     self._save_partitions()
                     self._chain_retry.defer("schwab_chain:"+symbol,reason="explicit_body_overflow_discover_expiration_partitions")
+                elif result["status"] == "request_rejected" and partition and endpoint == "chains":
+                    self._reject_dated_partition(symbol, partition, params,
+                        self._chain_retry.state("schwab_chain:" + symbol), attempt_ref)
+                    outcome = "partition_rejected"
                 return False
             raw, received = result["payload"], _utc(result["received_at"])
             if self._stop.is_set():
@@ -457,7 +550,10 @@ class SchwabMarketStream:
                 if not dates or len(dates)>200:
                     raise ValueError("Expiration discovery empty or beyond explicit200-expiry bound")
                 self._chain_partitions[symbol]={"phase":"chains","round_slot":slot,"expirations":dates,
-                    "index":0,"keys":[],"provider_contract_rows":0,"receipts":[],"discovered_at":received.isoformat()}
+                    "index":0,"keys":[],"provider_contract_rows":0,"receipts":[],"discovered_at":received.isoformat(),
+                    "rejected_scopes":partition.get("rejected_scopes", {}) if partition else {},
+                    "previous_partition":partition.get("previous_partition") if partition else None}
+                self._partition_progress(symbol, self._chain_partitions[symbol])
                 self._save_partitions();self._chain_retry.defer("schwab_chain:"+symbol)
                 outcome="partition_discovered"
                 return False
@@ -480,17 +576,19 @@ class SchwabMarketStream:
                     partition["provider_contract_rows"]+=examined
                     partition["receipts"].append({"expiration":params["fromDate"],"received_at":received.isoformat(),"raw_ref":self._chain_refs[symbol]})
                     partition["index"]+=1
-                    partition["complete"]=partition["index"]==len(partition["expirations"])
+                    self._partition_progress(symbol, partition)
                     self._save_partitions()
                     if not partition["complete"]:
-                        self._chain_retry.defer("schwab_chain:"+symbol)
-                        outcome="partition_pending"
+                        if not partition["attempted_complete"]:
+                            self._chain_retry.defer("schwab_chain:"+symbol)
+                        outcome="partition_incomplete" if partition["attempted_complete"] else "partition_pending"
                         return False
                     keys,examined=partition["keys"],partition["provider_contract_rows"]
                 self._chains[symbol] = sorted(set(keys))
                 self._chain_details[symbol] = {"provider_contract_rows": examined,
                     "recognized_native_keys": len(set(keys)), "excluded_or_duplicate_rows": examined - len(set(keys)),
-                    "received_at": received.isoformat(), "scope_rule": "matching underlying OCC-format native keys; full original response retained"}
+                    "received_at": received.isoformat(), "raw_ref": self._chain_refs[symbol],
+                    "scope_rule": "matching underlying OCC-format native keys; full original response retained"}
                 if partition:
                     self._chain_details[symbol].update(partition_count=len(partition["expirations"]),
                         expiration_discovery_at=partition["discovered_at"],partition_receipts=partition["receipts"],
@@ -863,8 +961,7 @@ class SchwabMarketStream:
                     used_segments.add((attempt.get("request_raw_ref") or {}).get("segment_id"))
                     used_segments.add((attempt.get("ack_raw_ref") or {}).get("segment_id"))
                 chain_ref = self._chain_refs.get(symbol)
-                if chain_ref:
-                    used_segments.add(chain_ref.get("segment_id"))
+                used_segments.update(ref.get("segment_id") for ref in self._chain_evidence_refs(symbol))
                 payload = {"version": VERSION, "connection_id": self._connection, "connection_status": self._status,
                     "service": service, "native_scope": sorted(self._scopes.get(service, {})),
                     "acknowledgement": ack, "option_scope": self._scope_counts.get(symbol),
@@ -875,6 +972,8 @@ class SchwabMarketStream:
                     "cumulative_received_native_records": self._native_counts.get(service, 0),
                     "cumulative_delayed_records": self._delayed_counts.get(service, 0),
                     "chain_scope_evidence": self._chain_details.get(symbol),
+                    "chain_scope_raw_ref": self._chain_details.get(symbol, {}).get("raw_ref"),
+                    "chain_partition_evidence": self._chain_partition_evidence(symbol),
                     "chain_attempt": copy.deepcopy(self._chain_attempts.get(symbol)),
                     "chain_round": {"slot": self._chain_round_slot, "completed_generation": self._chain_generation,
                                     "completed_attempts": sum(v["status"] != "pending" for v in self._chain_attempts.values()),
@@ -895,6 +994,7 @@ class SchwabMarketStream:
                     "request": {"provider": "schwab", "dataset": "streamer", "service": service, "projection_version": VERSION}, "payload": payload})
             used = {r["raw_ref"].get("segment_id") for r in self._rows.values()}
             used.update(ref.get("segment_id") for ref in self._chain_refs.values())
+            used.update(ref.get("segment_id") for symbol in self.symbols for ref in self._chain_evidence_refs(symbol))
             used.update(ack.get("raw_ref", {}).get("segment_id") for ack in self._acks.values())
             used.update(ref.get("segment_id") for ref in self._last_raw_by_service.values())
             for attempts in self._subscription_attempts.values():
