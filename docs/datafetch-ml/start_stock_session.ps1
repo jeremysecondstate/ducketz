@@ -8,6 +8,41 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+function Get-StockSessionOwnerCandidates {
+    param([object[]]$Processes, [string]$LockText = '')
+
+    $visible = @($Processes | Where-Object {
+        $_.Name -in @('python.exe', 'pythonw.exe') -and
+        $_.CommandLine -match '(?:^|\s)-m\s+"?ml\.gameplan_stock_trader"?(?:\s|$)'
+    })
+    # Unelevated CIM queries can list an elevated worker while hiding its
+    # command line. Zero visible commands is not evidence that it exited.
+    # Bind the lock to this process birth before reporting a hidden owner;
+    # a reused PID must retain the runtime's ordinary stale-lock recovery.
+    $pidFields = [regex]::Matches($LockText, '(?m)^pid=([1-9][0-9]*)\r?$')
+    $birthFields = [regex]::Matches($LockText, '(?m)^owner_created_at=([0-9]+(?:\.[0-9]+)?)\r?$')
+    if ($LockText -match '(?m)^process=independent-stock-session\r?$' -and
+        $pidFields.Count -eq 1 -and $birthFields.Count -eq 1) {
+        $ownerId = 0
+        $ownerBirth = 0.0
+        if ([int]::TryParse($pidFields[0].Groups[1].Value, [ref]$ownerId) -and
+            [double]::TryParse($birthFields[0].Groups[1].Value, [Globalization.NumberStyles]::Float,
+                [Globalization.CultureInfo]::InvariantCulture, [ref]$ownerBirth)) {
+            $owners = @($Processes | Where-Object { [int]$_.ProcessId -eq $ownerId })
+            if ($owners.Count -eq 1 -and $null -ne $owners[0].CreationDate) {
+                $epochTicks = ([DateTimeOffset]'1970-01-01T00:00:00Z').UtcTicks
+                $actualBirth = (([DateTimeOffset]$owners[0].CreationDate).UtcTicks - $epochTicks) / 10000000.0
+                if ([Math]::Abs($actualBirth - $ownerBirth) -le 0.000001 -and
+                    ([string]::IsNullOrWhiteSpace([string]$owners[0].CommandLine) -or
+                     [string]::IsNullOrWhiteSpace([string]$owners[0].ExecutablePath))) {
+                    throw "Existing Gameplan worker PID $ownerId is still running, but this console cannot inspect it. No new worker was started. Open PowerShell as administrator and run Start-Gameplan-Trader.cmd to supervise that worker. Ctrl+C in that supervising console stops it; after it exits, start the trader normally again."
+                }
+            }
+        }
+    }
+    $visible
+}
+
 function Get-ValidatedStockSessionOwner {
     param(
         [object[]]$Owners,
@@ -362,10 +397,9 @@ New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
 # The native runtime retains all exchange-calendar, activation, forecast,
 # entry-slot and broker safeguards. Only explicit manual activation binds
 # the worker lifetime to this user's launcher console.
-$owners = @(Get-CimInstance Win32_Process | Where-Object {
-    $_.Name -in @('python.exe', 'pythonw.exe') -and
-    $_.CommandLine -match '(?:^|\s)-m\s+"?ml\.gameplan_stock_trader"?(?:\s|$)'
-})
+$processInventory = @(Get-CimInstance Win32_Process)
+$existingLockText = if (Test-Path -LiteralPath $sessionLock) { Get-Content -LiteralPath $sessionLock -Raw } else { '' }
+$owners = @(Get-StockSessionOwnerCandidates -Processes $processInventory -LockText $existingLockText)
 if ($owners.Count -gt 0) {
     if (-not (Test-Path -LiteralPath $sessionLock)) {
         throw 'Existing stock session ownership is ambiguous; no second worker was launched.'
