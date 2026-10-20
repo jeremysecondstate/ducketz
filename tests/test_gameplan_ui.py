@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import time
 import tkinter as tk
 import weakref
@@ -25,8 +26,16 @@ def tab(tmp_path):
     view = plan_ui.GameplanTab(root, frame, datastore_root=tmp_path, auto_load=False)
     write_plan(tmp_path)
     view.set_plan(load_gameplan(tmp_path))
-    yield view
-    root.destroy()
+    reference = weakref.ref(view)
+    try:
+        # Pytest caches the yielded value until after fixture finalization. Keep
+        # its cache weak so all Tk resources can be reclaimed on this thread.
+        yield weakref.proxy(view)
+    finally:
+        root.destroy()
+        del view, frame, root
+        gc.collect()
+        assert reference() is None, "Gameplan fixture retained its destroyed Tk view"
 
 
 def finish_refresh(tab):
@@ -45,6 +54,23 @@ def test_heading_identifies_og_and_yg_without_changing_session_or_filters(tab):
     tab.set_plan(replace(tab.plan, probability_target_contract=RAW_DIRECTION_TARGET))
     assert tab.heading.cget("text") == "Yung Gameplan (YG)"
     assert tab.plan.session == session and tab.visible_rows == tab.plan.rows()
+
+
+def test_current_rule_matches_both_traders_and_preserves_saved_plan_scope(tab):
+    text = tab.current_policy.cget("text")
+    assert "All 22 symbols · Gameplan, Atlas 15m and Scout 15m" in text
+    assert "BUY at P(up) ≥ 50.01%; SELL at P(up) ≤ 49.99%; HOLD strictly between." in text
+    assert "1h and 4h may sell available shares from any Gameplan horizon" in text
+    assert "without fallback quotas or a bullish donor veto" in text
+    assert "1d and 1w keep their ownership rules" in text
+    assert "live quotes, cash, holdings and pending orders" in text
+    # Policy universe does not replace counts obtained from the selected artifact.
+    assert tab.captions["coverage"].get() == "7 forecasts · 3 companies"
+    assert "Planning price" not in text and "Execution mid" not in text
+    for width in (820, 1400):
+        tab._resize(SimpleNamespace(width=width))
+        assert int(tab.current_policy.cget("wraplength")) == width - 12
+        assert tab.current_policy.pack_info()["fill"] == "x"
 
 
 def test_gameplan_views_show_forecast_actions_without_price_columns(tab):

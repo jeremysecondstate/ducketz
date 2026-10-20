@@ -18,6 +18,7 @@ from app.ui.gameplan_data import (
 )
 from app.ui.gameplan_widgets import Tooltip, label, panel
 from app.ui.theme import BACKGROUND, BORDER, DANGER, MUTED_TEXT, SUCCESS, SURFACE, SURFACE_ALT, TEXT, WARNING
+from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY
 
 CYAN = "#32d4ec"
 TABLE = "#0c1929"
@@ -100,6 +101,13 @@ class GameplanTab:
         self.status_label = label(self.page, textvariable=self.status, size=9, color=MUTED_TEXT,
                                   background=BACKGROUND, wraplength=1100, justify="left")
         self.status_label.pack(fill="x", pady=(0, 9))
+        self.current_policy = label(self.page,
+            f"Current rule · All 22 symbols · Gameplan, Atlas 15m and Scout 15m: BUY at P(up) ≥ {BULLISH_PROBABILITY:.2%}; "
+            f"SELL at P(up) ≤ {BEARISH_PROBABILITY:.2%}; HOLD strictly between.\n"
+            "Gameplan 1h and 4h may sell available shares from any Gameplan horizon without fallback quotas or a bullish donor veto. "
+            "1d and 1w keep their ownership rules. Execution uses live quotes, cash, holdings and pending orders.",
+            size=9, color=MUTED_TEXT, background=BACKGROUND, wraplength=1100, justify="left")
+        self.current_policy.pack(fill="x", pady=(0, 9))
 
         viewport = tk.Frame(self.page, background=BACKGROUND)
         viewport.pack(fill="both", expand=True)
@@ -276,6 +284,7 @@ class GameplanTab:
         self.controls.grid(row=1 if width < 850 else 0, column=0 if width < 850 else 1,
                            columnspan=2 if width < 850 else 1, sticky="w" if width < 850 else "e", pady=(5 if width < 850 else 0, 0))
         self.status_label.configure(wraplength=width-12)
+        self.current_policy.configure(wraplength=width-12)
         self.footer.configure(wraplength=width-12)
 
     def _resize_filters(self, event):
