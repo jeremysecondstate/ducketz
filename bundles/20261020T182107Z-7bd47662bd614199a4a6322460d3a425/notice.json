@@ -1,0 +1,105 @@
+{
+  "author": "Scout",
+  "base_commit": "241f9c1f287732013d1affa37eac97492e746c03",
+  "branch": "codex/scout/20261020T181611Z-554ce34055ce4783ad365076d12eef96",
+  "change_id": "20261020T181611Z-554ce34055ce4783ad365076d12eef96",
+  "commit_sha": "f5c9654464260d5d3568bb4e9238b4d06e61c3c9",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/scout_local_execution.py",
+      "sha256": "1f7a0cecea4bfaff9046b0123ec6089f38202ec344b8df12617ade785ed80f7a"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_scout_expiry_during_capacity.py",
+      "sha256": "c8f16d490e5e4f26d1974af805c54e44312024f90ccdfd69dca8c21cfceaed43"
+    }
+  ],
+  "limitations": [
+    "Offline regression clocks reconstruct deadline crossings; affected runtime behavior remains pending a manual reload and natural observation.",
+    "This change cannot recover expired execution or resolve historical unknown submissions and missing genuine observations."
+  ],
+  "local_installation": {
+    "actor": "Scout",
+    "installed_checks_passed": 775,
+    "launcher_check": "passed",
+    "loaded": false,
+    "manifest_sha256": "36c1f8b8d1535d515936f425fa547c9e5f6659110d62870e92109b667a195aaf",
+    "manual_restart_required": true,
+    "other_source_and_recipe_preserved": true,
+    "source_files": 454,
+    "stage": "installed_for_next_manual_restart",
+    "trader_controls_untouched": true
+  },
+  "peer_applicability": "Execution correctness where this local executor is used; preserve own symbols, private model recipes, current direction policy, broker bindings and manual controls.",
+  "producer": "human-authorized-development",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/280",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout installs a new immutable source release for its next manual trader restart; the running session keeps the previous code until Jeremy restarts it. No trader start or order is performed by this repair.",
+  "scope": "shared",
+  "summary": "Handle Scout forecasts that expire during account work",
+  "task": "scout-15m-first-live-session-watch",
+  "tests": [
+    {
+      "bound_file_count": 817,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_broker.py",
+        "tests/test_intraday_scout_client.py",
+        "tests/test_intraday_scout_journal.py",
+        "tests/test_intraday_local_forecast.py",
+        "tests/test_intraday_intentions.py",
+        "tests/test_intraday_capacity.py",
+        "tests/test_intraday_starter_sizing.py",
+        "tests/test_intraday_scout_protocol.py",
+        "tests/test_intraday_scout_session_books.py",
+        "tests/test_intraday_local_executor_dependencies.py",
+        "tests/test_intraday_live_session.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--tb=short",
+        "-k",
+        "not test_exclusive_database_lock_fails_immediately_with_read_only_zero_timeout"
+      ],
+      "completed_at_utc": "2026-10-20T18:16:52.324316Z",
+      "exit_code": 0,
+      "network_connections": "disabled",
+      "output_sha256": "e14115b67516f6976fe7f42a93bbc63c29fe17e5ab059ea12b7000736d32cc17",
+      "result": "........................................................................ [ 11%]\r\n........................................................................ [ 23%]\r\n........................................................................ [ 35%]\r\n........................................................................ [ 46%]\r\n........................................................................ [ 58%]\r\n........................................................................ [ 70%]\r\n........................................................................ [ 81%]\r\n........................................................................ [ 93%]\r\n.........................................                                [100%]\r\n617 passed, 1 deselected in 38.58s\r\n\n",
+      "stage": "source",
+      "started_at_utc": "2026-10-20T18:16:12.315455Z"
+    },
+    {
+      "bound_file_count": 817,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_saved_forecast_busy.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--tb=short"
+      ],
+      "completed_at_utc": "2026-10-20T18:16:58.225942Z",
+      "exit_code": 0,
+      "network_connections": "disabled",
+      "output_sha256": "05a954b32ffc748489c21d25c4e84dde4c89ba087a45ba179e78428128ed3514",
+      "result": "..................................                                       [100%]\r\n34 passed in 3.94s\r\n\n",
+      "stage": "source",
+      "started_at_utc": "2026-10-20T18:16:53.285818Z"
+    }
+  ],
+  "verified_remote_sha": "f5c9654464260d5d3568bb4e9238b4d06e61c3c9"
+}

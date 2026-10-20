@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T18:21:07.993224Z",
+  "id": "20261020T182107Z-7bd47662bd614199a4a6322460d3a425",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Handle Scout forecasts that expire during account work"
+}
