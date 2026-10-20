@@ -207,8 +207,21 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
     """
     from .data import completed_15m_observation, synthetic_continuity_verified
     audited = set()
+    def drain_retained_targets():
+        interrupted = lambda: stopped() or (close_at is not None and instant(clock()) >= instant(close_at))
+        if interrupted():
+            return
+        ready = store.retained_session_scoring_targets(pc=actor, session_id=session_id,
+            as_of=clock(), stopped=interrupted)
+        for forecast, observed in ready:
+            if interrupted():
+                return
+            store.observe(forecast, as_of=clock(), candle=observed)
     while not stopped():
         if close_at is not None and instant(clock()) >= instant(close_at):
+            return
+        drain_retained_targets()
+        if stopped() or (close_at is not None and instant(clock()) >= instant(close_at)):
             return
         observed_candidates = {}
         for candle in store.observed_candles():
@@ -228,6 +241,9 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
             if stopped():
                 return
             if close_at is not None and instant(clock()) >= instant(close_at):
+                return
+            drain_retained_targets()
+            if stopped() or (close_at is not None and instant(clock()) >= instant(close_at)):
                 return
             if forecast["mode"] != "live" or instant(forecast["target_close"]) > instant(clock()):
                 continue
@@ -279,6 +295,8 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
             except Exception as exc:
                 store.event(session_id,"target_scoring_retry",{"forecast_id":forecast["forecast_id"],
                     "error_type":type(exc).__name__,"message":str(exc)},symbol=symbol)
+            finally:
+                drain_retained_targets()
         pause(3)
 
 
