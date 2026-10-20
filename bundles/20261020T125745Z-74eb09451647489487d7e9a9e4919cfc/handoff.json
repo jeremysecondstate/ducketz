@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T12:57:45.631473Z",
+  "id": "20261020T125745Z-74eb09451647489487d7e9a9e4919cfc",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Record own-session queue recovery after actual collection resumes"
+}

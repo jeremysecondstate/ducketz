@@ -1,0 +1,126 @@
+{
+  "author": "Scout",
+  "base_commit": "fc4451015548f2ea4f92365b130298e940e1b5a3",
+  "branch": "codex/scout/20261020T125311Z-d203b56a07204c599f8c991a878e2e37",
+  "change_id": "20261020T125311Z-d203b56a07204c599f8c991a878e2e37",
+  "commit_sha": "241f9c1f287732013d1affa37eac97492e746c03",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/market_collection.py",
+      "sha256": "58c5fd806358ac4885e914574b9a56e9c8b5f0c03dd8672a1d6f1dde3211bf61"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py",
+      "sha256": "67ad2c35f0f0c104fe36084e4931b1334da9d783e4c4fc58e633fd2caa952c14"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_live_session.py",
+      "sha256": "c3f7e6aaa64e798182bdfe422a0c059f61c834c782b469865cbec2fe72f3dda9"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_market_queue_recovery_evidence.py",
+      "sha256": "1c54ffe9231727062bf8baef3990022437b48a8bd1f04ecf0d6668ade82b6177"
+    }
+  ],
+  "limitations": [
+    "Offline injected-provider/native-lock fixtures only; no broker or provider calls, trading or runtime loading verification.",
+    "The recovery event establishes only that a collection call returned after queue-lock contention; provider outcomes and exact input gaps remain separately evidenced.",
+    "Historical discarded exception details and same-worker recovery cannot be reconstructed retroactively; source publication, installation and loaded runtime remain separate stages."
+  ],
+  "local_installation": {
+    "actor": "Scout",
+    "existing_deprecation_warnings": 5,
+    "installed_checks_passed": 339,
+    "launcher_check": "passed",
+    "loaded": false,
+    "manifest_sha256": "9c3a67de58f52dc4ff5e525e24914fb83bed3a9bd6e201f82df913ef111e19f8",
+    "manual_restart_required": true,
+    "other_source_and_recipe_preserved": true,
+    "skips": 0,
+    "source_files": 452,
+    "stage": "installed_for_next_manual_start",
+    "trader_controls_untouched": true
+  },
+  "peer_applicability": "Shared collector correctness and own-session diagnostics apply on either PC; preserve each PC saved model recipe, symbols, operating bindings and trader controls.",
+  "producer": "human-authorized-development",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/276",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Changed collector and own-session modules take effect when the human manually starts the installed trader; preserve each PC saved model recipe and manual trader controls.",
+  "scope": "shared",
+  "summary": "Record own-session queue recovery after actual collection resumes",
+  "task": "scout-15m-first-live-session-watch",
+  "tests": [
+    {
+      "bound_file_count": 114,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_market_collection.py",
+        "tests/test_intraday_market_collection_lock_retry.py",
+        "tests/test_intraday_market_collection_pipeline_repair.py",
+        "tests/test_intraday_market_collection_index.py",
+        "tests/test_intraday_market_collection_fmp_context.py",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_prospective_context.py",
+        "tests/test_intraday_market_queue_recovery_evidence.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-20T12:53:41.372394Z",
+      "exit_code": 0,
+      "fresh_bytecode_cache": true,
+      "import_evidence_sha256": "87dd95ae23aa14dabe956e7bcd54fab42ee5e0daf8a9451ffb4f994a8428a497",
+      "import_violations": [],
+      "imported_source_count": 113,
+      "network_connections": "disabled",
+      "output_sha256": "f9b97b3486c126a946eca6a1cf93812b721a00e41b7c250859444d20c11d3e03",
+      "result": "........................................................................ [ 31%]\r\n........................................................................ [ 62%]\r\n........................................................................ [ 93%]\r\n..............                                                           [100%]\r\n230 passed in 27.94s",
+      "stage": "source",
+      "started_at_utc": "2026-10-20T12:53:12.096456Z"
+    },
+    {
+      "bound_file_count": 114,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_market_collection.py",
+        "tests/test_intraday_market_collection_lock_retry.py",
+        "tests/test_intraday_market_collection_pipeline_repair.py",
+        "tests/test_intraday_market_collection_index.py",
+        "tests/test_intraday_market_collection_fmp_context.py",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_prospective_context.py",
+        "tests/test_intraday_market_queue_recovery_evidence.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-20T12:55:27.071111Z",
+      "exit_code": 0,
+      "fresh_bytecode_cache": true,
+      "import_evidence_sha256": "87dd95ae23aa14dabe956e7bcd54fab42ee5e0daf8a9451ffb4f994a8428a497",
+      "import_violations": [],
+      "imported_source_count": 113,
+      "network_connections": "disabled",
+      "output_sha256": "ca3af3172eb6f71f65e08bf8a083db2f2221470c5b8c0d215e455a3790a5a90f",
+      "result": "........................................................................ [ 31%]\r\n........................................................................ [ 62%]\r\n........................................................................ [ 93%]\r\n..............                                                           [100%]\r\n230 passed in 27.96s",
+      "stage": "publication-candidate",
+      "started_at_utc": "2026-10-20T12:54:57.775904Z"
+    }
+  ],
+  "verified_remote_sha": "241f9c1f287732013d1affa37eac97492e746c03"
+}
