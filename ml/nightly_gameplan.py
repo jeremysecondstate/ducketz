@@ -177,6 +177,8 @@ def run_nightly_gameplan_once(
     probability_metadata = probability_target_metadata(probability_target)
     root = Path(datastore_root).resolve()
     created = utc_timestamp(run_timestamp)
+    from ml.nightly_continuation import continuing, POLICY as CONTINUATION_POLICY
+    dated_continuation = continuing(late_action_date) and late_action_date is not None
     if late_action_date is not None and recovery_spec is not None:
         raise ValueError("Choose one date-pinned late recovery route")
     if late_action_date is not None and not independent_stock_horizons:
@@ -193,9 +195,9 @@ def run_nightly_gameplan_once(
         selected = pd.Timestamp(late_action_date)
         local = created.tz_convert(SCHEDULE_TIMEZONE)
         if (selected.tzinfo is not None or selected.date().isoformat() != late_action_date
-                or late_action_date != local.date().isoformat() or not 4 <= local.hour < 17):
+                or (not dated_continuation and (late_action_date != local.date().isoformat() or not 4 <= local.hour < 17))):
             raise ValueError("Late recovery must select today's open action session")
-        information_cutoff = _local_timestamp(selected.date(), ACTION_START_HOUR) - pd.Timedelta(microseconds=1)
+        information_cutoff = min(created, _local_timestamp(selected.date(), ACTION_START_HOUR) - pd.Timedelta(microseconds=1))
     feedback = None
     if model_feedback is not None:
         if not independent_stock_horizons:
@@ -203,6 +205,10 @@ def run_nightly_gameplan_once(
         from ml.gameplan_model_feedback import load_feedback_review
         feedback = load_feedback_review(root, model_feedback, as_of=created,
                                         probability_target=probability_target)
+        if ((recovery is not None or late_action_date is not None)
+                and not feedback["stats"]["baseline_no_saved_predictions"]
+                and utc_timestamp(feedback["stats"]["outcomes_through"]) > information_cutoff):
+            raise ValueError("Model feedback outcomes extend beyond the preparation information cutoff")
     loop_b = read_current_publication(root)
     strategy = None if stock_only else read_current_strategy_publication(root)
     samples_path = loop_b.run_directory / "samples.parquet"
@@ -219,6 +225,31 @@ def run_nightly_gameplan_once(
     )
     if not all(path.is_file() for path in (samples_path, predictions_path, *strategy_inputs)):
         raise RuntimeError("Nightly gameplan inputs are incomplete")
+
+    feedback_context = None
+    if feedback is not None:
+        # Bind the verified publication before consuming its training rows.
+        # A replacement must never become the provenance of already-read data.
+        manifest_path = loop_b.run_directory / "manifest.json"
+        manifest_sha256 = file_checksum(manifest_path)
+        samples_sha256 = loop_b.manifest["output_files"]["samples.parquet"]["checksum_sha256"]
+        if (json.loads(manifest_path.read_text(encoding="utf-8")) != loop_b.manifest
+                or file_checksum(samples_path) != samples_sha256):
+            raise RuntimeError("Reviewed training inputs changed before fitting")
+        feedback_context = {
+            "review_sha256": feedback["checksum_sha256"], "stats": feedback["stats"],
+            "loop_b_manifest_sha256": manifest_sha256, "samples_sha256": samples_sha256,
+        }
+
+    def verify_feedback_inputs():
+        if feedback is None:
+            return
+        verified = load_feedback_review(root, model_feedback, probability_target=probability_target)
+        if verified["checksum_sha256"] != feedback["checksum_sha256"]:
+            raise RuntimeError("Model review changed during training")
+        if (file_checksum(samples_path) != feedback_context["samples_sha256"]
+                or file_checksum(loop_b.run_directory / "manifest.json") != feedback_context["loop_b_manifest_sha256"]):
+            raise RuntimeError("Reviewed training inputs changed during fitting")
 
     samples = pd.read_parquet(samples_path)
     candidates = (
@@ -240,7 +271,8 @@ def run_nightly_gameplan_once(
     archive = None
     archive_files = ()
     if archive_history:
-        if not independent_stock_horizons or stock_price_source != "xnas-itch-archive-v1":
+        if not independent_stock_horizons or stock_price_source not in (
+                "xnas-itch-archive-v1", "observed-multi-source-stock-v1", "observed-multi-source-stock-v2"):
             raise ValueError("Archive history requires independent XNAS stock preparation")
         from ml.gameplan_archive_features import load_archive_feature_sources
         from ml.gameplan_archive_integration import combine_archive_sources
@@ -301,6 +333,7 @@ def run_nightly_gameplan_once(
             available_at=information_cutoff,
             price_source_contract=stock_price_source,
             probability_target=probability_target,
+            evidence_available_at=created if recovery or late_action_date else information_cutoff,
         )
         if archive is not None:
             from ml.gameplan_archive_integration import exclude_quality_intervals
@@ -386,18 +419,13 @@ def run_nightly_gameplan_once(
     training_cohort_names: list[str] = []
     champion_input_files: list[Path] = []
     feedback_results: dict[str, object] = {}
-    feedback_context = None if feedback is None else {
-        "review_sha256": feedback["checksum_sha256"], "stats": feedback["stats"],
-        "loop_b_manifest_sha256": file_checksum(loop_b.run_directory / "manifest.json"),
-        "samples_sha256": file_checksum(samples_path),
-    }
     for group in MODEL_GROUPS:
         champion = None
         incumbent_specification = None
         if feedback is not None:
             from ml.gameplan_champions import latest_promoted_champion, retain_champion
             champion = latest_promoted_champion(root, group=group, action_date=action_date,
-                symbols=symbols, price_source=stock_price_source, before=created,
+                symbols=symbols, price_source=stock_price_source, before=information_cutoff,
                 source_selection_contract=selection_version, probability_target=probability_target,
                 allow_prior_sessions=True)
             if champion is not None:
@@ -424,7 +452,7 @@ def run_nightly_gameplan_once(
             from ml.gameplan_champions import latest_promoted_champion, retain_champion
             if feedback is None:
                 champion = latest_promoted_champion(root, group=group, action_date=action_date,
-                    symbols=symbols, price_source=stock_price_source, before=created,
+                    symbols=symbols, price_source=stock_price_source, before=information_cutoff,
                     source_selection_contract=selection_version, probability_target=probability_target)
             if champion is not None:
                 trained, retained_outputs = retain_champion(trained, champion=champion,
@@ -442,6 +470,7 @@ def run_nightly_gameplan_once(
             }
         forecast_frames.append(trained["forecasts"])
         model_reports[group] = trained["report"]
+        model_output_names.extend(trained.get("input_evidence_outputs", ()))
         model_output_names.append(
             (Path("models") / group / "model.joblib").as_posix()
         )
@@ -493,8 +522,11 @@ def run_nightly_gameplan_once(
     }
     fallback_metadata = ({FALLBACK_POLICY_FIELD: policy_for_action_date(action_date)}
         if independent_stock_horizons and policy_for_action_date(action_date) is not None else {})
+    from ml.gameplan_execution_policy import current_gameplan_policy_metadata
+    execution_metadata = current_gameplan_policy_metadata(action_date.isoformat()) if independent_stock_horizons else {}
     plan_payload = {
         "schema_version": GAMEPLAN_VERSION,
+        **execution_metadata,
         **fallback_metadata,
         **probability_metadata,
         "preparation_scope": "STOCK_ONLY" if stock_only else "STOCK_AND_OPTIONS_RESEARCH",
@@ -515,7 +547,8 @@ def run_nightly_gameplan_once(
         "frozen_at": created.isoformat(),
         **({"late_preparation": recovery} if recovery else {}),
         **({"training_information_cutoff": information_cutoff.isoformat()} if recovery or late_action_date else {}),
-        "publication_mode": "LATE_RECOVERY" if late_action_date else "NIGHTLY",
+        "publication_mode": "NIGHTLY_CONTINUATION" if dated_continuation else "LATE_RECOVERY" if late_action_date else "NIGHTLY",
+        **({"continuation_policy": CONTINUATION_POLICY} if dated_continuation else {}),
         "late_action_date": late_action_date,
         "immutable": True,
         "execution_authority": EXECUTION_AUTHORITY,
@@ -598,12 +631,7 @@ def run_nightly_gameplan_once(
     if feedback is not None:
         # Reject mutation or a newer Stats publication after a long fit. A new
         # review is needed, rather than attributing these models to changed bytes.
-        verified_feedback = load_feedback_review(root, model_feedback, probability_target=probability_target)
-        if verified_feedback["checksum_sha256"] != feedback["checksum_sha256"]:
-            raise RuntimeError("Model review changed during training")
-        if (file_checksum(samples_path) != feedback_context["samples_sha256"]
-                or file_checksum(loop_b.run_directory / "manifest.json") != feedback_context["loop_b_manifest_sha256"]):
-            raise RuntimeError("Reviewed training inputs changed during fitting")
+        verify_feedback_inputs()
         stats_run = root / feedback["stats"]["run_path"]
         feedback_inputs = (Path(model_feedback), Path(model_feedback).parent / "diagnostics.json",
                            *(stats_run / name for name in ("receipt.json", "manifest.json", "forecast-results.parquet", "report.json")))
@@ -635,6 +663,7 @@ def run_nightly_gameplan_once(
                        else "target_cost_adjusted_positive"),
         configuration={
             "schema_version": GAMEPLAN_VERSION,
+            **execution_metadata,
             **fallback_metadata,
             **probability_metadata,
             **({"late_preparation": recovery} if recovery else {}),
@@ -649,7 +678,8 @@ def run_nightly_gameplan_once(
                 "archive_history": archive_history,
                 "source_selection": source_selection_report} if independent_stock_horizons else {}),
             "action_date": action_date.isoformat(),
-            "publication_mode": "LATE_RECOVERY" if late_action_date else "NIGHTLY",
+            "publication_mode": "NIGHTLY_CONTINUATION" if dated_continuation else "LATE_RECOVERY" if late_action_date else "NIGHTLY",
+            **({"continuation_policy": CONTINUATION_POLICY} if dated_continuation else {}),
             "late_action_date": late_action_date,
             "timezone": str(SCHEDULE_TIMEZONE),
             "execution_authority": EXECUTION_AUTHORITY,
@@ -671,7 +701,7 @@ def run_nightly_gameplan_once(
     if recovery:
         from ml.nightly_recovery import verify_saved_recovery
         verify_saved_recovery(root, recovery, published_at, action_date=action_date.isoformat())
-    if recovery is None and published_at >= (action_end if late_action_date else action_start):
+    if recovery is None and not dated_continuation and published_at >= (action_end if late_action_date else action_start):
         raise RuntimeError(
             ("The completed late gameplan missed the 17:00 PT publication boundary; " if late_action_date else
              "The completed gameplan missed the 04:00 PT publication boundary; ") +
@@ -679,6 +709,8 @@ def run_nightly_gameplan_once(
             f"action_date={action_date.isoformat()}; "
             f"finished_at={published_at.isoformat()}"
         )
+    # Manifest construction also reads inputs; reject changes during that step.
+    verify_feedback_inputs()
     _publish_gameplan(
         root,
         run=run,
@@ -803,10 +835,11 @@ def _current_overnight_sources(
     starts = pd.to_datetime(sources["source_action_start" if "source_action_start" in sources else "target_window_start"],
                             utc=True, errors="coerce")
     if late_action_date is not None:
+        from ml.nightly_continuation import continuing
         selected = pd.Timestamp(late_action_date)
         local = as_of.tz_convert(SCHEDULE_TIMEZONE)
         if (selected.tzinfo is not None or selected.date().isoformat() != late_action_date
-                or late_action_date != local.date().isoformat() or not 4 <= local.hour < 17):
+                or (not continuing(late_action_date) and (late_action_date != local.date().isoformat() or not 4 <= local.hour < 17))):
             raise ValueError("Late recovery must select today's open action session")
         future = sources.loc[sources["action_date"].eq(selected.date())].copy()
         boundary = _local_timestamp(selected.date(), ACTION_START_HOUR)
@@ -1352,6 +1385,15 @@ def _build_current_groups(
     }
 
 
+
+def _feedback_estimator(specification, numeric, categorical):
+    estimator = _estimator(specification["family"], numeric, categorical)
+    parameters = {f"classifier__{key}": tuple(value) if key == "hidden_layer_sizes" else value
+                  for key, value in specification["parameters"].items()}
+    return estimator.set_params(**parameters)
+
+
+
 def _fit_group_model(
     samples: pd.DataFrame,
     *,
@@ -1606,6 +1648,7 @@ def _fit_group_model(
         )
     support_by_symbol, assessment_by_symbol = _symbol_target_support(
         samples, fitted=fit_frame, assessment=assessment_frame,
+        calibration=partitions["calibration"],
         symbols=current["symbol"].astype("string").unique(),
     )
 
@@ -1696,6 +1739,8 @@ def _fit_group_model(
     forecasts["option_feature_count"] = sum(
         column.startswith(("opt__", "opx__")) for column in admitted
     )
+    from ml.gameplan_input_evidence import annotate_local_support, freeze_inference_inputs
+    forecasts = annotate_local_support(forecasts, support_by_symbol)
     report = {
         "schema_version": GAMEPLAN_VERSION,
         **probability_metadata,
@@ -1734,6 +1779,8 @@ def _fit_group_model(
         "assessment_by_route": route_metrics,
         "assessment_by_symbol": assessment_by_symbol,
         "target_support_by_symbol": support_by_symbol,
+        "qualification_scope": "pooled symbol-and-route model; no per-symbol or per-route qualification claimed",
+        "local_support_policy": "descriptive evidence only; original pooled promotion thresholds unchanged",
         "promotion_gate": gate,
         "features": {
             "admitted_count": len(admitted),
@@ -1758,23 +1805,35 @@ def _fit_group_model(
             "checksum_sha256": file_checksum(model_path),
         },
     }
-    return {"forecasts": forecasts, "report": report}
+    report["inference_input_evidence"], evidence_outputs = freeze_inference_inputs(
+        current, numeric=admitted, categorical=categorical, directory=model_directory, report=report,
+        matrix=current_matrix)
+    return {"forecasts": forecasts, "report": report, "input_evidence_outputs": evidence_outputs}
 
 
 def _symbol_target_support(
     samples: pd.DataFrame, *, fitted: pd.DataFrame, assessment: pd.DataFrame,
-    symbols: Sequence[str],
+    symbols: Sequence[str], calibration: pd.DataFrame | None = None,
 ) -> tuple[dict[str, object], dict[str, object]]:
     support, metrics = {}, {}
     for symbol in sorted(set(map(str, symbols)) | set(samples["symbol"].astype(str))):
         counts = {}
-        for name, source in (("admitted", samples), ("fitted", fitted), ("assessment", assessment)):
+        populations = [("admitted", samples), ("fitted", fitted), ("assessment", assessment)]
+        if calibration is not None:
+            populations.append(("calibration", calibration))
+        for name, source in populations:
             frame = source.loc[source["symbol"].astype(str).eq(symbol)]
             counts[f"{name}_rows"] = len(frame)
             counts[f"{name}_decision_clusters"] = int(frame["decision_timestamp"].nunique())
             counts[f"{name}_rows_by_route"] = {
                 str(route): int(count) for route, count in frame.groupby("route").size().items()
             }
+            counts[f"{name}_class_counts"] = {str(label): int(count) for label, count in frame.groupby("target").size().items()}
+            counts[f"{name}_decision_clusters_by_route"] = {
+                str(route): int(group.decision_timestamp.nunique()) for route, group in frame.groupby("route")}
+            counts[f"{name}_class_counts_by_route"] = {
+                str(route): {str(label): int(count) for label, count in group.groupby("target").size().items()}
+                for route, group in frame.groupby("route")}
         held_out = assessment.loc[assessment["symbol"].astype(str).eq(symbol)]
         metrics[symbol] = (
             _proper_scores(held_out["target"].astype(int).to_numpy(), held_out["probability"].to_numpy())
@@ -1873,13 +1932,6 @@ def _chronological_partitions(
             )
         partitions[name] = partition.reset_index(drop=True)
     return partitions
-
-
-def _feedback_estimator(specification, numeric, categorical):
-    estimator = _estimator(specification["family"], numeric, categorical)
-    parameters = {f"classifier__{key}": tuple(value) if key == "hidden_layer_sizes" else value
-                  for key, value in specification["parameters"].items()}
-    return estimator.set_params(**parameters)
 
 
 def _estimator(
@@ -2022,11 +2074,10 @@ def _finalize_forecasts(
         ]
     from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION
     output["direction"] = np.select(
-        [probability.gt(BULLISH_PROBABILITY), probability.lt(BEARISH_PROBABILITY)],
+        [probability.ge(BULLISH_PROBABILITY), probability.le(BEARISH_PROBABILITY)],
         ["BULLISH", "BEARISH"],
         default="NO_EDGE",
     )
-    output.loc[output["model_status"].eq("RESEARCH_NO_TARGET_HISTORY"), "direction"] = "NO_EDGE"
     output["direction_policy_version"] = STOCK_DIRECTION_POLICY_VERSION
     output["direction_up_threshold"] = BULLISH_PROBABILITY
     output["direction_down_threshold"] = BEARISH_PROBABILITY
@@ -2747,7 +2798,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--archive-history", action="store_true",
                         help="Use verified historical XNAS feature rows; preserves price and model quality gates")
     parser.add_argument("--late-action-date", help="Explicit same-day late recovery; preserves actual publication time")
-    parser.add_argument("--recovery-spec", type=Path, help="Explicit fixed-window late preparation authorization")
+    parser.add_argument("--recovery-spec", type=Path, help="Frozen recovery evidence for continued dated preparation")
     parser.add_argument(
         "--stock-only", action="store_true",
         help="Prepare stock forecasts with explicit no-trade options intents, without Strategy models or candidates",

@@ -13,9 +13,7 @@ from ml.stock_trader.gameplan import (
     read_gameplan_stock_activation_intent,
 )
 from ml.stock_trader.runtime import StockTraderRunResult, run_stock_trader_once
-from ml.stock_trader.sizing_policy import (
-    GAMEPLAN_SIZING_POLICY, LEARNED_SIZING_POLICY, SIZING_POLICIES, validate_sizing_policy,
-)
+from ml.stock_trader.sizing_policy import GAMEPLAN_SIZING_POLICY, LEARNED_SIZING_POLICY, SIZING_POLICIES, effective_sizing_policy, validate_sizing_policy
 
 
 def run_gameplan_stock_trader_once(
@@ -32,10 +30,13 @@ def run_gameplan_stock_trader_once(
     """Run the proven stock execution engine from the immutable gameplan."""
 
     sizing_policy = validate_sizing_policy(sizing_policy)
-    if execute and sizing_policy != GAMEPLAN_SIZING_POLICY:
-        raise ValueError("New Gameplan orders require gameplan-direction-current-market-v1; legacy sizing is research-only")
-    if target_horizon != "all" and sizing_policy != LEARNED_SIZING_POLICY:
-        raise ValueError("Fixed horizon sizing requires --target-horizon all")
+    if target_horizon != "all":
+        from ml.stock_trader.contracts import utc
+        observed = utc(runtime_clock() if runtime_clock is not None else decided_at)
+        effective_policy = effective_sizing_policy(sizing_policy,
+            observed.tz_convert("America/Los_Angeles").date())
+        if effective_policy != LEARNED_SIZING_POLICY:
+            raise ValueError("Gameplan and fixed sizing require --target-horizon all")
     if target_horizon == "all":
         from ml.stock_trader.independent_runtime import run_independent_stock_trader_once
         return run_independent_stock_trader_once(
@@ -95,7 +96,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument('--resume-quote-run', help='Once-only recovery of one unsubmitted quote skip from this native decision run')
     parser.add_argument('--resume-quote-symbol', help='Exact symbol to recover with --resume-quote-run')
     parser.add_argument("--sizing-policy", choices=SIZING_POLICIES, default=GAMEPLAN_SIZING_POLICY,
-                        help="Current directional execution with live broker capacity; legacy sizing is research-only.")
+                        help="Use original probabilities, current quotes and actual capacity. From 2026-10-19 every selection follows the permanent direction policy; older dated runs retain legacy sizing.")
     parser.add_argument(
         "--no-shadow-observe",
         action="store_true",
@@ -107,8 +108,6 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        if args.execute and args.sizing_policy != GAMEPLAN_SIZING_POLICY:
-            raise ValueError("New Gameplan orders require gameplan-direction-current-market-v1; legacy sizing is research-only")
         root = resolve_datastore_dir(
             root_dir=args.root_dir,
             target=args.datastore_target,
@@ -141,7 +140,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             execute=bool(args.execute),
             shadow_observe=not args.no_shadow_observe,
             target_horizon=args.target_horizon,
-            **({"sizing_policy": args.sizing_policy} if args.sizing_policy != LEARNED_SIZING_POLICY else {}),
+            sizing_policy=args.sizing_policy,
         )
     except Exception as exc:
         print(

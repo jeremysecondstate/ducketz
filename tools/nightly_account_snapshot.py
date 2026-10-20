@@ -1,8 +1,9 @@
 """Atlas-only read-only account snapshot for an explicitly private nightly exchange.
 
 The exchange coordinator owns the production opt-in flag. This adapter verifies
-local account authority, performs no order or ledger writes, and returns only
-the budget, inventory and horizon ownership used by the joint planner.
+local account authority, performs no order or ledger writes, and returns actual
+cash, inventory and order context. Horizon ownership is diagnostic; the explicit
+archival mode retains the historical ownership projection.
 """
 from __future__ import annotations
 
@@ -101,7 +102,7 @@ def _bindings(config):
     return root, workflow, account, frozen
 
 
-def _project(captured, *, symbols, scope, observed):
+def _project_legacy(captured, *, symbols, scope, observed):
     """Allowlist private planning data without exporting diagnostic free text."""
     from ml.account_gameplan.joint_bridge import joint_snapshot
     if (not isinstance(captured, dict) or captured.get("status") != "OBSERVED"
@@ -141,12 +142,12 @@ def _project(captured, *, symbols, scope, observed):
     if (not isinstance(ownership, dict) or ownership.get("status") != "OBSERVED_CONSISTENT"
             or ownership.get("safe_for_planning") is not True or ownership.get("account_matches") is not True
             or ownership.get("blocked_symbols") != [] or ownership.get("reason_codes") != []
-            or ownership.get("last_saved_reconciliation_ready") is not True
             or ownership.get("current_broker_reconciliation_performed") is not False):
         raise ValueError("Account horizon ownership is incomplete or requires reconciliation")
-    saved_at = _stamp(ownership.get("last_saved_reconciliation_at"))
-    if saved_at > stamp:
-        raise ValueError("Account ownership reconciliation is future-dated")
+    fresh_epoch = ownership.get("fresh_gameplan_epoch") is True
+    saved_at = None if fresh_epoch else _stamp(ownership.get("last_saved_reconciliation_at"))
+    if not fresh_epoch and (ownership.get("last_saved_reconciliation_ready") is not True or saved_at > stamp):
+        raise ValueError("Gameplan own order history is not ready or is future-dated")
     owned = ownership.get("owned_shares")
     allocations = ownership.get("active_allocations")
     if not isinstance(owned, dict) or set(owned) != set(symbols) or not isinstance(allocations, list):
@@ -170,6 +171,8 @@ def _project(captured, *, symbols, scope, observed):
         reserved[symbol] += quantities["reserved_sell_shares"]
         identities.add(identity)
         routes.add((symbol, horizon))
+    if fresh_epoch and (selected or any(_number(v) for v in owned.values())):
+        raise ValueError("A fresh Gameplan epoch cannot claim historical inventory")
     for symbol in symbols:
         if (_number(owned[symbol], whole=True) != totals[symbol]
                 or reserved[symbol] > result["pending_sell_shares"][symbol]
@@ -184,7 +187,9 @@ def _project(captured, *, symbols, scope, observed):
     result["ownership"] = {"status": "OBSERVED_CONSISTENT", "safe_for_planning": True, "account_matches": True,
         "active_allocations": sorted(selected, key=lambda item: (item["symbol"], item["horizon"])),
         "blocked_symbols": [], "owned_shares": totals, "reason_codes": [],
-        "last_saved_reconciliation_at": saved_at.isoformat(), "last_saved_reconciliation_ready": True,
+        "last_saved_reconciliation_at": saved_at.isoformat() if saved_at else None,
+        "last_saved_reconciliation_ready": True if saved_at else None,
+        "ownership_scope": "GAMEPLAN_ONLY", "fresh_gameplan_epoch": fresh_epoch,
         "current_broker_reconciliation_performed": False}
     if "planning_reservation_evidence" in snapshot:
         from ml.planning_reservations import BASIS, PENDING
@@ -216,35 +221,130 @@ def _project(captured, *, symbols, scope, observed):
     return result
 
 
-def capture_snapshot(config: dict, now=None, ownership_observations=None) -> dict:
-    """Read Atlas's verified union account once; never persist or activate it."""
+def _project(captured, *, symbols, scope, observed, archival=False):
+    """Export actual account context; horizon attribution is diagnostic only."""
+    if archival:
+        return _project_legacy(captured, symbols=symbols, scope=scope, observed=observed)
+    if (not isinstance(captured, dict) or captured.get("status") != "OBSERVED"
+            or captured.get("cash_status") != "CASH_ONLY_BOUNDED"
+            or captured.get("account_fingerprint") != scope
+            or captured.get("account_scope_sha256", scope) != scope
+            or type(captured.get("orders_placed")) is not int or captured["orders_placed"] != 0
+            or captured.get("orders_enabled") is not False):
+        raise ValueError("Account snapshot is incomplete, unbound or not read-only")
+    stamp = _stamp(captured.get("observed_at"))
+    if not 0 <= (observed - stamp).total_seconds() <= MAXIMUM_CAPTURE_AGE_SECONDS:
+        raise ValueError("Account snapshot is stale or future-dated")
+    result = {"schema_version": VERSION, "authority": "INFORMATIONAL_READ_ONLY",
+        "observed_at": stamp.isoformat(), "account_scope_sha256": scope,
+        "status": "OBSERVED", "cash_status": "CASH_ONLY_BOUNDED", "orders_placed": 0, "orders_enabled": False}
+    for name in _MONEY:
+        result[name] = _number(captured.get(name))
+    for name in _MAPS:
+        values = captured.get(name)
+        if not isinstance(values, dict) or set(values) != set(symbols):
+            raise ValueError("Snapshot quantities must cover the exact complete account universe")
+        result[name] = {symbol: _number(values[symbol]) for symbol in symbols}
+    count = captured.get("working_order_count")
+    if type(count) is not int or count < 0 or (count == 0 and any(
+            result[name][symbol] for name in ("pending_buy_shares", "pending_sell_shares") for symbol in symbols)):
+        raise ValueError("Actual working-order evidence is unavailable or inconsistent")
+    result["working_order_count"] = count
+    for symbol in symbols:
+        attributed = sum(Decimal(str(result[name][symbol])) for name in ("stock_market_value_by_symbol", "other_symbol_exposure"))
+        if abs(Decimal(str(result["symbol_exposure"][symbol])) - attributed) > Decimal("0.01"):
+            raise ValueError("Snapshot stock and other exposure attribution disagrees")
+    if sum(Decimal(str(value)) for value in result["symbol_exposure"].values()) > Decimal(str(result["gross_exposure"])) + Decimal("0.01"):
+        raise ValueError("Account gross exposure omits positions in the joint universe")
+    quotes = captured.get("quotes")
+    result["quotes"] = {}
+    if isinstance(quotes, dict):
+        for symbol in symbols:
+            quote = quotes.get(symbol)
+            if not isinstance(quote, dict):
+                continue
+            result["quotes"][symbol] = {key: value for key in ("bid", "ask", "last", "mark", "midpoint")
+                if (value := quote.get(key)) is not None and type(value) in (int, float) and math.isfinite(value) and value > 0}
+    ownership = captured.get("ownership")
+    if isinstance(ownership, dict):
+        statuses = {"NOT_REQUESTED", "REVIEW_REQUIRED", "UNAVAILABLE", "OBSERVED_CONSISTENT"}
+        codes = {"CLOSED_ALLOCATION_HAS_INVENTORY", "OWNERSHIP_QUANTITY_INCONSISTENT", "NOT_REQUESTED_FOR_DIRECTION_ONLY_CONTEXT"}
+        status, reasons = ownership.get("status"), ownership.get("reason_codes")
+        result["ownership_diagnostics"] = {"status": status if isinstance(status, str) and status in statuses else "UNRECORDED",
+            "reason_codes": [code for code in reasons if isinstance(code, str) and code in codes] if isinstance(reasons, list) else [],
+            "required_for_directional_context": False}
+    json.dumps(result, allow_nan=False)
+    return result
+
+
+def _current_snapshot(root, account, *, observed_at):
+    """Read one exact broker account without reading any trader's ledger."""
+    from ml.gameplan_trade_snapshot import SchwabSession, _capture_trade_planning_snapshot
+    broker = SchwabSession()
+    class AccountReads:
+        def prepare_read_snapshot(self):
+            return broker.prepare_read_snapshot()
+
+        def verify_read_snapshot(self, fingerprint):
+            return broker.verify_read_snapshot(fingerprint)
+
+        def stable_account_fingerprint(self):
+            return broker.stable_account_fingerprint()
+
+        def get_account(self):
+            return broker.get_account()
+
+        def get_open_orders(self):
+            return broker.get_open_orders()
+
+        def get_equity_quotes(self, symbols):
+            # Quotes are optional audit context for this unsized direction plan.
+            # Actual execution fetches its own current quote before trading.
+            try:
+                value = broker.get_equity_quotes(symbols)
+            except Exception:
+                return {}
+            if isinstance(value, dict):
+                return value
+            return {}
+
+    reads = AccountReads()
+    checked = False
+    def not_requested(identity, snapshot):
+        nonlocal checked
+        if identity != account.account_fingerprint:
+            raise ValueError("Broker identity differs from configured account")
+        checked = True
+        return {"status": "NOT_REQUESTED", "reason_codes": ["NOT_REQUESTED_FOR_DIRECTION_ONLY_CONTEXT"]}
+    result = _capture_trade_planning_snapshot(root, session=reads, requested=account.symbols, observed_at=observed_at,
+        explicit_universe=True, ownership_reader=not_requested, retain_planning_reservations=False)
+    if not checked or result.get("status") != "OBSERVED":
+        raise ValueError("Fresh matching-account broker snapshot is unavailable")
+    return {**result, "account_fingerprint": account.account_fingerprint}
+
+
+def capture_snapshot(config: dict, now=None, ownership_observations=None, *, archival=False) -> dict:
+    """Read the Gameplan account once; other trader histories are irrelevant.
+
+    ownership_observations is retained only for old callers. Its contents are
+    never read, validated, or combined with the Gameplan trading records.
+    """
     root, workflow, account, frozen = _bindings(config)
     started, timer = utc_timestamp(now), monotonic()
-    observations = deepcopy(ownership_observations)
     def clock():
         return started + pd.Timedelta(seconds=max(0, monotonic() - timer))
-    if observations is not None:
-        from tools.nightly_ownership import validate_observations
-        records = validate_observations(config, observations, observed_at=started)
     try:
-        if observations is None:
+        if archival:
             from ml.account_gameplan.preparation import _native_snapshot
             captured = _native_snapshot(root, account, observed_at=started.isoformat())
         else:
-            from ml.account_gameplan.snapshot import capture_account_planning_snapshot
-            from ml.gameplan_trade_snapshot import SchwabSession
-            captured = capture_account_planning_snapshot(symbols=account.symbols,
-                expected_account_fingerprint=account.account_fingerprint,
-                expected_sources={record["producer"]: record["source_fingerprint"] for record in records},
-                ownership_evidence=records, session=SchwabSession(), observed_at=started.isoformat(), clock=clock)
+            captured = _current_snapshot(root, account, observed_at=started.isoformat())
     except Exception:
         # Native failures may contain account identifiers or provider messages.
         raise ValueError("Account-wide read-only snapshot capture failed") from None
     completed = clock()
-    if observations is not None:
-        validate_observations(config, observations, observed_at=completed)
     for path, original in frozen.items():
         if _read(path, path.parent) != original:
             raise ValueError("Local account snapshot bindings changed during capture")
     nightly_workflow.verify_installation(workflow)
-    return _project(captured, symbols=account.symbols, scope=config["account_scope_sha256"], observed=completed)
+    return _project(captured, symbols=account.symbols, scope=config["account_scope_sha256"], observed=completed, archival=archival)

@@ -135,10 +135,18 @@ def test_scout_displays_original_unversioned_joint_gap_calls_without_rewriting_a
     assert plan_sessions(tmp_path) == (DAY,)
     assert {path: path.read_bytes() for path in paths} == before
     assert stock_action(probability) == "HOLD"
-    with pytest.raises(ValueError, match="direction disagrees"):
-        read_accepted_joint_plan(tmp_path, DAY)
-    with pytest.raises(ValueError, match="direction disagrees"):
-        load_execution_signals(tmp_path, as_of=f"{DAY}T12:15:00Z")
+    # A missing policy remains unrecorded. Reading the original frozen label
+    # does not retrofit a current rule or synthetic order quantity into history.
+    assert read_accepted_joint_plan(tmp_path, DAY)[0] == plan
+    atlas_run = adopt(tmp_path / "atlas", plan, actor="atlas")
+    signals, _ = load_execution_signals(tmp_path / "atlas", as_of=f"{DAY}T11:15:00Z")
+    signal = signals["ABCL", "1h"]
+    assert signal.calibrated_probability == probability
+    assert signal.planned_quantity is None and signal.catchup_components == ()
+    assert stock_action(signal.calibrated_probability) == "HOLD"
+    assert "direction_policy_version" not in next(row for row in plan["forecasts"]
+        if row["id"] == signal.prediction_id)
+    assert atlas_run.is_dir()
     selected, _, _ = read_accepted_joint_plan(tmp_path, DAY, historical_display=True)
     assert selected == plan
     assert {path: path.read_bytes() for path in paths} == before
@@ -169,7 +177,8 @@ def test_historical_display_still_rejects_current_policy_and_legacy_label_corrup
         view["plan_id"] = invalid["plan_id"]
     invalid["plan_sha256"] = content_sha256({key: value for key, value in invalid.items() if key != "plan_sha256"})
     binding["plan_sha256"] = invalid["plan_sha256"]
-    with pytest.raises(ValueError, match="direction disagrees"):
+    error = "Unsupported saved stock direction policy" if policy == "unknown-explicit-policy" else "direction disagrees"
+    with pytest.raises(ValueError, match=error):
         _verify(invalid, binding, historical_display=True)
 
 

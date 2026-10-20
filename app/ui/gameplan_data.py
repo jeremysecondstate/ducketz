@@ -85,6 +85,7 @@ class PlanForecast:
     cash_after_low: float | None = None
     cash_after_base: float | None = None
     cash_after_high: float | None = None
+    direction_policy_version: str | None = None
 
 
 @dataclass(frozen=True)
@@ -278,8 +279,20 @@ def plan_sessions(datastore_root: Path | None = None) -> tuple[str, ...]:
     from ml.joint_capital_adoption import accepted_sessions, read_accepted_joint_plan
     joint_dates = accepted_sessions(root)
     current_local = _latest(root)
+    accepted = None
     if joint_dates:
-        read_accepted_joint_plan(root, joint_dates[0], historical_display=True)
+        accepted = read_accepted_joint_plan(root, joint_dates[0], historical_display=True)
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe
+    current_recipe = bool(accepted and is_current_gameplan_recipe(accepted[0])) or bool(
+        current_local and is_current_gameplan_recipe(_json(_run_path(root, current_local["run_path"]) / "receipt.json")))
+    if current_recipe:
+        # Enumerating saved dates does not require an obsolete account price
+        # projection. Explicit historical selection still verifies its source.
+        sessions = {*(joint_dates), *(item[0] for item in _history(root)),
+                    *(item[0] for item in _account_history(root))}
+        if current_local:
+            sessions.add(current_local["action_date"])
+        return tuple(sorted(sessions, reverse=True))
     # Enumerating history does not select a plan for the active account. A
     # missing current publication must not hide accepted historical sessions.
     # Present but damaged account pointers still fail verification below.
@@ -323,11 +336,12 @@ def _forecast(row: dict, *, projection_available: bool = True, unavailable_reaso
         reason = unavailable_reason if eligible else "NON_ENTRY_CONTEXT"
     if horizon not in HORIZONS or direction not in {"BULLISH", "BEARISH", "NO_EDGE"}:
         raise GameplanError("Unsupported forecast horizon or direction")
-    if direction_only and eligible:
-        from ml.stock_direction_policy import stock_action
-        from ml.stock_trader.gameplan_execution import _saved_abstention
-        expected_action = "HOLD" if _saved_abstention(row) else stock_action(probability)
-        if action != expected_action:
+    if direction_only:
+        from ml.stock_direction_policy import stock_action, stock_direction, BULLISH_PROBABILITY, BEARISH_PROBABILITY
+        if (probability is None or direction != stock_direction(probability)
+                or eligible and action != stock_action(probability)
+                or row.get("direction_up_threshold") != BULLISH_PROBABILITY
+                or row.get("direction_down_threshold") != BEARISH_PROBABILITY):
             raise GameplanError("Current directional instruction disagrees with its probability")
     allowed = {"BUY", "SELL", "HOLD", "CONTEXT"} if projection_available else {"UNAVAILABLE", "CONTEXT"}
     if (action not in allowed
@@ -341,7 +355,7 @@ def _forecast(row: dict, *, projection_available: bool = True, unavailable_reaso
             or (action == "HOLD" and quantity != 0)
             or (action == "CONTEXT" and quantity is not None)):
         raise GameplanError("Projected action and direction-based quantity disagree")
-    price = _number(row.get("trade_price_mid"), optional=True)
+    price = None if direction_only else _number(row.get("trade_price_mid"), optional=True)
     if price is not None and price <= 0:
         raise GameplanError("Saved planning prices must be positive when available")
     donor_horizon = donor_allocation = None
@@ -359,7 +373,10 @@ def _forecast(row: dict, *, projection_available: bool = True, unavailable_reaso
                         direction, action, quantity, reason, start, end,
                         price, donor_horizon, donor_allocation,
                         row.get("producer_id"), row.get("original_forecast_id"), row.get("source_receipt_sha256"),
-                        *(_number(row.get(f"projected_cash_after_{key}"), optional=True) for key in ("low", "base", "high")))
+                        *(None if direction_only else _number(row.get(f"projected_cash_after_{key}"), optional=True)
+                          for key in ("low", "base", "high")),
+                        direction_policy_version=(row.get("direction_policy_version")
+                            if isinstance(row.get("direction_policy_version"), str) else None))
 
 
 def _direction_actions(forecasts):
@@ -379,6 +396,7 @@ def _projection_metadata(ledger: dict, report: dict, frame: pd.DataFrame) -> tup
                 or report.get("direction_based_projection") != ledger or ledger.get("events") != []
                 or ledger.get("hourly") != []):
             raise GameplanError("Current directional plan recipe or empty projection ledger disagrees")
+        _actions(ledger, tuple(_forecast(row) for row in frame.to_dict("records")), str(frame.action_date.iloc[0]))
         return status, "BUY/SELL directions are saved; quantities use live broker cash, holdings, pending orders and quotes."
     if report.get("direction_projection_status", "COMPLETE") != status:
         raise GameplanError("Saved report and direction ledger projection statuses disagree")
@@ -498,6 +516,16 @@ def _validate_fallback_accounting(ledger: dict, session: str) -> None:
 
 
 def _actions(ledger: dict, forecasts: tuple[PlanForecast, ...], session: str) -> tuple[PlannedAction, ...]:
+    if ledger.get("status") == "DIRECTION_ONLY":
+        from ml.gameplan_execution_policy import is_current_gameplan_recipe
+        if (not is_current_gameplan_recipe(ledger)
+                or any(ledger.get(key) != empty for key, empty in (
+                    ("events", []), ("hourly", []), ("ending_positions", {}), ("summary", {})))
+                or ledger.get("orders_placed") != 0 or ledger.get("broker_orders_enabled") is not False
+                or any(row.quantity is not None for row in forecasts if row.action != "HOLD")
+                or any(row.price is not None for row in forecasts)):
+            raise GameplanError("Current directional plan contains projected quantities, prices or fills")
+        return _direction_actions(forecasts)
     if ledger.get("version") != LEDGER_VERSION or ledger.get("status") != "COMPLETE":
         raise GameplanError("The direction ledger is not complete or supported")
     _validate_fallback_accounting(ledger, session)
@@ -520,8 +548,8 @@ def _actions(ledger: dict, forecasts: tuple[PlanForecast, ...], session: str) ->
         if symbol not in symbols or horizon not in HORIZONS:
             raise GameplanError("Unknown trade company or horizon")
         if reason == "BEARISH_ACCOUNT_WIDE_SELL":
-            from ml.stock_trader.cross_horizon_fallback import autonomous_horizon
-            if not autonomous_horizon(horizon, session):
+            from ml.stock_direction_policy import autonomous_horizon_sales
+            if not autonomous_horizon_sales(horizon, session):
                 raise GameplanError("Account-wide sale requires an autonomous horizon")
         quantity = _number(event["quantity"])
         if quantity <= 0:
@@ -717,13 +745,13 @@ def _load_account_view(root: Path, pointer: dict, requested: str | None = None) 
     if "gameplan_variant" in frame and not frame.gameplan_variant.eq(probability_target_metadata(contract)["gameplan_variant"]).all():
         raise GameplanError("Account Gameplan variant disagrees with its frozen target")
     status, note = _projection_metadata(ledger, report, frame)
-    available = status == "COMPLETE"
+    available = status in {"COMPLETE", "DIRECTION_ONLY"}
     # Validate the entire account first, including the other producer's events.
     # Only presentation is filtered; the shared cash ledger remains untouched.
     forecasts = tuple(sorted((_forecast(row, projection_available=available) for row in frame.to_dict("records")),
                             key=lambda row: (row.start, HORIZONS.index(row.horizon), row.symbol, row.route)))
     all_actions = _actions(ledger, forecasts, session) if available else ()
-    if available:
+    if status == "COMPLETE":
         hourly = {_timestamp(item["timestamp"]): tuple(_number(item[f"cash_{key}"]) for key in ("low", "base", "high"))
                   for item in ledger["hourly"]}
         expected_clocks = {_timestamp(pd.Timestamp(f"{session} {hour:02d}:00", tz=PACIFIC))
@@ -742,6 +770,8 @@ def _load_account_view(root: Path, pointer: dict, requested: str | None = None) 
         raise GameplanError("Account Gameplan is missing its bound producer report")
     planning_note = ("This producer view uses the combined account's post-clock cash after all companies. "
                      "Projected fills and sale proceeds are conditional; actual cash follows broker evidence.")
+    if status == "DIRECTION_ONLY":
+        planning_note = "Saved BUY/SELL instructions use live cash, eligible shares, pending orders and quotes; quantities are determined at execution."
     return Gameplan(session, _timestamp(report["observed_at"]), _timestamp(receipt["completed_at"]),
                     plan.path, plan.path / view_name, forecasts, actions, status, note,
                     planning_note, _execution_quotes(root, forecasts), ledger.get("holding_policy", "fixed_target_expiry"),

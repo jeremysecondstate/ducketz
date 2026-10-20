@@ -12,9 +12,8 @@ from typing import Mapping
 
 from ml.stock_direction_policy import (
     STOCK_DIRECTION_POLICY_VERSION, BULLISH_PROBABILITY, BEARISH_PROBABILITY, stock_action, stock_direction,
-)
-from ml.stock_trader.cross_horizon_fallback import (
-    AUTONOMOUS_OWNERSHIP_POLICY_VERSION, AUTONOMY_EFFECTIVE_ACTION_DATE, autonomous_horizon,
+    AUTONOMOUS_HORIZON_SALES_EFFECTIVE_DATE, autonomous_horizon_sales,
+    STOCK_DIRECTION_POLICY_ALIASES,
 )
 
 
@@ -25,6 +24,11 @@ POLICY_FIELDS = ("direction_policy_version", "direction_up_threshold", "directio
 
 
 def is_current_gameplan_recipe(value: Mapping) -> bool:
+    if not isinstance(value, Mapping):
+        from pandas import Series
+        if not isinstance(value, Series):
+            return False
+        value = value.to_dict()
     return (value.get("gameplan_recipe_version") == GAMEPLAN_RECIPE_VERSION
             and value.get("execution_quantity_basis") == "live_broker_capacity")
 
@@ -32,6 +36,7 @@ def is_current_gameplan_recipe(value: Mapping) -> bool:
 def current_gameplan_policy_metadata(action_date) -> dict:
     """Describe current new-decision cutoffs and the dated ownership policy."""
     day = action_date.isoformat() if isinstance(action_date, date) else str(action_date)
+    date.fromisoformat(day)
     return {
         "gameplan_recipe_version": GAMEPLAN_RECIPE_VERSION,
         "execution_quantity_basis": "live_broker_capacity",
@@ -42,9 +47,9 @@ def current_gameplan_policy_metadata(action_date) -> dict:
             "probability_precision": "unrounded",
             "buy_comparison": ">=", "sell_comparison": "<=",
             "hold_comparison": "strictly_between_thresholds",
-            "ownership_policy_version": AUTONOMOUS_OWNERSHIP_POLICY_VERSION,
-            "ownership_effective_action_date": AUTONOMY_EFFECTIVE_ACTION_DATE,
-            "autonomous_horizons": ["15m", *(h for h in ("1h", "4h") if autonomous_horizon(h, day))],
+            "ownership_policy_version": "account-wide-1h-4h-directional-ownership-v1",
+            "ownership_effective_action_date": AUTONOMOUS_HORIZON_SALES_EFFECTIVE_DATE,
+            "autonomous_horizons": ["15m", *(h for h in ("1h", "4h") if autonomous_horizon_sales(h, day))],
             "unchanged_horizons": ["1d", "1w"],
             "reserved_sell_shares": "unavailable",
             "price_basis": "live_bid_ask_midpoint",
@@ -66,7 +71,6 @@ def direction_only_rows(forecasts, *, action_date, snapshot: Mapping | None = No
     """
     import math
     import pandas as pd
-    from ml.stock_trader.gameplan_execution import _saved_abstention
     metadata = current_gameplan_policy_metadata(action_date)
     scalar = {key: metadata[key] for key in ("gameplan_recipe_version", "execution_quantity_basis",
         "direction_policy_version", "direction_up_threshold", "direction_down_threshold")}
@@ -80,17 +84,20 @@ def direction_only_rows(forecasts, *, action_date, snapshot: Mapping | None = No
             return None
         return result if math.isfinite(result) and result >= 0 else None
     for saved in forecasts.to_dict("records"):
-        row = {key: value for key, value in saved.items()
+        row = {key: deepcopy(value) for key, value in saved.items()
                if not key.startswith(("direction_based_", "projected_", "trade_", "scheduled_trade_",
                    "historical_price_", "planning_", "price_band_", "price_reference_", "fallback_"))
                and key != "stock_execution_policy"}
-        row["source_saved_direction"] = saved.get("source_saved_direction", saved.get("direction"))
-        row["source_saved_direction_policy_version"] = saved.get("source_saved_direction_policy_version", saved.get("direction_policy_version"))
+        has_original = isinstance(saved.get("source_saved_direction"), str)
+        row["source_saved_direction"] = saved["source_saved_direction"] if has_original else saved.get("direction")
+        row["source_saved_direction_policy_version"] = (saved.get("source_saved_direction_policy_version")
+            if has_original else saved.get("direction_policy_version"))
+        if pd.isna(row["source_saved_direction_policy_version"]):
+            row["source_saved_direction_policy_version"] = None
         probability = float(saved["calibrated_probability"])
-        abstention = _saved_abstention(saved) if "direction" in saved else False
-        direction = "NO_EDGE" if abstention else stock_direction(probability)
+        direction = stock_direction(probability)
         eligible = bool(saved["execution_eligible"])
-        action = stock_action(probability) if not abstention else "HOLD"
+        action = stock_action(probability)
         reason = "BUY_AT_CURRENT_ACCOUNT_CAPACITY" if action == "BUY" else "SELL_FROM_CURRENT_ELIGIBLE_HOLDINGS" if action == "SELL" else "NEUTRAL"
         if not eligible:
             action, reason = "CONTEXT", "NON_ENTRY_CONTEXT"
@@ -111,4 +118,43 @@ def direction_only_rows(forecasts, *, action_date, snapshot: Mapping | None = No
         "ending_positions": {}, "summary": {}, "orders_placed": 0, "broker_orders_enabled": False,
         "holding_policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
         "reason": "Saved directional instructions; quantities use the executor's live cash, eligible shares and bid/ask quote."}
+    if snapshot is not None:
+        ledger["observed_account_context"] = {key: deepcopy(snapshot[key]) for key in (
+            "observed_at", "available_cash", "reserved_cash", "held_shares", "pending_buy_shares", "pending_sell_shares")
+            if key in snapshot}
     return rows, ledger
+
+
+def validate_direction_only_plan(plan: Mapping) -> None:
+    """Validate current instructions without reclassifying scientific history."""
+    import pandas as pd
+
+    for item in (plan, plan.get("ledger", {})):
+        if (not is_current_gameplan_recipe(item)
+                or item.get("direction_policy_version") not in STOCK_DIRECTION_POLICY_ALIASES
+                or item.get("direction_up_threshold") != BULLISH_PROBABILITY
+                or item.get("direction_down_threshold") != BEARISH_PROBABILITY):
+            raise ValueError("Current direction policy metadata differs")
+    ledger = plan["ledger"]
+    if (ledger.get("status") != DIRECTION_ONLY_STATUS or ledger.get("events") != []
+            or ledger.get("hourly") != [] or ledger.get("ending_positions") != {}
+            or ledger.get("summary") != {} or type(ledger.get("orders_placed")) is not int
+            or ledger["orders_placed"] != 0 or ledger.get("broker_orders_enabled") is not False):
+        raise ValueError("Direction-only plan cannot carry projected fills or orders")
+    rows = plan.get("forecasts")
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("Current plan requires its original forecasts")
+    expected, _ = direction_only_rows(pd.DataFrame(rows), action_date=plan["action_date"])
+    for row, derived in zip(rows, expected.to_dict("records")):
+        quantity = row.get("direction_based_trade_quantity")
+        valid_quantity = (type(quantity) in (int, float) and quantity == 0
+            if derived["direction_based_action"] == "HOLD" else quantity is None)
+        if (not is_current_gameplan_recipe(row)
+                or row.get("direction_policy_version") not in STOCK_DIRECTION_POLICY_ALIASES
+                or row.get("direction_up_threshold") != BULLISH_PROBABILITY
+                or row.get("direction_down_threshold") != BEARISH_PROBABILITY
+                or row.get("direction") != derived["direction"]
+                or row.get("direction_based_action") != derived["direction_based_action"]
+                or row.get("direction_based_reason") != derived["direction_based_reason"]
+                or not valid_quantity):
+            raise ValueError("Current directional instruction differs from its saved probability")

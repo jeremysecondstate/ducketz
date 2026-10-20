@@ -71,7 +71,7 @@ def test_late_native_export_and_package_reload_preserve_provenance(saved):
     assert {r['frozen_at'] for r in package['forecasts']} == {'2026-09-09T16:00:00+00:00'}
     assert {p: digest(p) for p in before} == before
     kwargs = {k: package[k] for k in ['owner_id','run_id','source_revision','action_date','frozen_symbols',
-        'created_at','source_hashes','forecasts','price_path']}
+        'created_at','source_hashes','forecasts']}
     with pytest.raises(ValueError, match='future information'):
         build_owner_package(**kwargs)
     kwargs['late_publication_at'] = package['late_publication_at']

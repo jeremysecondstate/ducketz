@@ -1,6 +1,6 @@
 param(
     [switch]$WaitForOpen,
-    [ValidateSet('gameplan-direction-current-market-v1')]
+    [ValidateSet('fixed-horizon-budget-v1', 'gameplan-direction-current-market-v1')]
     [string]$SizingPolicy = 'gameplan-direction-current-market-v1',
     [switch]$ActivateForManualStart
 )

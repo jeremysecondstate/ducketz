@@ -109,9 +109,6 @@ def _make_decision(signal, portfolio, activation, policy, timestamp, *, action, 
         **({"cross_horizon_fallback_policy": fallback_policy} if fallback_policy is not None else {}),
         **({"fallback_source_binding": fallback_source_binding} if fallback_source_binding is not None else {}),
         **({"cross_horizon_fallback": dict(fallback_plan)} if fallback_plan is not None else {})}
-    from ml.stock_trader.cross_horizon_fallback import autonomous_horizon, AUTONOMOUS_OWNERSHIP_POLICY_VERSION
-    if autonomous_horizon(signal.primary_horizon, timestamp.tz_convert("America/Los_Angeles").date().isoformat()):
-        prediction["ownership_policy_version"] = AUTONOMOUS_OWNERSHIP_POLICY_VERSION
     fingerprint = _fingerprint(policy, maximum_quote_age_seconds, fallback_policy, fallback_source_binding)
     identifier = decision_identifier({"decided_at": timestamp.isoformat(), "symbol": signal.symbol,
         "prediction": prediction, "policy_fingerprint": fingerprint,
@@ -215,8 +212,9 @@ def build_gameplan_direction_trade_decisions(
     """Apply saved directions using actual capital, inventory, and current quotes.
 
     Bearish capacities are an explicit caller attestation of authorized,
-    disjoint inventory slices. They must exclude pending sells, protected other
-    horizons, and every allocation represented in ``exit_decisions``. The batch
+    inventory. They must exclude pending sells and every allocation represented
+    in ``exit_decisions``. One-hour and four-hour sales may use any owned horizon;
+    longer horizons retain their existing inventory policy. The batch
     additionally caps their sum at current held shares minus pending sells.
     Submitted sells never increase the cash or exposure budgets for this batch.
     """
@@ -303,7 +301,7 @@ def build_gameplan_direction_trade_decisions(
         elif signal.target_definition_version == "accepted-gameplan-catchup-v1" or signal.catchup_components:
             code, reason = "LEGACY_PROJECTED_INTENTION", "Historical projected quantities cannot authorize a fresh Gameplan order."
         elif direction == "NO_EDGE":
-            code, reason = "NEUTRAL_HOLD", "The probability is strictly between the 49.99% SELL and 50.01% BUY cutoffs."
+            code, reason = "NEUTRAL_HOLD", "The probability is between 49.99% and 50.01% and has no directional signal."
         else:
             start, end = utc(signal.target_window_start), utc(signal.target_window_end)
             deadline = min(utc(signal.actionable_until), end)
@@ -323,10 +321,6 @@ def build_gameplan_direction_trade_decisions(
                     elif fallback_plan is not None:
                         code = "ELIGIBLE_BOUNDED_CROSS_HORIZON_FALLBACK"
                         reason = "The saved daily fallback policy permits a bounded sale from the recorded longer-horizon owner."
-                    else:
-                        from ml.stock_trader.cross_horizon_fallback import autonomous_horizon
-                        if autonomous_horizon(key[1], timestamp.tz_convert("America/Los_Angeles").date().isoformat()):
-                            reason = "The bearish instruction can sell actual available account shares from any horizon owner."
                 elif budget_error:
                     code = "JOINT_PORTFOLIO_BUDGET_INVALID"
                 else:

@@ -33,6 +33,7 @@ def test_saved_instructions_do_not_need_receipts_models_contract_hashes_or_plann
     pointer.parent.mkdir(parents=True)
     pointer.write_text(json.dumps({'current':{'run_path':run.relative_to(tmp_path).as_posix(), 'receipt_checksum_sha256':'obsolete'}}))
     rows = [dict(id=f'2026-09-08:{symbol}:1h@06:00', symbol=symbol, model_group='1h', direction=direction,
+                 direction_policy_version='stock-direction-50-01-v3',
                  calibrated_probability=probability, target_window_start='2026-09-08T13:00:00Z',
                  target_window_end='2026-09-08T14:00:00Z', execution_eligible=True, action_date='2026-09-08',
                  frozen_at='2026-09-08T09:00:00Z', target_contract_version='older-metadata') for symbol in STOCK_TRADER_SYMBOLS]
@@ -46,7 +47,7 @@ def test_saved_instructions_do_not_need_receipts_models_contract_hashes_or_plann
 
 
 @pytest.mark.parametrize('probability,side', [(.51,'BUY'),(.49,'SELL')])
-def test_all_eleven_symbols_submit_live_prices_and_log_estimates_without_using_them_as_limits(environment, monkeypatch, probability, side):
+def test_all_eleven_symbols_submit_live_prices_without_reading_old_estimates(environment, monkeypatch, probability, side):
     env = environment
     prepare(env, monkeypatch, probability=probability)
     prototype = env.signals['AAPL','1h']
@@ -61,6 +62,9 @@ def test_all_eleven_symbols_submit_live_prices_and_log_estimates_without_using_t
             observed_at=(env.now-pd.Timedelta(minutes=13)).isoformat(), received_at=env.now.isoformat(),
             realtime=True, quote_type='NBBO') for s in STOCK_TRADER_SYMBOLS})
     monkeypatch.setattr(runtime, 'capture_portfolio_state', capture)
+    def forbidden(*args, **kwargs):
+        pytest.fail('New execution must not read old planning prices or quantities')
+    monkeypatch.setattr('ml.stock_trader.price_comparison.attach_price_comparisons', forbidden)
     plan = env.root/'ml/gameplan-trade-plan-runs/planning'
     plan.mkdir(parents=True)
     pointer=env.root/'ml/gameplan-trade-plan-latest/run.json'
@@ -77,13 +81,9 @@ def test_all_eleven_symbols_submit_live_prices_and_log_estimates_without_using_t
         assert payload['orderLegCollection'][0]['instruction'] == side
         assert float(payload['price']) == 100.
     for decision in _decisions(result)['decisions']:
-        comparison=decision['enrichment']['price_comparison']
-        assert comparison['planned_price'] == 10.
-        assert comparison['live_midpoint'] == 100.
-        assert comparison['midpoint_minus_planned'] == 90.
-        assert comparison['planned_cash'] == 0.
-        assert comparison['quote_received_at'] == env.now.isoformat()
-        assert comparison['comparison_affects_execution'] is False
+        assert 'price_comparison' not in decision['enrichment']
+        assert decision['quote']['bid'] == 90. and decision['quote']['ask'] == 110.
+        assert decision['quote']['received_at'] == env.now.isoformat()
     assert runtime.run_independent_stock_trader_once(env.root, **options).submitted_orders == 0
     assert len(env.broker.submissions) == 11
 

@@ -79,7 +79,7 @@ def raw_snapshot():
     maps["pending_buy_shares"]["AMZN"] = 1
     return {"observed_at": NOW, "status": "OBSERVED", "cash_status": "CASH_ONLY_BOUNDED",
         "account_fingerprint": SCOPE, "account_equity": 10000, "available_cash": 750,
-        "reserved_cash": 250, "gross_exposure": 700, **maps,
+        "reserved_cash": 250, "gross_exposure": 700, "working_order_count": 2, **maps,
         "quotes": {symbol: {"ask": 100, "raw_identifier": "SECRET_QUOTE_ID"} for symbol in SYMBOLS},
         "ownership": {"status": "OBSERVED_CONSISTENT", "safe_for_planning": True,
             "account_matches": True, "blocked_symbols": [], "reason_codes": [],
@@ -112,9 +112,9 @@ def test_retained_reservation_export_is_bounded_and_allowlisted(damage):
     if damage == 'cash': value['planning_reservation_evidence']['local_cash_withheld'] = 0
     if damage == 'orders': value['planning_reservation_evidence']['broker_pending_buy_shares']['AAPL'] = 1
     if damage:
-        with pytest.raises(ValueError): module._project(value, scope=SCOPE, symbols=SYMBOLS, observed=pd.Timestamp(NOW))
+        with pytest.raises(ValueError): module._project(value, scope=SCOPE, symbols=SYMBOLS, observed=pd.Timestamp(NOW), archival=True)
     else:
-        result = module._project(value, scope=SCOPE, symbols=SYMBOLS, observed=pd.Timestamp(NOW))
+        result = module._project(value, scope=SCOPE, symbols=SYMBOLS, observed=pd.Timestamp(NOW), archival=True)
         assert result['available_cash'] == 630 and result['reserved_cash'] == 120
         assert result['ownership']['last_saved_reconciliation_at'] == '2026-10-08T09:00:00+00:00'
         assert 'SECRET' not in json.dumps(result)
@@ -137,7 +137,7 @@ def captured(configured, monkeypatch):
 def test_capture_minimizes_private_export_without_changing_bindings_or_reserving(captured, tmp_path):
     config, raw, calls = captured
     before, original = contents(tmp_path), deepcopy(raw)
-    result = module.capture_snapshot(config, now=NOW)
+    result = module.capture_snapshot(config, now=NOW, archival=True)
     assert calls == [True] and raw == original and contents(tmp_path) == before
     assert result["account_scope_sha256"] == SCOPE and result["orders_placed"] == 0
     assert result["orders_enabled"] is False and result["authority"] == "INFORMATIONAL_READ_ONLY"
@@ -178,7 +178,7 @@ def test_binding_failures_happen_before_any_account_read(configured, monkeypatch
         write(Path(active["release_root"]) / "coordination/contract.json", {"changed": True})
     monkeypatch.setattr("ml.account_gameplan.preparation._native_snapshot", lambda *a, **k: pytest.fail("Unbound read"))
     with pytest.raises(ValueError):
-        module.capture_snapshot(config, now=NOW)
+        module.capture_snapshot(config, now=NOW, archival=True)
 
 
 @pytest.mark.parametrize("damage", ["stale", "future", "identity", "scope_conflict", "missing_symbol", "extra_symbol",
@@ -205,7 +205,7 @@ def test_incomplete_or_inconsistent_account_evidence_never_exports(captured, tmp
     else: value["orders_enabled"] = True
     before = contents(tmp_path)
     with pytest.raises(ValueError):
-        module.capture_snapshot(config, now=NOW)
+        module.capture_snapshot(config, now=NOW, archival=True)
     assert calls == [True] and contents(tmp_path) == before
 
 
@@ -214,7 +214,7 @@ def test_only_finite_numeric_cash_is_exportable(captured, invalid):
     config, value, _ = captured
     value["available_cash"] = invalid
     with pytest.raises(ValueError, match="account quantity"):
-        module.capture_snapshot(config, now=NOW)
+        module.capture_snapshot(config, now=NOW, archival=True)
 
 
 def test_local_binding_changes_during_capture_do_not_export(configured, monkeypatch):
@@ -225,7 +225,7 @@ def test_local_binding_changes_during_capture_do_not_export(configured, monkeypa
         return raw_snapshot()
     monkeypatch.setattr("ml.account_gameplan.preparation._native_snapshot", capture)
     with pytest.raises(ValueError, match="bindings changed"):
-        module.capture_snapshot(config, now=NOW)
+        module.capture_snapshot(config, now=NOW, archival=True)
 
 
 def test_provider_exception_never_leaks_into_publication_error(configured, monkeypatch):
@@ -233,7 +233,7 @@ def test_provider_exception_never_leaks_into_publication_error(configured, monke
         raise RuntimeError("SECRET_ACCOUNT_NUMBER SECRET_CREDENTIAL")
     monkeypatch.setattr("ml.account_gameplan.preparation._native_snapshot", fail)
     with pytest.raises(ValueError, match="read-only snapshot capture failed") as caught:
-        module.capture_snapshot(configured[0], now=NOW)
+        module.capture_snapshot(configured[0], now=NOW, archival=True)
     assert "SECRET" not in str(caught.value) and caught.value.__suppress_context__
 
 
@@ -269,7 +269,7 @@ def test_real_native_snapshot_reads_mock_broker_and_existing_union_ledger_withou
     session.orders = [order]
     monkeypatch.setattr("ml.gameplan_trade_snapshot.SchwabSession", lambda: session)
     before = contents(tmp_path)
-    result = module.capture_snapshot(config, now=NOW)
+    result = module.capture_snapshot(config, now=NOW, archival=True)
     assert result["reserved_cash"] == 200 and result["available_cash"] == 1300
     assert result["gross_exposure"] == 700 and result["held_shares"] == held
     assert result["ownership"]["owned_shares"]["AAPL"] == 1
@@ -277,15 +277,17 @@ def test_real_native_snapshot_reads_mock_broker_and_existing_union_ledger_withou
     assert "SECRET_" not in json.dumps(result) and contents(tmp_path) == before
 
 
-def test_missing_native_ownership_ledger_never_becomes_empty_safe_inventory(configured, monkeypatch, tmp_path):
+def test_missing_native_ownership_ledger_exports_actual_context_without_fabricating_ownership(configured, monkeypatch, tmp_path):
     from tests.test_gameplan_trade_snapshot import ReadSession
     class UnionSession(ReadSession):
         def get_equity_quotes(self, symbols):
             return {symbol: deepcopy(self.quotes["AAPL"]) for symbol in symbols}
     monkeypatch.setattr("ml.gameplan_trade_snapshot.SchwabSession", UnionSession)
     before = contents(tmp_path)
-    with pytest.raises(ValueError, match="read-only snapshot capture failed"):
-        module.capture_snapshot(configured[0], now=NOW)
+    result = module.capture_snapshot(configured[0], now=NOW)
+    assert result["held_shares"]["AAPL"] == 2 and result["available_cash"] == 1500
+    assert "ownership" not in result
+    assert result["ownership_diagnostics"]["status"] == "NOT_REQUESTED"
     assert contents(tmp_path) == before
 
 
@@ -327,12 +329,13 @@ def partitioned(configured, monkeypatch, tmp_path):
     return config, observations, session
 
 
-def test_real_eleven_plus_eleven_ownership_uses_one_account_read_and_preserves_all_native_files(partitioned, tmp_path):
+def test_actual_account_capture_ignores_peer_ownership_and_preserves_all_native_files(partitioned, tmp_path):
     config, observations, session = partitioned
     before = contents(tmp_path)
     result = module.capture_snapshot(config, now=NOW, ownership_observations=observations)
     assert contents(tmp_path) == before
-    assert result["ownership"]["owned_shares"]["AAPL"] == result["ownership"]["owned_shares"]["DOCU"] == 1
+    assert "ownership" not in result
+    assert result["ownership_diagnostics"]["status"] == "NOT_REQUESTED"
     assert result["held_shares"]["AAPL"] == result["held_shares"]["DOCU"] == 2
     assert result["reserved_cash"] == 200 and result["available_cash"] == 1300
     assert result["gross_exposure"] == 900
@@ -341,7 +344,7 @@ def test_real_eleven_plus_eleven_ownership_uses_one_account_read_and_preserves_a
 
 
 @pytest.mark.parametrize("damage", ["stale", "duplicate", "account", "partition", "private_field"])
-def test_bad_producer_observations_fail_before_broker_capture(partitioned, damage):
+def test_bad_producer_observations_do_not_gate_actual_account_capture(partitioned, damage):
     from tools import nightly_ownership
     config, observations, session = partitioned
     value = observations[1]
@@ -352,19 +355,22 @@ def test_bad_producer_observations_fail_before_broker_capture(partitioned, damag
     elif damage == "partition": value["envelope"]["symbols"].pop()
     elif damage == "private_field": value["envelope"]["raw_account"] = "SECRET"
     if damage != "duplicate": value["envelope"]["source_fingerprint"] = nightly_ownership._fingerprint(value["envelope"])
-    with pytest.raises(ValueError): module.capture_snapshot(config, now=stamp, ownership_observations=observations)
-    assert session.calls == []
+    result = module.capture_snapshot(config, now=stamp, ownership_observations=observations)
+    assert result["held_shares"]["AAPL"] == 2 and result["held_shares"]["DOCU"] == 2
+    assert "ownership" not in result and "SECRET" not in json.dumps(result)
+    assert session.calls.count("account") == 1
 
 
-def test_current_broker_holdings_must_equal_both_saved_expectations(partitioned, tmp_path):
+def test_actual_broker_holdings_are_not_limited_by_saved_peer_expectations(partitioned, tmp_path):
     config, observations, session = partitioned
     session.account["securitiesAccount"]["positions"][1].update(longQuantity=3, marketValue=300)
     before = contents(tmp_path)
-    with pytest.raises(ValueError): module.capture_snapshot(config, now=NOW, ownership_observations=observations)
+    result = module.capture_snapshot(config, now=NOW, ownership_observations=observations)
+    assert result["held_shares"]["DOCU"] == 3 and result["gross_exposure"] == 1000
     assert contents(tmp_path) == before and session.calls.count("account") == 1
 
 
-def test_ownership_expiring_during_broker_capture_cannot_be_exported(partitioned, monkeypatch):
+def test_peer_ownership_expiry_does_not_gate_actual_account_context(partitioned, monkeypatch):
     from tools import nightly_ownership
     config, observations, session = partitioned
     old = (pd.Timestamp(NOW) - pd.Timedelta(seconds=50)).isoformat()
@@ -378,5 +384,5 @@ def test_ownership_expiring_during_broker_capture_cannot_be_exported(partitioned
         return original()
     monkeypatch.setattr(session, "get_account", account)
     monkeypatch.setattr(module, "monotonic", lambda: elapsed[0])
-    with pytest.raises(ValueError, match="stale"):
-        module.capture_snapshot(config, now=NOW, ownership_observations=observations)
+    result = module.capture_snapshot(config, now=NOW, ownership_observations=observations)
+    assert result["status"] == "OBSERVED" and "ownership" not in result

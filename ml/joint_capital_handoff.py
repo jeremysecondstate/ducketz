@@ -1,4 +1,4 @@
-"""Export verified saved forecasts and planning prices, without account data.
+"""Export current saved directions; retain explicit historical evidence export.
 
 This narrow handoff validates publication and forecast contracts. It does not
 reload fitted models, training cohorts, account snapshots, or trading reports,
@@ -153,15 +153,51 @@ def _source_reference(root, config, receipt, receipt_hash, manifest_hash, *, rev
         "receipt_sha256": receipt_hash, "reference_sha256": provenance_hash}
 
 
+def _direction_forecasts(frame, derived, *, action_date, configuration, receipt):
+    """Retain exact saved scientific values while checking current derivation."""
+    from ml.gameplan_execution_policy import direction_only_rows, is_current_gameplan_recipe
+    from ml.stock_direction_policy import STOCK_DIRECTION_POLICY_ALIASES
+
+    if not is_current_gameplan_recipe(configuration) or not is_current_gameplan_recipe(receipt):
+        raise ValueError("Current trade-plan recipe differs from its receipt")
+    expected, _ = direction_only_rows(frame, action_date=action_date)
+    fields = [name for name in expected if name in _FORECAST_FIELDS]
+    if (not set(fields).issubset(derived.columns) or derived.id.duplicated().any()
+            or set(derived.id) != set(expected.id)):
+        raise ValueError("Current derived directions differ from their immutable predictions")
+    expected, derived = expected[fields].copy(), derived[fields].copy()
+    version = configuration.get("direction_policy_version")
+    if (not isinstance(version, str) or version not in STOCK_DIRECTION_POLICY_ALIASES
+            or version != receipt.get("direction_policy_version")
+            or not derived.direction_policy_version.eq(version).all()):
+        raise ValueError("Current trade-plan direction policy is inconsistent")
+    expected["direction_policy_version"] = version
+    for key in ("direction_up_threshold", "direction_down_threshold"):
+        if configuration.get(key) != expected[key].iloc[0] or receipt.get(key) != configuration.get(key):
+            raise ValueError("Current trade-plan direction policy is inconsistent")
+    for field in ("target_window_start", "target_window_end", "decision_timestamp", "information_available_at", "frozen_at"):
+        if field in fields:
+            derived[field] = pd.to_datetime(derived[field], utc=True, errors="raise")
+            expected[field] = pd.to_datetime(expected[field], utc=True, errors="raise")
+    try:
+        pd.testing.assert_frame_equal(derived.set_index("id").sort_index(), expected.set_index("id").sort_index(),
+                                      check_dtype=False, check_exact=True)
+    except AssertionError as exc:
+        raise ValueError("Current derived directions differ from their immutable predictions") from exc
+    return derived
+
+
 def export_owner_package(datastore_root: Path, *, gameplan_run: Path, trade_plan_run: Path,
                          owner_id: str, output_root: Path, created_at: str,
                          source_revision: str | None = None, source_provenance: Path | None = None,
-                         source_provenance_sha256: str | None = None) -> Path:
+                         source_provenance_sha256: str | None = None, archival: bool = False) -> Path:
     """Export selected immutable artifacts without following or changing pointers.
 
     Missing recorded generation revisions remain UNRECORDED. A supplied source
     revision requires separately selected, receipt-bound provenance; the current
     checkout revision is never used as an artifact generation claim.
+    Current export derives directions directly from immutable probabilities and
+    never reads estimated prices. Only archival=True exports legacy estimates.
     """
     root = _ordinary(Path(datastore_root), Path(datastore_root), directory=True)
     created = _stamp(created_at, "created_at")
@@ -239,23 +275,14 @@ def export_owner_package(datastore_root: Path, *, gameplan_run: Path, trade_plan
     if any(item.get("cross_horizon_fallback_policy") != fallback for item in (receipt, trade_config, trade_receipt)):
         raise ValueError("Frozen fallback policy differs between publications")
     from ml.gameplan_execution_policy import is_current_gameplan_recipe, direction_only_rows
-    if is_current_gameplan_recipe(trade_config):
-        if not is_current_gameplan_recipe(trade_receipt):
-            raise ValueError("Current trade-plan recipe differs from its receipt")
-        derived_bytes = _output(trade, root, trade_manifest, "trade-plan.parquet", maximum=_PARQUET_LIMIT)
-        inputs[trade / "trade-plan.parquet"] = sha256(derived_bytes).hexdigest()
-        derived = pd.read_parquet(BytesIO(derived_bytes))
+    if not archival:
         expected, _ = direction_only_rows(frame, action_date=day)
         public_fields = [name for name in expected if name in _FORECAST_FIELDS]
-        compare_fields = [name for name in public_fields if name != "id"]
-        for field in ("target_window_start", "target_window_end", "decision_timestamp", "information_available_at", "frozen_at"):
-            if field in compare_fields:
-                derived[field] = pd.to_datetime(derived[field], utc=True)
-                expected[field] = pd.to_datetime(expected[field], utc=True)
-        if (set(derived.id) != set(expected.id) or derived.id.duplicated().any()
-                or derived.set_index("id")[compare_fields].sort_index().to_json(date_format="iso")
-                != expected.set_index("id")[compare_fields].sort_index().to_json(date_format="iso")):
-            raise ValueError("Current derived directions differ from their immutable predictions")
+        if is_current_gameplan_recipe(trade_config) or is_current_gameplan_recipe(trade_receipt):
+            derived_bytes = _output(trade, root, trade_manifest, "trade-plan.parquet", maximum=_PARQUET_LIMIT)
+            inputs[trade / "trade-plan.parquet"] = sha256(derived_bytes).hexdigest()
+            expected = _direction_forecasts(frame, pd.read_parquet(BytesIO(derived_bytes)), action_date=day,
+                configuration=trade_config, receipt=trade_receipt)
         revision, reference = _source_reference(root, config, receipt, sha256(receipt_bytes).hexdigest(),
             sha256(manifest_bytes).hexdigest(), revision=source_revision, provenance=source_provenance,
             provenance_hash=source_provenance_sha256)
@@ -265,8 +292,8 @@ def export_owner_package(datastore_root: Path, *, gameplan_run: Path, trade_plan
                 "forecasts_sha256": sha256(forecast_bytes).hexdigest()},
             forecasts=expected[public_fields].to_dict("records"), source_reference=reference,
             cross_horizon_fallback_policy=fallback, late_publication_at=late_published, direction_only=True)
-        for path, digest in inputs.items():
-            if sha256(_read(path, root, maximum=_PARQUET_LIMIT if path.suffix == ".parquet" else _JSON_LIMIT)).hexdigest() != digest:
+        for path, expected_digest in inputs.items():
+            if sha256(_read(path, root, maximum=_PARQUET_LIMIT if path.suffix == ".parquet" else _JSON_LIMIT)).hexdigest() != expected_digest:
                 raise ValueError("Selected handoff input changed during validation")
         _ordinary(Path(output_root), Path(output_root), directory=True)
         return publish_owner_package(Path(output_root), package)
@@ -301,7 +328,7 @@ def export_owner_package(datastore_root: Path, *, gameplan_run: Path, trade_plan
             "forecasts_sha256": sha256(forecast_bytes).hexdigest(), "price_path_sha256": sha256(price_bytes).hexdigest()},
         forecasts=frame[[name for name in frame if name in _FORECAST_FIELDS]].to_dict("records"),
         price_path=public_prices, cross_horizon_fallback_policy=fallback, source_reference=reference,
-        late_publication_at=late_published)
+        late_publication_at=late_published, direction_only=False)
     for path, expected in inputs.items():
         maximum = (MAX_NATIVE_PRICE_BYTES if path == trade / "planning-price-path.json" else
                    _PARQUET_LIMIT if path.suffix == ".parquet" else _JSON_LIMIT)
@@ -320,11 +347,12 @@ def main(argv=None):
     parser.add_argument("--source-revision")
     parser.add_argument("--source-provenance", type=Path)
     parser.add_argument("--source-provenance-sha256")
+    parser.add_argument("--archive-legacy", action="store_true", help="Explicitly export historical estimated-price evidence")
     args = parser.parse_args(argv)
     path = export_owner_package(args.datastore, gameplan_run=args.gameplan_run, trade_plan_run=args.trade_plan_run,
         owner_id=args.owner_id, output_root=args.output_root, created_at=args.created_at,
         source_revision=args.source_revision, source_provenance=args.source_provenance,
-        source_provenance_sha256=args.source_provenance_sha256)
+        source_provenance_sha256=args.source_provenance_sha256, archival=args.archive_legacy)
     print(json.dumps({"status": "EXPORTED", "package_file": str(path), "orders_placed": 0}))
     return 0
 

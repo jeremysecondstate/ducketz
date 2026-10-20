@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 from pathlib import Path
 from typing import Mapping
 
@@ -11,10 +12,12 @@ import numpy as np
 import pandas as pd
 
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp, verify_manifest, write_manifest
+from ml.nightly_continuation import deadline_expired
 from ml.gameplan_price_bands import (
     SPARSE_PLANNING_PRICE_PATH_CONTRACT, _aware_timestamp, _observation, _source_identity,
 )
 from ml.independent_stock_targets import STOCK_TARGET_BOUNDARY_TOLERANCE
+from ml.stock_direction_policy import saved_direction_policy_summary
 from ml.gameplan_probability_target import (
     RAW_DIRECTION_TARGET, observed_probability_target, probability_target_contract,
     probability_target_metadata,
@@ -26,7 +29,7 @@ TIMEZONE = "America/Los_Angeles"
 RUNS = "ml/gameplan-actuals-review-runs"
 IDENTITY_COLUMNS = ("id", "symbol", "route", "model_group", "model_status", "target_role",
                     "target_window_start", "target_window_end", "calibrated_probability",
-                    "direction", "target_price_source_contract", "probability_target_contract", "gameplan_variant")
+                    "direction", "direction_policy_version", "target_price_source_contract", "probability_target_contract", "gameplan_variant")
 
 
 def _json(path: Path) -> dict:
@@ -55,7 +58,7 @@ def completed_session_context(reviewed_at: object, action_date: str | None = Non
     observed = _aware_timestamp(reviewed_at, "reviewed_at")
     local_day = pd.Timestamp(observed.tz_convert(TIMEZONE).date())
     selected = pd.Timestamp(action_date) if action_date is not None else local_day
-    if action_date is not None and (selected.tzinfo is not None or selected.date().isoformat() != action_date):
+    if action_date is not None and (pd.isna(selected) or selected.tzinfo is not None or selected.date().isoformat() != action_date):
         raise ValueError("Action date must be an ISO exchange-session date")
     calendar = xcals.get_calendar("XNYS", start=selected - pd.Timedelta(days=31),
                                   end=max(selected, local_day) + pd.Timedelta(days=14))
@@ -87,13 +90,14 @@ def _number(value) -> float | None:
 def _observed_prices(prices: pd.DataFrame, forecasts: pd.DataFrame, observed_at: object) -> dict:
     _source_identity(prices, forecasts)
     now = _aware_timestamp(observed_at, "observed_at")
-    bars = prices.loc[:, ["symbol", "timestamp", "open", "close"]].copy()
+    from ml.stock_observation_sources import completed_observation_bars
+    bars = completed_observation_bars(prices, now)
     bars["timestamp"] = pd.to_datetime(bars.timestamp, utc=True, errors="raise")
     bars["symbol"] = bars.symbol.astype(str).str.upper()
     # The close of a minute is not available until that minute has completed.
-    bars = bars.loc[bars.timestamp.add(pd.Timedelta(minutes=1)).le(now)]
-    bars = bars.drop_duplicates(["symbol", "timestamp", "open", "close"])
-    if bars.duplicated(["symbol", "timestamp"]).any():
+    identity = ["symbol", "timestamp", *(["observation_source"] if "observation_source" in bars else [])]
+    bars = bars.drop_duplicates([*identity, "open", "close"])
+    if bars.duplicated(identity).any():
         raise ValueError("Actual price evidence contains conflicting minute observations")
     for field in ("open", "close"):
         bars[field] = pd.to_numeric(bars[field], errors="coerce")
@@ -152,7 +156,7 @@ def _source_window_coverage(inventory: Mapping, symbol: str, start: pd.Timestamp
 def _boundary_evidence(bars: pd.DataFrame, boundary: pd.Timestamp, *, close: bool,
                        now: pd.Timestamp, inventory: Mapping, symbol: str) -> dict:
     """Explain the existing selector without changing its five-minute eligibility."""
-    minute = pd.Timedelta(minutes=1)
+    minute = _observed_interval(bars)
     # Open at boundary+5m needs that entire minute; close at boundary-5m
     # belongs to the minute beginning boundary-6m. Archive ends are exclusive.
     start = boundary - STOCK_TARGET_BOUNDARY_TOLERANCE - minute if close else boundary
@@ -178,6 +182,16 @@ def _boundary_evidence(bars: pd.DataFrame, boundary: pd.Timestamp, *, close: boo
     return evidence
 
 
+def _observed_interval(bars: pd.DataFrame) -> pd.Timedelta:
+    """Use each real source's native bar duration for observed endpoints."""
+    if "observation_interval_seconds" not in bars or bars.empty:
+        return pd.Timedelta(minutes=1)
+    values = pd.to_numeric(bars["observation_interval_seconds"], errors="coerce")
+    if values.isna().any() or values.nunique() != 1 or float(values.iloc[0]) not in {1., 60., 300.}:
+        raise ValueError("Stats endpoints require one native observation interval")
+    return pd.Timedelta(seconds=float(values.iloc[0]))
+
+
 def _evidence_columns(prefix: str, evidence: Mapping) -> dict:
     return {f"{prefix}_{key}": value for key, value in evidence.items()}
 
@@ -190,15 +204,18 @@ def _match_trade_rows(forecasts: pd.DataFrame, trades: pd.DataFrame) -> None:
     from ml.gameplan_execution_policy import is_current_gameplan_recipe, direction_only_rows
     markers = [is_current_gameplan_recipe(row) for row in trades.to_dict("records")]
     expected = forecasts
-    columns = [column for column in IDENTITY_COLUMNS if column in forecasts]
+    columns = [column for column in IDENTITY_COLUMNS if column in forecasts
+               and (column != "direction_policy_version" or column in trades)]
     if any(markers):
         if not all(markers) or "action_date" not in trades or trades.action_date.nunique() != 1:
             raise ValueError("Current trade plan has inconsistent recipe metadata")
         expected, _ = direction_only_rows(forecasts, action_date=trades.action_date.iloc[0])
-        columns = list(dict.fromkeys([*columns, "gameplan_recipe_version", "execution_quantity_basis",
-            "source_saved_direction", "source_saved_direction_policy_version", "direction_policy_version",
-            "direction_up_threshold", "direction_down_threshold", "direction_based_action",
-            "direction_based_trade_quantity", "direction_based_reason"]))
+        scientific_fields = ("raw_probability", "decision_timestamp", "information_available_at", "frozen_at",
+            "target_contract_version", "target_price_dataset", "execution_eligible", "model_artifact", "assumed_round_trip_cost")
+        columns = list(dict.fromkeys([*columns, *(field for field in scientific_fields if field in forecasts),
+            "gameplan_recipe_version", "execution_quantity_basis", "source_saved_direction",
+            "source_saved_direction_policy_version", "direction_policy_version", "direction_up_threshold",
+            "direction_down_threshold", "direction_based_action", "direction_based_trade_quantity", "direction_based_reason"]))
     if not set(columns).issubset(trades):
         raise ValueError("Saved trade plan is missing frozen forecast fields")
     try:
@@ -230,17 +247,24 @@ def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed
         from ml.gameplan_execution_policy import is_current_gameplan_recipe
         saved_trade = planned.get(forecast["id"], {})
         if is_current_gameplan_recipe(saved_trade):
-            # Scientific accuracy keeps the original saved call and policy.
-            # The independently derived execution instruction remains explicit.
+            # Scientific scores retain the original call and recorded policy.
+            # Derived current execution directions have separate provenance.
             row["execution_direction"] = saved_trade["direction"]
             for field in ("direction_policy_version", "direction_up_threshold", "direction_down_threshold"):
                 row["execution_" + field] = saved_trade[field]
                 row[field] = forecast.get(field)
+            for field in ("gameplan_recipe_version", "execution_quantity_basis"):
+                row["execution_" + field] = saved_trade[field]
         start = _aware_timestamp(row["target_window_start"], "target_window_start")
         end = _aware_timestamp(row["target_window_end"], "target_window_end")
         if end <= start:
             raise ValueError("Frozen forecast has an invalid target window")
         bars = by_symbol.get(str(row["symbol"]).upper(), prices.iloc[:0])
+        from ml.stock_observation_sources import choose_target_source
+        bars = choose_target_source(bars, row)
+        if len(bars) and "observation_source" in bars:
+            row["actual_observation_source"] = str(bars.observation_source.iloc[0])
+            row["actual_observation_dataset"] = str(bars.observation_dataset.iloc[0])
         gap = row["target_role"] == "OPENING_GAP_RESEARCH"
         entry = _observation(bars, start, close=gap) if start <= now else None
         finish = _observation(bars, end, close=not gap) if end <= now else None
@@ -311,7 +335,9 @@ def compare_price_points(forecasts: pd.DataFrame, prices: pd.DataFrame, *, actio
                               if estimate else (None, None, None))
             if estimate and (None in (low, mid, high) or not 0 < low <= mid <= high):
                 raise ValueError("Saved planning prices are invalid")
-            actual = _observation(bars, timestamp, close=hour == 17) if timestamp <= now else None
+            from ml.stock_observation_sources import choose_boundary_source
+            selected_bars = choose_boundary_source(bars, timestamp, close=hour == 17, source_contract=contract)
+            actual = _observation(selected_bars, timestamp, close=hour == 17) if timestamp <= now else None
             status = "PENDING_MATURITY" if timestamp > now else "MATURE_AWAITING_DATA" if actual is None else "COMPARED" if estimate else "NO_SAVED_ESTIMATE"
             rows.append({"symbol": symbol, "action_date": action_date, "clock_local": clock,
                          "timestamp": timestamp, "planned_price_low": low, "planned_price_mid": mid, "planned_price_high": high,
@@ -320,7 +346,9 @@ def compare_price_points(forecasts: pd.DataFrame, prices: pd.DataFrame, *, actio
                          "price_error_fraction": actual[0] / mid - 1 if actual and estimate else None,
                          "in_planned_range": bool(low <= actual[0] <= high) if actual and estimate else None,
                          "comparison_status": status,
-                         **_evidence_columns("actual", _boundary_evidence(bars, timestamp, close=hour == 17,
+                         "actual_observation_source": (str(selected_bars.observation_source.iloc[0])
+                            if len(selected_bars) and "observation_source" in selected_bars else None),
+                         **_evidence_columns("actual", _boundary_evidence(selected_bars, timestamp, close=hour == 17,
                             now=now, inventory=inventory, symbol=str(symbol).upper()))})
     return pd.DataFrame(rows)
 
@@ -368,8 +396,15 @@ def _saved_trade_plan(root: Path, publication, *, preparation_cutoff=None):
         raise ValueError("Saved trade plan receipt or source identity is invalid")
     trades = pd.read_parquet(run / "trade-plan.parquet")
     forecasts = pd.read_parquet(publication.run_directory / "forecasts.parquet")
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe
+    current = is_current_gameplan_recipe(manifest["configuration"]) or is_current_gameplan_recipe(receipt)
+    if current and (not is_current_gameplan_recipe(manifest["configuration"])
+            or not is_current_gameplan_recipe(receipt)
+            or not all(is_current_gameplan_recipe(row) for row in trades.to_dict("records"))):
+        raise ValueError("Current trade plan has inconsistent recipe metadata")
     _match_trade_rows(forecasts, trades)
-    price_path = _json(run / "planning-price-path.json") if "planning-price-path.json" in manifest["output_files"] else None
+    price_path = (_json(run / "planning-price-path.json")
+        if not current and "planning-price-path.json" in manifest["output_files"] else None)
     return run, trades, price_path
 
 
@@ -421,12 +456,18 @@ def render_actuals_review(forecasts: pd.DataFrame, prices: pd.DataFrame, report:
               "Completed-session review for model feedback. All times are Pacific."
               if report.get("review_mode") == "completed-session-before-training" else
               f"Tomorrow's Gameplan for **{report['successor_action_date']}** is prepared. All times are Pacific."), "",
-             "The saved price estimates below are compared with actual market prices at the same clock. "
-             "The ranges were planning estimates; the observations are market prices, not broker fills or trading P/L.", ""]
+             "Saved forecasts are compared with completed market observations at their original target boundaries. "
+             "These observations are market prices, not broker fills or trading P/L.", ""]
     if report.get("source_gameplan_run"):
         lines += [f"Original forecast: [{report['action_date']} Gameplan]({report['source_gameplan_path']}/forecasts.parquet).", ""]
     if report.get("source_trade_plan_path"):
-        lines += [f"[Original Gameplan with prices and quantities]({report['source_trade_plan_path']}/Gameplan.md).", ""]
+        lines += [f"[Original saved Gameplan]({report['source_trade_plan_path']}/Gameplan.md).", ""]
+    policy_summary = saved_direction_policy_summary(forecasts.to_dict("records"))
+    lines += ["Direction accuracy scores the original saved calls; later rules do not relabel historical forecasts.", ""]
+    for version, cutoffs in policy_summary["direction_policy_cutoffs"].items():
+        above, below = ("≥", "≤") if cutoffs["boundaries"] == "inclusive" else (">", "<")
+        lines += [f"Saved direction policy `{version}`: BUY/Bullish at P(up) {above} {cutoffs['bullish_probability']:.2%}; "
+                  f"SELL/Bearish at P(up) {below} {cutoffs['bearish_probability']:.2%}; the remaining probabilities have no directional call.", ""]
     if forecasts.empty:
         return "\n".join(lines + ["No saved independent-stock Gameplan was available for this completed session.", ""])
     totals = report["forecasts"]
@@ -441,32 +482,12 @@ def render_actuals_review(forecasts: pd.DataFrame, prices: pd.DataFrame, report:
     summary_rows = []
     for symbol, frame in forecasts.groupby("symbol", sort=True):
         calls = frame.loc[frame.direction_correct.notna() & frame.model_status.eq("PROMOTED")]
-        clocks = prices.loc[prices.symbol.eq(symbol) & prices.comparison_status.eq("COMPARED")]
         summary_rows.append((symbol, f"{int(calls.direction_correct.sum())} / {len(calls)}" if len(calls) else "—",
-                             _percent(calls.direction_correct.astype(float).mean() if len(calls) else None),
-                             _percent(clocks.price_error_fraction.abs().mean() if len(clocks) else None),
-                             f"{int(clocks.in_planned_range.sum())} / {len(clocks)}" if len(clocks) else "—"))
-    lines += _table(["Stock", "Correct / scored approved calls", "Direction accuracy", "Mean absolute price error", "Prices within range"], summary_rows)
+                             _percent(calls.direction_correct.astype(float).mean() if len(calls) else None)))
+    lines += _table(["Stock", "Correct / scored approved calls", "Direction accuracy"], summary_rows)
     for symbol, frame in forecasts.groupby("symbol", sort=True):
-        lines += [f"## {symbol}", "", "### Planned prices vs actual prices", ""]
-        price_rows = []
+        lines += [f"## {symbol}", ""]
         missing_rows = []
-        for row in prices.loc[prices.symbol.eq(symbol)].to_dict("records"):
-            difference = _number(row["price_error"])
-            observed = row["actual_observed_at"]
-            observed = pd.Timestamp(observed).tz_convert(TIMEZONE).strftime("%H:%M") if pd.notna(observed) else "—"
-            status = {"COMPARED": "Inside" if row["in_planned_range"] else "Outside", "NO_SAVED_ESTIMATE": "No saved estimate",
-                      "MATURE_AWAITING_DATA": "Waiting for data", "PENDING_MATURITY": "Pending"}[row["comparison_status"]]
-            if row["comparison_status"] == "MATURE_AWAITING_DATA":
-                status = _missing_boundary_text(row, "actual") or status
-                detail = _missing_boundary_text(row, "actual", detailed=True)
-                if detail:
-                    missing_rows.append((f"Price {row['clock_local']}", detail))
-            price_rows.append((row["clock_local"], f"{_money(row['planned_price_low'])}–{_money(row['planned_price_high'])}" if _number(row["planned_price_mid"]) else "—",
-                               _money(row["planned_price_mid"]), _money(row["actual_price"]), observed,
-                               f"{'+' if difference >= 0 else '−'}{_money(abs(difference))}" if difference is not None else "—",
-                               _percent(row["price_error_fraction"], signed=True), status))
-        lines += _table(["Time", "Saved price range", "Saved midpoint", "Actual price", "Observed at", "Actual − midpoint", "Difference %", "Range result"], price_rows)
         lines += ["### Forecast outcomes", ""]
         outcome_rows = []
         for row in frame.to_dict("records"):
@@ -515,7 +536,7 @@ def publish_actuals_review(root: Path, *, gameplan_run: Path, deadline: object |
     from ml.preparation_deadline import preparation_deadline
     original_deadline = deadline_at
     deadline_at, exception_evidence = preparation_deadline(root, successor.run_directory, deadline_at, now, deadline_exception)
-    if now >= deadline_at:
+    if deadline_expired(now, deadline_at):
         raise ValueError("Actuals review must retain the successor's original 04:00 deadline")
     # A one-time late successor may finish its preparation now. Historical
     # comparisons below still select only estimates saved before their opening.
@@ -545,15 +566,16 @@ def publish_completed_session_review(root: Path, *, action_date: str | None = No
                                      price_loader=None, deadline: object | None = None) -> Path:
     """Score a completed session without fitting or preparing its successor.
 
-    Only the original pre-open publication and its matching saved estimates are
-    eligible. Longer windows remain pending at this session's close. The output
+    Only the original pre-open publication and its matching saved instructions
+    are eligible. Historical estimates remain archive evidence. Longer windows
+    remain pending at this session's close. The output
     is the same verified artifact consumed by the existing Gameplan Stats tab.
     """
     root = Path(root).resolve()
     now = _aware_timestamp(clock() if reviewed_at is None else reviewed_at, "review time")
     context = completed_session_context(now, action_date)
     deadline_at = _aware_timestamp(deadline, "deadline") if deadline is not None else None
-    if deadline_at is not None and now >= deadline_at:
+    if deadline_at is not None and deadline_expired(now, deadline_at):
         raise ValueError("Actuals review publication deadline passed")
     report = {"schema_version": VERSION, "status": "COMPLETE", **context,
               "review_mode": "completed-session-before-training", "successor_gameplan_run": None,
@@ -603,7 +625,8 @@ def _publish_session_review(root: Path, *, report: dict, inputs: list,
             # This is the new workflow's display/default contract, not an
             # invented historical forecast. The saved result remains empty.
             report.update(probability_target_metadata(RAW_DIRECTION_TARGET))
-    if deadline_at is not None and _aware_timestamp(clock(), "completion time") >= deadline_at:
+    report.update(saved_direction_policy_summary(results.to_dict("records")))
+    if deadline_at is not None and deadline_expired(_aware_timestamp(clock(), "completion time"), deadline_at):
         raise ValueError("Actuals review publication deadline passed")
     run = create_timestamp_directory(root / RUNS, timestamp=now)
     results.to_parquet(run / "forecast-results.parquet", index=False)
@@ -612,10 +635,10 @@ def _publish_session_review(root: Path, *, report: dict, inputs: list,
     (run / "Gameplan-results.md").write_text(render_actuals_review(results, price_results, report), encoding="utf-8")
     write_manifest(run, run_timestamp=now, input_files=inputs,
                    output_files=["forecast-results.parquet", "price-results.parquet", "report.json", "Gameplan-results.md"],
-                   configuration={key: report[key] for key in ("schema_version", "action_date", "successor_gameplan_run", "outcomes_through", "review_mode", "probability_target_contract") if key in report},
+                   configuration={key: report[key] for key in ("schema_version", "action_date", "successor_gameplan_run", "outcomes_through", "review_mode", "probability_target_contract", "direction_policy_evaluation", "direction_policy_versions", "direction_policy_cutoffs", "unrecorded_direction_policy_forecasts") if key in report},
                    datastore_root=root)
     verify_manifest(run)
-    if deadline_at is not None and _aware_timestamp(clock(), "publication time") >= deadline_at:
+    if deadline_at is not None and deadline_expired(_aware_timestamp(clock(), "publication time"), deadline_at):
         raise ValueError("Actuals review publication deadline passed")
     _write_json(run / "receipt.json", {"schema_version": VERSION, "status": "COMPLETE", "action_date": action_date,
                 "run_path": run.relative_to(root).as_posix(), "manifest_sha256": file_checksum(run / "manifest.json"),
@@ -630,6 +653,16 @@ def _publish_session_review(root: Path, *, report: dict, inputs: list,
     temporary = dated / "Gameplan-results.tmp"
     temporary.write_bytes((run / "Gameplan-results.md").read_bytes())
     temporary.replace(dated / "Gameplan-results.md")
+    # Execution is a separate private snapshot, never part of this prediction
+    # run, manifest, handoff package, or prerequisite for nightly continuation.
+    # Publish only after the prediction artifacts and reader pointers are durable.
+    try:
+        from ml.gameplan_execution_report import publish_execution_summary
+        publish_execution_summary(root, action_date, observed_at=clock())
+    except Exception as exc:
+        logging.getLogger(__name__).warning(
+            "Private Gameplan execution summary unavailable for %s (%s); prediction Stats remain published",
+            action_date, type(exc).__name__)
     return run
 
 

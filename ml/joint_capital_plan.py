@@ -1,4 +1,4 @@
-"""Offline composition of two frozen Gameplans, with optional capital projection.
+"""Offline composition of two frozen Gameplans against one account snapshot.
 
 Package digests prove byte consistency, not producer authenticity. The caller
 must independently verify the source receipts and supply their selected package
@@ -26,7 +26,7 @@ from ml.gameplan_cash_ledger import project_direction_trades, SIGNAL_DRIVEN_HOLD
 from ml.stock_trader.contracts import StockTraderPolicy
 from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy
 from ml.gameplan_execution_policy import (current_gameplan_policy_metadata, is_current_gameplan_recipe,
-                                         direction_only_rows, DIRECTION_ONLY_STATUS)
+                                         direction_only_rows, DIRECTION_ONLY_STATUS, validate_direction_only_plan)
 
 
 PACKAGE_SCHEMA = "joint-capital-owner-package-v1"
@@ -117,7 +117,7 @@ def _forecast_json(row: Mapping) -> dict:
     return result
 
 
-def _validate_package(package: Mapping) -> None:
+def _validate_package(package: Mapping, *, validate_legacy_prices: bool = True) -> None:
     if not isinstance(package, Mapping) or package.get("schema_version") != PACKAGE_SCHEMA:
         raise ValueError("Unsupported owner package schema")
     if package.get("holding_policy") != SIGNAL_DRIVEN_HOLDING_POLICY:
@@ -138,17 +138,15 @@ def _validate_package(package: Mapping) -> None:
     validate_fallback_policy(package.get("cross_horizon_fallback_policy"), day)
     symbols = _symbols(package.get("frozen_symbols"))
     created = _time(package.get("created_at"), "package created_at")
-    if "account_basis" in package:
-        basis = package["account_basis"]
-        if package["owner_id"] != "atlas" or not isinstance(basis, dict):
-            raise ValueError("Saved account balances must belong to the Atlas Gameplan")
-        _time(basis.get("observed_at"), "account basis observed_at")
-        _hash(basis.get("account_scope_sha256"), "account basis scope")
     hashes = package.get("source_hashes")
-    required_hashes = _SOURCE_HASHES - {"price_path_sha256"} if is_current_gameplan_recipe(package) else _SOURCE_HASHES
-    if not isinstance(hashes, dict) or set(hashes) != required_hashes:
+    forecast_hashes = _SOURCE_HASHES - {"price_path_sha256"}
+    required_hashes = forecast_hashes if is_current_gameplan_recipe(package) or not validate_legacy_prices else _SOURCE_HASHES
+    allowed_hashes = forecast_hashes if is_current_gameplan_recipe(package) and validate_legacy_prices else _SOURCE_HASHES
+    if not isinstance(hashes, dict) or not required_hashes.issubset(hashes) or not set(hashes).issubset(allowed_hashes):
         raise ValueError("Required native source hashes are missing")
     for name, value in hashes.items():
+        if not validate_legacy_prices and name == "price_path_sha256":
+            continue
         _hash(value, name)
     reference = package.get("source_reference")
     if reference is not None:
@@ -207,11 +205,29 @@ def _validate_package(package: Mapping) -> None:
             if stamp > created:
                 raise ValueError("Frozen forecast evidence postdates its package")
     if is_current_gameplan_recipe(package):
-        if package.get("price_path") is not None:
-            raise ValueError("Current directional packages cannot require estimated price paths")
-        if any(not is_current_gameplan_recipe(row) for row in rows):
-            raise ValueError("Current package rows must declare their live execution recipe")
-        if package.get("content_sha256") != {"forecasts": content_sha256(rows)}:
+        from ml.stock_direction_policy import (CURRENT_STOCK_DIRECTION_POLICY_VERSIONS,
+            BULLISH_PROBABILITY, BEARISH_PROBABILITY)
+        for record in [package, *rows]:
+            if (not is_current_gameplan_recipe(record)
+                    or record.get("direction_policy_version") not in CURRENT_STOCK_DIRECTION_POLICY_VERSIONS
+                    or type(record.get("direction_up_threshold")) not in (int, float)
+                    or type(record.get("direction_down_threshold")) not in (int, float)
+                    or record["direction_up_threshold"] != BULLISH_PROBABILITY
+                    or record["direction_down_threshold"] != BEARISH_PROBABILITY):
+                raise ValueError("Current package must declare the exact stock direction policy")
+        contents = package.get("content_sha256")
+        if (not isinstance(contents, dict) or contents.get("forecasts") != content_sha256(rows)
+                or (validate_legacy_prices and contents != {"forecasts": content_sha256(rows)})):
+            raise ValueError("Owner package content hashes disagree")
+        if _hash(package.get("package_sha256"), "package") != content_sha256(_package_content(package)):
+            raise ValueError("Owner package digest disagrees with frozen contents")
+        return
+    if not validate_legacy_prices:
+        # A current directional plan consumes only the frozen forecasts.
+        # Archived estimate digests remain evidence; their values, schema and
+        # availability never determine a current instruction or its capacity.
+        contents = package.get("content_sha256")
+        if not isinstance(contents, dict) or contents.get("forecasts") != content_sha256(rows):
             raise ValueError("Owner package content hashes disagree")
         if _hash(package.get("package_sha256"), "package") != content_sha256(_package_content(package)):
             raise ValueError("Owner package digest disagrees with frozen contents")
@@ -299,8 +315,21 @@ def build_owner_package(*, owner_id: str, run_id: str, source_revision: str | No
                         source_hashes: Mapping, forecasts: Sequence[Mapping], price_path: Mapping | None = None,
                         cross_horizon_fallback_policy: Mapping | None = None,
                         source_reference: Mapping | None = None, late_publication_at: str | None = None,
-                        account_basis: Mapping | None = None, direction_only: bool = False) -> dict:
-    """Seal already verified native inputs; this does not authenticate a producer."""
+                        account_basis: Mapping | None = None, direction_only: bool = True) -> dict:
+    """Seal current instructions; legacy estimated output requires explicit opt-in.
+
+    Caller-selected native source hashes retain the original scientific bytes.
+    Estimated prices and their hashes are not current operating inputs.
+    """
+    if direction_only:
+        derived, _ = direction_only_rows(pd.DataFrame(forecasts), action_date=action_date)
+        derived_records = derived.to_dict("records")
+        for row, saved in zip(derived_records, forecasts):
+            if is_current_gameplan_recipe(saved):
+                for field in ("direction_policy_version", "direction_up_threshold", "direction_down_threshold"):
+                    row[field] = saved.get(field)
+        forecasts = derived_records
+        source_hashes = {key: value for key, value in source_hashes.items() if key != "price_path_sha256"}
     package = deepcopy({"schema_version": PACKAGE_SCHEMA, "owner_id": owner_id,
         "run_id": run_id, "source_revision": source_revision, "action_date": action_date,
         "source_revision_status": "UNRECORDED" if source_revision is None else "RECORDED",
@@ -316,7 +345,7 @@ def build_owner_package(*, owner_id: str, run_id: str, source_revision: str | No
         package["late_publication_at"] = late_publication_at
     if account_basis is not None:
         if owner_id != "atlas":
-            raise ValueError("The Gameplan executor supplies the saved account balance basis")
+            raise ValueError("Only the Gameplan executor supplies observed account context")
         package["account_basis"] = deepcopy(dict(account_basis))
     package["content_sha256"] = {"forecasts": content_sha256(package["forecasts"])}
     if not direction_only:
@@ -326,13 +355,12 @@ def build_owner_package(*, owner_id: str, run_id: str, source_revision: str | No
     return package
 
 
-def _validate_snapshot(snapshot: Mapping, symbols: set[str], scope: str, now: pd.Timestamp, age: int | None, *, fallback: bool,
-                       require_ownership: bool = True) -> None:
+def _validate_snapshot(snapshot: Mapping, symbols: set[str], scope: str, now: pd.Timestamp, age: int, *, fallback: bool) -> None:
     _json_bytes(snapshot)
     if snapshot.get("account_scope_sha256") != scope:
         raise ValueError("Authoritative snapshot belongs to a different account scope")
     elapsed = (now - _time(snapshot.get("observed_at"), "snapshot observed_at")).total_seconds()
-    if elapsed < 0 or age is not None and elapsed > age:
+    if not 0 <= elapsed <= age:
         raise ValueError("Authoritative account snapshot is stale or future-dated")
     for name in ("account_equity", "available_cash", "reserved_cash", "gross_exposure"):
         _number(snapshot.get(name), name, positive=name == "account_equity")
@@ -354,8 +382,6 @@ def _validate_snapshot(snapshot: Mapping, symbols: set[str], scope: str, now: pd
             if not isinstance(quote, dict):
                 raise ValueError("Pending buys require their observed quote")
             _number(quote.get("ask"), "pending buy ask", positive=True)
-    if not require_ownership:
-        return
     ownership = snapshot.get("ownership", {})
     allocations = ownership.get("active_allocations")
     if not isinstance(allocations, list) or not isinstance(ownership.get("blocked_symbols"), list):
@@ -379,41 +405,7 @@ def _validate_snapshot(snapshot: Mapping, symbols: set[str], scope: str, now: pd
             _number(allocation.get(name, 0), name)
 
 
-def _observed_planning_points(package: Mapping) -> tuple[dict, dict]:
-    """Exclude historical carry assumptions from a new composition, without relabeling its source."""
-    points, excluded = deepcopy(package["price_path"]["points"]), {}
-    for key, point in points.items():
-        marker = point.get("reference_is_synthetic", False)
-        count = point.get("synthetic_close_sample_count", 0)
-        fill_count = point.get("reference_fill_count", 0)
-        if (type(marker) is not bool or type(count) is not int or count < 0
-                or type(fill_count) is not int or fill_count < 0):
-            raise ValueError("Invalid planning synthetic-reference provenance")
-        anchor_is_synthetic = marker or fill_count > 0 or point.get("reference_completion_status") == "AVAILABLE_SYNTHETIC"
-        if not anchor_is_synthetic and count == 0:
-            continue
-        reasons = (["SYNTHETIC_CURRENT_REFERENCE"] if anchor_is_synthetic else []) + (
-            ["SYNTHETIC_HISTORICAL_SAMPLES"] if count else [])
-        excluded[key] = {"reasons": reasons, "source_point_sha256": content_sha256(point),
-            "source_status": point["status"], "source_sample_count": point["sample_count"],
-            "source_synthetic_close_sample_count": count, "source_reference_is_synthetic": marker,
-            "source_reference_fill_count": fill_count,
-            "source_reference_completion_status": point.get("reference_completion_status")}
-        # Exported aggregate medians cannot be recomputed after removing their
-        # synthetic constituent observations. Preserve the authentic source as
-        # evidence and make this projection unavailable instead of guessing.
-        point.update(status="UNAVAILABLE_REFERENCE_PRICE", reason="UNVERIFIED_SYNTHETIC_REFERENCE_EXCLUDED",
-            reference_price=None, ratio_median=None, sample_count=0,
-            observed_only_sample_count=0, synthetic_close_sample_count=0,
-            source_point_sha256=excluded[key]["source_point_sha256"],
-            planning_exclusion_reasons=reasons)
-        for field in ("planned_price_low", "planned_price_mid", "planned_price_high",
-                      "historical_price_low", "historical_price_high"):
-            point[field] = None
-    return points, excluded
-
-
-def _seal_direction_plan(plan):
+def _seal_direction_plan(plan: dict) -> dict:
     plan["plan_id"] = "joint-capital:" + content_sha256(plan)
     plan["owner_views"] = {owner: {"plan_id": plan["plan_id"], "owner_id": owner,
         "sole_executor_owner": plan["sole_executor_owner"],
@@ -421,31 +413,32 @@ def _seal_direction_plan(plan):
         "package_sha256": binding["package_sha256"], "frozen_symbols": deepcopy(binding["frozen_symbols"]),
         "forecast_ids": [row["id"] for row in plan["forecasts"] if row["owner_id"] == owner],
         "event_sequences": []} for owner, binding in plan["input_bindings"].items()}
+    validate_direction_only_plan(plan)
     plan["plan_sha256"] = content_sha256(plan)
     return plan
 
 
-def direction_plan_from_saved_plan(saved, *, as_of, snapshot=None):
-    """Create a new current recipe from verified immutable prediction evidence.
-
-    This pure transformation reads no account, model, provider or filesystem.
-    The old plan digest is retained as provenance; its bytes are never changed.
-    """
+def direction_plan_from_saved_plan(saved: Mapping, *, as_of: str, snapshot: Mapping | None = None) -> dict:
+    """Publish a current revision from immutable predictions, retaining its parent."""
     _validate_plan_digest(saved, saved["plan_sha256"])
     day = saved["action_date"]
+    if snapshot is not None and snapshot.get("account_scope_sha256") != saved["account_scope_sha256"]:
+        raise ValueError("Observed account context belongs to a different account")
     rows, ledger = direction_only_rows(pd.DataFrame(saved["forecasts"]), action_date=day, snapshot=snapshot)
     ledger["cross_horizon_fallback_policy"] = deepcopy(saved.get("cross_horizon_fallback_policy"))
+    if snapshot is None and "observed_account_context" in saved.get("ledger", {}):
+        ledger["observed_account_context"] = deepcopy(saved["ledger"]["observed_account_context"])
     result = {key: deepcopy(saved[key]) for key in ("schema_version", "action_date", "account_scope_sha256",
         "input_bindings", "sole_executor_owner", "holding_policy", "cross_horizon_fallback_policy")}
     result.update(status="COMPLETE", authority="INFORMATIONAL_ONLY", as_of=_time(as_of, "as_of").isoformat(),
         **current_gameplan_policy_metadata(day), source_plan_sha256=saved["plan_sha256"],
         ranking_policy=RANKING_POLICY, composition_mode=PLAN_ONLY_MODE,
-        account_snapshot_sha256=content_sha256(snapshot) if snapshot is not None else None,
-        account_snapshot_observed_at=snapshot.get("observed_at") if snapshot is not None else None,
+        account_snapshot_sha256=content_sha256(snapshot) if snapshot is not None else saved.get("account_snapshot_sha256"),
+        account_snapshot_observed_at=snapshot.get("observed_at") if snapshot is not None else saved.get("account_snapshot_observed_at"),
         cash_basis="LIVE_BROKER_CAPACITY_AT_EXECUTION", live_capital_reserved=False, live_orders_authorized=False,
         forecasts=[_forecast_json(row) for row in rows.to_dict("records")], ledger=ledger,
-        limitations=["BUY and SELL are directional instructions. Quantities are determined from live broker capacity.",
-            "No future-price estimates, projected fills or historical planning quantity limits apply."])
+        limitations=["BUY and SELL quantities use live broker capacity at execution.",
+            "No future-price estimates, projected fills or historical planned quantities apply."])
     return _seal_direction_plan(result)
 
 
@@ -455,16 +448,27 @@ def compose_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | None = N
                        policy: StockTraderPolicy | None = None,
                        maximum_snapshot_age_seconds: int | None = 900,
                        maximum_package_age_seconds: int = 604800) -> dict:
-    """Compose current directions; observed balances are optional context only."""
+    """Combine the selected predictions once; real balances remain observed context.
+
+    Directional instructions have no estimated fills or pre-sized quantities.
+    The executor sizes orders from its current cash, eligible shares and quotes.
+    """
     day, now = _date(action_date), _time(as_of, "as_of")
-    if len(packages) != 2 or set(expected_universes) != set(expected_package_sha256) or executor_owner not in expected_universes:
-        raise ValueError("Both independently selected owner packages are required")
+    scope = _hash(account_scope_sha256, "account scope")
+    if type(maximum_package_age_seconds) is not int or not 1 <= maximum_package_age_seconds <= 604800:
+        raise ValueError("Package freshness bound must be within seven days")
+    if not isinstance(packages, (list, tuple)) or len(packages) != 2 or len(expected_universes) != 2:
+        raise ValueError("Both expected owner packages are required")
+    if set(expected_universes) != set(expected_package_sha256) or executor_owner not in expected_universes:
+        raise ValueError("Both selected owners and one sole executor are required")
     selected, claimed, records = {}, set(), []
     for package in packages:
-        _validate_package(package)
+        _validate_package(package, validate_legacy_prices=False)
         owner = package["owner_id"]
-        if (owner not in expected_universes or owner in selected or package["package_sha256"] != expected_package_sha256[owner]
-                or package["action_date"] != day or set(package["frozen_symbols"]) != set(expected_universes[owner])):
+        if (owner not in expected_universes or owner in selected
+                or package["package_sha256"] != _hash(expected_package_sha256[owner], "trusted package")
+                or package["action_date"] != day
+                or set(package["frozen_symbols"]) != set(_symbols(expected_universes[owner]))):
             raise ValueError("Owner package differs from its selected source binding")
         if not 0 <= (now - _time(package["created_at"], "created_at")).total_seconds() <= maximum_package_age_seconds:
             raise ValueError("Owner package is stale or future-dated")
@@ -472,50 +476,55 @@ def compose_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | None = N
             raise ValueError("Overlapping owner symbol claims")
         claimed.update(package["frozen_symbols"])
         selected[owner] = package
-        for row in package["forecasts"]:
-            records.append({**deepcopy(row), "id": "joint:" + content_sha256([owner, package["run_id"], row["id"]]),
-                "original_forecast_id": row["id"], "owner_id": owner, "owner_run_id": package["run_id"]})
     if set(selected) != set(expected_universes):
         raise ValueError("Missing owner package")
     fallbacks = [selected[owner].get("cross_horizon_fallback_policy") for owner in sorted(selected)]
-    if fallbacks[0] != fallbacks[1]:
-        raise ValueError("Owner cross-horizon fallback policies disagree")
+    fallback = deepcopy(fallbacks[0]) if fallbacks[0] == fallbacks[1] else None
+    for owner in sorted(selected):
+        package = selected[owner]
+        for row in sorted(package["forecasts"], key=lambda value: value["id"]):
+            records.append({**deepcopy(row), "id": "joint:" + content_sha256([owner, package["run_id"], row["id"]]),
+                "original_forecast_id": row["id"], "owner_id": owner, "owner_run_id": package["run_id"]})
     if snapshot is None:
         snapshot = selected[executor_owner].get("account_basis")
-    if snapshot is not None and snapshot.get("account_scope_sha256") != account_scope_sha256:
-        raise ValueError("Observed account context belongs to a different account")
+    if snapshot is not None:
+        _json_bytes(snapshot)
+        if snapshot.get("account_scope_sha256") != scope:
+            raise ValueError("Observed account context belongs to a different account")
+        _time(snapshot.get("observed_at"), "account context observed_at")
     rows, ledger = direction_only_rows(pd.DataFrame(records), action_date=day, snapshot=snapshot)
-    ledger["cross_horizon_fallback_policy"] = deepcopy(fallbacks[0])
+    ledger["cross_horizon_fallback_policy"] = deepcopy(fallback)
     bindings = {owner: {key: deepcopy(selected[owner][key]) for key in ("run_id", "source_revision", "source_revision_status",
         "source_reference", "frozen_symbols", "created_at", "source_hashes", "content_sha256", "package_sha256")} for owner in sorted(selected)}
     plan = {"schema_version": PLAN_SCHEMA, "status": "COMPLETE", "authority": "INFORMATIONAL_ONLY",
-        "action_date": day, "as_of": now.isoformat(), "account_scope_sha256": _hash(account_scope_sha256, "account scope"),
+        "action_date": day, "as_of": now.isoformat(), "account_scope_sha256": scope,
         **current_gameplan_policy_metadata(day), "input_bindings": bindings, "ranking_policy": RANKING_POLICY,
         "sole_executor_owner": executor_owner, "holding_policy": SIGNAL_DRIVEN_HOLDING_POLICY,
-        "cross_horizon_fallback_policy": deepcopy(fallbacks[0]), "composition_mode": PLAN_ONLY_MODE,
+        "cross_horizon_fallback_policy": deepcopy(fallback), "composition_mode": PLAN_ONLY_MODE,
+        "source_cross_horizon_fallback_policies": {owner: deepcopy(selected[owner].get("cross_horizon_fallback_policy"))
+            for owner in sorted(selected)},
         "account_snapshot_sha256": content_sha256(snapshot) if snapshot is not None else None,
         "account_snapshot_observed_at": snapshot.get("observed_at") if snapshot is not None else None,
         "cash_basis": "LIVE_BROKER_CAPACITY_AT_EXECUTION", "live_capital_reserved": False, "live_orders_authorized": False,
         "forecasts": [_forecast_json(row) for row in rows.to_dict("records")], "ledger": ledger,
         "limitations": ["BUY and SELL are directional instructions; quantities use live broker capacity.",
-            "Observed account context is disclosed only. Missing quotes or balances never require estimated prices."]}
+            "Observed balances and quotes are context; no estimated prices or projected fills apply."]}
     return _seal_direction_plan(plan)
 
 
-def _compose_legacy_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | None = None, *, action_date: str,
+def _compose_legacy_joint_plan(packages: Sequence[Mapping], snapshot: Mapping, *, action_date: str,
                        expected_universes: Mapping[str, Sequence[str]], expected_package_sha256: Mapping[str, str],
                        account_scope_sha256: str, as_of: str, executor_owner: str,
                        policy: StockTraderPolicy | None = None,
-                       maximum_snapshot_age_seconds: int | None = 900,
+                       maximum_snapshot_age_seconds: int = 900,
                        maximum_package_age_seconds: int = 604800) -> dict:
-    """Synthesize two Gameplans with their saved cash/share basis when supplied.
+    """Compose exactly two selected sources with one globally applied cash policy.
 
     The supplied trusted package digests must come from the caller's independent
     source verification. No source or broker state is discovered by this function.
     """
     day, scope, now = _date(action_date), _hash(account_scope_sha256, "account scope"), _time(as_of, "as_of")
-    if maximum_snapshot_age_seconds is not None and (type(maximum_snapshot_age_seconds) is not int
-                                                    or not 1 <= maximum_snapshot_age_seconds <= 3600):
+    if type(maximum_snapshot_age_seconds) is not int or not 1 <= maximum_snapshot_age_seconds <= 3600:
         raise ValueError("Snapshot freshness bound must be within one hour")
     if type(maximum_package_age_seconds) is not int or not 1 <= maximum_package_age_seconds <= 604800:
         raise ValueError("Package freshness bound must be within seven days")
@@ -529,9 +538,10 @@ def _compose_legacy_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | 
     selected = {}
     all_symbols, all_rows, points = set(), [], {}
     price_metadata = []
-    planning_exclusions = {}
     for package in packages:
-        _validate_package(package)
+        if is_current_gameplan_recipe(package):
+            raise ValueError("Historical price projection requires legacy price-bearing packages")
+        _validate_package(package, validate_legacy_prices=True)
         owner = package["owner_id"]
         if owner not in owners or owner in selected:
             raise ValueError("Missing, unexpected, or duplicate owner package")
@@ -551,32 +561,11 @@ def _compose_legacy_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | 
         all_symbols |= symbols
         selected[owner] = package
         price_metadata.append({k: v for k, v in package["price_path"].items() if k != "points"})
-        observed_points, exclusions = _observed_planning_points(package)
-        points.update(observed_points)
-        planning_exclusions[owner] = exclusions
-    # Each package already validates its exact source/dataset against its own
-    # forecasts. Independent producers may use different genuine sources; the
-    # interpretation and every planning-policy field must still agree.
-    lineage_fields = {"observed_at", "reference_completion", "price_source_contract", "price_dataset"}
-    comparable = [{k: v for k, v in item.items() if k not in lineage_fields} for item in price_metadata]
+        points.update(deepcopy(package["price_path"]["points"]))
+    # Price observations may differ; the interpretation and planning policy may not.
+    comparable = [{k: v for k, v in item.items() if k not in {"observed_at", "reference_completion"}} for item in price_metadata]
     if comparable[0] != comparable[1]:
         raise ValueError("Owner planning price policies disagree")
-    source_identities = {(item["price_source_contract"], item["price_dataset"]) for item in price_metadata}
-    merged_price_metadata = deepcopy(price_metadata[0])
-    owner_price_lineage = {owner: {
-        "price_source_contract": selected[owner]["price_path"]["price_source_contract"],
-        "price_dataset": selected[owner]["price_path"]["price_dataset"],
-        "observed_at": selected[owner]["price_path"]["observed_at"],
-        "package_sha256": selected[owner]["package_sha256"],
-        "symbols": deepcopy(selected[owner]["frozen_symbols"])} for owner in sorted(selected)}
-    if len(source_identities) > 1:
-        # No global source label may falsely attribute every merged point to the
-        # first producer. The numeric planning policy remains unchanged.
-        for key in ("price_source_contract", "price_dataset", "reference_completion"):
-            merged_price_metadata.pop(key, None)
-        merged_price_metadata.update(source_lineage_contract="owner-scoped-planning-price-lineage-v1",
-            owner_price_lineage=deepcopy(owner_price_lineage),
-            observed_at=max(_time(item["observed_at"], "price observed_at") for item in price_metadata).isoformat())
     fallback_policies = [selected[owner].get("cross_horizon_fallback_policy") for owner in sorted(selected)]
     if fallback_policies[0] != fallback_policies[1]:
         raise ValueError("Owner cross-horizon fallback policies disagree")
@@ -587,23 +576,12 @@ def _compose_legacy_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | 
             identifier = "joint:" + content_sha256([owner, package["run_id"], row["id"]])
             all_rows.append({**deepcopy(row), "id": identifier, "original_forecast_id": row["id"],
                              "owner_id": owner, "owner_run_id": package["run_id"]})
-    if snapshot is None and selected[executor_owner].get("account_basis") is not None:
-        snapshot = deepcopy(selected[executor_owner]["account_basis"])
-        maximum_snapshot_age_seconds = None
+    _validate_snapshot(snapshot, all_symbols, scope, now, maximum_snapshot_age_seconds, fallback=fallback_policy is not None)
     effective_policy = policy or StockTraderPolicy()
     effective_policy.validate()
-    if snapshot is None:
-        # Forecast intent is complete from the two prepared sources. Actual
-        # quantities belong to the executor's current account, not synthesis.
-        rows = pd.DataFrame(all_rows)
-        ledger = {"status": "NOT_PROJECTED", "events": [],
-                  "reason": "Quantities are sized from actual account capacity at execution."}
-    else:
-        _validate_snapshot(snapshot, all_symbols, scope, now, maximum_snapshot_age_seconds,
-            fallback=fallback_policy is not None, require_ownership=maximum_snapshot_age_seconds is not None)
-        rows, ledger = project_direction_trades(pd.DataFrame(all_rows), deepcopy(snapshot),
-            {**deepcopy(merged_price_metadata), "points": points}, policy=effective_policy, signal_driven=True,
-            cross_horizon_fallback_policy=fallback_policy, saved_balance_math=maximum_snapshot_age_seconds is None)
+    rows, ledger = project_direction_trades(pd.DataFrame(all_rows), deepcopy(snapshot),
+        {**deepcopy(price_metadata[0]), "points": points}, policy=effective_policy, signal_driven=True,
+        cross_horizon_fallback_policy=fallback_policy)
     # DataFrame missing optional fields become NaN; preserve exact source fields
     # and add only the projection fields produced by the ledger.
     projected = {str(row["id"]): row for row in rows.to_dict("records")}
@@ -612,9 +590,9 @@ def _compose_legacy_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | 
         "projected_shares_after", "projected_available_shares_after"}
     projection_fields |= {name for name in rows.columns if name.startswith("fallback_")}
     outputs = [{**row, **{k: v for k, v in projected[row["id"]].items() if k in projection_fields}}
-               for row in all_rows] if snapshot is not None else deepcopy(all_rows)
+               for row in all_rows]
     for row in outputs:
-        for key in projection_fields if snapshot is not None else ():
+        for key in projection_fields:
             if pd.isna(row.get(key)):
                 row[key] = None
     event_owners = {row["id"]: row["owner_id"] for row in outputs}
@@ -627,42 +605,18 @@ def _compose_legacy_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | 
         for owner in sorted(selected)}
     plan = {"schema_version": PLAN_SCHEMA, "status": "COMPLETE", "authority": "INFORMATIONAL_ONLY",
         "action_date": day, "as_of": now.isoformat(), "account_scope_sha256": scope,
-        "account_snapshot_sha256": content_sha256(snapshot) if snapshot is not None else None,
-        "account_snapshot_observed_at": snapshot["observed_at"] if snapshot is not None else None,
+        "account_snapshot_sha256": content_sha256(snapshot), "account_snapshot_observed_at": snapshot["observed_at"],
         "input_bindings": bindings, "ranking_policy": RANKING_POLICY,
         "sole_executor_owner": executor_owner,
         "holding_policy": SIGNAL_DRIVEN_HOLDING_POLICY, "cross_horizon_fallback_policy": deepcopy(fallback_policy),
         "risk_policy_fingerprint": effective_policy.fingerprint,
-        "cash_basis": "ONE_ACCOUNT_SNAPSHOT_CONDITIONAL_ON_PROJECTED_FILLS" if snapshot is not None else "SIZED_AT_EXECUTION",
+        "cash_basis": "ONE_ACCOUNT_SNAPSHOT_CONDITIONAL_ON_PROJECTED_FILLS",
         "live_capital_reserved": False, "live_orders_authorized": False,
         "forecasts": outputs, "ledger": ledger,
         "limitations": ["Projected sales fund projected purchases only if fills occur and the broker makes cash available.",
             "Unknown, cancelled or unfilled orders do not release live cash reservations.",
             "A joint forecast does not serialize live submissions or reserve real account capital.",
             "Source hashes verify consistency; caller-selected trusted bindings establish source provenance."]}
-    if snapshot is None:
-        plan.update(composition_mode=PLAN_ONLY_MODE,
-            price_path={**deepcopy(merged_price_metadata), "points": points},
-            source_price_paths={owner: deepcopy(selected[owner]["price_path"]) for owner in sorted(selected)},
-            limitations=["The two source Gameplans determine trade intent; no account snapshot is required for synthesis.",
-                "The Gameplan executor sizes orders using its actual account cash, holdings and pending orders.",
-                "No broker state or projected fills are invented by this merge."])
-    elif maximum_snapshot_age_seconds is None:
-        plan.update(composition_mode="MERGED_GAMEPLAN_WITH_SAVED_BALANCES",
-            account_basis_usage="SAVED_PLANNING_BALANCES_NO_FRESHNESS_PREREQUISITE",
-            account_basis_age_seconds=(now - _time(snapshot["observed_at"], "snapshot observed_at")).total_seconds(),
-            source_price_paths={owner: deepcopy(selected[owner]["price_path"]) for owner in sorted(selected)})
-        plan["limitations"].append("Cash/share arithmetic uses the disclosed saved balance observation; execution uses actual available capacity.")
-    if len(source_identities) > 1:
-        plan.update(price_lineage_contract="owner-scoped-planning-price-lineage-v1",
-            owner_price_lineage=owner_price_lineage,
-            source_price_paths={owner: deepcopy(selected[owner]["price_path"]) for owner in sorted(selected)})
-    if any(planning_exclusions.values()):
-        plan.update(planning_observation_policy="observed-only-joint-planning-projection-v1",
-            planning_point_exclusions=planning_exclusions,
-            source_price_paths_usage="IMMUTABLE_SOURCE_EVIDENCE_ONLY; excluded points cannot supply projection prices")
-        plan["limitations"].append(
-            "Source packages retain historical planning assumptions as evidence. Synthetic anchors or historical samples are excluded from this new projection; no replacement price or median is invented.")
     plan_id = "joint-capital:" + content_sha256(plan)
     plan["plan_id"] = plan_id
     plan["owner_views"] = {owner: {"plan_id": plan_id, "owner_id": owner,
@@ -730,9 +684,9 @@ def load_joint_plan(root: Path, path: Path, *, expected_sha256: str) -> dict:
     return plan
 
 
-def publish_owner_package(root: Path, package: Mapping) -> Path:
+def publish_owner_package(root: Path, package: Mapping, *, archival: bool = False) -> Path:
     """Create a sealed forecast/price package without touching source artifacts."""
-    _validate_package(package)
+    _validate_package(package, validate_legacy_prices=archival)
     data = _json_bytes(package)
     if len(data) > MAXIMUM_JSON_BYTES:
         raise ValueError("Owner package exceeds its JSON size bound")
@@ -749,15 +703,18 @@ def publish_owner_package(root: Path, package: Mapping) -> Path:
     return path
 
 
-def load_owner_package(root: Path, path: Path, *, expected_sha256: str) -> dict:
-    """Load one caller-selected package; its self-declared digest is insufficient."""
+def load_owner_package(root: Path, path: Path, *, expected_sha256: str, validate_legacy_prices: bool = False) -> dict:
+    """Load selected forecasts for operation, or explicitly inspect legacy prices.
+
+    A self-declared digest never supplies the caller's independent selection.
+    """
     selected = _ordinary_path(path, root)
     with selected.open("rb") as source:
         data = source.read(MAXIMUM_JSON_BYTES + 1)
     if len(data) > MAXIMUM_JSON_BYTES:
         raise ValueError("Owner package exceeds its JSON size bound")
     package = json.loads(data)
-    _validate_package(package)
+    _validate_package(package, validate_legacy_prices=validate_legacy_prices)
     if package["package_sha256"] != _hash(expected_sha256, "selected package"):
         raise ValueError("Package differs from its independently selected source binding")
     return package
