@@ -1,7 +1,7 @@
-"""Current directional Gameplans; quantities and prices belong to live execution.
+"""Current directional Gameplans; prices and quantities belong to live execution.
 
-Scientific forecasts remain immutable. New publications derive the exact current
-BUY/SELL/HOLD rule without estimated future prices, fills or quantity limits.
+Frozen scientific forecasts and historical review artifacts remain immutable.
+New publications carry directions without estimated prices or quantity caps.
 """
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from typing import Mapping
 import pandas as pd
 
 from ml.artifacts import create_timestamp_directory, file_checksum, verify_manifest, write_manifest, utc_timestamp
+from ml.nightly_continuation import continuing, deadline_expired
 from ml.stock_trader.contracts import PredictionSignal, StockTraderPolicy, finite, utc
 from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS, fixed_budget_forecast_readiness
 from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION
@@ -163,6 +164,14 @@ same current cash being promised to several horizons or symbols.
                   "projected_trade_quantity": None, "projected_trade_budget": None,
                   "projected_trade_notional": None, "projected_quantity_reason": "NON_ENTRY_CONTEXT"}
         if row["execution_eligible"]:
+            if (snapshot.get("observed_at") is not None
+                    and utc(row["target_window_start"]) < utc(snapshot["observed_at"])):
+                result.update(trade_planning_reason="EXPIRED_BEFORE_PREPARATION",
+                              projected_quantity_reason="EXPIRED_BEFORE_PREPARATION",
+                              projected_trade_quantity=0, projected_trade_budget=0., projected_trade_notional=0.,
+                              scheduled_trade_quantity=0)
+                results[str(row["id"])] = result
+                continue
             result["projected_quantity_reason"] = "ACCOUNT_EVIDENCE_UNAVAILABLE"
             if evidence_ready:
                 result["projected_quantity_reason"] = "PRICE_RANGE_UNAVAILABLE"
@@ -213,8 +222,7 @@ same current cash being promised to several horizons or symbols.
                     else:
                         ceiling = equity * min(_money(policy.maximum_symbol_equity_fraction) * FIXED_HORIZON_WEIGHTS[horizon] / 10,
                                                _money(policy.maximum_single_order_equity_fraction))
-                        confidence = min(Decimal("0.5"), max(Decimal(0), 2 * Decimal(str(row["calibrated_probability"])) - 1))
-                        budget = ceiling * confidence
+                        budget = ceiling
                         result["trade_budget_before_cash_caps"] = float(budget)
                         quantity = int(max(Decimal(0), min(budget, available, remaining[symbol])) / ask)
                         batch = utc(row["target_window_start"]).isoformat()
@@ -346,7 +354,7 @@ def _review_refresh_basis(root, prior_run, source, source_hash, action_date, now
 def _publish_direction_plan(root, publication, forecasts, *, observed, deadline_at, clock,
                             snapshot=None, producer_mode="DIRECTION_ONLY_SOURCE", producer_id=None,
                             expected_source_receipt_sha256=None, publication_context=None,
-                            selection_guard=None):
+                            selection_guard=None, ancestor_inputs=()):
     """Publish current instructions without loading or estimating future prices."""
     source, config = publication.run_directory, publication.manifest["configuration"]
     day = publication.receipt["action_date"]
@@ -393,7 +401,7 @@ def _publish_direction_plan(root, publication, forecasts, *, observed, deadline_
         lines.append(f"| {row['symbol']} | {row['model_group']} | {row['calibrated_probability']:.17g} | {row['direction']} | {row['direction_based_action']} | {row['direction_based_reason']} |")
     (run / "Gameplan.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     write_manifest(run, run_timestamp=observed,
-        input_files=[source / "receipt.json", source / "manifest.json", source / "forecasts.parquet"],
+        input_files=[source / "receipt.json", source / "manifest.json", source / "forecasts.parquet", *ancestor_inputs],
         output_files=outputs, configuration=metadata, datastore_root=root)
     verify_manifest(run)
     receipt = {**metadata, "status": "COMPLETE", "run_path": run.relative_to(root).as_posix(),
@@ -405,7 +413,7 @@ def _publish_direction_plan(root, publication, forecasts, *, observed, deadline_
         "receipt_sha256": file_checksum(run / "receipt.json")}}
     committed = (json.dumps(document, indent=2, sort_keys=True, default=str, allow_nan=False) + "\n").replace("\n", os.linesep).encode("utf-8")
     def inputs_unchanged():
-        return (utc(clock()) < deadline_at
+        return (not deadline_expired(utc(clock()), deadline_at)
             and file_checksum(source / "receipt.json") == source_hash
             and (selection_guard is None or selection_guard()))
     try:
@@ -439,8 +447,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
                        late_action_date: str | None = None, research_producer_only: bool = False) -> Path:
     """Publish current directions from one verified scientific Gameplan."""
     from ml.nightly_gameplan import read_gameplan_run
-    from ml.stock_trader.independent_signals import _validated_independent_forecasts, verified_promoted_model_groups, late_publication_time
-    from ml.gameplan_trade_snapshot import capture_trade_planning_snapshot
+    from ml.stock_trader.independent_signals import _validated_independent_forecasts, late_publication_time
 
     root = Path(datastore_root).resolve()
     if research_producer_only and (account_producer_only or expected_account_config is not None
@@ -472,7 +479,11 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     deadline_at = utc(deadline) if deadline is not None else expected_deadline.tz_convert("UTC")
     observed = utc(clock())
     original_deadline = expected_deadline.tz_convert("UTC")
-    if late_action_date is not None:
+    dated_continuation = continuing(action_date)
+    if dated_continuation:
+        if late_action_date not in (None, action_date) or deadline_at != original_deadline:
+            raise ValueError("Nightly planning must retain its original action date and target")
+    elif late_action_date is not None:
         close = (expected_deadline + pd.Timedelta(hours=13)).tz_convert("UTC")
         if (late_action_date != action_date
                 or config.get("publication_mode") != "LATE_RECOVERY"
@@ -504,12 +515,12 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
             raise ValueError("Informational refresh reuses its saved snapshot and cannot extend preparation exceptions")
         session_start = pd.Timestamp(action_date).tz_localize("America/Los_Angeles").tz_convert("UTC")
         deadline_at = session_start + pd.Timedelta(hours=17)
-        if not session_start <= observed < deadline_at:
+        if not dated_continuation and not session_start <= observed < deadline_at:
             raise ValueError("Informational refresh must occur on the action date before 17:00 Pacific")
         refresh_snapshot, refresh_asof, refresh_evidence, refresh_inputs, refresh_pointer_hash = _review_refresh_basis(
             root, refresh_plan, source, source_receipt_hash, action_date, observed)
         exception_evidence = None
-    if observed >= deadline_at:
+    if deadline_expired(observed, deadline_at):
         raise ValueError("Trade planning publication deadline has passed")
     symbols = tuple(config["symbols"])
     forecasts = _validated_independent_forecasts(pd.read_parquet(source / "forecasts.parquet"), action_date=action_date, symbols=symbols,
@@ -526,9 +537,12 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     # Frozen probabilities already belong to their scientific publication. New
     # trade intent uses the current rule without fitting or re-evaluating models.
     snapshot = refresh_snapshot
-    if refresh_plan is None and not research_producer_only and binding is None:
+    # Local research publication never captures broker or ownership state.
+    # A caller may explicitly supply optional observed context; the shared
+    # synthesis and eventual executor obtain their own actual account inputs.
+    if refresh_plan is None and snapshot_loader is not None:
         try:
-            observed_snapshot = (snapshot_loader or capture_trade_planning_snapshot)(root, symbols=symbols)
+            observed_snapshot = snapshot_loader(root, symbols=symbols)
             if observed_snapshot.get("status") == "OBSERVED":
                 snapshot = observed_snapshot
         except (OSError, ValueError, RuntimeError):
@@ -545,6 +559,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
             "review_refresh": refresh_evidence,
             **({"late_action_date": late_action_date, "preparation_mode": "LATE_RECOVERY"} if late_action_date else {}),
             **({"account_config_sha256": binding.fingerprint} if binding is not None else {})},
+        ancestor_inputs=refresh_inputs,
         selection_guard=(lambda: load_account_config(root) == binding) if binding is not None else None,
         producer_mode=RESEARCH_PRODUCER_MODE if research_producer_only else PRODUCER_MODE if binding is not None else "DIRECTION_ONLY_SOURCE",
         producer_id="scout" if research_producer_only else binding.machine_id if binding is not None else None)

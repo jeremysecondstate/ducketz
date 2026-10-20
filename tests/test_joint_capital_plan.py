@@ -63,7 +63,7 @@ def package(owner="scout", symbol="ABCL", probability=.6, *, hour=4, rows=None, 
         action_date=DAY, frozen_symbols=[symbol], created_at=NOW,
         source_hashes={name: content_sha256([owner, name]) for name in
             ("receipt_sha256", "manifest_sha256", "forecasts_sha256", "price_path_sha256")},
-        forecasts=rows or records(symbol, probability, hour=hour), price_path=path or prices(symbol))
+        forecasts=rows or records(symbol, probability, hour=hour), price_path=path or prices(symbol), direction_only=False)
 
 
 def snapshot(cash=20):
@@ -361,7 +361,7 @@ def test_all_22_symbols_share_one_capital_plan_across_pacific_dst(monkeypatch, d
         price_path["points"] = {key: point for symbol in symbols for key, point in prices(symbol)["points"].items()}
         inputs.append(build_owner_package(owner_id=owner, run_id=f"run-{owner}", source_revision=None,
             action_date=day, frozen_symbols=symbols, created_at=NOW, source_hashes=package()["source_hashes"],
-            forecasts=source_rows, price_path=price_path))
+            forecasts=source_rows, price_path=price_path, direction_only=False))
     state = snapshot(cash=100000)
     state["account_equity"] = 1000000
     symbols = set(universes["scout"] + universes["atlas"])

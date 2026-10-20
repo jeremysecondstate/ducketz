@@ -60,7 +60,13 @@ def _verify(plan, binding, *, historical_display=False):
     # This also verifies event/forecast quantities, clocks, horizons and fallback
     # attribution using the same contract that the existing Gameplan tab uses.
     from app.ui.gameplan_data import _forecast, _actions
-    from ml.gameplan_execution_policy import is_current_gameplan_recipe, DIRECTION_ONLY_STATUS
+    from ml.gameplan_execution_policy import (is_current_gameplan_recipe, DIRECTION_ONLY_STATUS,
+        validate_direction_only_plan)
+    if plan["ledger"].get("status") == DIRECTION_ONLY_STATUS:
+        if (not is_current_gameplan_recipe(plan) or plan.get("cash_basis") != "LIVE_BROKER_CAPACITY_AT_EXECUTION"
+                or any(not is_current_gameplan_recipe(row) for row in plan["forecasts"])):
+            raise ValueError("Combined current instructions differ from their recipe")
+        validate_direction_only_plan(plan)
     if is_current_gameplan_recipe(plan):
         if (plan.get("composition_mode") != PLAN_ONLY_MODE or plan.get("cash_basis") != "LIVE_BROKER_CAPACITY_AT_EXECUTION"
                 or plan["ledger"].get("status") != DIRECTION_ONLY_STATUS or plan["ledger"].get("events") != []

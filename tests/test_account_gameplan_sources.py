@@ -169,7 +169,7 @@ def test_portable_fixture_prices_satisfy_existing_joint_composer_contract(tmp_pa
             "forecasts_sha256": file_checksum(native.source / "forecasts.parquet"),
             "price_path_sha256": file_checksum(native.trade / "planning-price-path.json")},
         forecasts=bundle.forecasts.to_dict("records"), price_path=bundle.price_path,
-        cross_horizon_fallback_policy=bundle.metadata["cross_horizon_fallback_policy"])
+        cross_horizon_fallback_policy=bundle.metadata["cross_horizon_fallback_policy"], direction_only=False)
     assert package["source_revision_status"] == "UNRECORDED"
     assert len(package["forecasts"]) == 24 and package["price_path"]["lookback_sessions"] == 504
 

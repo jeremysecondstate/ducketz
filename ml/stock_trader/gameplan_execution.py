@@ -212,7 +212,8 @@ def _saved_abstention(row):
 
 def _validated_instructions(frame):
     """Validate every selected slot, including rows that emit no signal."""
-    from ml.stock_direction_policy import saved_stock_direction
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe
+    from ml.stock_direction_policy import stock_direction, stock_direction_for_policy
 
     seen = set()
     instructions = []
@@ -224,8 +225,14 @@ def _validated_instructions(frame):
         probability = finite(row["calibrated_probability"])
         if probability is None or not 0 <= probability <= 1:
             raise ValueError("Gameplan probability is invalid for " + str(row["id"]))
-        abstention = _saved_abstention(row)
-        expected = saved_stock_direction(probability, row.get("direction_policy_version"))
+        # Current directions follow the actual probability regardless of model
+        # assessment. The no-history label remains archival evidence only.
+        current = is_current_gameplan_recipe(row)
+        abstention = False if current else _saved_abstention(row)
+        version = row.get("direction_policy_version")
+        expected = stock_direction_for_policy(probability, None if version is None or pd.isna(version) else version)
+        if current:
+            expected = stock_direction(probability)
         direction = str(row["direction"]).upper()
         if not abstention and direction != expected and not (direction == "NEUTRAL" and expected == "NO_EDGE"):
             raise ValueError("Gameplan direction disagrees with its saved probability for " + str(row["id"]))
@@ -233,9 +240,101 @@ def _validated_instructions(frame):
     return instructions
 
 
+def _fresh_execution_frame(frame, *, action_date):
+    """Derive fresh intent while keeping all scientific source rows untouched.
+
+    Older scientific labels can reflect a retired assessment gate. Their
+    original probabilities remain the current execution input; immutable
+    readers and Stats still retain the original labels and recorded policy.
+    """
+    from ml.gameplan_execution_policy import direction_only_rows, is_current_gameplan_recipe
+    from ml.stock_direction_policy import stock_direction_for_policy
+
+    records = frame.to_dict("records")
+    if all(is_current_gameplan_recipe(row) for row in records):
+        return frame
+    for row in records:
+        version = row.get("direction_policy_version")
+        if version is not None and not pd.isna(version):
+            stock_direction_for_policy(row["calibrated_probability"], version)
+    derived, _ = direction_only_rows(frame, action_date=action_date)
+    fresh = pd.DataFrame([saved if is_current_gameplan_recipe(saved) else current
+        for saved, current in zip(records, derived.to_dict("records"))])
+    fresh.attrs = frame.attrs.copy()
+    return fresh
+
+
+def accepted_direction_only_signals(plan, *, as_of, source_fingerprint):
+    """Read current due directions without inventing projected quantities.
+
+    The selected immutable plan supplies probabilities and target definitions.
+    The trader's ordinary inventory, reservation and quote controls size each
+    original forecast at execution time.
+    """
+    from ml.gameplan_execution_policy import validate_direction_only_plan
+
+    validate_direction_only_plan(plan)
+    now = utc(as_of)
+    local = now.tz_convert("America/Los_Angeles")
+    if local.date().isoformat() != plan["action_date"] or not 4 <= local.hour < 17:
+        return {}
+    frame = pd.DataFrame(plan["forecasts"])
+    required = {"id", "symbol", "model_group", "direction", "calibrated_probability",
+                "target_window_start", "target_window_end", "execution_eligible", "action_date"}
+    if required.difference(frame):
+        raise ValueError("Gameplan is missing trading instructions: " + ", ".join(sorted(required.difference(frame))))
+    if not frame.action_date.astype(str).eq(plan["action_date"]).all():
+        raise ValueError("Gameplan trading instructions differ from its action date")
+    for name in ("target_window_start", "target_window_end"):
+        frame[name] = pd.to_datetime(frame[name], utc=True, errors="raise")
+    if (frame.id.isna().any() or frame.id.duplicated().any()
+            or frame.target_window_start.isna().any() or frame.target_window_end.isna().any()
+            or (frame.target_window_end <= frame.target_window_start).any()):
+        raise ValueError("Gameplan trading IDs or holding windows are invalid")
+    frame = frame.loc[frame.execution_eligible.eq(True)].copy()
+    # Validate every executable slot before selecting the latest one. A newer
+    # HOLD or expired target must never resurrect an older bullish instruction.
+    _validated_instructions(frame)
+    due = frame.loc[frame.target_window_start.le(now)].sort_values("target_window_start")
+    due = due.drop_duplicates(["symbol", "model_group"], keep="last")
+    close = pd.Timestamp(f"{plan['action_date']} 17:00", tz="America/Los_Angeles").tz_convert("UTC")
+    signals = {}
+    for row, probability, _ in _validated_instructions(due):
+        key = (str(row["symbol"]), str(row["model_group"]))
+        start, end = utc(row["target_window_start"]), utc(row["target_window_end"])
+        later = frame.loc[frame.symbol.eq(key[0]) & frame.model_group.eq(key[1])
+                          & frame.target_window_start.gt(start), "target_window_start"]
+        deadline = min(end, close, later.min() if not later.empty else close)
+        created = utc(row.get("frozen_at", plan.get("as_of", start)))
+        if not start <= now < deadline or created > now:
+            continue
+        signals[key] = PredictionSignal(
+            symbol=key[0], primary_horizon=key[1], prediction_id=str(row["id"]),
+            decision_timestamp=utc(row.get("decision_timestamp", start)).isoformat(),
+            target_window_start=start.isoformat(), target_window_end=end.isoformat(),
+            actionable_until=deadline.isoformat(), prediction_created_at=created.isoformat(),
+            calibrated_probability=probability, assumed_round_trip_cost=0.,
+            horizon_probabilities={key[1]: probability}, model_name=str(row.get("model_family", "Gameplan")),
+            model_version=str(row.get("model_artifact", "")), source_fingerprint=source_fingerprint,
+            checkpoint_session=checkpoint_session_for_target(start),
+            target_definition_version=str(row.get("target_contract_version", "")),
+            target_price_source_contract=str(row.get("target_price_source_contract", "")),
+            planned_quantity=None,
+        )
+    return signals
+
+
 def load_execution_signals(root: Path, *, as_of):
     now = utc(as_of)
     local = now.tz_convert("America/Los_Angeles")
+    from ml.joint_capital_adoption import read_accepted_joint_plan
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe
+    selected = read_accepted_joint_plan(root, local.date().isoformat())
+    if selected and is_current_gameplan_recipe(selected[0]):
+        plan, _, run = selected
+        _assert_execution_deployment(root, run, action_date=local.date().isoformat())
+        return accepted_direction_only_signals(plan, as_of=now, source_fingerprint=run.name), (
+            run / "accepted-plan.json", run / "joint-plan.json")
     sources = ()
     frame, run = execution_frame(root, action_date=local.date().isoformat())
     sources = frame.attrs.get("direction_source_files", ())
@@ -248,11 +347,9 @@ def load_execution_signals(root: Path, *, as_of):
     start = local.floor("h").tz_convert("UTC")
     if not 4 <= local.hour < 17:
         return {}, sources
-    due = frame.loc[frame.target_window_start.eq(start)]
+    due = _fresh_execution_frame(frame.loc[frame.target_window_start.eq(start)], action_date=local.date().isoformat())
     signals = {}
-    for row, probability, abstention in _validated_instructions(due):
-        if abstention:
-            continue
+    for row, probability, _ in _validated_instructions(due):
         key = (str(row["symbol"]), str(row["model_group"]))
         end = utc(row["target_window_end"])
         signals[key] = PredictionSignal(
@@ -276,7 +373,7 @@ def load_execution_signals(root: Path, *, as_of):
 def execution_preflight(root: Path, *, action_date):
     try:
         frame, run = execution_frame(root, action_date=action_date.isoformat())
-        instructions = _validated_instructions(frame)
+        instructions = _validated_instructions(_fresh_execution_frame(frame, action_date=action_date.isoformat()))
         return {"status": "READY", "reason": "SAVED_GAMEPLAN_TRADING_INSTRUCTIONS",
                 "execution_window_count": len(frame),
                 "saved_abstention_count": sum(abstention for _, _, abstention in instructions),

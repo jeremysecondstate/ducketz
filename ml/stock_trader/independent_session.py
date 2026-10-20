@@ -23,7 +23,7 @@ from ml.stock_trader.model import enrichment_signal_readiness, load_current_enri
 from ml.stock_trader.session import stock_execution_window
 from ml.stock_trader.session_reporting import format_session_cycle_report, session_cycle_report
 from ml.stock_trader.market_features import read_frozen_market_feature_values
-from ml.stock_trader.sizing_policy import LEARNED_SIZING_POLICY, FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY, validate_sizing_policy
+from ml.stock_trader.sizing_policy import LEARNED_SIZING_POLICY, FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY, effective_sizing_policy, validate_sizing_policy
 from ml.stock_trader.publication import _write_json_atomic
 
 
@@ -206,13 +206,18 @@ def run_independent_stock_session(
     All are limit orders and fills remain best effort.
     """
     root = Path(root).resolve()
-    sizing_policy = validate_sizing_policy(sizing_policy)
+    requested_sizing_policy = validate_sizing_policy(sizing_policy)
+    started = utc(clock())
+    day = started.tz_convert("America/Los_Angeles").normalize()
+    if wait_for_open:
+        opening, closing = _next_supported_session_bounds(started)
+        day = opening.normalize()
+    sizing_policy = effective_sizing_policy(requested_sizing_policy, day.date())
     from ml.account_gameplan.config import load_account_config, assert_coordinator, verify_cutover
     account_config = load_account_config(root)
     assert_coordinator(account_config, sizing_policy)
     if account_config is not None:
         verify_cutover(root, account_config)
-    started = utc(clock())
     recovery_pending = bool(resume_quote_run or resume_quote_symbol)
     if recovery_pending:
         if not (resume_quote_run and resume_quote_symbol and sizing_policy == GAMEPLAN_SIZING_POLICY) or late_opening_date:
@@ -224,11 +229,7 @@ def run_independent_stock_session(
         if sizing_policy != GAMEPLAN_SIZING_POLICY:
             raise ValueError('Late opening requires the explicitly selected Gameplan policy')
         validate_late_opening_date(late_opening_date, started)
-    day = started.tz_convert("America/Los_Angeles").normalize()
-    if wait_for_open:
-        opening, closing = _next_supported_session_bounds(started)
-        day = opening.normalize()
-    else:
+    if not wait_for_open:
         opening = day + pd.Timedelta(hours=4)
         closing = day + pd.Timedelta(hours=17)
         if not stock_execution_window(opening).executable:
@@ -249,6 +250,7 @@ def run_independent_stock_session(
         payload = {"schema_version": "independent-stock-session-status-v1", "status": status,
             "pid": os.getpid(), "started_at": started.isoformat(), "heartbeat_at": utc(clock()).isoformat(),
             "closes_at": closing.isoformat(), "execute": execute, "sizing_policy": sizing_policy,
+            "requested_sizing_policy": requested_sizing_policy,
             "action_date": day.date().isoformat(), "wakes_at": opening.isoformat(),
             "wait_for_open": wait_for_open,
             "late_opening_date":late_opening_date,
@@ -325,8 +327,11 @@ def run_independent_stock_session(
             # No capture here can resolve an earlier failure; health stays
             # degraded until a later executable cycle verifies broker state.
             recover_now = recovery_pending and stock_execution_window(now).executable
+            refresh_immediately = False
             if due_entry or recover_now or (has_inventory and stock_execution_window(now).executable):
-                sizing_options = {"sizing_policy": sizing_policy} if sizing_policy != LEARNED_SIZING_POLICY else {}
+                # Pass the original choice so the runtime records it too; its
+                # dated policy resolution selects this same effective engine.
+                sizing_options = {"sizing_policy": requested_sizing_policy} if requested_sizing_policy != LEARNED_SIZING_POLICY else {}
                 if late_opening_date == local.date().isoformat() and local.hour == 4:
                     sizing_options['late_opening_date'] = late_opening_date
                 if recover_now:
@@ -373,12 +378,16 @@ def run_independent_stock_session(
                 cycle_status = last_cycle.get("status", "")
                 failed = (bool(last_cycle.get("error")) or bool(last_cycle.get("stopped_after_error"))
                           or "UNAVAILABLE" in cycle_status or cycle_status.startswith("SUBMISSION_STOPPED"))
+                refresh_immediately = (sizing_policy == GAMEPLAN_SIZING_POLICY
+                                       and cycle_status == "BROKER_STATE_REFRESH_REQUIRED"
+                                       and result.submitted_orders > 0 and not failed)
                 failed_cycles += int(failed)
                 if failed:
                     consecutive_failures += 1
-                elif (last_cycle.get("broker_state_capture") or {}).get("status") in {"CURRENT", "CURRENT_AFTER_RETRY"}:
-                    # A no-signal cycle can return before reading the broker.
-                    # It is normal, but cannot resolve a prior broker failure.
+                elif (cycle_status != "EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE"
+                      and (last_cycle.get("broker_state_capture") or {}).get("status") in {"CURRENT", "CURRENT_AFTER_RETRY"}):
+                    # No-signal cycles and a scheduled closed-window pause are
+                    # normal, but cannot resolve an earlier executable-cycle failure.
                     consecutive_failures = 0
                 reporter(format_session_cycle_report(session_cycle_report(
                     last_cycle, as_of=now, session_orders_submitted=submitted,
@@ -386,6 +395,11 @@ def run_independent_stock_session(
                     session_consecutive_failures=consecutive_failures,
                 )))
             publish_status("DEGRADED" if consecutive_failures else "RUNNING")
+            if refresh_immediately:
+                # Re-enter the ordinary loop: manual controls, close/window,
+                # current account/quotes and existing reservations all apply.
+                # No stale payload or previously submitted order is replayed.
+                continue
             # No new entries during the extra ownership/reconciliation checks.
             # Frequent checks around boundaries let exits settle before HH:01.
             seconds = 5 if local.minute in {0, 1, 5, 6, 59} and has_inventory else 30

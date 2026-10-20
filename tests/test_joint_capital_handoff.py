@@ -105,6 +105,7 @@ def saved(tmp_path):
 
 
 def export(case, **kwargs):
+    kwargs.setdefault("archival", True)
     return handoff.export_owner_package(case.root, gameplan_run=case.game, trade_plan_run=case.trade,
         owner_id="scout", output_root=case.out, created_at=CREATED, **kwargs)
 

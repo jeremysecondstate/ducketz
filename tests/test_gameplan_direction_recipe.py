@@ -152,7 +152,8 @@ def test_stats_accepts_verified_current_derivation_without_relabelling_scientifi
     outcomes = compare_forecasts(science, prices(), observed_at="2026-09-10T00:00Z", trade_rows=trades)
     assert outcomes.direction.eq("NO_EDGE").all() and outcomes.execution_direction.eq("BEARISH").all()
     assert outcomes.direction_policy_version.isna().all()
-    assert outcomes.execution_direction_policy_version.eq("stock-direction-5001-4999-v3").all()
+    from ml.stock_direction_policy import STOCK_DIRECTION_POLICY_VERSION
+    assert outcomes.execution_direction_policy_version.eq(STOCK_DIRECTION_POLICY_VERSION).all()
     assert outcomes.direction_correct.isna().all()
     comparisons = compare_price_points(science, prices(), observed_at="2026-09-10T00:00Z", action_date="2026-09-09", planning_path=path)
     assert comparisons.planned_price_mid.isna().all()
@@ -252,13 +253,16 @@ def test_saved_estimated_plan_is_history_and_new_revision_uses_only_its_predicti
                for row in current["forecasts"])
 
 
-def test_explicit_no_history_abstention_remains_truthful():
+def test_saved_no_history_label_remains_truthful_without_suppressing_current_probability():
     frame = pd.DataFrame([dict(id="no-history", symbol="TEST", model_group="1h", execution_eligible=True,
         calibrated_probability=.48, direction="NO_EDGE", model_status="RESEARCH_NO_TARGET_HISTORY",
         target_contract_version="independent-stock-targets-v1", symbol_fitted_target_rows=0,
         symbol_route_fitted_target_rows=0)])
     rows, _ = direction_only_rows(frame, action_date="2026-10-20")
-    assert rows.iloc[0].direction == "NO_EDGE" and rows.iloc[0].direction_based_action == "HOLD"
+    assert rows.iloc[0].source_saved_direction == "NO_EDGE"
+    assert rows.iloc[0].calibrated_probability == .48
+    assert rows.iloc[0].direction == "BEARISH" and rows.iloc[0].direction_based_action == "SELL"
+    assert frame.iloc[0].direction == "NO_EDGE"
 
 
 def test_current_review_refresh_never_requires_a_planning_price_file(publication_case):
