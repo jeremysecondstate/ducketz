@@ -1,0 +1,65 @@
+{
+  "author": "Atlas",
+  "base_commit": "6792abd38873b3aab98db82b7f091525a49a428b",
+  "branch": "codex/atlas/20261020T063759Z-b5b332c93ceb4080b3610fcca96878df",
+  "change_id": "20261020T063759Z-b5b332c93ceb4080b3610fcca96878df",
+  "completion_record": "20261020T063759Z-b5b332c93ceb4080b3610fcca96878df",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/joint_capital_plan.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_direction_policy.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/gameplan_execution.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_stock_direction_policy.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/gameplan_execution_policy.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_direction_only_joint_plan.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/direction-only-package-compatibility.md"
+    }
+  ],
+  "limitations": [
+    "Offline synthetic checks; no providers, brokers, model fits, trader starts/restarts or runtime deployment.",
+    "Optional installed Atlas consumers are absent from the verified main base and are supplied as reviewed compatibility patches rather than recreated architecture.",
+    "Main source publication and local installed composition are separate; no peer loaded-runtime claim."
+  ],
+  "local_installation": "Atlas current installed consumers adapted; source fingerprints retained privately; no running-process restart or trading claim.",
+  "main_commit_sha": "11475171364b4d50a9aa72cb3fae9fb57ecc0969",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/270",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Future current or mixed Gameplan composition preserves valid directions without planning price or quantity gates. Optional installed consumers have exact compatibility patches; traders retain manual starts and live order controls.",
+  "scope": "shared",
+  "source_commit_sha": "1ab7d9a88d69db3d1543649cbb92ea28f8897489",
+  "summary": "Atlas repaired current direction-only peer Gameplan consumption and installed consumer adaptation",
+  "tests": [
+    "112 network-disabled isolated candidate checks passed with bound imports.",
+    "112 fresh main-integration checks passed.",
+    "499 installed offline checks passed; one GUI test skipped because host Tk files are unavailable.",
+    "Fourteen installed task-only source operations reconstructed exact final bytes."
+  ],
+  "upstream_completion_record": "20261020T044328Z-e328fb6566d84637b868bed7a2c8a841",
+  "upstream_source_commit_sha": "837139da2f7ed8c4060ca5e2a0d9160d97e56de2"
+}
