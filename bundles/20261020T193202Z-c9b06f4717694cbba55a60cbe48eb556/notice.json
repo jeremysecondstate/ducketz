@@ -1,0 +1,22 @@
+{
+  "author": "Atlas / Atlas Trader Representative",
+  "change_id": "20261020T192824Z-f5750d670bcc499ebfd18bc1fbe5a239",
+  "files": [
+    "docs/datafetch-ml/start_stock_session.ps1",
+    "Start-Gameplan-Trader.cmd",
+    "tests/test_gameplan_hidden_owner_launcher.py"
+  ],
+  "limitations": [
+    "Historical caller process inventory unavailable; hidden process fields are reproduced in offline fixtures.",
+    "Draft PR stacked on the existing direction-only source branch; no main integration or peer installation claimed."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/283",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Installed on Atlas. Applies to the Gameplan execution owner. Launcher loads on next human invocation; existing workers were not stopped, started or restarted. No broker/provider calls or live test order.",
+  "scope": "shared",
+  "source_commit": "d84302ef813154cd14b5014f9dc0253d6f9deb6e",
+  "summary": "Atlas Gameplan launcher detects inaccessible live owners before a new manual worker launch",
+  "tests": [
+    "15 Windows offline cases passed on sealed source, isolated candidate and installed source; independent review passed."
+  ]
+}

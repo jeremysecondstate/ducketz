@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T19:32:02.416790Z",
+  "id": "20261020T193202Z-c9b06f4717694cbba55a60cbe48eb556",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas Gameplan launcher detects inaccessible live owners before a new manual worker launch"
+}
