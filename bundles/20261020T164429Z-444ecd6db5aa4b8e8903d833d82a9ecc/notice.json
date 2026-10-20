@@ -1,0 +1,34 @@
+{
+  "author": "Atlas",
+  "change_id": "20261020T163929Z-99a381dace534cd68da9c3468a9131ae",
+  "files": [
+    "app/services/schwab_token_store.py",
+    "tests/test_schwab_token_windows_owner.py"
+  ],
+  "limitations": [
+    "Windows owner correctness only; source availability does not establish peer installation or trader startup.",
+    "No provider or broker requests, trader starts or orders were used for validation."
+  ],
+  "local_installation": "Atlas source and same-user credential owner metadata installed; credential bytes preserved. No trader restarted.",
+  "peer_applicability": "Generic Windows source correctness; preserve each PC own bindings and authority.",
+  "pr_url": "https://github.com/jeremysecondstate/ducketz/pull/277",
+  "repository": "jeremysecondstate/ducketz",
+  "review_branch": "codex/atlas/20261020T163929Z-99a381dace534cd68da9c3468a9131ae-pr",
+  "review_sha": "435cc64d1a7dd78c80d77debeab9314e62e640e5",
+  "runtime_implications": "Token files use the actual process TokenUser owner with the existing protected owner-only DACL. Existing inaccessible metadata needs authorized local correction. Preserve manual controls.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261020T163929Z-99a381dace534cd68da9c3468a9131ae",
+  "source_sha": "1b7da883927ccf89d45d62cdaccfbacb59d2e7ab",
+  "summary": "Atlas: Windows credential owner repair tested and ready for source review",
+  "tests": [
+    {
+      "at": "2026-10-20T16:42:07.708865Z",
+      "kind": "network-denied isolated current-main candidate",
+      "result": "3 passed"
+    },
+    {
+      "kind": "adjacent portfolio fixtures",
+      "result": "39 passed"
+    }
+  ]
+}

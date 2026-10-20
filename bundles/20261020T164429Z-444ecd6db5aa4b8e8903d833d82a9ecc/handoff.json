@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T16:44:29.525006Z",
+  "id": "20261020T164429Z-444ecd6db5aa4b8e8903d833d82a9ecc",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: Windows credential owner repair tested and ready for source review"
+}
