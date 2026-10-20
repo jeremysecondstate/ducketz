@@ -17,6 +17,7 @@ import json
 from pathlib import Path
 import uuid
 
+from app.services.schwab import SchwabSession
 from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.stock_trader.horizon_ledger import ReservationState
 from ml.stock_trader.state import capture_portfolio_state, validated_symbols
@@ -41,6 +42,8 @@ from .technical_sizing import AvailableInput
 
 MODE = 'scout-local-broker-account'
 PREFIX = 'scout-local:'
+_NATIVE_PREPARED_DELETE = SchwabSession.cancel_prepared_order
+_CANCELLATION_NOT_SENT = 'scout-local-native-cancellation-not-sent-v1'
 
 
 class _CancellationForecastIneligible(ContractError):
@@ -222,30 +225,75 @@ class ScoutLocalAccountExecutor:
     def _cancel(self, journal, record, forecast):
         rid, reservation_id = record['request']['request_id'], record['grant']['reservation_id']
         state = journal.order_state(rid)
-        if any(item['kind'] == 'cancellation_send_claimed' for item in state['cancellation_events']):
+        outer_clock = self.clock()
+        pending = {}
+        for item in state['cancellation_events']:
+            detail = item['payload']
+            if item['kind'] == 'cancellation_acknowledged':
+                return
+            if item['kind'] == 'cancellation_send_claimed':
+                pending[detail['attempt_id']] = detail
+            elif item['kind'] == 'cancellation_temporary_failure':
+                claim = pending.get(detail.get('attempt_id'))
+                expected = dict(schema_version=_CANCELLATION_NOT_SENT, stream='scout-15m',
+                    reservation_id=reservation_id, broker_order_id=record['broker_order_id'],
+                    symbol=record['request']['symbol'], request_sha256=canonical_sha256(record['request']),
+                    native_method='SchwabSession.cancel_prepared_order', stage='native-before-delete',
+                    no_delete_entered=True, disposition='fixed_target_already_elapsed')
+                try:
+                    proven = (claim is not None and set(detail) == set(expected) | {
+                        'attempt_id', 'claim_sha256', 'forecast_id', 'cycle_id', 'target_close', 'observed_at'}
+                        and all(type(detail[key]) is type(value) and detail[key] == value
+                                for key, value in expected.items())
+                        and detail['claim_sha256'] == canonical_sha256(claim)
+                        and type(detail['forecast_id']) is str and len(detail['forecast_id']) == 64
+                        and all(char in '0123456789abcdef' for char in detail['forecast_id'])
+                        and detail['forecast_id'] != forecast['forecast_id']
+                        and type(detail['cycle_id']) is str
+                        and instant(detail['observed_at']) >= instant(detail['target_close'])
+                        and instant(claim['observed_at']) <= instant(detail['observed_at']) <= outer_clock)
+                    if proven:
+                        original = self.store.forecast(detail['cycle_id'], detail['symbol'])
+                        proven = (original is not None and original['pc'] == 'Scout'
+                            and original['symbol'] == detail['symbol'] and original['forecast_id'] == detail['forecast_id']
+                            and original['target_close'] == detail['target_close'])
+                except (ContractError, TypeError, ValueError):
+                    proven = False
+                if proven:
+                    del pending[detail['attempt_id']]
+        if pending:
             return  # Unknown or acknowledged DELETE is never blindly repeated.
         journal.reserve_stream_cancellation(reservation_id, stream='scout-15m', reason='new-forecast',
             as_of=self.clock(), evidence_id='local-replace:' + forecast['forecast_id'])
         expected = self.broker.prepare_order_submission().identity_fingerprint
         attempt = uuid.uuid4().hex
-        outer, source, claimed = self, self.broker, [False]
+        outer, source, claimed = self, self.broker, [None]
+        latest_evidence = [None]
+
+        def current(evidence):
+            outer._controls()
+            now = outer.clock()
+            disposition = forecast_disposition(forecast, now=now, session_started_at=outer.session_started_at,
+                local_symbols=outer.symbols)
+            if disposition != 'eligible_for_account_checks':
+                raise _CancellationForecastIneligible(disposition)
+            if not 0 <= (now - instant(evidence.observed_at)).total_seconds() <= outer.maximum_evidence_age_seconds:
+                raise ContractError('Exact order status became stale before DELETE')
 
         def gate(request, permit, evidence):
             outer._controls()
             outer._binding_current()
             _saved_forecast(outer.store.path, forecast, session_id=outer.session_id, session_started=outer.session_started_at)
-            disposition = forecast_disposition(forecast, now=outer.clock(), session_started_at=outer.session_started_at,
-                local_symbols=outer.symbols)
-            if disposition != 'eligible_for_account_checks':
-                raise _CancellationForecastIneligible(disposition)
-            outer._controls()
+            current(evidence)
             journal.observe_order(rid, evidence, as_of=outer.clock())
-            current = journal.order_state(rid)
-            marker = current['cancellation']
+            current_state = journal.order_state(rid)
+            marker = current_state['cancellation']
             if (marker is None or marker['broker_order_id'] != record['broker_order_id']
                     or marker['reservation_id'] != reservation_id or request.payload() != record['request']
                     or permit.payload() != record['grant']):
                 raise ContractError('Exact local cancellation intent required')
+            latest_evidence[0] = evidence
+            current(evidence)
             return True
 
         class CancellationBroker:
@@ -253,14 +301,44 @@ class ScoutLocalAccountExecutor:
                 return getattr(source, name)
 
             def cancel_prepared_order(self, order_id, context, *, before_delete):
+                sender = source.cancel_prepared_order
+                native = (isinstance(source, SchwabSession)
+                    and getattr(sender, '__self__', None) is source
+                    and getattr(sender, '__func__', None) is _NATIVE_PREPARED_DELETE)
+                rejected = [None]
                 def fenced():
-                    before_delete()
-                    if not claimed[0]:
-                        journal.record_cancellation_event(attempt, 'cancellation_send_claimed', dict(
-                            reservation_id=reservation_id, attempt_id=attempt,
-                            observed_at=instant(outer.clock()).isoformat(), stream='scout-15m'))
-                        claimed[0] = True
-                return source.cancel_prepared_order(order_id, context, before_delete=fenced)
+                    try:
+                        before_delete()
+                        if claimed[0] is None:
+                            claim = dict(reservation_id=reservation_id, attempt_id=attempt,
+                                observed_at=instant(outer.clock()).isoformat(), stream='scout-15m')
+                            journal.record_cancellation_event(attempt, 'cancellation_send_claimed', claim)
+                            claimed[0] = claim
+                        # The native callback must finish with a fresh clock,
+                        # after all journal I/O, including its durable send fence.
+                        current(latest_evidence[0])
+                    except _CancellationForecastIneligible as error:
+                        rejected[0] = error
+                        raise
+                try:
+                    return sender(order_id, context, before_delete=fenced)
+                except _CancellationForecastIneligible as error:
+                    if (native and rejected[0] is error and claimed[0] is not None
+                            and error.disposition == 'fixed_target_already_elapsed'):
+                        # Only this exact native function proves DELETE was not
+                        # entered. Keep the claim and append its rejection proof;
+                        # a different eligible forecast may make a new attempt.
+                        journal.record_cancellation_event(attempt + ':native-not-sent',
+                            'cancellation_temporary_failure', dict(schema_version=_CANCELLATION_NOT_SENT,
+                                reservation_id=reservation_id, broker_order_id=order_id,
+                                symbol=record['request']['symbol'], request_sha256=canonical_sha256(record['request']),
+                                attempt_id=attempt, claim_sha256=canonical_sha256(claimed[0]),
+                                forecast_id=forecast['forecast_id'], cycle_id=forecast['cycle_id'],
+                                target_close=forecast['target_close'],
+                                observed_at=instant(outer.clock()).isoformat(), stream='scout-15m',
+                                native_method='SchwabSession.cancel_prepared_order', stage='native-before-delete',
+                                no_delete_entered=True, disposition=error.disposition))
+                    raise
 
         try:
             result = self._adapter(journal, record, CancellationBroker()).cancel(rid,
