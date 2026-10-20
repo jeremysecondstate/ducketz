@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T03:47:56.527250Z",
+  "id": "20261020T034756Z-c63aa5a3e6d9449daad296dafba2c572",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Restore Scout saved Gameplan display parity while preserving original saved artifacts and strict current execution rules."
+}
