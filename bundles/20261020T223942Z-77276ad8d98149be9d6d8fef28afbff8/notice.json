@@ -1,0 +1,104 @@
+{
+  "author": "Scout",
+  "base_commit": "50a1fc1d4bc063730134792fbf450c5a04ace18d",
+  "branch": "codex/scout/20261020T223513Z-042da7d7e97c492d8a4e4a8eedae56cd",
+  "change_id": "20261020T223513Z-042da7d7e97c492d8a4e4a8eedae56cd",
+  "commit_sha": "576029bcf6b466adf49761704fb1204fca7bc7dc",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/runtime.py",
+      "sha256": "3c4dd45cc98591df2726b85f29b54971ce2095864d986384cf86e0cc1c6582db"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_numeric_projection.py",
+      "sha256": "621c49f1087ce5f93a68a98b453857e347c9fa65ebaa7b4cc7802a127c6b65a2"
+    }
+  ],
+  "limitations": [
+    "Exact-byte regression coverage preserves existing array edge behavior. The broader historical latency cause remains open; new local phase diagnostics require a later manual load.",
+    "Counts overlap across source, candidate and installed stages; installation and affected runtime confirmation are separate.",
+    "No private model, recipe, raw data, account or trading ledger is included."
+  ],
+  "local_installation": {
+    "actor": "Scout",
+    "check_counts_are_unique": false,
+    "installed_check_results": [
+      182,
+      300
+    ],
+    "launcher_check": "passed_offline_bound_imports",
+    "loaded": false,
+    "manual_restart_required": true,
+    "other_source_and_recipe_preserved": true,
+    "stage": "installed_for_next_manual_restart",
+    "trader_controls_untouched": true
+  },
+  "peer_applicability": "Common snapshot preprocessing applies to either PC while preserving its own private recipe, model choices, data population, calibration, qualification, symbols and operating bindings.",
+  "producer": "human-authorized-development",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/292",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Installed local source is selected for the next human-controlled manual trader restart; maintenance starts no trader and submits no order.",
+  "scope": "shared",
+  "summary": "Avoid scalar recursion in finite numeric model snapshots",
+  "task": "scout-15m-first-live-session-watch",
+  "tests": [
+    {
+      "bound_file_count": 821,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_numeric_projection.py",
+        "tests/test_intraday_runtime.py",
+        "tests/test_intraday_store.py",
+        "tests/test_intraday_telemetry.py",
+        "tests/test_intraday_forward_fill_runtime.py",
+        "tests/test_intraday_market_projection.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--tb=short"
+      ],
+      "completed_at_utc": "2026-10-20T22:35:30.309749Z",
+      "exit_code": 0,
+      "network_connections": "disabled",
+      "output_sha256": "cedef4f023af11aa82863bc471241f00c79b3803571ef28cbb50742af82a348b",
+      "result": "182 passed; five existing dependency deprecation warnings",
+      "stage": "source",
+      "started_at_utc": "2026-10-20T22:35:14.508793Z"
+    },
+    {
+      "bound_file_count": 821,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_numeric_projection.py",
+        "tests/test_intraday_runtime.py",
+        "tests/test_intraday_store.py",
+        "tests/test_intraday_telemetry.py",
+        "tests/test_intraday_forward_fill_runtime.py",
+        "tests/test_intraday_market_projection.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--tb=short"
+      ],
+      "completed_at_utc": "2026-10-20T22:36:47.875713Z",
+      "exit_code": 0,
+      "network_connections": "disabled",
+      "output_sha256": "75feed5eefec3c26e839b9a5a376427c8e9e52bef44b2b2e893e9293d0756512",
+      "result": "182 passed; five existing dependency deprecation warnings",
+      "stage": "publication_candidate",
+      "started_at_utc": "2026-10-20T22:36:31.271905Z"
+    }
+  ],
+  "verified_remote_sha": "576029bcf6b466adf49761704fb1204fca7bc7dc"
+}

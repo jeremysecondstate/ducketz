@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T22:39:42.144885Z",
+  "id": "20261020T223942Z-77276ad8d98149be9d6d8fef28afbff8",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Avoid scalar recursion in finite numeric model snapshots"
+}
