@@ -1,0 +1,34 @@
+{
+  "author": "Atlas",
+  "change_id": "20261020T165557Z-c6eb4273927349d1ae49aec3da19b9ef",
+  "coordination_issue": "https://github.com/jeremysecondstate/atlas-scout/issues/24",
+  "files": [
+    "ml/gameplan_actuals_review.py",
+    "tests/test_gameplan_actuals_review.py",
+    "tests/check_isolated_gameplan_actuals.py"
+  ],
+  "limitations": [
+    "Stacked draft PR279 depends on reviewed PR272; no main merge.",
+    "Peer installation/adoption and running UI loading are separate facts.",
+    "Historical scientific labels and targets remain frozen; missing native endpoints remain unobserved."
+  ],
+  "private_revision": {
+    "id": "stats-20261019-atlas-057dcb87f25bb6e6699979b3",
+    "packet_sha256": "30d13b24198a6eadaeaa141d5d12170a9f02b641ed4f5b8f618d07c1b9ec7aff",
+    "peer_adoption_verified": false,
+    "transport_readback_verified": true
+  },
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/279",
+  "references": [
+    "Scout Completion-Record20261017T142452Z-68b8869ddd6e49928fd84018a76847c1",
+    "Atlas Completion-Record20261020T070957Z-0ea90a2be40745b6877a5e6551a8337e"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Fresh Stats production loads the correction; immutable revised Stats are available privately. No trader controls or new synthesis required.",
+  "scope": "shared",
+  "source_commit": "b8793229d88b0f8b0ffcb29a14fe31d57f1953d6",
+  "summary": "Atlas installed reviewed retrospective Stats evidence-clock fields and published an immutable private Stats revision.",
+  "tests": [
+    "69 offline regressions passed with exact source, isolated candidate and installed field-merge evidence; unchanged pinned network-denied import verifier."
+  ]
+}

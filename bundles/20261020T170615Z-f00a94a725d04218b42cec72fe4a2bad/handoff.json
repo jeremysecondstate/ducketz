@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T17:06:15.335370Z",
+  "id": "20261020T170615Z-f00a94a725d04218b42cec72fe4a2bad",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed reviewed retrospective Stats evidence-clock fields and published an immutable private Stats revision."
+}
