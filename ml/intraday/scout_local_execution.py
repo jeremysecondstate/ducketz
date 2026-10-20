@@ -43,6 +43,12 @@ MODE = 'scout-local-broker-account'
 PREFIX = 'scout-local:'
 
 
+class _CancellationForecastIneligible(ContractError):
+    def __init__(self, disposition):
+        super().__init__('Local forecast eligibility expired')
+        self.disposition = disposition
+
+
 class ScoutLocalAccountExecutor:
     def __init__(self, *, repository, profile, datastore, store, broker, local_symbols,
                  session_started_at, session_id, clock, manual_authority, stopped,
@@ -228,6 +234,10 @@ class ScoutLocalAccountExecutor:
             outer._controls()
             outer._binding_current()
             _saved_forecast(outer.store.path, forecast, session_id=outer.session_id, session_started=outer.session_started_at)
+            disposition = forecast_disposition(forecast, now=outer.clock(), session_started_at=outer.session_started_at,
+                local_symbols=outer.symbols)
+            if disposition != 'eligible_for_account_checks':
+                raise _CancellationForecastIneligible(disposition)
             outer._controls()
             journal.observe_order(rid, evidence, as_of=outer.clock())
             current = journal.order_state(rid)
@@ -252,8 +262,11 @@ class ScoutLocalAccountExecutor:
                         claimed[0] = True
                 return source.cancel_prepared_order(order_id, context, before_delete=fenced)
 
-        result = self._adapter(journal, record, CancellationBroker()).cancel(rid,
-            expected_snapshot_identity=expected, authorization_gate=gate, final_gate=gate)
+        try:
+            result = self._adapter(journal, record, CancellationBroker()).cancel(rid,
+                expected_snapshot_identity=expected, authorization_gate=gate, final_gate=gate)
+        except _CancellationForecastIneligible as exc:
+            return exc.disposition
         journal.observe_order(rid, result.evidence, as_of=self.clock())
         if result.delete_acknowledged:
             journal.record_cancellation_event(attempt + ':ack', 'cancellation_acknowledged', dict(
@@ -286,6 +299,10 @@ class ScoutLocalAccountExecutor:
         if self.intents.processed_at_or_after(forecast):
             return self._record(forecast, 'newer_or_same_reference_intention_already_processed')
         portfolio = self._capture()
+        disposition = forecast_disposition(forecast, now=self.clock(), session_started_at=self.session_started_at,
+            local_symbols=self.symbols)
+        if disposition != 'eligible_for_account_checks':
+            return self._record(forecast, disposition)
         # Quotes can arrive while the account capture is in progress. Their
         # availability is capture completion; keep the original account time.
         quote_available_at = instant(self.clock()).isoformat()
@@ -308,6 +325,10 @@ class ScoutLocalAccountExecutor:
                 return original
         # Preserve the full intention even when an old order or zero cash means
         # this forecast cannot currently produce an effect.
+        disposition = forecast_disposition(forecast, now=self.clock(), session_started_at=self.session_started_at,
+            local_symbols=self.symbols)
+        if disposition != 'eligible_for_account_checks':
+            return self._record(forecast, disposition)
         outstanding = []
         for journal in self._journals():
             for old in journal.records():
@@ -329,7 +350,13 @@ class ScoutLocalAccountExecutor:
                     if state['status'] in TERMINAL:
                         continue
                     if record['request']['symbol'] == forecast['symbol']:
-                        self._cancel(journal, record, forecast)
+                        disposition = forecast_disposition(forecast, now=self.clock(),
+                            session_started_at=self.session_started_at, local_symbols=self.symbols)
+                        if disposition != 'eligible_for_account_checks':
+                            return self._record(forecast, disposition)
+                        cancellation_disposition = self._cancel(journal, record, forecast)
+                        if cancellation_disposition is not None:
+                            return self._record(forecast, cancellation_disposition)
                         return self._record(forecast, 'previous_intention_reconciliation',
                             evidence={'request_id': record['request']['request_id'], 'retry_after_seconds': 3})
                     outstanding.append((record, state))
@@ -352,9 +379,17 @@ class ScoutLocalAccountExecutor:
             desired_quantity=original['desired_quantity'], limit_price=format(price.normalize(), 'f'),
             available_cash=portfolio.available_cash, available_shares=int(Decimal(str(portfolio.available_sell_shares(forecast['symbol']))).to_integral_value(rounding=ROUND_FLOOR)),
             capacity_evidence_id=portfolio.source_fingerprint, observed_at=portfolio.observed_at, calculated_at=self.clock())
+        # Account evidence, sizing and own-order recovery can cross the fixed
+        # target. Classify that boundary before creating a new attempt, using
+        # the same instant for classification and its immutable DTO issuance.
+        current = instant(self.clock())
+        disposition = forecast_disposition(forecast, now=current, session_started_at=self.session_started_at,
+            local_symbols=self.symbols)
+        if disposition != 'eligible_for_account_checks':
+            return self._record(forecast, disposition, capacity=capacity)
         if capacity.adjusted_quantity == 0:
             return self._record(forecast, capacity.disposition, capacity=capacity)
-        now = instant(self.clock()).isoformat()
+        now = current.isoformat()
         request = Request(PREFIX + forecast['forecast_id'], self.account_fingerprint, self.session_id,
             forecast['symbol'], original['side'], original['desired_quantity'], capacity.limit_price,
             forecast['forecast_id'], forecast['forecast_id'], forecast['snapshot_hash'], original['sizing_id'],
