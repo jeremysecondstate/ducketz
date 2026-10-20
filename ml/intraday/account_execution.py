@@ -69,11 +69,27 @@ _SQLITE_ERROR_CONSTANTS = {
 
 def _submission_failure_evidence(exc, stage):
     """Keep bounded causes without copying provider messages or request secrets."""
-    chain, seen = [], set()
+    from collections import deque
+
+    chain, locations, seen = [], [], set()
     current = exc
     while current is not None and id(current) not in seen and len(chain) < 8:
         seen.add(id(current))
         item = {"error_type": type(current).__name__[:80]}
+        frames = deque(maxlen=8)
+        trace = current.__traceback__
+        while trace is not None:
+            code = trace.tb_frame.f_code
+            frames.append({"file": code.co_filename.replace("\\", "/").rsplit("/", 1)[-1][:120],
+                           "function": code.co_name[:120], "line": trace.tb_lineno})
+            trace = trace.tb_next
+        location = {"chain_index": len(chain), "error_type": item["error_type"], "frames": list(frames)}
+        if isinstance(current, OSError):
+            for name in ("errno", "winerror"):
+                value = getattr(current, name, None)
+                if type(value) is int:
+                    location[name] = value
+        locations.append(location)
         # Local fixed messages are useful reasons. Arbitrary provider/transport
         # messages can contain account URLs, headers or credential material.
         if isinstance(current, (ContractError, AuthorityError)) and str(current) in _SAFE_SUBMISSION_REASONS:
@@ -97,7 +113,8 @@ def _submission_failure_evidence(exc, stage):
         chain.append(item)
         current = current.__cause__ or (None if current.__suppress_context__ else current.__context__)
     return {"submission_stage": stage, "exception_chain": chain,
-            "root_cause": chain[-1], "exception_chain_truncated": current is not None}
+            "root_cause": chain[-1], "exception_chain_truncated": current is not None,
+            "exception_locations": locations}
 
 
 class _ExecutionFailure:
