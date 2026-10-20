@@ -17,6 +17,8 @@ import os
 from pathlib import Path
 import sqlite3
 
+from ml.stock_trader.session import stock_execution_window
+
 from .prediction import ContractError, instant
 from .scout_journal import _safe_path
 from .scout_protocol import canonical_sha256
@@ -104,6 +106,35 @@ NATIVE_CALLBACK_FRAMES = [
     )
 ]
 
+# The observed regular-to-PM transition refusal occurred in the adapter's
+# first local clock/window check, before preparation or any order transport.
+# This is a separate frozen historical sender profile, not a generic
+# ScoutBrokerError clearance. Clean stop, process-end and expiry still apply.
+CLOSED_WINDOW_SOURCE = {
+    "ml/intraday/scout_client.py": "99afce435afd32ef27d148d0c46872ac4b1d9a5f6f4044ec567abf0db5bb4025",
+    "ml/intraday/scout_broker.py": "706b666a4c891d1e9dccfb6dea6c85080796d15766ba7e3b207c74e6a4288be3",
+    "ml/intraday/scout_local_execution.py": "4e18b853f4523889bfd43cd73cd08371c083ed163aaa661e827e7471da200206",
+    "ml/intraday/scout_journal.py": "a9da4c9b5735bf9f446f0449be451c3a4c82cb5674802fef5151728053c6cead",
+    "ml/intraday/local_forecast.py": "786c0c11e1a1bcdfb50b0b36541a92d6b6288220b9b8b11fc6168532934f9b6b",
+    "ml/intraday/live_session.py": "67ad2c35f0f0c104fe36084e4931b1334da9d783e4c4fc58e633fd2caa952c14",
+    "app/services/schwab.py": "41a3cf8b3e5e412083b864afbdafb7056b44a9390051aaca087c4e271a704951",
+    "app/services/schwab_stock_orders.py": "9989209f1431b02cb43943cb8923d9463bfabd20cb8af6808445d3fb22104261",
+    "app/services/schwab_order_fields.py": "74ce11f6bad9e88601f6681cd19d62161659d0d1beecff4e36518ccd63421321",
+    "ml/stock_trader/session.py": "b7af001f9dc4bed9677cf66cd881e637b1f4d5c8a536dd3bb934b17d59019784",
+    "ml/calendars.py": "c87adbd5527daa93c84490903611cb20a7e57cc6355e3c77b63b67c880663dcc",
+    "ml/stock_trader/contracts.py": "9b20941167702594ac6dfbd6a8215ce5a58d65e3f9c552cb79f9681fb5cb37ae",
+    "ml/intraday/pretransport_clearance.py": "18afc1b1f688f664da95853012c3e3c1eef551aec847a3728a79b7c37f9100cb",
+    "ml/intraday/initial_gate_clearance.py": "2ff22f507cf98c88f055c5a7a149488616b43f8bbc053dab5794282225e2f503",
+}
+CLOSED_WINDOW_FRAMES = [
+    {"file": file, "function": function, "line": line} for file, function, line in (
+        ("scout_client.py", "submit", 186),
+        ("scout_local_execution.py", "send", 517),
+        ("scout_broker.py", "send", 182),
+        ("scout_broker.py", "_current", 148),
+    )
+]
+
 def _require(condition, message):
     if not condition:
         raise ContractError("Pretransport clearance: " + message)
@@ -148,10 +179,13 @@ def _audit(books, journal, record):
 
 
 def _source(value, error_type, frames):
-    _require(error_type in {"OperationalError", "ContractError"}, "unsupported reviewed error")
+    _require(error_type in {"OperationalError", "ContractError", "ScoutBrokerError"}, "unsupported reviewed error")
     if error_type == "OperationalError":
         _require(frames == EXPECTED_FRAMES, "not the reviewed initial-gate SQLite failure")
         supported = SUPPORTED_SOURCE
+    elif error_type == "ScoutBrokerError":
+        _require(frames == CLOSED_WINDOW_FRAMES, "not the reviewed initial closed-window refusal")
+        supported = CLOSED_WINDOW_SOURCE
     elif frames == NATIVE_CALLBACK_FRAMES:
         supported = NATIVE_CALLBACK_SOURCE
     else:
@@ -222,6 +256,30 @@ def _proof(evidence, record, *, journal_id, events, as_of):
         _require(error["type"] == "OperationalError" and error["message"] == "database is locked"
                  and type(error["sqlite_errorcode"]) is int and error["sqlite_errorcode"] == 261
                  and error["frames"] == EXPECTED_FRAMES, "not the reviewed initial-gate SQLite failure")
+    elif error_type == "ScoutBrokerError":
+        _keys(error, {"type", "message", "frames"}, "exception fields differ")
+        _require(error["type"] == "ScoutBrokerError"
+                 and error["message"] == "Exception text withheld; inspect error type and stack locations"
+                 and error["frames"] == CLOSED_WINDOW_FRAMES,
+                 "not the reviewed initial closed-window refusal")
+        # The exact original line raises before preparation/transport. Also
+        # reconstruct CLOSED across the retained claim-to-failure interval;
+        # an open session, different clock refusal or transition-crossing
+        # observation cannot borrow this narrower historical profile.
+        stamps = [instant(events[-2]["event"]["recorded_at"]),
+                  instant(events[-1]["event"]["recorded_at"]),
+                  instant(payload["recorded_at"]), at]
+        _require(stamps == sorted(stamps)
+                 and instant(request["issued_at"]) <= stamps[0]
+                 and at < instant(request["valid_until"])
+                 and instant(permit["issued_at"]) <= stamps[0]
+                 and at < instant(permit["expires_at"]), "closed-window refusal clocks differ")
+        for stamp in stamps:
+            window = stock_execution_window(stamp)
+            _require(window.executable is False and window.time_in_force is None
+                     and window.mode == "CLOSED"
+                     and window.reason == "OUTSIDE_US_EQUITY_ACTIONABLE_SESSION",
+                     "original submission window was not deterministically CLOSED")
     else:
         _keys(error, {"type", "message", "frames"}, "exception fields differ")
         _require(error["type"] == "ContractError"
