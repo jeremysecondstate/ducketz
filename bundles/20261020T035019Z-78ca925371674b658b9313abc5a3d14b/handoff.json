@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T03:50:19.487542Z",
+  "id": "20261020T035019Z-78ca925371674b658b9313abc5a3d14b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Supplemental exact published-UI validation for the Scout Gameplan display source; source SHAs unchanged."
+}

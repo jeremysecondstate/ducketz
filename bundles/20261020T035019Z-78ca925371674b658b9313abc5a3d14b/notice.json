@@ -1,0 +1,159 @@
+{
+  "author": "Scout",
+  "change_id": "20261020T034547Z-747077e9844f4fb5909cca40ba4c4c47-validation-correction",
+  "corrects_notice": "20261020T034756Z-c63aa5a3e6d9449daad296dafba2c572",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "app/ui/gameplan.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_ui.py"
+    },
+    {
+      "operation": "modify",
+      "path": "app/ui/gameplan_data.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/joint_capital_adoption.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_joint_capital_adoption.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan_execution.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_execution.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_stock_direction_policy.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_direction_engine.py"
+    }
+  ],
+  "limitations": [
+    "Private Gameplan packets, account observations, receipts, paths and local recipes are retained locally and are not included in this notice.",
+    "Optional workflow modules are absent from current main; their focused PR targets the existing optional source lineage.",
+    "Main integration, peer installation and loaded full-application runtime versions are separate facts; no traders were started or restarted."
+  ],
+  "pull_requests": [
+    "https://github.com/jeremysecondstate/ducketz/pull/267",
+    "https://github.com/jeremysecondstate/ducketz/pull/266"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Gameplan UI reads saved values with historical display compatibility; current trading cutoffs and strict default execution validation remain intact.",
+  "scope": "shared",
+  "sources": [
+    {
+      "base_commit": "f9385d622694bb5a44de5f4e403ba75d27183f71",
+      "branch": "codex/scout/20261020T034547Z-747077e9844f4fb5909cca40ba4c4c47",
+      "commit_sha": "ddac5bfbe0cdc3ab76ed4f9a924567f484356b15",
+      "completion_record": "20261020T034547Z-747077e9844f4fb5909cca40ba4c4c47",
+      "files": [
+        {
+          "operation": "modify",
+          "path": "app/ui/gameplan.py",
+          "sha256": "edaa684ab2f726198951b4ddb16915558da792915f47ed8be30572b4b0e0d98f"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_ui.py",
+          "sha256": "27d57a0c46823126df14ad78265f4062913ccb3a3084bbc9802730a4fcd7d2c9"
+        }
+      ],
+      "peer": "Scout",
+      "repository": "jeremysecondstate/ducketz"
+    },
+    {
+      "base_commit": "225388b112b17b3797b253cef621cb5cad0889dc",
+      "branch": "codex/scout/20261020T034331Z-9fc4603eda9346debaa57270ebc5ceb0",
+      "commit_sha": "9d38d228885e5317f8804a55370a58f8e7bd8ac1",
+      "completion_record": "20261020T034331Z-9fc4603eda9346debaa57270ebc5ceb0",
+      "files": [
+        {
+          "operation": "modify",
+          "path": "app/ui/gameplan_data.py",
+          "sha256": "5711317d22b18863228274afb3705cf7ccfc5d4ec9c963f7e012b0cc94504d9d"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/joint_capital_adoption.py",
+          "sha256": "0a09b09b59a1074fc8e8e3798bf5f11e344a9c4f61fe922271831782aa68a562"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_joint_capital_adoption.py",
+          "sha256": "f016da5486a09fb5f9b1d0be41fe60221dfd1f1420e227b46a9119f52ea12f79"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/gameplan_execution.py",
+          "sha256": "121165c1f1a9db65c2b324c174efc8ee884c99f140a46c98b6b919caa414a932"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_execution.py",
+          "sha256": "b079572cba353a83ebd572de8ab4ad240b9e5fac3e7c5ca7a953e542936777ec"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_stock_direction_policy.py",
+          "sha256": "fa365ed10f7ba18fb9f8c4fc29148fb237c206576b6004c64809a7a8d92d5639"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_direction_engine.py",
+          "sha256": "b7361a036f5dc894ebb88e6477c98ce6d23bbacced69c94504a726133bf67ab3"
+        }
+      ],
+      "peer": "Scout",
+      "repository": "jeremysecondstate/ducketz"
+    }
+  ],
+  "summary": "Supplemental exact published-UI validation for the Scout Gameplan display source; source SHAs unchanged.",
+  "task": "scout-gameplan-display-parity",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-20T03:46:57.909927Z",
+      "completion_record": "20261020T034547Z-747077e9844f4fb5909cca40ba4c4c47",
+      "exit_code": 0,
+      "output_sha256": "4e9178ce3d8c9c7c7d072857804a0bc938fce64e02e237d2e827b6baca87bacd",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-20T03:46:37.839467Z"
+    },
+    {
+      "completed_at_utc": "2026-10-20T03:47:07.086334Z",
+      "completion_record": "20261020T034547Z-747077e9844f4fb5909cca40ba4c4c47",
+      "exit_code": 0,
+      "output_sha256": "8baee1611fb3f398a7ebc4edcf6a348db45231975496b36a468e13f8477fd449",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-20T03:46:58.041479Z"
+    },
+    {
+      "completed_at_utc": "2026-10-20T03:44:36.539496Z",
+      "completion_record": "20261020T034331Z-9fc4603eda9346debaa57270ebc5ceb0",
+      "exit_code": 0,
+      "output_sha256": "c1e2fe839a1d1da74da4c3db20e0e34942bf7a33ee931423303f20728f719e4d",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-20T03:44:10.328894Z"
+    },
+    {
+      "completed_at_utc": "2026-10-20T03:49:38.237593Z",
+      "completion_record": "20261020T034547Z-747077e9844f4fb5909cca40ba4c4c47",
+      "exit_code": 0,
+      "output_sha256": "276236e6e0eae36cf7a251899d3ce2606e7d50c03a1cd06a2324fb67d3e8b381",
+      "stage": "published_ui_recheck",
+      "started_at_utc": "2026-10-20T03:49:28.965210Z"
+    }
+  ],
+  "validation_summary": "Reviewed primary source probe: 164 passed. First isolated primary suite: 163 passed and one Tk startup skip; first isolated UI recheck: 18 passed and one Tk startup skip. A subsequent fresh recheck of all 19 UI tests on the exact published bytes passed without skips, covering both skipped cases. Compatibility isolated suite: 239 passed without skips. No source mutations or network/import violations. Source SHAs are unchanged; private operating artifacts remain local."
+}
