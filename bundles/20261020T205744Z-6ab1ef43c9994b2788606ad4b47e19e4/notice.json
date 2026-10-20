@@ -1,0 +1,23 @@
+{
+  "author": "Atlas / Atlas Trader Representative",
+  "change_id": "20261020T205028Z-d9909e27015a4b708814bdc8d7e3bd78",
+  "files": [
+    "ml/stock_trader/independent_session.py",
+    "tests/check_isolated_gameplan_session.py",
+    "tests/test_independent_session_error_diagnostics.py"
+  ],
+  "limitations": [
+    "Future evidence repair does not reconstruct the missing historical failing call or close actual credential recurrence.",
+    "Draft PR stacked on the direction-only branch; no main merge or peer installation."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/289",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Installed on Atlas; current human-started Gameplan worker predates this additive failure evidence. Next chosen manual start loads it; no trader control or trading prerequisite.",
+  "scope": "shared",
+  "source_commit": "9a86619934f1d8151f460f0406976ee119a51baa",
+  "summary": "Atlas Gameplan retains safe code locations for unexpected worker failures",
+  "tests": [
+    "74 offline cases passed in exact sealed source and isolated publication candidate; 13 new installed failure-behavior cases passed with network denied.",
+    "Installed broad suite had 78 passing cases and one preserved pre-existing CLI default fixture mismatch, unrelated to this status-only change."
+  ]
+}

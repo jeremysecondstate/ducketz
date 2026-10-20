@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T20:57:44.590440Z",
+  "id": "20261020T205744Z-6ab1ef43c9994b2788606ad4b47e19e4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas Gameplan retains safe code locations for unexpected worker failures"
+}
