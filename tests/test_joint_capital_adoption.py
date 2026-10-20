@@ -88,6 +88,81 @@ def test_scout_can_display_both_universes_without_executing(tmp_path):
     assert not (tmp_path / "controls").exists()
 
 
+@pytest.mark.parametrize("mixed_policy_metadata", [False, True])
+def test_scout_displays_original_unversioned_joint_gap_calls_without_rewriting_artifacts(tmp_path, monkeypatch, mixed_policy_metadata):
+    from ml import gameplan_cash_ledger
+    from ml import stock_direction_policy
+    from ml.stock_direction_policy import saved_stock_direction, stock_action
+    from test_joint_capital_plan import package, records, snapshot
+
+    probability = .49995
+    state = snapshot(cash=2)
+    state["held_shares"]["ABCL"] = 2
+    state["symbol_exposure"]["ABCL"] = state["stock_market_value_by_symbol"]["ABCL"] = 20
+    state["gross_exposure"] = 20
+    # Reproduce a publication created before policy metadata and the v3 band.
+    # Only fixture construction uses the original planning rule.
+    with monkeypatch.context() as original_policy:
+        original_policy.setattr(gameplan_cash_ledger, "stock_direction",
+            lambda value: saved_stock_direction(value, "stock-direction-50-v2"))
+        original_policy.setattr(stock_direction_policy, "saved_stock_direction",
+            lambda value, policy_version=None: saved_stock_direction(value, "stock-direction-50-v2"))
+        scout_rows = records("ABCL", probability)
+        if mixed_policy_metadata:
+            next(row for row in scout_rows if row["calibrated_probability"] == .5).update(
+                direction_policy_version="stock-direction-5001-4999-v3")
+        plan = compose([package(rows=scout_rows), package("atlas", "AAPL", .7, hour=5)], state)
+        run = adopt(tmp_path, plan, actor="scout")
+    assert any("direction_policy_version" not in row for row in plan["forecasts"])
+    paths = [run / "joint-plan.json", run / "accepted-plan.json",
+             tmp_path / f"ml/joint-gameplan-by-date/{DAY}/run.json"]
+    before = {path: path.read_bytes() for path in paths}
+
+    ui = load_gameplan(tmp_path)
+    assert ui.run_directory == run and ui.symbols == ("AAPL", "ABCL")
+    assert len(ui.forecasts) == 48
+    saved_call = next(row for row in ui.forecasts if row.symbol == "ABCL" and row.probability == probability)
+    assert saved_call.direction == "BEARISH"
+    assert [(event.action, event.quantity) for event in ui.actions] == [("SELL", 2), ("BUY", 1)]
+    assert plan_sessions(tmp_path) == (DAY,)
+    assert {path: path.read_bytes() for path in paths} == before
+    assert stock_action(probability) == "HOLD"
+    with pytest.raises(ValueError, match="direction disagrees"):
+        read_accepted_joint_plan(tmp_path, DAY)
+    with pytest.raises(ValueError, match="direction disagrees"):
+        load_execution_signals(tmp_path, as_of=f"{DAY}T12:15:00Z")
+    selected, _, _ = read_accepted_joint_plan(tmp_path, DAY, historical_display=True)
+    assert selected == plan
+    assert {path: path.read_bytes() for path in paths} == before
+
+
+@pytest.mark.parametrize("policy,probability,direction", [
+    ("stock-direction-5001-4999-v3", .49995, "BEARISH"),
+    ("unknown-explicit-policy", .50005, "BULLISH"),
+    (None, .8, "BEARISH"), (None, .2, "BULLISH"),
+])
+def test_historical_display_still_rejects_current_policy_and_legacy_label_corruption(tmp_path, policy, probability, direction):
+    from ml.joint_capital_adoption import _verify
+    from ml.joint_capital_plan import content_sha256
+
+    plan = compose()
+    run = adopt(tmp_path, plan, actor="scout")
+    binding = json.loads((run / "accepted-plan.json").read_text())
+    invalid = deepcopy(plan)
+    row = next(item for item in invalid["forecasts"] if item["calibrated_probability"] != .5)
+    row.update(calibrated_probability=probability, direction=direction)
+    if policy is not None:
+        row["direction_policy_version"] = policy
+    invalid["plan_id"] = "joint-capital:" + content_sha256({key: value for key, value in invalid.items()
+        if key not in {"plan_id", "plan_sha256", "owner_views"}})
+    for view in invalid["owner_views"].values():
+        view["plan_id"] = invalid["plan_id"]
+    invalid["plan_sha256"] = content_sha256({key: value for key, value in invalid.items() if key != "plan_sha256"})
+    binding["plan_sha256"] = invalid["plan_sha256"]
+    with pytest.raises(ValueError, match="direction disagrees"):
+        _verify(invalid, binding, historical_display=True)
+
+
 def test_full_twenty_two_symbol_handoff_keeps_research_membership_local(tmp_path):
     from test_joint_capital_plan import package, records, prices, snapshot
     from ml.joint_capital_plan import build_owner_package, compose_joint_plan
@@ -229,7 +304,7 @@ def test_native_runtime_executes_overdue_combined_quantity_once_with_mock_broker
         return PortfolioState(env.now.isoformat(), 100_000, 100_000, sum(env.held.values()) * 100,
             0, dict(env.held), {s: q * 100 for s, q in env.held.items()}, {}, {}, 0,
             {s: QuoteState(s, 100, 100, 100, 100, 1000, env.now.isoformat()) for s in env.held},
-            "snapshot-" + env.now.isoformat(), BROKER_ID)
+            "snapshot-" + env.now.isoformat(), BROKER_ID, broker_working_orders=())
 
     def fill(broker, ledger, **kwargs):
         evidence = []

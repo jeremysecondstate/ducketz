@@ -278,7 +278,7 @@ def plan_sessions(datastore_root: Path | None = None) -> tuple[str, ...]:
     joint_dates = accepted_sessions(root)
     current_local = _latest(root)
     if joint_dates:
-        read_accepted_joint_plan(root, joint_dates[0])
+        read_accepted_joint_plan(root, joint_dates[0], historical_display=True)
     # Enumerating history does not select a plan for the active account. A
     # missing current publication must not hide accepted historical sessions.
     # Present but damaged account pointers still fail verification below.
@@ -744,7 +744,7 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
             from ml.joint_capital_adoption import accepted_sessions, read_accepted_joint_plan
             combined_dates = accepted_sessions(root)
             combined_date = requested or (combined_dates[0] if combined_dates else None)
-            accepted = read_accepted_joint_plan(root, combined_date) if combined_date else None
+            accepted = read_accepted_joint_plan(root, combined_date, historical_display=True) if combined_date else None
             joint_selected = bool(accepted and (requested or not current or combined_date >= current["action_date"]))
             account_pointer = _account_pointer(root, accepted_joint=joint_selected,
                 pending_session=requested or (current["action_date"] if current else None))

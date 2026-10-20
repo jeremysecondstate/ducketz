@@ -25,7 +25,7 @@ def _day(value):
     return date.fromisoformat(str(value)).isoformat()
 
 
-def _verify(plan, binding):
+def _verify(plan, binding, *, historical_display=False):
     _validate_plan_digest(plan, binding["plan_sha256"])
     if (binding.get("schema_version") != VERSION or plan.get("status") != "COMPLETE"
             or plan["action_date"] != binding["action_date"]
@@ -45,6 +45,13 @@ def _verify(plan, binding):
     if len(symbols) != len(set(symbols)) or set(symbols) != set(binding["execution_symbols"]):
         raise ValueError("Combined execution universe must be the disjoint producer union")
     frame = pd.DataFrame(plan["forecasts"])
+    if historical_display:
+        # Original unversioned publications used the 50% split. Validate those
+        # frozen labels for display without changing the plan or relaxing any
+        # execution reader. Explicit policy versions retain their own checks.
+        field = "direction_policy_version"
+        frame[field] = (frame[field].fillna("stock-direction-50-v2")
+                        if field in frame else "stock-direction-50-v2")
     from ml.stock_trader.gameplan_execution import _validated_instructions
     _validated_instructions(frame)
     if (frame.empty or frame.id.duplicated().any() or set(frame.symbol) != set(symbols)
@@ -70,8 +77,12 @@ def accepted_sessions(root: Path) -> tuple[str, ...]:
     return tuple(sorted((_day(path.parent.name) for path in (Path(root) / POINTERS).glob("*/run.json")), reverse=True))
 
 
-def read_accepted_joint_plan(root: Path, action_date: str):
-    """Return (plan, binding, immutable run) or None when nothing is selected."""
+def read_accepted_joint_plan(root: Path, action_date: str, *, historical_display=False):
+    """Read the immutable selected plan, optionally preserving legacy UI calls.
+
+    Historical display checks original unversioned labels against their saved
+    50% rule. The returned bytes and all default execution checks stay intact.
+    """
     root = Path(root).resolve()
     pointer = root / POINTERS / _day(action_date) / "run.json"
     if not pointer.exists():
@@ -84,7 +95,7 @@ def read_accepted_joint_plan(root: Path, action_date: str):
     if binding != receipt or binding["action_date"] != action_date:
         raise ValueError("Combined plan acceptance pointer and receipt disagree")
     plan = load_joint_plan(run, run / "joint-plan.json", expected_sha256=binding["plan_sha256"])
-    _verify(plan, binding)
+    _verify(plan, binding, historical_display=historical_display)
     return plan, binding, run
 
 
