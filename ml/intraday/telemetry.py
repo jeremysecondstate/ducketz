@@ -21,6 +21,10 @@ import sqlite3
 import tempfile
 
 from .prediction import ContractError, STEP, TARGET_VERSION
+from ml.stock_direction_policy import (
+    BEARISH_PROBABILITY, BULLISH_PROBABILITY, CURRENT_STOCK_DIRECTION_POLICY_VERSIONS,
+    stock_direction_for_policy,
+)
 
 PACKET_SCHEMA = "intraday-monitoring-v1"
 RECEIPT_SCHEMA = "intraday-monitoring-receipt-v1"
@@ -43,8 +47,11 @@ _FORECAST_OPTIONAL = {
     "preprocessing_seconds", "training_seconds", "inference_seconds", "symbol_seconds_before_persistence",
     "training_started_at", "training_completed_at", "synthetic_policy", "issue_after_target",
     "source_dataset", "source_id",
+    "direction", "direction_policy_version", "direction_up_threshold", "direction_down_threshold",
 }
+_DIRECTION_POLICY_FIELDS = {"direction", "direction_policy_version", "direction_up_threshold", "direction_down_threshold"}
 _SOURCE_IDENTITIES = {dataset: f"databento:{dataset}:ohlcv-1m" for dataset in ("EQUS.MINI", "XNAS.ITCH")}
+_SOURCE_IDENTITIES["MULTI_PROVIDER"] = "multi:databento-schwab-fmp:15m"
 _MODEL_REQUIRED = {"name", "status", "probability_not_down", "version"}
 _MODEL_OPTIONAL = {"family", "training_seconds", "inference_seconds", "artifact_persistence_seconds",
                    "training_started_at", "training_completed_at", "inference_started_at", "inference_completed_at",
@@ -219,6 +226,18 @@ def _validate_forecast(forecast, *, pc, produced):
     exact_mean = sum(exact_probabilities) / len(exact_probabilities)
     if forecast["ensemble_status"] != status or forecast["classification"] != ("not-down" if exact_mean >= Decimal("0.50") else "down"):
         raise ContractError("Monitoring consensus classification or completeness is inconsistent")
+    if _DIRECTION_POLICY_FIELDS & forecast.keys():
+        if not _DIRECTION_POLICY_FIELDS <= forecast.keys():
+            raise ContractError("Monitoring direction policy metadata is incomplete")
+        version = forecast["direction_policy_version"]
+        cutoffs = {"stock-direction-50-v2": (.5, .5),
+                   **{identity: (BULLISH_PROBABILITY, BEARISH_PROBABILITY)
+                      for identity in CURRENT_STOCK_DIRECTION_POLICY_VERSIONS}}
+        if (not isinstance(version, str) or version not in cutoffs
+                or any(type(forecast[field]) not in (int, float) or forecast[field] != expected
+                       for field, expected in zip(("direction_up_threshold", "direction_down_threshold"), cutoffs[version]))
+                or forecast["direction"] != stock_direction_for_policy(forecast["probability_not_down"], version)):
+            raise ContractError("Monitoring direction policy differs from its recorded probability and cutoffs")
     _operational_fields({k: forecast[k] for k in _FORECAST_OPTIONAL if k in forecast}, produced)
     if "synthetic_policy" in forecast and forecast["synthetic_policy"] not in {"include", "exclude"}:
         raise ContractError("Unknown monitoring synthetic policy")
