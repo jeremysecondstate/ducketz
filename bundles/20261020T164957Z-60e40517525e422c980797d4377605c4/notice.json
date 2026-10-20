@@ -1,0 +1,111 @@
+{
+  "author": "Scout",
+  "base_commit": "241f9c1f287732013d1affa37eac97492e746c03",
+  "branch": "codex/scout/20261020T164252Z-2cb41a086283485c9e195c44e9e4e6ab",
+  "change_id": "20261020T164252Z-2cb41a086283485c9e195c44e9e4e6ab",
+  "commit_sha": "a521df4189887afe0e3165c14426a0d86c97b082",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/market_collection.py",
+      "sha256": "9e04943ab114399b66dde9b4d2bcc4d089721b5c3f3262ea7b6f4d57e51643da"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_market_fs_diagnostics.py",
+      "sha256": "61242b1dadbccbe0bc36ccae453d7d6d62000899d682316a3dfb0efb73d1595f"
+    }
+  ],
+  "limitations": [
+    "Original missing-file failures did not retain their filename or exception chain, and saved-source replay now succeeds; their precise historical cause remains unresolved.",
+    "Offline regressions exercise local filesystem failures and error evidence; loaded runtime recurrence and affected provider coverage remain separate."
+  ],
+  "local_installation": {
+    "actor": "Scout",
+    "existing_deprecation_warnings": 5,
+    "installed_checks_passed": 351,
+    "launcher_check": "passed",
+    "loaded": false,
+    "manifest_sha256": "173d507a33bd86e09465ac87222c71a9a8b2153f7594f4be339391f9a5c20194",
+    "manual_restart_required": true,
+    "other_source_and_recipe_preserved": true,
+    "skips": 0,
+    "source_files": 453,
+    "stage": "installed_for_next_manual_restart",
+    "trader_controls_untouched": true
+  },
+  "peer_applicability": "Shared diagnostic correctness for either PC; retain each PC local model recipe, qualification, symbols, bindings and manual trader controls.",
+  "producer": "human-authorized-development",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/278",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Requires separate reviewed local installation and a manual trader restart to load diagnostics. Does not start traders, change recipes or resolve the original missing-file incident.",
+  "scope": "shared",
+  "summary": "Preserve safe filesystem failure evidence in market collection",
+  "task": "scout-15m-first-live-session-watch",
+  "tests": [
+    {
+      "bound_file_count": 134,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_market_collection.py",
+        "tests/test_intraday_market_collection_lock_retry.py",
+        "tests/test_intraday_market_collection_pipeline_repair.py",
+        "tests/test_intraday_market_collection_index.py",
+        "tests/test_intraday_market_collection_fmp_context.py",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_prospective_context.py",
+        "tests/test_intraday_market_queue_recovery_evidence.py",
+        "tests/test_intraday_market_fs_diagnostics.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-20T16:43:26.434782Z",
+      "exit_code": 0,
+      "fresh_bytecode_cache": true,
+      "import_evidence_sha256": "e017362d4c2d0eb5cba1a8105e7d8738b467b6ab2e401730f74357da26a6091d",
+      "network_connections": "disabled",
+      "output_sha256": "3651aa3c32ec5c7adc44829bfef538c8203a212640eb0a7b8ff3592f228a6db1",
+      "result": "........................................................................ [ 29%]\r\n........................................................................ [ 59%]\r\n........................................................................ [ 89%]\r\n..........................                                               [100%]\r\n242 passed in 31.88s",
+      "stage": "source",
+      "started_at_utc": "2026-10-20T16:42:53.056832Z"
+    },
+    {
+      "bound_file_count": 134,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_market_collection.py",
+        "tests/test_intraday_market_collection_lock_retry.py",
+        "tests/test_intraday_market_collection_pipeline_repair.py",
+        "tests/test_intraday_market_collection_index.py",
+        "tests/test_intraday_market_collection_fmp_context.py",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_prospective_context.py",
+        "tests/test_intraday_market_queue_recovery_evidence.py",
+        "tests/test_intraday_market_fs_diagnostics.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-20T16:46:46.073435Z",
+      "exit_code": 0,
+      "fresh_bytecode_cache": true,
+      "import_evidence_sha256": "e017362d4c2d0eb5cba1a8105e7d8738b467b6ab2e401730f74357da26a6091d",
+      "network_connections": "disabled",
+      "output_sha256": "fed05c3d4123a9f7a20e18bfb188b577f5b2b557715af51687bcebfad734245e",
+      "result": "........................................................................ [ 29%]\r\n........................................................................ [ 59%]\r\n........................................................................ [ 89%]\r\n..........................                                               [100%]\r\n242 passed in 31.97s",
+      "stage": "publication-candidate",
+      "started_at_utc": "2026-10-20T16:46:12.388289Z"
+    }
+  ],
+  "verified_remote_sha": "a521df4189887afe0e3165c14426a0d86c97b082"
+}

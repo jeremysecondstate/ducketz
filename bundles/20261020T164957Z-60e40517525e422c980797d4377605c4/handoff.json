@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T16:49:57.520270Z",
+  "id": "20261020T164957Z-60e40517525e422c980797d4377605c4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Preserve safe filesystem failure evidence in market collection"
+}
