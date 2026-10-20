@@ -1,0 +1,703 @@
+{
+  "author": "Scout",
+  "change_id": "20261020T044328Z-e328fb6566d84637b868bed7a2c8a841",
+  "coordination": {
+    "evidence": [
+      {
+        "commit_sha": "837139da2f7ed8c4060ca5e2a0d9160d97e56de2",
+        "path": "docs/loops-system-analysis/NIGHTLY_STOCK_POLICY_INSTRUCTIONS.md",
+        "sha256": "69763242d54db107596994a7abab80ef8ad107236ee17f1a348a8d86c2aabe30"
+      }
+    ],
+    "kind": "request",
+    "purposes": [
+      "nightly_gameplan",
+      "gameplan_stats",
+      "nightly_synthesis",
+      "intraday_nightly_model_review"
+    ],
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-direction-live-quote-recipe-20261020",
+    "request_type": "source_review",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "source_commit": "837139da2f7ed8c4060ca5e2a0d9160d97e56de2",
+    "summary": "Jeremy requires this current method tonight and every subsequent night for all configured stock symbols and every stock trader, including both 15-minute traders. Earlier completion reporting was incomplete: display removal had left estimated-price production and execution quantity caps active, and one native model-review task was omitted. Review and locally install these exact current creation, handoff, execution, UI, Stats and nightly workflow corrections under existing standing peer-adoption authority. Use direction-live-quote-v1 with live_broker_capacity: BUY at P(up) >=50.01%, SELL at P(up) <=49.99%, HOLD strictly between using unrounded probabilities. 15m/1h/4h can sell actual available holdings across owners; retain 1d/1w ownership rules. Current creation uses no estimated future price paths, projected fills or pre-sized quantities; execution uses actual broker cash, holdings, reservations and live bid/ask. Do not let an old completed or selected plan satisfy current recipe completion. Preserve compatible completed fetching, Stats, models and original scientific forecasts. Adopt the optional workflow supplement by field where those modules are installed. Preserve Atlas local tuning, symbols, scheduler IDs/settings and manual starts. Scout updated and read back all ten relevant native definitions and revised its current saved display. A private current revision was delivered in the existing authorized exchange; peer installation is unverified. Report actual local adoption stages without adding any nightly acceptance or reconciliation prerequisite."
+  },
+  "files": [
+    {
+      "operation": "modify",
+      "path": "app/ui/gameplan.py"
+    },
+    {
+      "operation": "modify",
+      "path": "app/ui/gameplan_data.py"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/datafetch-ml/start_stock_session.ps1"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/NIGHTLY_STOCK_POLICY_INSTRUCTIONS.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/STOCK_DIRECTION_AND_HORIZON_AUTONOMY.md"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_actuals_review.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_execution_policy.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_stock_trader.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_trade_planning.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/joint_capital_handoff.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/joint_capital_plan.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan_direction_engine.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan_execution.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_autonomy_runtime.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_current_cli.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_data.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_direction_recipe.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_launcher_defaults.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_live_capacity.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_trade_planning.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_ui.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_independent_stock_session.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_joint_capital_plan.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_start_stock_session.ps1"
+    },
+    {
+      "operation": "modify",
+      "path": "app/ui/gameplan.py"
+    },
+    {
+      "operation": "modify",
+      "path": "app/ui/gameplan_data.py"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/datafetch-ml/start_stock_session.ps1"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md"
+    },
+    {
+      "operation": "add",
+      "path": "docs/loops-system-analysis/NIGHTLY_STOCK_POLICY_INSTRUCTIONS.md"
+    },
+    {
+      "operation": "add",
+      "path": "docs/loops-system-analysis/STOCK_DIRECTION_AND_HORIZON_AUTONOMY.md"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_execution_policy.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_stock_trader.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_trade_planning.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/joint_capital_adoption.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/joint_capital_handoff.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/joint_capital_plan.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_dispatch.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_joint_readiness.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_workflow.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/fixed_horizon_budget.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan_direction_engine.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan_execution.py"
+    },
+    {
+      "operation": "add",
+      "path": "ml/stock_trader/gameplan_inventory_slices.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/horizon_ledger.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_autonomy_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_catchup.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_current_cli.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_data.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_direction_recipe.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_direction_recipe_optional.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_horizon_autonomy.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_live_capacity.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_ui.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_independent_stock_session.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_joint_capital_adoption.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_dispatch.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_workflow.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_start_stock_session.ps1"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_launcher_defaults.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_joint_capital_plan.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_actuals_review.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_trade_planning.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_account_gameplan_producer_prices.py"
+    }
+  ],
+  "limitations": [
+    "Private operating plans, account state, local recipes, task identities and paths are not included in this source notice.",
+    "Optional workflow modules are absent from current main; that supplement targets its existing optional source lineage.",
+    "Checks are offline. Main integration, Atlas installation and loaded trader versions are separate facts; no traders were started or restarted for verification."
+  ],
+  "private_current_revision": {
+    "action_date": "2026-10-19",
+    "namespace": "Existing authorized private exchange policy-revisions namespace",
+    "packet_content_sha256": "74cc1a4e2bc07fc258ddfac72363f15d48172ce87c036fc61f87c9e2807073a4",
+    "plan_sha256": "a7423f846782f3f3a353b6265d766a15b9cbaf033d3db06521ce2b77aad581e5",
+    "purpose": "Current saved display revision; this does not complete the October 20 nightly plan."
+  },
+  "pull_requests": [
+    "https://github.com/jeremysecondstate/ducketz/pull/268",
+    "https://github.com/jeremysecondstate/ducketz/pull/269"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Current plans contain directions and original forecast probabilities; quantities are deferred to actual live capacity. Current selectors and nightly reuse require the new recipe. Historical originals and saved scoring policies remain preserved.",
+  "scope": "shared",
+  "sources": [
+    {
+      "base_commit": "ddac5bfbe0cdc3ab76ed4f9a924567f484356b15",
+      "branch": "codex/scout/20261020T044328Z-e328fb6566d84637b868bed7a2c8a841",
+      "commit_sha": "837139da2f7ed8c4060ca5e2a0d9160d97e56de2",
+      "completion_record": "20261020T044328Z-e328fb6566d84637b868bed7a2c8a841",
+      "files": [
+        {
+          "operation": "modify",
+          "path": "app/ui/gameplan.py",
+          "sha256": "f7ecee1149f65ba1826b427a290e3dd75af199bb4af93da7e5a77f1765ec568b"
+        },
+        {
+          "operation": "modify",
+          "path": "app/ui/gameplan_data.py",
+          "sha256": "513b22fc33d2bdf6594692fabbbefa7abc9845fa24cf9f44fd4c148023245e8e"
+        },
+        {
+          "operation": "modify",
+          "path": "docs/datafetch-ml/start_stock_session.ps1",
+          "sha256": "29aa71dd80e0f9aba0a68018a6e5e08c5c06aff76caca24bf59e2d0aed81aa9e"
+        },
+        {
+          "operation": "modify",
+          "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+          "sha256": "2ad54e790fd81b6da673ac4e5e843737933be7d5967e6098bf56de47744cbc6c"
+        },
+        {
+          "operation": "modify",
+          "path": "docs/loops-system-analysis/NIGHTLY_STOCK_POLICY_INSTRUCTIONS.md",
+          "sha256": "69763242d54db107596994a7abab80ef8ad107236ee17f1a348a8d86c2aabe30"
+        },
+        {
+          "operation": "modify",
+          "path": "docs/loops-system-analysis/STOCK_DIRECTION_AND_HORIZON_AUTONOMY.md",
+          "sha256": "e254eec6560c3cd0554c29f7c5907bd82f9ec6451cefa786a4be8215fb506887"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/gameplan_actuals_review.py",
+          "sha256": "482fc4c363a0dfb0b228901e9789dd9e52720a2a76dd64e26108e68df9a39a36"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/gameplan_execution_policy.py",
+          "sha256": "9e486f65bd7a06e428c566df621588884fa0bbd48076d62957861757a35c108e"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/gameplan_stock_trader.py",
+          "sha256": "b9227b960e710502a6ca31c266992550c25e4a9e59ceaf6813c832a0b0be874a"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/gameplan_trade_planning.py",
+          "sha256": "bfcff0535011a606327b5ae0fb86c1ec613e1ec3fef7dffe20183e8441018762"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/joint_capital_handoff.py",
+          "sha256": "6d9507019ebb66b887680f52dd55908cddd02ff5261ed2a8f03d27315591c6f5"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/joint_capital_plan.py",
+          "sha256": "82d54ee5e4e2014ea9cd36ae592e87afe9578cbd4a88bde84a4f206143678904"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/gameplan_direction_engine.py",
+          "sha256": "344af0bf70d356a16fae93de655cad80814efffbcae1ea8e7f5a15b4708c8276"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/gameplan_execution.py",
+          "sha256": "ab5ab3bdc0a2cc1f589fd026c7e22bc87ebb3718b3160b9dcd03100808b472e5"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/independent_runtime.py",
+          "sha256": "85ca05629e76768a62a0b706073fd747c6c0715026c72b5bd16016b9f8ae4a10"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_autonomy_runtime.py",
+          "sha256": "bf0fca1230ce088490a26933bc6baccdf6d07aa10142a13f43cb10dba6d0996d"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_gameplan_current_cli.py",
+          "sha256": "23735eca6d7abfd7b5d179add1074fde2cc7c8890ef31d461e54032c0e4f81c8"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_data.py",
+          "sha256": "d31eabc6af99122d62222421f1ac2e99fdbb183455f1bd62c3a1f8dd31354961"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_gameplan_direction_recipe.py",
+          "sha256": "b0da5c4609bc9c7195bc29ee7aa60002975ab05e40fc50509a6620f65d400c45"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_gameplan_launcher_defaults.py",
+          "sha256": "9bc92a72986740e3df5aff5766164c109dc9d364727531a7eb507efb38693eed"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_gameplan_live_capacity.py",
+          "sha256": "82f862804d4b9826a4849b7772ea12dc9c18c526d05ec1563f0d2cc83376c261"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_trade_planning.py",
+          "sha256": "2728ecb056448b19505e00efd228cf431cae5de35df3037e2fc7bd0f73a04a38"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_ui.py",
+          "sha256": "2488c59e8fbc2bdbb79791e5bc2124c46df5dea6293c26266cfb1a5175cd7469"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_independent_stock_session.py",
+          "sha256": "b03be9c23b0d5104a68d076c25ccaedf14ae82cb9d3c8e6a22087382ef807a1f"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_joint_capital_plan.py",
+          "sha256": "0309859c42c178891c6b7232f1dc6b780a47fba9a96b83e61110e204ff6d66b6"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_start_stock_session.ps1",
+          "sha256": "2bcbedfcec0e6112d69f1f19fb350de362cfb628a94f902d9674093107fa4285"
+        }
+      ],
+      "peer": "Scout",
+      "repository": "jeremysecondstate/ducketz"
+    },
+    {
+      "base_commit": "9d38d228885e5317f8804a55370a58f8e7bd8ac1",
+      "branch": "codex/scout/20261020T044639Z-b2fbc6310fa34b0aa1064e23955b260f",
+      "commit_sha": "37897bbc0552a77de9a3defde2e440196475c24a",
+      "completion_record": "20261020T044639Z-b2fbc6310fa34b0aa1064e23955b260f",
+      "files": [
+        {
+          "operation": "modify",
+          "path": "app/ui/gameplan.py",
+          "sha256": "372fcf62c3ed8e9f42f19139be6ffa4c363964aba78f37ce0cbb19ccd643b306"
+        },
+        {
+          "operation": "modify",
+          "path": "app/ui/gameplan_data.py",
+          "sha256": "d8fb2bce77586a244684ce53dd401e12b2743f23ac0eb16a953cfdc6e1068931"
+        },
+        {
+          "operation": "modify",
+          "path": "docs/datafetch-ml/start_stock_session.ps1",
+          "sha256": "43cb8b19aa8cf39fd58cad0d7bda5d4d8e97e79087ef7e5f81d9585de1db0dee"
+        },
+        {
+          "operation": "modify",
+          "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+          "sha256": "2ad54e790fd81b6da673ac4e5e843737933be7d5967e6098bf56de47744cbc6c"
+        },
+        {
+          "operation": "add",
+          "path": "docs/loops-system-analysis/NIGHTLY_STOCK_POLICY_INSTRUCTIONS.md",
+          "sha256": "69763242d54db107596994a7abab80ef8ad107236ee17f1a348a8d86c2aabe30"
+        },
+        {
+          "operation": "add",
+          "path": "docs/loops-system-analysis/STOCK_DIRECTION_AND_HORIZON_AUTONOMY.md",
+          "sha256": "e254eec6560c3cd0554c29f7c5907bd82f9ec6451cefa786a4be8215fb506887"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/gameplan_execution_policy.py",
+          "sha256": "9e486f65bd7a06e428c566df621588884fa0bbd48076d62957861757a35c108e"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/gameplan_stock_trader.py",
+          "sha256": "b9227b960e710502a6ca31c266992550c25e4a9e59ceaf6813c832a0b0be874a"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/gameplan_trade_planning.py",
+          "sha256": "5b7eb5091954b01561f07b3e43bcb3a0872f1a073e5e3c4cee1b99e2acef6801"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/joint_capital_adoption.py",
+          "sha256": "6a02e0966437f48ae65e6e2a33be9ebebcbcbd6232076d1f63c591e893e178be"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/joint_capital_handoff.py",
+          "sha256": "9c9704fe3cd7d999730806e698076a22b0ea308b2111c725bc7c432dc3509e1f"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/joint_capital_plan.py",
+          "sha256": "035447fb52d35ab9d789212e4790db7c845b5bb776da7b4c1def1941d22d03e8"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/nightly_dispatch.py",
+          "sha256": "7368e27756180d8984688c7313faf4865b895d05d14f80fca975e3c360e368ed"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/nightly_joint_readiness.py",
+          "sha256": "1094db2c73e4b55735720dbed6bdcb02149b967b001e587a925ee64e96521bad"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/nightly_workflow.py",
+          "sha256": "a9dbd60debf9edbf6dc5301e14e5a4990e8e7538fe41062734844adf711d75bc"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/fixed_horizon_budget.py",
+          "sha256": "ad3f8bdfac04e940287e80d93d4e5c7daa755e3575630de0e013ec6f005cb642"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/gameplan_direction_engine.py",
+          "sha256": "81e48c5973161bb7b24c5f27fa04a9d4e3d169295e2afadc43582506616ad55f"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/gameplan_execution.py",
+          "sha256": "ffa2ae2e3f5639796ec88d6690614ba12d88e7beb2d92f456ee6d0373288f5e5"
+        },
+        {
+          "operation": "add",
+          "path": "ml/stock_trader/gameplan_inventory_slices.py",
+          "sha256": "4dfa1742a1e88fc8265a59fe77e674b9b925ab1868800994df9e385846f8259b"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/horizon_ledger.py",
+          "sha256": "4627dc02906cb9cc83ab06d739a2500caeb9184275dc5a97ad17033db9e10cdd"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/independent_runtime.py",
+          "sha256": "c377d1f518a3239875b19d9526faadba1906b88b11a0768c90fe64bc9acb913f"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_gameplan_autonomy_runtime.py",
+          "sha256": "84fadf3551d45e0a12aecc017f2b0f47690da2d05fd426d2cc3396281133cc5e"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_catchup.py",
+          "sha256": "b3299cddf402bdb1fe8ad07791b5f277cf6b8ae24fdc9a784010768be51335cb"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_gameplan_current_cli.py",
+          "sha256": "23735eca6d7abfd7b5d179add1074fde2cc7c8890ef31d461e54032c0e4f81c8"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_data.py",
+          "sha256": "a16122bb5bc43193b9635739b9b01c7c59d5a3037ce0b52273cb0eca20df3638"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_gameplan_direction_recipe.py",
+          "sha256": "76585a274ee72f754328bda4c38358903028388a3e56708c46b7c2def6310e3d"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_gameplan_direction_recipe_optional.py",
+          "sha256": "58ba5d8a140b1c7965b7f7ad7b04bf20ea5d17919c5ead5180687963efd962fa"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_gameplan_horizon_autonomy.py",
+          "sha256": "17a585d8db914a5e54dc28fa8e0d81f6c35d93bf6f00f5979bce60054d29fc8d"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_gameplan_live_capacity.py",
+          "sha256": "086d6ff3276781c875d63107406d30b028c95928aac90f8cf123dee513fca39d"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_ui.py",
+          "sha256": "6cc74fa1588fe57ac778632bcbe7491ccd347c4a869df87edbbba0091a5f6c0a"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_independent_stock_session.py",
+          "sha256": "fa22d94fc846339c94716e92b6f02d1ec889e59a8a7d1b768efc337f968cb1e3"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_joint_capital_adoption.py",
+          "sha256": "441ff558e05268b4b6564dfe5d90f94b2c01d3d0e9b18de9fc60147d98a04109"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_nightly_dispatch.py",
+          "sha256": "b9557a753f19c75ac745690b335b3a1a851b698824e58977f1898aa8b1f15349"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_nightly_workflow.py",
+          "sha256": "afe452a4bfbcbb62fa6960d70d4eb264b0a84843f6afdc1dcffb02357e33d0e4"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_start_stock_session.ps1",
+          "sha256": "6fb2936293815f1195703d565648e1938f45af8250e71249c5e341ab7c0c6c5d"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_gameplan_launcher_defaults.py",
+          "sha256": "9bc92a72986740e3df5aff5766164c109dc9d364727531a7eb507efb38693eed"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_joint_capital_plan.py",
+          "sha256": "b301dfc6708d6a97591866d0df583924b509c92c7709af3016347faeff55f895"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/gameplan_actuals_review.py",
+          "sha256": "cd949d6e3d84e8ace8fd3fec9ef8c5b786e33fb8dba7c9ac6f7863e23e566ed1"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_trade_planning.py",
+          "sha256": "ea447ddb8168ed4f06d5119f6c3f9b76058995906ae53d6080600861a8664133"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_account_gameplan_producer_prices.py",
+          "sha256": "2cd655d64c1532a78ce7e41e21901af8a0d927a6b11dd28a531f49c1d9aa7ea1"
+        }
+      ],
+      "peer": "Scout",
+      "repository": "jeremysecondstate/ducketz"
+    }
+  ],
+  "summary": "Replace estimated current Gameplan creation and execution sizing with saved directional instructions and actual live broker capacity, including Stats and future nightly work.",
+  "task": "direction-live-quote-gameplan-correction",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-20T04:44:33.391179Z",
+      "completion_record": "20261020T044328Z-e328fb6566d84637b868bed7a2c8a841",
+      "exit_code": 0,
+      "output_sha256": "dee1a9681fbc32c41336b4568a9d2ac274d90e38984187fd48a7cf6b229663ac",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-20T04:44:04.965681Z"
+    },
+    {
+      "completed_at_utc": "2026-10-20T04:44:38.363046Z",
+      "completion_record": "20261020T044328Z-e328fb6566d84637b868bed7a2c8a841",
+      "exit_code": 0,
+      "output_sha256": "4a65477ae831316d9bae7ddfbb02138e02acafa0dd97b69746b2c8b8ab15c48b",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-20T04:44:33.628435Z"
+    },
+    {
+      "completed_at_utc": "2026-10-20T04:48:06.946484Z",
+      "completion_record": "20261020T044639Z-b2fbc6310fa34b0aa1064e23955b260f",
+      "exit_code": 0,
+      "output_sha256": "cf850364bd8da117580ce8ba734442b176beda96163079a4e58897716b61b8ca",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-20T04:47:24.128303Z"
+    },
+    {
+      "completed_at_utc": "2026-10-20T04:43:23.718996Z",
+      "completion_record": "20261020T044140Z-c4a0c87166ba4828a8c6f1379cd94e67",
+      "exit_code": 0,
+      "output_sha256": "814303b8708c3b1aa080978fea8566661468eeedf98d7b3321db901022a4dcd0",
+      "source_commit": "37897bbc0552a77de9a3defde2e440196475c24a",
+      "stage": "identical_source_full_regression",
+      "started_at_utc": "2026-10-20T04:41:40.953211Z"
+    }
+  ],
+  "validation_summary": "Primary exact isolated source: 390 regression tests and seven focused launcher CLI cases passed. Optional exact source: 676 affected regressions passed; accepted-revision queue replay passed 363 with one transient Tk startup skip, and isolated publication passed all 364 with no skips. Source/dependency fingerprints are identical between the optional full suite and its accepted revision. No full repository suite claim. Import/network audits, exact-byte review and private-value scans passed."
+}
