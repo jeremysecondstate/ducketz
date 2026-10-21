@@ -104,7 +104,18 @@ def test_manual_stop_is_not_attributed_to_authority_renewal(authority_and_lease,
     with pytest.raises(ContractError) as repeated:
         keeper.renew()
     assert repeated.value is stopped.value
-    assert execution._submission_failure_evidence(repeated.value, "capacity_publish") == evidence
+    repeated_evidence = execution._submission_failure_evidence(repeated.value, "capacity_publish")
+    # Rethrowing the same latched exception extends its traceback. The cause
+    # and attribution stay exact; bounded locations retain the original root.
+    assert {key: value for key, value in repeated_evidence.items() if key != "exception_locations"} == {
+        key: value for key, value in evidence.items() if key != "exception_locations"}
+    original_location, = evidence["exception_locations"]
+    current_location, = repeated_evidence["exception_locations"]
+    assert {key: value for key, value in current_location.items() if key != "frames"} == {
+        key: value for key, value in original_location.items() if key != "frames"}
+    assert len(current_location["frames"]) <= 8
+    assert current_location["frames"][-2:] == original_location["frames"][-2:]
+    assert all("local_operation" not in item for item in repeated_evidence["exception_chain"])
 
 
 def test_returned_identity_mismatch_is_not_a_renewal_exception(authority_and_lease, monkeypatch):

@@ -401,7 +401,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                     store.event(session_id,"market_inputs_start_error",{"error_type":type(exc).__name__,
                         "core_forecasts_continue":True})
             executor = IntradayAccountExecutor(datastore=root,store=store,broker=SchwabSession(),local_symbols=symbols,
-                session_started_at=started,clock=clock,manual_authority=manual_authority,actor=pc,stopped=stopped.is_set)
+                session_started_at=started,clock=clock,manual_authority=manual_authority,actor=pc,stopped=stopped.is_set,
+                diagnostic_session_id=session_id)
         except BaseException as exc:
             if market_collector is not None:
                 market_collector.close()
