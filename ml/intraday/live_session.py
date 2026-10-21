@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
+import sqlite3
 import threading
 import time
 import uuid
@@ -150,6 +151,69 @@ def _pending_cycle_passes(store, session_id, now):
         item[1]["reference_at"]))
 
 
+def _forecast_failure_evidence(exc):
+    """Bounded local code locations and SQLite codes, without private messages."""
+    from collections import deque
+
+    chain, seen = [], set()
+    current = exc
+    while current is not None and id(current) not in seen and len(chain) < 8:
+        seen.add(id(current))
+        frames = deque(maxlen=8)
+        trace = current.__traceback__
+        while trace is not None:
+            code = trace.tb_frame.f_code
+            frames.append({"file": code.co_filename.replace("\\", "/").rsplit("/", 1)[-1][:120],
+                           "function": code.co_name[:120], "line": trace.tb_lineno})
+            trace = trace.tb_next
+        item = {"error_type": type(current).__name__[:80], "frames": list(frames)}
+        code = getattr(current, "sqlite_errorcode", None)
+        name = getattr(current, "sqlite_errorname", None)
+        if (isinstance(current, sqlite3.Error) and type(code) is int and type(name) is str
+                and name.startswith("SQLITE_") and getattr(sqlite3, name, None) == code):
+            item.update(sqlite_errorcode=code, sqlite_errorname=name)
+        chain.append(item)
+        current = (current.__cause__ if current.__cause__ is not None else
+                   None if current.__suppress_context__ else current.__context__)
+    return {"exception_chain": chain, "root_cause": chain[-1],
+            "exception_chain_truncated": current is not None}
+
+
+def _retry_forecast_storage(action, *, store, session_id, operation, stopped, pause):
+    """Resume the exact interrupted cycle operation after transient contention.
+
+    Each action opens fresh store transactions. Repeating run_cycle reuses its
+    immutable outputs and original reference; repeating finalization never
+    retrains. Other storage errors retain their original failure path.
+    """
+    retries, failure = 0, None
+    while not stopped():
+        try:
+            result = action()
+        except sqlite3.OperationalError as exc:
+            code = getattr(exc, "sqlite_errorcode", None)
+            if type(code) is not int or code & 255 != sqlite3.SQLITE_BUSY:
+                raise
+            retries += 1
+            failure = _forecast_failure_evidence(exc)
+            # The same busy database cannot be required to save its own error.
+            print(encoded({"event": "forecast_storage_contention", "operation": operation,
+                           "retry_count": retries, "diagnostics": failure}), flush=True)
+            pause(1)
+            continue
+        if retries:
+            evidence = {"operation": operation, "retry_count": retries,
+                        "last_failure": failure, "operation_returned_normally": True}
+            try:
+                store.event(session_id, "forecast_storage_retry_completed", evidence)
+            except Exception as exc:
+                print(encoded({"event": "forecast_storage_retry_diagnostic_unavailable",
+                               "operation": operation, "diagnostics": _forecast_failure_evidence(exc)}),
+                      flush=True)
+        return result
+    raise InterruptedError("Manual session stopped; forecast storage continuation retained")
+
+
 def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
                      clock=utcnow, pause=time.sleep, close_at=None):
     """New quarters first; durable acquisition retries get bounded fair passes.
@@ -160,6 +224,7 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
     """
     saved = _session_cycles(runner.store, queue.session_id)
     last = max((instant(c["reference_at"]) for _, c in saved), default=None)
+    storage_stopped = lambda: stopped() or (close_at is not None and instant(clock()) >= instant(close_at))
     while not stopped():
         if close_at is not None and instant(clock()) >= instant(close_at):
             return
@@ -188,11 +253,34 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
                                 reuse_saved=True,population_contract=getattr(runner.config,"population_contract",None))
         if close_at is not None and instant(clock()) >= instant(close_at):
             return
-        result = runner.run_cycle(incoming,reference_at=reference,mode="live",experiment=queue.session_id,
-                         on_published=queue.enqueue,acquisition={"kind":"existing_databento_exact_interval"},
-                         retry_symbols=retry_symbols,allow_execution=reference == newest)
+        cycle_attempt = 0
+        def publish_retry(forecast):
+            if reference != latest_completed_reference(
+                    clock(), publication_offset_seconds=runner.config.publication_offset_seconds):
+                runner.store.event(forecast["cycle_id"], "forecast_execution_blocked",
+                    {"forecast_id":forecast["forecast_id"], "reason":"recovered_older_cycle",
+                     "forecast_preserved":True},symbol=forecast["symbol"])
+                return
+            queue.enqueue(forecast)
+        def run_cycle_attempt():
+            nonlocal cycle_attempt
+            cycle_attempt += 1
+            return runner.run_cycle(incoming,reference_at=reference,mode="live",experiment=queue.session_id,
+                         on_published=queue.enqueue if cycle_attempt == 1 else publish_retry,
+                         acquisition={"kind":"existing_databento_exact_interval"},
+                         retry_symbols=retry_symbols,allow_execution=reference == latest_completed_reference(
+                             clock(), publication_offset_seconds=runner.config.publication_offset_seconds))
+        result = _retry_forecast_storage(run_cycle_attempt,
+            store=runner.store,session_id=queue.session_id,operation="run_cycle",
+            stopped=storage_stopped,pause=pause)
         if result and result.get("cycle_id"):
-            runner.store.update_cycle(result["cycle_id"], {"last_recovery_attempt_at":instant(clock()).isoformat()})
+            if stopped():
+                return
+            completed_at = instant(clock()).isoformat()
+            _retry_forecast_storage(
+                lambda: runner.store.update_cycle(result["cycle_id"], {"last_recovery_attempt_at":completed_at}),
+                store=runner.store,session_id=queue.session_id,operation="cycle_finalization",
+                stopped=storage_stopped,pause=pause)
         pause(1)
 
 
@@ -431,10 +519,17 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                     store.event(session_id,"forecasting_closed", {"closed_at":close_at.isoformat(),
                         "final_candle_collection_continues":True})
                     return
-                store.event(session_id,"forecast_worker_stopped",{"error_type":type(exc).__name__,"message":str(exc)})
+                diagnostics = _forecast_failure_evidence(exc)
                 if not (isinstance(exc,InterruptedError) and stopped.is_set()):
-                    worker_errors.append({"worker":"forecast","error_type":type(exc).__name__,"message":str(exc)})
+                    worker_errors.append({"worker":"forecast","error_type":type(exc).__name__,
+                        "message":str(exc),"diagnostics":diagnostics})
                 stopped.set()
+                try:
+                    store.event(session_id,"forecast_worker_stopped",{"error_type":type(exc).__name__,
+                        "message":str(exc),"diagnostics":diagnostics})
+                except Exception as diagnostic_exc:
+                    print(encoded({"event":"forecast_worker_stopped", "diagnostics":diagnostics,
+                        "diagnostic_failure":_forecast_failure_evidence(diagnostic_exc)}),flush=True)
         worker = threading.Thread(target=forecast_work,name="intraday-manual-forecast",daemon=True)
         def score_work():
             try:
