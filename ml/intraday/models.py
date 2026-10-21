@@ -262,8 +262,8 @@ def build_estimator(spec: ModelSpec) -> Pipeline:
             from lightgbm import LGBMClassifier
             estimator = LGBMClassifier(**params)
         else:
-            from catboost import CatBoostClassifier
-            estimator = CatBoostClassifier(**params)
+            from .catboost_adapter import SingleWorkerCatBoostClassifier
+            estimator = SingleWorkerCatBoostClassifier(**params)
     else:
         estimator = constructors[spec.family](**params)
     steps = [("impute", SimpleImputer(strategy="median", keep_empty_features=True))]
@@ -550,6 +550,9 @@ def fit_ensemble(X, y, inference_X, *, config=None, target_version=TARGET_VERSIO
             if set(np.unique(labels)) != {0, 1}:
                 raise ContractError("Training requires both target classes; no constant model substitution")
             metadata["effective_parameters"] = _parameters(spec)
+            if spec.family == "catboost" and importlib.util.find_spec("catboost") is not None:
+                from .catboost_adapter import SingleWorkerCatBoostClassifier
+                metadata["model_adapter_runtime"] = capture_runtime([SingleWorkerCatBoostClassifier.__module__])
             output["version"] = _sha(metadata)
             with _fit_resources() as observed_warnings:
                 estimator, fitting_evidence = fit_calibrated_estimator(spec, features, labels,
