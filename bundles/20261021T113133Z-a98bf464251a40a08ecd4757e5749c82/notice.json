@@ -1,0 +1,99 @@
+{
+  "author": "Scout",
+  "base_commit": "2adaf494d60e3eebb352d0828b1b14e273d81f04",
+  "branch": "codex/scout/20261021T112441Z-e0589ff2986b4e878dc325bca50169cd",
+  "change_id": "20261021T112441Z-e0589ff2986b4e878dc325bca50169cd",
+  "commit_sha": "045d366ccc228c8c1d1e71badd8894780d5ff6eb",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/dataset_diagnostics.py",
+      "sha256": "37a59ba651d804edc8fd71f9482b1f74c8d14cb2ee48ef46ba7fcdb68d627e1e"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_model_recipe.py",
+      "sha256": "33d1b5a21f4b1a3cc6855773186b9ea14256f78d35d78ad5d69580c139800bd8"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/market_context.py",
+      "sha256": "9ef56fd2f0a658a0b0d02fb10e97ce9a9051ea8516800994fa03f351cb7d1905"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/runtime.py",
+      "sha256": "d1a5d4e246e18334b0a1025553a22e8864f6661d96f658eb1975cef6365342f2"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_dataset_diagnostics.py",
+      "sha256": "22d453566e439f4eee454f1b10fe3fbe8d9473acd6a4ffbb9d0ce850cb3f3d67"
+    }
+  ],
+  "limitations": [
+    "Historical phase measurements were not saved, so existing broad dataset-build durations cannot establish an unavailable historical subphase or causal resource wait.",
+    "The market-context implementation source digest changes. Existing context caches become cold and rebuild naturally; no cache identity remapping or data qualification weakening is performed.",
+    "Offline checks exercise diagnostics and unchanged inputs. Loaded runtime timing, affected broker startup and queue behavior remain pending Jeremy's manual trader start.",
+    "Cache warming may span multiple natural builds under the existing bounded pending-write buffer; no digest remapping or support weakening.",
+    "Passing counts overlap across author, independent, sealed-source, candidate and combined runtime stages; do not sum them as unique tests. Private inputs, recipes, fitted models, account state, ledgers and task memory are excluded."
+  ],
+  "local_installation": {
+    "actor": "Scout",
+    "check_counts_are_unique": false,
+    "installed_check_results": [
+      209,
+      714
+    ],
+    "launcher_check": "passed_offline_bound_imports",
+    "loaded": false,
+    "manual_restart_required": true,
+    "other_source_and_recipe_preserved": true,
+    "stage": "installed_for_next_manual_restart",
+    "trader_controls_untouched": true
+  },
+  "main_integration": "not_inferred",
+  "peer_applicability": "Shared diagnostic correctness applies to either PC while preserving its own private recipe, symbols, qualification, model inputs and manual trader controls.",
+  "peer_installation": "not_inferred",
+  "producer": "human-authorized-development",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/302",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout installation selects reviewed source for a later human manual trader restart. The market-context source digest changes and existing cached contexts naturally rebuild. No trader is started or restarted and no model recipe, qualification requirement or trading history changes.",
+  "scope": "shared",
+  "summary": "Retain bounded dataset phase timings and final cache counters",
+  "task": "Scout 15-minute dataset-build diagnostics",
+  "tests": [
+    {
+      "bound_file_count": 844,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_intraday_dataset_diagnostics.py",
+        "tests/test_intraday_market_context.py",
+        "tests/test_intraday_market_context_cache.py",
+        "tests/test_intraday_market_recipe.py",
+        "tests/test_intraday_forward_fill_recipe.py",
+        "tests/test_intraday_runtime.py"
+      ],
+      "completed_at_utc": "2026-10-21T11:28:02.100512Z",
+      "exit_code": 0,
+      "network_connections": "disabled",
+      "output_sha256": "1bafefe3f2e8615c52c647a09711db66dd0e371903c0869fbbd3e1394a0cbb36",
+      "result": "209 passed",
+      "stage": "publication_candidate",
+      "started_at_utc": "2026-10-21T11:27:40.393040Z"
+    }
+  ],
+  "verified_remote_sha": "045d366ccc228c8c1d1e71badd8894780d5ff6eb"
+}
