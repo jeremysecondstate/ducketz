@@ -106,9 +106,13 @@ def test_falling_and_rising_symbol_ta_produce_different_real_calculated_sizes():
         assert result["explanation"]["rounded_equality"] == "allow"
 
 
-def test_equal_probability_is_buy_and_side_orientation_has_no_confidence_gate():
+def test_equal_probability_is_hold_and_side_orientation_has_no_confidence_gate():
     half = run(fixture(probability=.5)).payload()
-    assert half["side"] == "BUY" and half["desired_quantity"] > 0
+    assert half["side"] == "HOLD" and half["desired_quantity"] is None
+    assert half["reason"] == "neutral_probability_no_direction"
+    for probability, side in ((.5001, "BUY"), (.4999, "SELL")):
+        result = run(fixture(probability=probability)).payload()
+        assert result["side"] == side and result["desired_quantity"] > 0
     buys = run(fixture(probability=.8)).payload()
     sells = run(fixture(probability=.2)).payload()
     buy_probability = next(x for x in buys["term_contributions"] if x["feature"] == "probability_not_down")

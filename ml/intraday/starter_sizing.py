@@ -1,7 +1,8 @@
 """Human-approved initial independent symbol sizing; pure calculations only.
 
 Approval: October 12, 2026, initial 1.5%-equity scale, symbol TA starter and
-nearest-share half-up rounding. There is no stream budget, protected cash,
+nearest-share half-up rounding. October 19 direction policy prevents a rounded
+zero when that independent scale can afford one whole share. There is no stream budget, protected cash,
 Gameplan horizon dependency, confidence gate, broker access or submission here.
 The caller owns persistence, freshness settings and actual capacity adjustment.
 """
@@ -12,6 +13,8 @@ from decimal import Decimal, ROUND_HALF_EVEN, localcontext
 import math
 from typing import Mapping
 
+from ml.stock_direction_policy import stock_direction
+
 from .prediction import ContractError, digest, encoded, identity, instant, number
 from .technical_sizing import (
     AvailableInput, IndicatorSpec, ScoreRecipe, ScoreTerm, SymbolReference,
@@ -19,8 +22,9 @@ from .technical_sizing import (
 )
 
 
-VERSION = "intraday-independent-initial-ta-v1"
+VERSION = "intraday-independent-direction-ta-v2"
 EQUITY_SCALE = "0.015"
+DIRECTION_QUANTITY_POLICY_VERSION = "intraday-valid-direction-whole-share-v1"
 
 
 @dataclass(frozen=True)
@@ -111,7 +115,10 @@ def independent_reference(forecast, *, account_equity, quote, calculated_at, max
     probability = number(forecast["probability_not_down"])
     if probability > 1:
         raise ContractError("Forecast probability must be in [0,1]")
-    side = "BUY" if probability >= Decimal(".5") else "SELL"
+    direction = stock_direction(probability)
+    if direction == "NO_EDGE":
+        return None, "neutral_probability_no_direction"
+    side = "BUY" if direction == "BULLISH" else "SELL"
     price = ask if side == "BUY" else bid
     with localcontext() as arithmetic:
         arithmetic.prec = 34
@@ -127,6 +134,36 @@ def independent_reference(forecast, *, account_equity, quote, calculated_at, max
         "scheduled_gameplan_order_required": False}
     return SymbolReference(str(forecast["symbol"]), side, str(shares), VERSION,
                            observed.isoformat(), evidence), None
+
+
+def _apply_direction_minimum(payload):
+    """Preserve a valid new direction within its unchanged independent scale.
+
+    The generic research result retains ordinary half-up rounding. Only this
+    live starter policy prevents its mixed TA/probability score from rounding
+    a whole-share opportunity to zero; actual capacity is still unevaluated.
+    """
+    original = payload["desired_quantity"]
+    reference = payload.get("symbol_reference")
+    applied = (payload["status"] == "sized" and payload["side"] in {"BUY", "SELL"}
+               and not payload["calculated_after_target"] and original == 0
+               and reference is not None and Decimal(reference["shares"]) >= 1)
+    if applied:
+        payload["desired_quantity"] = 1
+        payload["explanation"] = {**payload["explanation"], "desired_quantity": 1,
+                                  "ta_rounded_quantity": original,
+                                  "ta_rounded_at_or_above_reference": payload["explanation"]["rounded_at_or_above_reference"],
+                                  "rounded_at_or_above_reference": Decimal(reference["shares"]) <= 1,
+                                  "direction_minimum_applied": True}
+    payload["direction_quantity_policy"] = {
+        "version": DIRECTION_QUANTITY_POLICY_VERSION,
+        "authority": "human_direction_2026_10_19",
+        "minimum_reference_shares": "1", "minimum_desired_quantity": 1,
+        "original_ta_desired_quantity": original,
+        "effective_desired_quantity": payload["desired_quantity"],
+        "applied": applied, "actual_capacity_evaluated": False,
+    }
+    return payload
 
 
 def size_forecast(forecast, *, forecast_snapshot, account_equity: AvailableInput | None,
@@ -153,7 +190,7 @@ def size_forecast(forecast, *, forecast_snapshot, account_equity: AvailableInput
         rounded_equality="allow", unavailable_reason=reason)
     # Immutable result contains enough local evidence to reconstruct indicators
     # as well as every term. This is private persisted sizing, not telemetry.
-    payload = result.payload()
+    payload = _apply_direction_minimum(result.payload())
     payload.update(starter_policy_version=VERSION, indicator_snapshot=indicators.payload(),
                    initial_configuration_authority="human_approved_2026_10_12",
                    reference_context={"account_equity": asdict(account_equity) if account_equity is not None else None,
