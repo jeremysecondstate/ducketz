@@ -147,6 +147,15 @@ class ShadowStore:
             row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE cycle_id=? AND symbol=?", (cycle_id, symbol)).fetchone()
         return self._forecast_value(row) if row else None
 
+    def forecast_by_id(self, forecast_id, *, pc=None):
+        """Validate one immutable forecast without loading unrelated history."""
+        with self.connect() as db:
+            row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE id=?", (forecast_id,)).fetchone()
+        value = self._forecast_value(row) if row else None
+        # Validate indexed identity before scope filtering, so a changed pc
+        # column cannot disguise corruption as an ordinary missing forecast.
+        return value if value is not None and (pc is None or value["pc"] == pc) else None
+
     def forecasts(self, *, pc=None):
         with self.connect() as db:
             rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts" + (" WHERE pc=?" if pc else "") + " ORDER BY rowid", (pc,) if pc else ()).fetchall()

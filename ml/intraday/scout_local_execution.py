@@ -195,15 +195,23 @@ class ScoutLocalAccountExecutor:
 
     def recover(self):
         with self._account():
-            forecasts = {f['forecast_id']: f for f in self.store.forecasts(pc='Scout')}
+            # Recovery needs the original forecasts named by local journals,
+            # not every historical prediction. Keep reuse inside this pass;
+            # the next poll rereads and validates the durable original bytes.
+            forecasts = {}
             results = []
             for journal in self._journals():
                 for old in journal.records():
                     if not old['request']['request_id'].startswith(PREFIX):
                         continue
                     self._controls()
+                    forecast_id = old['request']['forecast_id']
+                    if forecast_id not in forecasts:
+                        forecasts[forecast_id] = self.store.forecast_by_id(forecast_id, pc='Scout')
+                    forecast = forecasts[forecast_id]
+                    # Reject changed original bytes before recovery can revoke
+                    # a pending attempt or request broker status for this row.
                     record = self._recover_record(journal, old)
-                    forecast = forecasts.get(record['request']['forecast_id'])
                     if forecast is None or self.intents.get(forecast['forecast_id']) is None:
                         raise ContractError('Local order lacks its original immutable intention')
                     clearance = (self._commitment_clearance(journal, record)
