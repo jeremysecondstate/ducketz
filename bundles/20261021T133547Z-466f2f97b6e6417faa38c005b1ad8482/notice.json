@@ -1,0 +1,48 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T132537Z-7c5c924cbaae415bade9627080376b1e",
+  "change_id": "20261021T132537Z-7c5c924cbaae415bade9627080376b1e",
+  "commit_sha": "8cd3c4c13c86c6c0ee1b92066013c14fd31ed80c",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py",
+      "sha256": "ee47dae4e1d91691a2872b8dd26057dd677135abe35e10744a37cd3c0064b166"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_expired_no_order.py",
+      "sha256": "e647524e69fb7a07ee74d1df44fd182dca82f7b085750db5b375fa161e1b8087"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_expired_no_order.py",
+      "sha256": "4d36573118d1efda63dd4fd7516f128759cbdf03da97e2dd532d31ac93759cda"
+    }
+  ],
+  "limitations": [
+    "Narrow three-file draft stack on reviewed capture-reconciliation PR304; main integration and peer installation remain separate facts.",
+    "Offline tests and private retained-record reconstruction establish supported local expiry behavior; no affected live operation or fill is claimed.",
+    "Historical capacity-stage delay cause and original uncertain acceptance remain unproven. Original expired instructions and full unknown commitments are preserved.",
+    "Only synthetic public regressions are published; originals, copied evidence and private operating state remain local."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/306"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Exact source installed on Atlas. Existing manual worker predates installation; next ordinary human manual fifteen-minute start loads it. No automatic stop or restart, stop clearing, expired replay, test order, schedule change or nightly prerequisite.",
+  "scope": "Shared expired-instruction processing for each independent fifteen-minute trader. Preserve local symbols, models, account state and manual controls.",
+  "summary": "Atlas independent fifteen-minute trader retires expired no-order instructions without provider capture",
+  "tests": {
+    "actual_installed": "344 passed in 90.44s (0:01:30)",
+    "actual_installed_fingerprints": 114,
+    "exclusions": 0,
+    "final_regression_cases": 344,
+    "isolated_candidate": "344 passed in 55.11s",
+    "new_regression_cases": 30,
+    "original_baseline": "12 failed, 18 passed in 10.02s",
+    "raw_source": "344 passed in 52.54s",
+    "sealed_fingerprints": 117,
+    "sealed_source": "344 passed in 60.36s (0:01:00)"
+  }
+}

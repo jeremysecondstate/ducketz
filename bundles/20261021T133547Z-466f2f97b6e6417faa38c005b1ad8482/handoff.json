@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T13:35:47.363106Z",
+  "id": "20261021T133547Z-466f2f97b6e6417faa38c005b1ad8482",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas independent fifteen-minute trader retires expired no-order instructions without provider capture"
+}
