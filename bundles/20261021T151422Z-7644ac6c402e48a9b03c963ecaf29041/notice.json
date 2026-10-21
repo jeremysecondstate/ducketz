@@ -1,0 +1,50 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T150607Z-75ddb714801543a991f1fb18cd6499a5",
+  "change_id": "20261021T150607Z-75ddb714801543a991f1fb18cd6499a5",
+  "commit_sha": "e2accb008510003d67d0a98a272550de7cc89fce",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/models.py",
+      "sha256": "a2c8557e554195e9462dceed974d9cc7d74f68029938d0cc7b044ca7b4977215"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/catboost_adapter.py",
+      "sha256": "9a458ee421a310a26e0b1f0d0a8f7acbac78374c1dbcc6e36be4842388b85baf"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_catboost_worker_contract.py",
+      "sha256": "9cbdde88584efb6ac5ba7aa716ee0bed7337a92b68a9971ad925ba8d33267f54"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_catboost_workers.py",
+      "sha256": "b00cdb7f0d071dcfc35948a9096627068463da92b54f8a8b6ec8707eff7a0535"
+    }
+  ],
+  "limitations": [
+    "Worker-contract correction does not establish complete historical multi-minute-delay cause.",
+    "Draft stacks on PR308; main integration and peer installation remain separate facts.",
+    "Existing manual Atlas15m worker predates installation; loaded and affected live behavior are unproven.",
+    "Private inputs, fitted models, account state and detailed original numerical evidence remain local."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/310",
+    "https://github.com/jeremysecondstate/atlas-scout/issues/27"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Exact reviewed four files installed locally. Next ordinary human manual Atlas15m start loads repair; no immediate restart, automatic control, test order, expired replay, nightly prerequisite or peer acknowledgment round.",
+  "scope": "Shared native-worker correctness for independent local traders; preserve each PC model policy, symbols, targets, probabilities, calibration and manual controls.",
+  "summary": "Atlas bounds active CatBoost numeric preparation, feature importance and prediction to the existing one-worker contract",
+  "tests": {
+    "actual_installed_Atlas": "106 passed, 1962 warnings in 10.39s",
+    "isolated_candidate": "106 passed",
+    "native_arguments": "Every observed active Pool, learner, automatic feature importance and inference stage uses one worker",
+    "network": "denied",
+    "original_source": "6 focused failures,1 pass; worker/provenance/optional-adapter regressions",
+    "sealed_source": "106 passed"
+  }
+}

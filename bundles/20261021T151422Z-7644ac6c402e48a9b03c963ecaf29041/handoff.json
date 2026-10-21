@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T15:14:22.345757Z",
+  "id": "20261021T151422Z-7644ac6c402e48a9b03c963ecaf29041",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas bounds active CatBoost numeric preparation, feature importance and prediction to the existing one-worker contract"
+}
