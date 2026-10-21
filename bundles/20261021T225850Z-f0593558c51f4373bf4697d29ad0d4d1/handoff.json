@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T22:58:50.462116Z",
+  "id": "20261021T225850Z-f0593558c51f4373bf4697d29ad0d4d1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Avoid repeated full model-payload decoding in independent outcome scoring"
+}

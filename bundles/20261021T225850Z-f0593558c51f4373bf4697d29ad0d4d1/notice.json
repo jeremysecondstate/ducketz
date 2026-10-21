@@ -1,0 +1,87 @@
+{
+  "author": "Scout",
+  "base_commit": "00c5e099664eb41a1c5240a33162d0dea5fdd12b",
+  "branch": "codex/scout/20261021T225507Z-0ef81904f57f41ada7c479f52a2a2da2",
+  "change_details": [
+    "Keep verified small forecast routing records between scoring passes instead of repeatedly decoding historical full model payloads.",
+    "Reload and validate the immutable original before appending any outcome or synthetic audit revision.",
+    "Retain pending historical retries, exact target/source qualification, new forecasts, corrections and saved forecast policies.",
+    "Preserve prior private scoring deduplication, local model recipes and human trader controls."
+  ],
+  "change_id": "20261021T225507Z-0ef81904f57f41ada7c479f52a2a2da2",
+  "commit_sha": "a476d6641821dbcc50753be31264e86633e547f7",
+  "dependency_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/322",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/store.py",
+      "sha256": "1231a55b3450a11d410708173b5a2fa00c28116fb945519748f39ff19a67b477"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/live_session.py",
+      "sha256": "5de9a29d4afa1aec64060aac68754a87eab6361a5911d908989439e14c3d989f"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scoring_scan.py",
+      "sha256": "5976037ce3e4bedfbef37c101fca0bb8a5d1213e2b126f25a06d509b12010411"
+    }
+  ],
+  "limitations": [
+    "The first scoring poll validates every scoped forecast once; unchanged polls validate indexed routing identities, not all historical payload bytes. Selected complete originals and routing equality are validated immediately before outcome observation or legacy invalidation.",
+    "The cache retains only serialized routing projections, bounded to4096entries and16MiB; overflow entries are safely reread instead of cached. It retains no model list or full dataset manifest.",
+    "Historical missing inputs remain exact-source unresolved targets and retain retry behavior. No target shifting, support relaxation, model recipe change or expired decision replay.",
+    "Offline checks establish read avoidance and scoring/correction/integrity semantics, not actual full-cycle or concurrent-thread latency recovery. Root must retain installed private scoring-dedup behavior and run combined-runtime checks.",
+    "Only the3owned isolatedworktree paths changed. No canonical/runtime/recipe/config/tradingstate or tradercontrols changed by author.",
+    "Counts from author, queue, candidate and local runtime stages overlap.",
+    "Scoped scoring reads do not perform an all-history corruption audit on every poll; selected outcome mutations require the original verified forecast.",
+    "Offline checks do not establish runtime reload, recovered exact-source gaps or full-cycle latency recovery.",
+    "Main preparation is blocked until the reviewed parent source is integrated. Resume the same Completion-Record.",
+    "Private account state, credentials, raw data, fitted models, local recipe identities and operating logs are excluded."
+  ],
+  "main_integration": {
+    "dependency_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/322",
+    "peer_installation": "not established",
+    "reason": "origin/main does not descend from reviewed source base",
+    "resume_completion_record": "20261021T225507Z-0ef81904f57f41ada7c479f52a2a2da2",
+    "source_publication": "remote SHA verified",
+    "status": "blocked"
+  },
+  "peer_applicability": "Shared scoring processing repair applies to either PC. Keep private recipes, symbols, data and operating bindings local. Peer installation is not established.",
+  "pull_request_base_branch": "codex/scout/20261021T221438Z-2f46c9f9f59d406b81dc25405663d730",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/325",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scoring and store modules load at startup. Local installation and a later human manual restart are separate facts; no trader is started or restarted by publication.",
+  "scope": "shared",
+  "summary": "Avoid repeated full model-payload decoding in independent outcome scoring",
+  "tests": [
+    {
+      "checks_passed": 268,
+      "commands": [
+        [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_intraday_scoring_scan.py",
+          "tests/test_intraday_store.py",
+          "tests/test_intraday_live_session.py",
+          "tests/test_intraday_native_feed.py",
+          "tests/test_intraday_completed_observations.py",
+          "tests/test_intraday_legacy_stop.py",
+          "tests/test_intraday_forecast_lookup.py",
+          "tests/test_intraday_saved_forecast_busy.py"
+        ]
+      ],
+      "network_connections": "disabled",
+      "sealed_receipt_sha256": "1e688e6a3f8c681d06e37f23d141e6f8e997ffddd2477ff0fc39e5d1ec584c18",
+      "stage": "publication_candidate"
+    }
+  ],
+  "verified_remote_sha": "a476d6641821dbcc50753be31264e86633e547f7"
+}
