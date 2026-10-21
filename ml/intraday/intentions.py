@@ -96,12 +96,14 @@ class IntentionStore:
         return payload
 
     def record(self, forecast, *, event_key, recorded_at, disposition, evidence, kind,
-               capacity=None, order=None):
+               capacity=None, order=None, scope_to_intention=False):
         """Append one idempotent projection; execution counts require exact evidence.
 
         ``order`` is a native ledger ReservationState with complete identified
         fills. Its submission count remains unknown when acceptance is unknown.
         The native/account ledgers, not this projection, own broker recovery.
+        ``scope_to_intention`` binds execution observations to the immutable
+        sizing available in this transaction; unsized identities stay unchanged.
         """
         identity(event_key); identity(disposition); identity(kind)
         at = instant(recorded_at)
@@ -111,7 +113,8 @@ class IntentionStore:
             db.execute("BEGIN IMMEDIATE")
             self._forecast(db, forecast)
             return self._append(db, forecast, event_key=event_key, at=at,
-                disposition=disposition, evidence=evidence, kind=kind, capacity=capacity, order=order)
+                disposition=disposition, evidence=evidence, kind=kind, capacity=capacity, order=order,
+                scope_to_intention=scope_to_intention)
 
     def record_recovery(self, forecast_id, *, actor, event_key, recorded_at, disposition, evidence, kind, order):
         """Project an own order from its original, never from a caller's forecast.
@@ -139,9 +142,10 @@ class IntentionStore:
                 disposition=disposition, evidence=evidence, kind=kind, order=order, required_sizing=True)
 
     def _append(self, db, forecast, *, event_key, at, disposition, evidence, kind,
-                capacity=None, order=None, required_sizing=False):
-        intention = self._value(db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
-                                           (forecast["forecast_id"],)).fetchone())
+                capacity=None, order=None, required_sizing=False, scope_to_intention=False):
+        intention_row = db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
+                                   (forecast["forecast_id"],)).fetchone()
+        intention = self._value(intention_row)
         if required_sizing and intention is None:
             raise ContractError("Native 15m order lacks original persisted intention")
         desired = intention["desired_quantity"] if intention else None
@@ -173,7 +177,10 @@ class IntentionStore:
                          submission_status=order.status, broker_order_id=order.broker_order_id,
                          submitted_quantity=order.quantity if order.broker_order_id else
                          None if order.status in {"UNKNOWN", "SUBMITTING"} else 0)
-        key = digest([forecast["forecast_id"], event_key])
+        key_parts = [forecast["forecast_id"], event_key]
+        if scope_to_intention and intention is not None:
+            key_parts.append({"intention_id": intention_row[1]})
+        key = digest(key_parts)
         value.update(event_identity=key, recorded_at=at.isoformat())
         old = db.execute("SELECT i.id,i.payload,i.recorded_at FROM intraday_intention_events e JOIN intents i ON i.id=e.intent_entry_id WHERE e.event_key=?", (key,)).fetchone()
         if old:

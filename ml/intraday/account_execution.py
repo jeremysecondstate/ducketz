@@ -404,7 +404,8 @@ class IntradayAccountExecutor:
         event_key = digest([kind, disposition, evidence, asdict(order) if order else None,
                             capacity.payload() if capacity else None])
         return self.intents.record(forecast, event_key=event_key, recorded_at=self.clock(),
-            disposition=disposition, kind=kind, evidence=evidence, capacity=capacity, order=order)
+            disposition=disposition, kind=kind, evidence=evidence, capacity=capacity, order=order,
+            scope_to_intention=True)
 
     def _binding(self):
         if self.stopped() or not self.manual_authority():
