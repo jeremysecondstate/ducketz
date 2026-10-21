@@ -93,6 +93,13 @@ def _now():
 
 
 def _plain(value):
+    # Queue state contains mostly decoded JSON scalars. Avoid the general
+    # Mapping/subclass normalization checks for these exact builtin types.
+    kind = type(value)
+    if value is None or kind is str or kind is int or kind is bool:
+        return value
+    if kind is float:
+        return value if math.isfinite(value) else None
     if isinstance(value, Mapping):
         return {str(k): _plain(v) for k, v in value.items()}
     if isinstance(value, (tuple, list)):
