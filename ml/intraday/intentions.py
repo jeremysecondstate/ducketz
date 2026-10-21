@@ -4,6 +4,8 @@ The first valid sizing result fixes the desired quantity. Later capacity, order
 and fill observations append records without rewriting that intention. This
 module has no broker connection and cannot create an order or a fill.
 """
+from collections import OrderedDict
+import hashlib
 import json
 from dataclasses import asdict
 
@@ -12,6 +14,7 @@ from ml.stock_direction_policy import stock_direction
 from .prediction import ContractError, digest, encoded, identity, instant, quantity
 
 VERSION = "intraday-independent-intentions-v1"
+_RECOVERY_SIZING_CACHE_LIMIT = 4096
 
 
 class IntentionStore:
@@ -40,6 +43,38 @@ class IntentionStore:
         value = json.loads(raw)
         if digest(value) != key or value.get("forecast_id") != forecast_id:
             raise ContractError("Persisted sizing intention changed")
+        return value
+
+    def _recovery_sizing(self, row):
+        """Reuse only scalar sizing facts from exact validated original bytes.
+
+        Recovery never needs the frozen model/research trees in sizing. Every
+        read still hashes those bytes and their indexed identities; a cold or
+        changed row takes the original full semantic validator. Other readers
+        continue to receive and validate the complete immutable intention.
+        """
+        if row is None:
+            return self._value(row)
+        forecast_id, key, raw = row
+        signature = ((forecast_id, key, hashlib.sha256(raw.encode()).digest())
+                     if all(isinstance(item, str) for item in row) else None)
+        cache = getattr(self, "_recovery_sizing_cache", None)
+        if cache is None:
+            cache = self._recovery_sizing_cache = OrderedDict()
+        previous = cache.get(forecast_id) if signature is not None else None
+        if previous is not None and previous[0] == signature:
+            _, side, desired, calculated_at = previous
+            return {"side": side, "desired_quantity": desired,
+                    "sizing": {"calculated_at": calculated_at}}
+        value = self._value(row)
+        sizing = value.get("sizing") if isinstance(value, dict) else None
+        if (signature is not None and isinstance(sizing, dict)
+                and isinstance(value.get("side"), str)
+                and type(value.get("desired_quantity")) is int
+                and isinstance(sizing.get("calculated_at"), str)):
+            cache[forecast_id] = (signature, value["side"], value["desired_quantity"], sizing["calculated_at"])
+            if len(cache) > _RECOVERY_SIZING_CACHE_LIMIT:
+                cache.popitem(last=False)
         return value
 
     def get(self, forecast_id):
@@ -145,7 +180,8 @@ class IntentionStore:
                 capacity=None, order=None, required_sizing=False, scope_to_intention=False):
         intention_row = db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
                                    (forecast["forecast_id"],)).fetchone()
-        intention = self._value(intention_row)
+        intention = (self._recovery_sizing(intention_row) if required_sizing
+                     else self._value(intention_row))
         if required_sizing and intention is None:
             raise ContractError("Native 15m order lacks original persisted intention")
         desired = intention["desired_quantity"] if intention else None
