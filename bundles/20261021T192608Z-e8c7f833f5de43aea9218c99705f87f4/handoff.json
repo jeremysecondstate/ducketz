@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T19:26:08.570611Z",
+  "id": "20261021T192608Z-e8c7f833f5de43aea9218c99705f87f4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Skip duplicate observation of unchanged scored intraday outcomes"
+}

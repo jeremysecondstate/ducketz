@@ -1,0 +1,79 @@
+{
+  "author": "Scout",
+  "base_commit": "045d366ccc228c8c1d1e71badd8894780d5ff6eb",
+  "branch": "codex/scout/20261021T192211Z-60450948af614e23843686985a173f9c",
+  "change_id": "20261021T192211Z-60450948af614e23843686985a173f9c",
+  "commit_sha": "be2a33435f43560c1b9d0b7a98a188e50b5a7ca5",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py",
+      "sha256": "fe4265720b9d8bc7ec646dd42b12c7d247039c4d866f833b4b1655e6298cb9ce"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_scoring_dedup.py",
+      "sha256": "5c4c0b5e6ab45bb2e50e34013d8d81c0c47eed70a7d8d08d33751825bbf7df5f"
+    }
+  ],
+  "limitations": [
+    "Offline regressions establish exact scoring behavior; affected live scoring awaits a new manual session.",
+    "Broader natural dataset wall latency remains under investigation and is not attributed to this narrow repair.",
+    "Passing counts overlap across author, sealed-source, publication candidate and combined runtime stages. Private source inputs, account state, fitted models, recipes, trading history and task memory are excluded."
+  ],
+  "local_installation": {
+    "actor": "Scout",
+    "check_counts_are_unique": false,
+    "installed_check_results": [
+      256,
+      210
+    ],
+    "launcher_check": "passed_offline_bound_imports",
+    "loaded": false,
+    "manual_restart_required": true,
+    "other_source_and_recipe_preserved": true,
+    "stage": "installed_for_next_manual_restart",
+    "trader_controls_untouched": true
+  },
+  "main_integration": "prepare_blocked_origin_main_does_not_descend_from_reviewed_source_base; retain PR302 dependency and same Completion-Record for retry",
+  "peer_applicability": "Shared scoring repair applies to either PC while retaining its own saved model recipe and operating bindings.",
+  "peer_installation": "not_inferred",
+  "producer": "human-authorized-development",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/315",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Changed scoring worker code requires a manual trader restart. Preserve saved recipes, fitted models, caches, historical records and manual trader controls.",
+  "scope": "shared",
+  "summary": "Skip duplicate observation of unchanged scored intraday outcomes",
+  "task": "Scout stock 15-minute scoring repair",
+  "tests": [
+    {
+      "bound_file_count": 845,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-q",
+        "tests/test_intraday_scoring_dedup.py",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_store.py",
+        "tests/test_intraday_outcome_provenance.py",
+        "tests/test_intraday_completed_observations.py",
+        "tests/test_intraday_native_interval.py"
+      ],
+      "completed_at_utc": "2026-10-21T19:23:38.894866Z",
+      "exit_code": 0,
+      "network_connections": "disabled",
+      "output_sha256": "a8a4ad0d20edd06c37e0ad0918a25c66851b8f6d426e3be8c3b1b4ad83f533c1",
+      "result": "256 passed",
+      "stage": "publication_candidate",
+      "started_at_utc": "2026-10-21T19:23:25.058894Z"
+    }
+  ],
+  "verified_remote_sha": "be2a33435f43560c1b9d0b7a98a188e50b5a7ca5"
+}
