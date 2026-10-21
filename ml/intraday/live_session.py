@@ -17,7 +17,7 @@ import uuid
 import psutil
 
 from datafetching.runtime_lock import exclusive_runtime_lock
-from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant
+from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant, number
 from .runtime import (ResearchConfig, ShadowRunner, LiveHistories, local_symbols,
                       recorded_symbol_failures, _symbol_exception_diagnostics)
 from .store import ShadowStore, utcnow
@@ -276,6 +276,33 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
         pause(1)
 
 
+def _outcome_already_observed(forecast, candle, revisions, *, as_of):
+    """Skip only the complete identical outcome after this poll's input checks."""
+    if not revisions:
+        return False
+    previous = revisions[-1]
+    try:
+        # Let observe retain its backdated-evidence error even for equal prices.
+        if (instant(previous["observed_at"]) > instant(as_of)
+                or instant(candle["available_at"]) > instant(as_of)):
+            return False
+        price = str(candle["close"])
+        derived = isinstance(forecast.get("reference_provenance", {}).get("forward_fill_contract"), str)
+        evidence = {"forecast_id": forecast["forecast_id"],
+            "status": "synthetic" if candle.get("synthetic") or derived else "scored",
+            "target_not_down": number(candle["close"], positive=True) >= number(forecast["reference_open"], positive=True),
+            "reference_to_target_return": str(number(price) / number(forecast["reference_open"]) - 1),
+            "return_basis": "reference_open_to_exact_target_close_not_trade_pnl",
+            "target_close_price": price, "candle_id": digest(candle), "unavailable_reason": None,
+            "availability_basis": candle.get("availability_kind")}
+        prior_evidence = {key: value for key, value in previous.items()
+                          if key not in {"observed_at", "revision_id"}}
+        return (prior_evidence == evidence
+                and previous.get("revision_id") == digest(evidence) == digest(prior_evidence))
+    except (KeyError, TypeError, ValueError, ArithmeticError, ContractError):
+        return False
+
+
 def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                  clock=utcnow, pause=time.sleep, pc="Atlas", history_source=None):
     """Fetch exact due outcomes independently, including after the last entry.
@@ -319,7 +346,9 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                        for field in ("source_dataset", "source_id"))
                 and candle_matches_forecast(row, forecast)), None)
             if observed is not None and instant(observed["available_at"]) <= instant(clock()):
-                store.observe(forecast,as_of=clock(),candle=observed)
+                observed_at = clock()
+                if not _outcome_already_observed(forecast, observed, revisions, as_of=observed_at):
+                    store.observe(forecast,as_of=observed_at,candle=observed)
                 continue
             if revisions and revisions[-1]["status"] in {"scored", "synthetic", "unscorable"}:
                 continue
