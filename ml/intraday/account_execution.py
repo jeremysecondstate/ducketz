@@ -30,7 +30,7 @@ from app.services.schwab_stock_orders import build_schwab_stock_order_payload
 from .capacity import clip_to_capacity
 from .execution_policy import submission_gate
 from .intentions import IntentionStore
-from .prediction import ContractError, PACIFIC, TARGET_VERSION, digest, instant
+from .prediction import ContractError, PACIFIC, TARGET_VERSION, digest, encoded, instant
 from .starter_sizing import QuoteObservation, size_forecast
 from .technical_sizing import AvailableInput
 
@@ -136,25 +136,47 @@ def execution_failure_evidence(exc):
 class _ExecutionTrace:
     """Bounded monotonic stage timings, without account values or lease tokens."""
     def __init__(self):
-        self.started = self.stage_started = time.monotonic()
+        self.unavailable = False
+        self.started = self.stage_started = self._now()
         self.stage = "account_entry"
         self.phases = []
         self.lease_expires_at = self.snapshot_observed_at = None
 
+    def _now(self):
+        try:
+            value = time.monotonic()
+            if type(value) in {int, float} and math.isfinite(value):
+                return value
+        except Exception:
+            pass
+        self.unavailable = True
+        return None
+
+    def _elapsed(self, end, start):
+        if end is not None and start is not None:
+            value = max(0, end - start)
+            if math.isfinite(value):
+                return round(value, 6)
+        self.unavailable = True
+        return None
+
     def advance(self, stage):
-        now = time.monotonic()
-        self.phases.append({"stage": self.stage, "elapsed_seconds": round(max(0, now-self.stage_started), 6)})
+        now = self._now()
+        self.phases.append({"stage": self.stage, "elapsed_seconds": self._elapsed(now, self.stage_started)})
         self.phases = self.phases[-32:]
         self.stage, self.stage_started = stage, now
 
     def snapshot(self):
         """Copy bounded timings for either an exception or a normal result."""
-        now = time.monotonic()
-        return dict(execution_stage=self.stage,
-            execution_elapsed_seconds=round(max(0, now-self.started), 6),
-            execution_stage_elapsed_seconds=round(max(0, now-self.stage_started), 6),
+        now = self._now()
+        result = dict(execution_stage=self.stage,
+            execution_elapsed_seconds=self._elapsed(now, self.started),
+            execution_stage_elapsed_seconds=self._elapsed(now, self.stage_started),
             execution_phases=[dict(phase) for phase in self.phases],
             lease_expires_at=self.lease_expires_at, snapshot_observed_at=self.snapshot_observed_at)
+        if self.unavailable:
+            result["execution_diagnostics_unavailable"] = True
+        return result
 
     def remember(self, exc):
         saved = getattr(exc, "intraday_execution_failure", None)
@@ -362,7 +384,7 @@ def forecast_disposition(forecast, *, now, session_started_at, local_symbols, ac
 
 class IntradayAccountExecutor:
     def __init__(self, *, datastore, store, broker, local_symbols, session_started_at,
-                 clock, manual_authority, stopped=lambda: False, actor="Atlas"):
+                 clock, manual_authority, stopped=lambda: False, actor="Atlas", diagnostic_session_id=None):
         if actor not in {"Atlas", "Scout"}:
             raise ContractError("Explicit local 15m actor required")
         self.actor, self.stream = actor, actor.lower() + "-15m"
@@ -370,6 +392,7 @@ class IntradayAccountExecutor:
         self.symbols = tuple(local_symbols)
         self.session_started_at = instant(session_started_at)
         self.clock, self.manual_authority, self.stopped = clock, manual_authority, stopped
+        self.diagnostic_session_id = diagnostic_session_id
         self.intents = IntentionStore(store)
         self.config = self.ledger = self.authority = self.lease = None
         self.portfolio = self.snapshot_id = None
@@ -395,9 +418,10 @@ class IntradayAccountExecutor:
         return config
 
     @contextmanager
-    def _account(self):
+    def _account(self, *, operation=None, forecast=None):
         # This trader serializes only its own orders, capacity and receipts.
         trace = self._execution_trace = _ExecutionTrace()
+        returned_normally = False
         try:
             self._execution_stage("execution_lock")
             with exclusive_runtime_lock(self.root / LOCK_PATH, process_name="intraday-execution"):
@@ -470,12 +494,65 @@ class IntradayAccountExecutor:
                         target["release_cleanup_failure" if "cleanup_failure" in target else "cleanup_failure"] = execution_failure_evidence(cleanup)
                     if failure is None and stop_failure is not None:
                         raise stop_failure
+                self._execution_stage("execution_lock_release")
+            self._execution_stage("operation_complete")
+            returned_normally = True
         except BaseException as exc:
             trace.remember(exc)
             raise
         finally:
             self._execution_trace = None
             self._lease_keeper = None
+            if returned_normally:
+                self._operation_diagnostics(trace, operation=operation, forecast=forecast)
+
+    def _operation_diagnostics(self, trace, *, operation, forecast):
+        """Separate best-effort clocks; never alter an intention or decision.
+
+        Emit after account/lease/runtime-lock cleanup. Only exact own scalar
+        identities are retained; a normal return does not assert order recovery.
+        """
+        try:
+            if operation not in {"step", "recover"}:
+                return
+            session = self.diagnostic_session_id
+            prefix = "manual-" + self.actor.lower() + "-15m:"
+            if not (type(session) is str and session.startswith(prefix)
+                    and len(session) == len(prefix) + 32
+                    and all(c in "0123456789abcdef" for c in session[len(prefix):])):
+                session = None
+            payload = dict(version="intraday-operation-diagnostics-v1", actor=self.actor,
+                operation=operation, operation_returned_normally=True, session_id=session)
+            symbol = None
+            cycle = session
+            if operation == "step":
+                key, cycle, symbol = (forecast[name] for name in ("forecast_id", "cycle_id", "symbol"))
+                if (any(type(value) is not str or len(value) != 64
+                        or any(c not in "0123456789abcdef" for c in value) for value in (key, cycle))
+                        or symbol not in self.symbols):
+                    return
+                payload["forecast_id"] = key
+            if cycle is None:
+                return
+            payload["diagnostics"] = trace.snapshot()
+            recorded_at = instant(self.clock()).isoformat()
+            self._write_operation_diagnostics(cycle, symbol, recorded_at, encoded(payload))
+        except Exception:
+            # Optional telemetry cannot create a retry, hide a result, or
+            # interfere with manual interrupts/SystemExit.
+            pass
+
+    def _write_operation_diagnostics(self, cycle, symbol, recorded_at, payload):
+        # The normal event writer may wait 30s for SQLite. This optional event
+        # gets no busy wait and cannot create a missing store or hold execution
+        # authority. Existing operational writers keep their own policies.
+        db = sqlite3.connect(self.store.path.resolve().as_uri() + "?mode=rw", uri=True, timeout=0)
+        try:
+            with db:
+                db.execute("INSERT INTO events(cycle_id,symbol,recorded_at,kind,payload) VALUES(?,?,?,?,?)",
+                    (cycle, symbol, recorded_at, "execution_operation_diagnostics", payload))
+        finally:
+            db.close()
 
     def _execution_stage(self, stage):
         if self._execution_trace is not None:
@@ -847,7 +924,7 @@ class IntradayAccountExecutor:
         if initial in {"outside_local_actor_scope", "not_a_current_live_forecast", "forecast_precedes_manual_start",
                        "incomplete_ensemble", "wrong_session_date"}:
             return self._record(forecast, initial)
-        with self._account():
+        with self._account(operation="step", forecast=forecast):
             if initial == "fixed_target_already_elapsed":
                 expired = self._expired_without_order_work(forecast)
                 if expired is not None:
@@ -995,7 +1072,7 @@ class IntradayAccountExecutor:
 
     def recover(self):
         """Reconcile tracked orders even after cutoff; never submit from history."""
-        with self._account():
+        with self._account(operation="recover"):
             self._capture()
             # Retain the full snapshot validation and stream fallback while
             # avoiding per-order SQLite calls during model preparation.
