@@ -1,0 +1,42 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T144438Z-1617d43453894fcd9d99f1b913f41355",
+  "change_id": "20261021T144438Z-1617d43453894fcd9d99f1b913f41355",
+  "commit_sha": "302c5cfdfc7e0e8a3d43eefcb7111af9a8ca3867",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/runtime.py",
+      "sha256": "38c9160b0989f7a6f598d38107b18fe5e3d65385185f139f8abb8dc1821be3ff"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_snapshot_provenance_performance.py",
+      "sha256": "533822d9dd085b32c518982f4de4510d3a0d1d0037738c9a72bad12dfdbf3c8f"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_snapshot_provenance.py",
+      "sha256": "17156f2d88364131888de0313b10d8990e1e6af25746789adda8edfe63109ebb"
+    }
+  ],
+  "limitations": [
+    "Draft stacks on PR307; main integration, peer installation, loaded runtime and full live latency recovery remain separate.",
+    "Historical uncertain acceptance remains open without exact attributable evidence; no original expired forecast replay.",
+    "No private operating records, account state, raw data, fitted models or native task definitions published."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/309"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Narrow hunk applied and offline checked locally; preserve existing separately owned runtime changes. No whole-file replacement, restart, hotpatch, trader control change or order. Source publication is not a nightly operating prerequisite.",
+  "scope": "Shared performance repair for each independent fifteen-minute trader; preserve local symbols, models, targets, probabilities, provenance and manual controls. Own narrow projection hunk; retain separately owned lazy-history bytes during local adoption.",
+  "summary": "Avoid repeated pandas provenance copies during independent fifteen-minute candle snapshot creation",
+  "tests": {
+    "installed_Atlas": "124passed34.46s plus6retained-lazy-composition checks0.67s",
+    "isolated_candidate": "124passed32.61s;115exact fingerprints",
+    "network": "denied",
+    "regression": "4end-to-end failures before:16metadata copies; bounded copies with exact records after",
+    "sealed_source": "124passed33.18s;115exact fingerprints"
+  }
+}

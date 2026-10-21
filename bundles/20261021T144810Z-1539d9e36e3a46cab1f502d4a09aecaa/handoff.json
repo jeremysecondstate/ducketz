@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T14:48:10.073552Z",
+  "id": "20261021T144810Z-1539d9e36e3a46cab1f502d4a09aecaa",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Avoid repeated pandas provenance copies during independent fifteen-minute candle snapshot creation"
+}
