@@ -16,7 +16,7 @@ from app.ui.intraday_data import (
     reference_input_label, reference_input_provenance,
     window_rows,
 )
-from app.ui.intraday_models import load_model_research, research_view
+from app.ui.intraday_models import load_model_research, research_choices, research_view
 from app.ui.theme import BACKGROUND, BORDER, DANGER, MUTED_TEXT, SUCCESS, SURFACE, SURFACE_ALT, TEXT, WARNING
 
 AUTO_REFRESH_MS = 15 * 60 * 1000
@@ -77,12 +77,16 @@ def _replace(tree, rows):
 
 class IntradayTab:
     def __init__(self, root: tk.Tk, parent: ttk.Frame, *, datastore_root: Path | None = None,
-                 database_paths: Mapping[str, Path] | None = None, local_pc: str | None = None, auto_load=True):
+                 database_paths: Mapping[str, Path] | None = None, local_pc: str | None = None,
+                 model_research_directory: Path | None = None, auto_load=True):
         self.root, self.parent = root, parent
         self.database_paths = dict(database_paths if database_paths is not None else default_databases(datastore_root))
         self.local_pc = local_pc or configured_actor()
         local_database = self.database_paths.get("Local")
-        self.model_log_directory = Path(local_database).parent / "model-supervision/logs" if local_database else None
+        self.model_research_directory = model_research_directory
+        if self.model_research_directory is None and local_database and self.local_pc in {"Atlas", "Scout"}:
+            suffix = "supervision" if self.local_pc == "Scout" else "model-supervision/logs"
+            self.model_research_directory = Path(local_database).parent / suffix
         self.model_research = {"status": "missing", "message": "Refresh to load local model research."}
         self.snapshot = IntradaySnapshot(datetime.now(timezone.utc))
         self.pc = tk.StringVar(master=root, value="All")
@@ -218,10 +222,10 @@ class IntradayTab:
         self.research_status.pack(anchor="w", padx=10, pady=8)
         self.research_table = _table(pages["research"], [
             ("family", "Model family", 180), ("name", "Configuration", 230),
-            ("status", "Research result", 120), ("selected", "Selected", 85),
+            ("status", "Research result", 120), ("selected", "Selected specs", 110),
             ("reason", "Selection / exclusion reason", 340), ("brier", "Validation Brier", 130),
             ("balanced", "Validation balanced", 140), ("advantage", "Brier advantage", 130),
-            ("holdout", "Report-only holdout Brier", 180), ("seconds", "Research seconds", 130)])
+            ("holdout", "Saved holdout Brier", 180), ("seconds", "Research seconds", 130)])
         self.operation_status = _label(pages["operations"], color=MUTED_TEXT, wraplength=1200, justify="left")
         self.operation_status.pack(anchor="w", padx=10, pady=8)
         self.cycle_table = _table(pages["operations"], [("pc", "PC", 80), ("cycle", "Cycle", 190),
@@ -235,15 +239,16 @@ class IntradayTab:
     def refresh(self):
         if self._closed:
             return
-        self.model_research = load_model_research(self.model_log_directory, actor=self.local_pc)
+        self.model_research = load_model_research(self.model_research_directory, actor=self.local_pc)
         self.set_snapshot(load_intraday_snapshot(self.database_paths, local_pc=self.local_pc))
 
     def set_snapshot(self, snapshot: IntradaySnapshot):
         self.snapshot = snapshot
+        research = research_choices(self.model_research)
         choices = {
-            "pc": ["All", *sorted({str(row.get("pc")) for row in snapshot.forecasts})],
-            "symbol": ["All", *sorted({str(row.get("symbol")) for row in snapshot.forecasts})],
-            "source_dataset": ["All", *sorted({source_dataset_label(row) for row in snapshot.forecasts})],
+            "pc": ["All", *sorted({str(row.get("pc")) for row in snapshot.forecasts} | set(research["pcs"]))],
+            "symbol": ["All", *sorted({str(row.get("symbol")) for row in snapshot.forecasts} | set(research["symbols"]))],
+            "source_dataset": ["All", *sorted({source_dataset_label(row) for row in snapshot.forecasts} | set(research["datasets"]))],
             "session": ["All", *sorted({timestamp(row.get("issued_at")).astimezone(PACIFIC).date().isoformat()
                          for row in snapshot.forecasts if timestamp(row.get("issued_at"))}, reverse=True)],
             "reference_slot": ["All", *sorted({timestamp(row.get("reference_at")).astimezone(PACIFIC).strftime("%H:%M")
@@ -334,10 +339,16 @@ class IntradayTab:
         for child in self.models_frame.winfo_children():
             child.destroy()
         row = getattr(self, "consensus_rows", {}).get(self.consensus_choice.get())
-        view = research_view(self.model_research, pc=row.get("pc") if row else self.local_pc,
+        # The research view remains usable before a manual trader has produced
+        # a forecast. Explicit PC/source filters still apply in that case.
+        pc = row.get("pc") if row else self.pc.get()
+        source = source_dataset_label(row) if row else self.source_dataset.get()
+        view = research_view(self.model_research, pc=self.local_pc if pc == "All" else pc,
                              symbol=row.get("symbol") if row else self.symbol.get(),
-                             source_dataset=source_dataset_label(row) if row else None)
+                             source_dataset=None if source == "All" else source)
         self.research_status.configure(text=view["summary"])
+        if view.get("holdout_label"):
+            self.research_table.heading("holdout", text=view["holdout_label"])
         _replace(self.research_table, [((item.get("family"), item.get("name"), item.get("status"),
             "Yes" if item.get("selected") else "No", item.get("reason"), numeric(item.get("validation_brier")),
             percent(item.get("validation_balanced_accuracy")), numeric(item.get("baseline_improvement")),
