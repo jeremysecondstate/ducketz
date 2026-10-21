@@ -1,0 +1,45 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T183940Z-71fd624665144e0eb0c7d046d513de3c",
+  "change_id": "20261021T183940Z-71fd624665144e0eb0c7d046d513de3c",
+  "commit_sha": "a121738f1c4cc50a2496af6a93b773765cf5ea7c",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/intentions.py",
+      "sha256": "81bfdffe4142fc01fbba0e3619ad6cd5fa7cef60a1220906e03f83ac4ed79aae"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_recovery_sizing_projection.py",
+      "sha256": "e6036c1210a8b9e997529950a94ac467108ad736c8aef049fa966c699471532d"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_recovery_sizing_projection.py",
+      "sha256": "f06074c6ed9c1f1a4a20440619be8dc1547195048aa5400b74cced37a313007e"
+    }
+  ],
+  "limitations": [
+    "Exact installed composition matches reviewed source and dependencies. Offline checks establish source behavior, not live latency recovery.",
+    "Historical unknown acceptance remains unresolved; original commitments and receipts remain intact.",
+    "Current manual trader process predates this repair; loading and affected live exercise remain unproven.",
+    "Source branch publication, local installation, main integration and peer installation are separate facts. No main integration or peer installation claimed."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/314",
+    "https://github.com/jeremysecondstate/ducketz/pull/313"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Next ordinary human manual 15-minute start loads the repair. No immediate restart, automatic start, test order, expired replay, manual-stop change, nightly prerequisite or peer acceptance requested.",
+  "scope": "Shared recovery correctness and efficiency, independently applicable to both PCs. Preserve local model policies, symbols, original scientific outputs, order identities, reservations and manual controls.",
+  "summary": "Atlas reduces repeated sizing payload parsing in independent trader recovery while preserving exact evidence validation",
+  "tests": {
+    "actual_installed_composition": "229 passed in 34.11s",
+    "established": "Bounded recovery scalar cache preserves exact saved-byte and indexed identity checks. Cold, changed and irregular rows retain full validation. Timestamp, ordering, replay, corruption, eviction and full-reader regressions pass.",
+    "installed_graph_files": 181,
+    "isolated_candidate": "104 passed in 19.80s",
+    "network": "denied",
+    "sealed_source": "104 passed in 23.60s"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T18:48:29.659760Z",
+  "id": "20261021T184829Z-b7853d4865e04b90a95adaa103b79a1b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas reduces repeated sizing payload parsing in independent trader recovery while preserving exact evidence validation"
+}
