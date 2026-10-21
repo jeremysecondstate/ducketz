@@ -328,18 +328,43 @@ class HorizonLedger:
         return True
 
     @staticmethod
-    def _reservation(db, reservation_id: str) -> ReservationState:
-        row = db.execute("""SELECT r.*,a.symbol,a.horizon,a.forecast,c.requested_at,
+    def _read_rows(db, query, columns, parameters=()):
+        """Return a bounded ledger query with one SQLite-to-Python handoff.
+
+        A normal fetchall releases the GIL again for every sqlite3_step. During
+        concurrent model preparation even a batched query can therefore age
+        broker evidence. SQLite builds the ordered scalar rows in one value;
+        JSON decoding preserves these ledger TEXT/INTEGER/NULL values.
+        Columns are internal literals, never account or provider input.
+        """
+        fields = ",".join('"' + column.replace('"', '""') + '"' for column in columns)
+        payload = db.execute("SELECT json_group_array(json_array(" + fields + ")) FROM (" + query + ")",
+                             parameters).fetchone()[0]
+        return json.loads(payload)
+
+    @classmethod
+    def _reservation_rows(cls, db, reservation_id=None):
+        columns = ("id", "allocation", "side", "quantity", "price", "filled", "status", "broker_order",
+                   "idempotency_key", "batch", "request", "last_evidence_at", "symbol", "horizon", "forecast",
+                   "requested_at", "submitted_at", "timeout_requested_at", "retry_parent_id", "retry_requested_quantity")
+        rows = cls._read_rows(db, """SELECT r.*,a.symbol,a.horizon,a.forecast,c.requested_at,
             s.submitted_at,t.requested_at AS timeout_requested_at,retry.parent AS retry_parent_id,
             retry.requested_quantity AS retry_requested_quantity FROM reservations r
-            JOIN allocations a ON a.id=r.allocation
+            LEFT JOIN allocations a ON a.id=r.allocation
             LEFT JOIN cancellations c ON c.reservation=r.id
             LEFT JOIN order_submission_times s ON s.reservation=r.id
             LEFT JOIN order_timeouts t ON t.reservation=r.id
-            LEFT JOIN order_timeout_retries retry ON retry.child=r.id WHERE r.id=?""", (reservation_id,)).fetchone()
+            LEFT JOIN order_timeout_retries retry ON retry.child=r.id"""
+            + (" WHERE r.id=?" if reservation_id is not None else " ORDER BY r.id"),
+            columns, (reservation_id,) if reservation_id is not None else ())
+        return [dict(zip(columns, row)) for row in rows]
+
+    @classmethod
+    def _reservation(cls, db, reservation_id: str) -> ReservationState:
+        rows = cls._reservation_rows(db, reservation_id)
+        row = rows[0] if rows else None
         if row is None:
             raise LedgerError("UNKNOWN_RESERVATION")
-        request = json.loads(row["request"])
         submitted_at = row["submitted_at"]
         if submitted_at is None:
             # Older ledgers already retain the first attempted broker submission
@@ -352,6 +377,14 @@ class HorizonLedger:
             if evidence is not None:
                 submitted_at = _utc(json.loads(evidence["payload"])["observed_at"])
                 db.execute("INSERT INTO order_submission_times VALUES (?,?)", (reservation_id, submitted_at))
+        return cls._reservation_value(row, submitted_at)
+
+    @staticmethod
+    def _reservation_value(row, submitted_at):
+        if row["symbol"] is None:
+            # A damaged foreign key must not disappear from the bulk join.
+            raise LedgerError("UNKNOWN_RESERVATION")
+        request = json.loads(row["request"])
         return ReservationState(row["id"], row["allocation"], row["symbol"], row["horizon"],
             request.get("forecast", row["forecast"]), row["side"], row["quantity"], row["price"], row["filled"],
             row["status"], row["broker_order"], row["idempotency_key"], row["batch"], row["last_evidence_at"], row["requested_at"],
@@ -359,6 +392,43 @@ class HorizonLedger:
             request.get("trigger_forecast"), row["forecast"], request.get("fallback_policy_version"),
             request.get("action_date"), request.get("baseline_id"), submitted_at,
             row["timeout_requested_at"], row["retry_parent_id"], row["retry_requested_quantity"])
+
+    @classmethod
+    def _reservations(cls, db):
+        """Restore every identity with bounded SQL work, including old receipts.
+
+        SQLite releases the GIL per call. Hundreds of per-order queries can
+        age a fresh capacity snapshot while model workers run in this process.
+        Preserve the same earliest submission fallback without rescanning all
+        evidence once for every rejected or otherwise never-submitted order.
+        """
+        rows = cls._reservation_rows(db)
+        missing = {row["id"] for row in rows if row["submitted_at"] is None}
+        recovered = {}
+        if missing:
+            for evidence in cls._read_rows(db, """SELECT json_extract(payload,'$.reservation_id') AS reservation_id,payload
+                    FROM evidence WHERE kind='submission'
+                    AND json_extract(payload,'$.status') IN ('SUBMITTED','UNKNOWN') ORDER BY rowid""",
+                    ("reservation_id", "payload")):
+                identity = evidence[0]
+                if identity in missing and identity not in recovered:
+                    recovered[identity] = _utc(json.loads(evidence[1])["observed_at"])
+            db.executemany("INSERT INTO order_submission_times VALUES (?,?)", recovered.items())
+        return tuple(cls._reservation_value(row, row["submitted_at"] if row["submitted_at"] is not None
+                                           else recovered.get(row["id"])) for row in rows)
+
+    @classmethod
+    def _assigned_shares_by_allocation(cls, db):
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='inventory_assignments'").fetchone():
+            return {}
+        assigned = dict(cls._read_rows(db, "SELECT allocation,SUM(quantity) AS quantity FROM inventory_assignments GROUP BY allocation",
+                                      ("allocation", "quantity")))
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='inventory_assignment_releases'").fetchone():
+            for allocation, quantity in cls._read_rows(db, """SELECT i.allocation,SUM(r.quantity) AS quantity
+                    FROM inventory_assignment_releases r JOIN inventory_assignments i ON i.id=r.assignment
+                    GROUP BY i.allocation""", ("allocation", "quantity")):
+                assigned[allocation] = assigned.get(allocation, 0) - quantity
+        return assigned
 
     @staticmethod
     def _forecast_reserved(db, account, symbol, horizon, forecast):
@@ -426,12 +496,18 @@ class HorizonLedger:
 
     @classmethod
     def _snapshot(cls, db) -> LedgerSnapshot:
-        reservations = tuple(cls._reservation(db, row[0]) for row in db.execute("SELECT id FROM reservations ORDER BY id"))
+        reservations = cls._reservations(db)
         sliced, debits, pending = cls._intraday_share_accounting(db, reservations)
+        assigned = cls._assigned_shares_by_allocation(db)
+        by_allocation = {}
+        for reservation in reservations:
+            by_allocation.setdefault(reservation.allocation_id, []).append(reservation)
         allocations = []
-        for row in db.execute("SELECT * FROM allocations ORDER BY symbol,horizon,start,id"):
-            orders = tuple(r for r in reservations if r.allocation_id == row["id"])
-            held = (cls._assigned_shares(db, row["id"]) + sum(r.filled_quantity * (1 if r.side == "BUY" else -1)
+        columns = ("id", "account", "symbol", "horizon", "forecast", "start", "end", "status")
+        for values in cls._read_rows(db, "SELECT * FROM allocations ORDER BY symbol,horizon,start,id", columns):
+            row = dict(zip(columns, values))
+            orders = by_allocation.get(row["id"], ())
+            held = (assigned.get(row["id"], 0) + sum(r.filled_quantity * (1 if r.side == "BUY" else -1)
                     for r in orders if r.reservation_id not in sliced) - debits.get(row["id"], 0))
             allocations.append(AllocationState(row["id"], row["account"], row["symbol"], row["horizon"],
                 row["forecast"], row["start"], row["end"], row["status"], held,
@@ -439,7 +515,7 @@ class HorizonLedger:
                 sum(r.reserved_quantity for r in orders if r.side == "SELL" and r.reservation_id not in sliced)
                 + pending.get(row["id"], 0)))
         return LedgerSnapshot(tuple(allocations), reservations,
-            tuple((row[0], row[1]) for row in db.execute("SELECT symbol,reason FROM blocks ORDER BY symbol")))
+            tuple((row[0], row[1]) for row in cls._read_rows(db, "SELECT symbol,reason FROM blocks ORDER BY symbol", ("symbol", "reason"))))
 
     def snapshot(self) -> LedgerSnapshot:
         """Return frozen allocation/reservation records, with no live operations."""
@@ -503,10 +579,12 @@ class HorizonLedger:
         if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='intraday_sell_slices'").fetchone():
             return set(),{},{}
         by_id = {r.reservation_id:r for r in reservations}
-        filled = {(row[0],row[1]):row[2] for row in db.execute("""SELECT f.reservation,a.slice_ordinal,SUM(a.quantity)
-            FROM intraday_fill_attribution a JOIN fills f ON f.id=a.fill GROUP BY f.reservation,a.slice_ordinal""")}
+        filled = {(row[0],row[1]):row[2] for row in cls._read_rows(db, """SELECT f.reservation,a.slice_ordinal,SUM(a.quantity) AS quantity
+            FROM intraday_fill_attribution a JOIN fills f ON f.id=a.fill GROUP BY f.reservation,a.slice_ordinal""",
+            ("reservation", "slice_ordinal", "quantity"))}
         sliced, debits, pending = set(),{},{}
-        for row in db.execute("SELECT reservation,allocation,quantity,ordinal FROM intraday_sell_slices"):
+        for row in cls._read_rows(db, "SELECT reservation,allocation,quantity,ordinal FROM intraday_sell_slices",
+                                 ("reservation", "allocation", "quantity", "ordinal")):
             order = by_id[row[0]]
             charged = filled.get((row[0],row[3]),0)
             if order.side!="SELL" or not 0<=charged<=row[2]:
@@ -1438,8 +1516,9 @@ class HorizonLedger:
         """Reserve a user-selected Gameplan sale of currently available stock.
 
         Existing shares are explicitly attributed to this sale with their
-        observed snapshot. Other horizon inventory and external working sells
-        remain protected. Only later broker fill evidence reduces holdings.
+        observed snapshot. One-hour/four-hour sales may debit every owned
+        horizon after the October 19 instruction; daily/weekly policy stays
+        unchanged. Only later broker fill evidence reduces holdings.
         """
         symbol, horizon, forecast_id = _name(symbol).upper(), _name(horizon), _name(forecast_id)
         if not re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,14}", symbol) or horizon not in HORIZON_WEIGHTS:
@@ -1461,6 +1540,11 @@ class HorizonLedger:
             if self._forecast_reserved(db, self.account_fingerprint, symbol, horizon, forecast_id):
                 raise LedgerError("FORECAST_ALREADY_RESERVED_NO_REENTRY")
             state = self._snapshot(db)
+            from ml.stock_direction_policy import autonomous_horizon_sales
+            day = datetime.fromisoformat(start).astimezone(ZoneInfo("America/Los_Angeles")).date().isoformat()
+            if autonomous_horizon_sales(horizon, day):
+                return self._reserve_autonomous_direction_exit(db, request=request, state=state,
+                    portfolio=portfolio, key=key, batch=batch, now=now)
             owned = sum(a.filled_shares for a in state.allocations if a.symbol == symbol)
             owned_reserved = sum(a.reserved_sell_shares for a in state.allocations if a.symbol == symbol)
             free = _number(portfolio["held_shares"].get(symbol, 0)) - owned - max(Decimal(0), pending - owned_reserved)
@@ -1491,6 +1575,68 @@ class HorizonLedger:
                     {"allocation_id": allocation_id, "snapshot_id": snapshot_id, "quantity": assigned,
                      "observed_at": now, "reason": "User-selected Gameplan directional sale of existing stock"})
             return self._insert_reservation(db, allocation_id, "SELL", quantity, price, key, batch, request)
+
+    def _reserve_autonomous_direction_exit(self, db, *, request, state, portfolio, key, batch, now):
+        """Reserve exact real-owner slices without a horizon quota or veto.
+
+        The existing slice accounting also used by 15m orders charges only
+        confirmed fills. This order remains in the Gameplan stream and never
+        consults another trader's state.
+        """
+        symbol, horizon = request["symbol"], request["horizon"]
+        quantity, pending = request["quantity"], _number(request["pending_sell_shares"])
+        held = int(_number(portfolio["held_shares"].get(symbol, 0)))
+        local_pending = sum(r.reserved_quantity for r in state.reservations
+                            if r.symbol == symbol and r.side == "SELL")
+        same_snapshot_pending = db.execute("""SELECT COALESCE(SUM(r.quantity-r.filled),0)
+            FROM reservations r JOIN allocations a ON a.id=r.allocation
+            WHERE a.symbol=? AND r.side='SELL' AND r.status IN ('RESERVED','SUBMITTED','UNKNOWN','WORKING','PARTIAL')
+            AND json_extract(r.request,'$.snapshot')=?""", (symbol, request["snapshot"])).fetchone()[0]
+        prior_pending = local_pending - same_snapshot_pending
+        if quantity > max(0, held - max(pending, prior_pending) - same_snapshot_pending):
+            raise LedgerError("DIRECTION_SALE_EXCEEDS_AVAILABLE_HELD_STOCK")
+        active = next((a for a in state.allocations
+                       if a.symbol == symbol and a.horizon == horizon and a.status == "ACTIVE"), None)
+        allocation_id = active.allocation_id if active else _identity(
+            [self.account_fingerprint, symbol, horizon, request["forecast"]])
+        if not active:
+            if db.execute("SELECT 1 FROM allocations WHERE id=?", (allocation_id,)).fetchone():
+                raise LedgerError("DIRECTION_FORECAST_ALREADY_USED")
+            db.execute("INSERT INTO allocations VALUES (?,?,?,?,?,?,?,'ACTIVE')",
+                (allocation_id, self.account_fingerprint, symbol, horizon, request["forecast"], request["start"], request["end"]))
+        self._intraday_schema(db)
+        reservation = self._insert_reservation(db, allocation_id, "SELL", quantity, request["price"], key, batch, request)
+        remaining, ordinal = quantity, 0
+        owners = sorted((a for a in state.allocations if a.symbol == symbol),
+                        key=lambda a: (a.allocation_id != allocation_id, a.allocation_id))
+        for owner in owners:
+            take = min(remaining, max(0, owner.filled_shares - owner.reserved_sell_shares))
+            if take:
+                db.execute("INSERT INTO intraday_sell_slices VALUES (?,?,?,?)",
+                           (reservation.reservation_id, owner.allocation_id, take, ordinal))
+                remaining -= take
+                ordinal += 1
+            if not remaining:
+                break
+        if remaining:
+            owned = sum(a.filled_shares for a in state.allocations if a.symbol == symbol)
+            reserved = sum(a.reserved_sell_shares for a in state.allocations if a.symbol == symbol)
+            free = held - owned - max(Decimal(0), pending - reserved)
+            if remaining > max(Decimal(0), free):
+                raise LedgerError("DIRECTION_SHARE_ACCOUNTING_DOES_NOT_BALANCE")
+            db.execute("""CREATE TABLE IF NOT EXISTS inventory_assignments (
+                id TEXT PRIMARY KEY, allocation TEXT NOT NULL REFERENCES allocations(id),
+                snapshot_id TEXT NOT NULL REFERENCES snapshots(id), quantity INTEGER NOT NULL,
+                observed_at TEXT NOT NULL)""")
+            assignment_id = _identity(["gameplan-observed-opening-stock", key])
+            db.execute("INSERT INTO inventory_assignments VALUES (?,?,?,?,?)",
+                       (assignment_id, allocation_id, request["snapshot"], remaining, now))
+            self._save_evidence(db, assignment_id, "gameplan-existing-stock-assignment", {
+                "allocation_id": allocation_id, "snapshot_id": request["snapshot"], "quantity": remaining,
+                "observed_at": now, "reason": "User-selected autonomous Gameplan directional sale of existing stock"})
+            db.execute("INSERT INTO intraday_sell_slices VALUES (?,?,?,?)",
+                       (reservation.reservation_id, allocation_id, remaining, ordinal))
+        return reservation
 
 
 class OwnOrderLedger(HorizonLedger):

@@ -14,7 +14,7 @@ from pathlib import Path
 import pandas as pd
 
 from datafetching.runtime_lock import exclusive_runtime_lock
-from ml.joint_capital_plan import load_joint_plan, _validate_plan_digest, _json_bytes
+from ml.joint_capital_plan import load_joint_plan, _validate_plan_digest, _json_bytes, PLAN_ONLY_MODE
 
 VERSION = "accepted-joint-gameplan-v1"
 RUNS = "ml/joint-gameplan-runs"
@@ -25,7 +25,7 @@ def _day(value):
     return date.fromisoformat(str(value)).isoformat()
 
 
-def _verify(plan, binding):
+def _verify(plan, binding, *, historical_display=False):
     _validate_plan_digest(plan, binding["plan_sha256"])
     if (binding.get("schema_version") != VERSION or plan.get("status") != "COMPLETE"
             or plan["action_date"] != binding["action_date"]
@@ -45,6 +45,13 @@ def _verify(plan, binding):
     if len(symbols) != len(set(symbols)) or set(symbols) != set(binding["execution_symbols"]):
         raise ValueError("Combined execution universe must be the disjoint producer union")
     frame = pd.DataFrame(plan["forecasts"])
+    if historical_display:
+        # Original unversioned publications used the 50% split. Validate those
+        # frozen labels for display without changing the plan or relaxing any
+        # execution reader. Explicit policy versions retain their own checks.
+        field = "direction_policy_version"
+        frame[field] = (frame[field].fillna("stock-direction-50-v2")
+                        if field in frame else "stock-direction-50-v2")
     from ml.stock_trader.gameplan_execution import _validated_instructions
     _validated_instructions(frame)
     if (frame.empty or frame.id.duplicated().any() or set(frame.symbol) != set(symbols)
@@ -53,15 +60,43 @@ def _verify(plan, binding):
     # This also verifies event/forecast quantities, clocks, horizons and fallback
     # attribution using the same contract that the existing Gameplan tab uses.
     from app.ui.gameplan_data import _forecast, _actions
-    _actions(plan["ledger"], tuple(_forecast(row) for row in plan["forecasts"]), plan["action_date"])
+    from ml.gameplan_execution_policy import (is_current_gameplan_recipe, DIRECTION_ONLY_STATUS,
+        validate_direction_only_plan)
+    if plan["ledger"].get("status") == DIRECTION_ONLY_STATUS:
+        if (not is_current_gameplan_recipe(plan) or plan.get("cash_basis") != "LIVE_BROKER_CAPACITY_AT_EXECUTION"
+                or any(not is_current_gameplan_recipe(row) for row in plan["forecasts"])):
+            raise ValueError("Combined current instructions differ from their recipe")
+        validate_direction_only_plan(plan)
+    if is_current_gameplan_recipe(plan):
+        if (plan.get("composition_mode") != PLAN_ONLY_MODE or plan.get("cash_basis") != "LIVE_BROKER_CAPACITY_AT_EXECUTION"
+                or plan["ledger"].get("status") != DIRECTION_ONLY_STATUS or plan["ledger"].get("events") != []
+                or any(not is_current_gameplan_recipe(row) for row in plan["forecasts"])):
+            raise ValueError("Current directional plan cannot contain estimated fill instructions")
+        for row in plan["forecasts"]:
+            _forecast(row)
+    elif plan.get("composition_mode") == PLAN_ONLY_MODE:
+        if (plan.get("account_snapshot_sha256") is not None or plan.get("account_snapshot_observed_at") is not None
+                or plan.get("cash_basis") != "SIZED_AT_EXECUTION"
+                or plan["ledger"].get("status") != "NOT_PROJECTED" or plan["ledger"].get("events") != []
+                or any(any(key.startswith(("direction_based_", "projected_", "fallback_")) for key in row)
+                       for row in plan["forecasts"])):
+            raise ValueError("Merged source instructions must not invent account projections")
+        for row in plan["forecasts"]:
+            _forecast(row, projection_available=False)
+    else:
+        _actions(plan["ledger"], tuple(_forecast(row) for row in plan["forecasts"]), plan["action_date"])
 
 
 def accepted_sessions(root: Path) -> tuple[str, ...]:
     return tuple(sorted((_day(path.parent.name) for path in (Path(root) / POINTERS).glob("*/run.json")), reverse=True))
 
 
-def read_accepted_joint_plan(root: Path, action_date: str):
-    """Return (plan, binding, immutable run) or None when nothing is selected."""
+def read_accepted_joint_plan(root: Path, action_date: str, *, historical_display=False):
+    """Read the immutable selected plan, optionally preserving legacy UI calls.
+
+    Historical display checks original unversioned labels against their saved
+    50% rule. The returned bytes and all default execution checks stay intact.
+    """
     root = Path(root).resolve()
     pointer = root / POINTERS / _day(action_date) / "run.json"
     if not pointer.exists():
@@ -74,7 +109,7 @@ def read_accepted_joint_plan(root: Path, action_date: str):
     if binding != receipt or binding["action_date"] != action_date:
         raise ValueError("Combined plan acceptance pointer and receipt disagree")
     plan = load_joint_plan(run, run / "joint-plan.json", expected_sha256=binding["plan_sha256"])
-    _verify(plan, binding)
+    _verify(plan, binding, historical_display=historical_display)
     return plan, binding, run
 
 
