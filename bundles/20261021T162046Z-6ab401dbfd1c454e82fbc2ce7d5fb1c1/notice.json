@@ -1,0 +1,50 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T161310Z-577611b2f55f435783382d7facc9d232",
+  "change_id": "20261021T161310Z-577611b2f55f435783382d7facc9d232",
+  "commit_sha": "9d38c9c93aaf7e5d140288cc6bab2a45fa3cab5d",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py",
+      "sha256": "fd4669857fc1a55a0160ca76ab891ae7f0913b41d0dd365f16ab0e2bd916a295"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/intentions.py",
+      "sha256": "a619b84c6236d276dac33e4ba16bc7a50ed8a3915259180a9a8376d65dfa8fae"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_intention_projection_identity.py",
+      "sha256": "d7682e3c745ddc28fe6a1a4ba7d6054b9805f7eddf1e9e327101d06a7753e517"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_intention_projection_identity.py",
+      "sha256": "ae988b792eca4dc65891cc3711a47f2e723c8c7bd4c6af9761b2d6264527a625"
+    }
+  ],
+  "limitations": [
+    "Stacks on completed timing source ed43d628f8c13a6cd16e4384d73531c2482cc40d; main integration and peer installation are separate facts.",
+    "Installed exact four reviewed files with all prior local timing/model composition preserved. Current manual worker predates installation; loading and affected live exercise remain unproven.",
+    "Original unknown submission acceptance and historical internal timing causes remain separate unproven incidents; no private account or model evidence is exported."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/312",
+    "https://github.com/jeremysecondstate/atlas-scout/issues/28"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Next ordinary human manual Atlas15m start loads the installed repair. No immediate restart, test order, expired replay, reservation release, manual-stop change, nightly prerequisite or peer acceptance is requested.",
+  "scope": "Shared correctness for independently operated local traders. No local symbol, model policy, probability, target or manual control changes.",
+  "summary": "Atlas preserves strict reconciliation projection idempotence across first immutable sizing",
+  "tests": {
+    "actual_installed_Atlas": "194 passed in 34.90s",
+    "evidence_contract": "Strict default same-key changed-evidence and sizing-tamper rejection retained; unsized legacy identities stable; repeated sized observations idempotent; uncertain native and authority commitments unchanged.",
+    "final_source": "194 passed",
+    "isolated_candidate": "194 passed",
+    "network": "denied",
+    "original_source": "Exact stale-quote unsized reconciliation then first-sizing retry reproduces changed-evidence ContractError.",
+    "sealed_source": "194 passed"
+  }
+}

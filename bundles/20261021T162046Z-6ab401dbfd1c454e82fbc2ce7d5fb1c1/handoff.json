@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T16:20:46.693901Z",
+  "id": "20261021T162046Z-6ab401dbfd1c454e82fbc2ce7d5fb1c1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas preserves strict reconciliation projection idempotence across first immutable sizing"
+}
