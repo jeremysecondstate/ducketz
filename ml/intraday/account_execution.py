@@ -640,6 +640,112 @@ class IntradayAccountExecutor:
         return tuple(row for row in reservations
                      if streams.get(row.reservation_id, "gameplan") == self.stream)
 
+    def _expired_without_order_work(self, forecast):
+        """Record expiry locally only when exact own records need no order work.
+
+        A late queue item can still retire an older resting order. Existing
+        originals and same-symbol pending orders keep the normal capture and
+        cancellation path. A partial or inconsistent graph also falls through
+        to that existing path; this optimization adds no recovery prerequisite.
+        """
+        self._execution_stage("expired_own_order_read")
+        self._binding()
+        self._lease_keeper.check()
+        with self.ledger._transaction() as db:
+            state = self.ledger._snapshot(db)
+            if any(native.forecast_id == forecast["forecast_id"]
+                   or (native.symbol == forecast["symbol"] and native.status in OPEN)
+                   for native in state.reservations):
+                return None
+            requests = {key:json.loads(raw) for key,raw in self.ledger._read_rows(db,
+                "SELECT id,request FROM reservations", ("id", "request"))}
+            streams = {}
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='intraday_streams'").fetchone():
+                streams = {(kind,key):stream for kind,key,stream in self.ledger._read_rows(db,
+                    "SELECT kind,id,stream FROM intraday_streams", ("kind", "id", "stream"))}
+        native_by_id = {native.reservation_id:native for native in state.reservations}
+        records = self.authority.read_state()["reservations"]
+        matched = set()
+        def same_price(value, expected):
+            try:
+                return Decimal(str(value)) == Decimal(str(expected))
+            except ArithmeticError:
+                return False
+        for native in state.reservations:
+            request = requests[native.reservation_id]
+            if (streams.get(("reservation", native.reservation_id)) != self.stream
+                    or streams.get(("allocation", native.allocation_id)) != self.stream
+                    or native.symbol not in self.symbols or native.horizon != "15m"
+                    or request.get("kind") != "intraday-account-intention"
+                    or request.get("stream") != self.stream
+                    or request.get("local_symbols") != sorted(self.symbols)
+                    or any(not isinstance(request.get(field), str) or len(request[field]) != 64
+                           for field in ("snapshot", "forecast_snapshot_sha256"))
+                    or type(request.get("quantity")) is not int
+                    or any(request.get(field) != value for field,value in (
+                        ("symbol",native.symbol), ("side",native.side), ("quantity",native.quantity),
+                        ("forecast",native.forecast_id), ("forecast_sha256",native.forecast_id),
+                        ("horizon",native.horizon), ("start",native.target_start), ("end",native.target_end)))):
+                return None
+            if not same_price(request.get("price"), native.limit_price):
+                return None
+        for record in records:
+            request = record["request"]
+            native = native_by_id.get(request.get("native_reservation_id"))
+            if native is None or native.reservation_id in matched:
+                return None
+            original = requests[native.reservation_id]
+            if (request.get("stream") != self.stream
+                    or request.get("participant_id") != self.config.machine_id
+                    or request.get("account_fingerprint") != self.config.account_fingerprint
+                    or request.get("local_symbols") != sorted(self.symbols)
+                    or type(request.get("quantity")) is not int
+                    or record["broker_order_id"] != native.broker_order_id
+                    or any(request.get(field) != value for field,value in (
+                        ("native_allocation_id",native.allocation_id), ("symbol",native.symbol),
+                        ("side",native.side), ("quantity",native.quantity), ("horizon",native.horizon),
+                        ("forecast_id",native.forecast_id), ("idempotency_key",native.idempotency_key),
+                        ("forecast_sha256",original.get("forecast_sha256")),
+                        ("forecast_snapshot_sha256",original.get("forecast_snapshot_sha256")),
+                        ("snapshot_id",original.get("snapshot")),
+                        ("reference_at",native.target_start), ("target_close_at",native.target_end)))):
+                return None
+            if any(not same_price(request.get(field), native.limit_price)
+                   for field in ("limit_price", "exposure_price")):
+                return None
+            matched.add(native.reservation_id)
+            # Preserve recoverable fill/status asymmetry. Exact unrelated
+            # no-ID UNKNOWN commitments may stay untouched, withholding all
+            # their capacity; they do not require an expired symbol's capture.
+            pair = (native.status, record["status"])
+            retained_unknown = (native.broker_order_id is None and not native.filled_quantity
+                and native.status in {"RESERVED", "UNKNOWN"} and record["status"] in {"SUBMITTING", "UNKNOWN"})
+            if (record["filled_quantity"] != native.filled_quantity
+                    or not (pair[0] == pair[1] or pair == ("REJECTED", "NOT_SUBMITTED") or retained_unknown)):
+                return None
+        if any(native.reservation_id not in matched
+               and (native.status != "REJECTED" or native.broker_order_id is not None
+                    or native.filled_quantity or native.submitted_at is not None)
+               for native in state.reservations):
+            return None
+        self._execution_stage("expired_intention_chronology")
+        superseding = self._newer_forecasts(forecast)
+        newer = [native for native in state.reservations
+                 if native.forecast_id != forecast["forecast_id"] and native.symbol == forecast["symbol"]
+                 and native.target_start is not None
+                 and instant(native.target_start) >= instant(forecast["reference_at"])]
+        processed = self.intents.processed_at_or_after(forecast)
+        # Recheck this manual binding and the same unexpired fence after local
+        # reads, before an immutable local receipt. No account/provider IO.
+        self._renew_current_lease()
+        if superseding or newer or processed:
+            return self._record(forecast, "newer_or_same_reference_intention_already_processed",
+                evidence={"superseding_forecast_ids":superseding} if superseding else
+                         {"processed_forecast_ids":processed,
+                          "native_reservation_ids":[native.reservation_id for native in newer]})
+        return self._record(forecast, "fixed_target_already_elapsed",
+                            evidence={"reason":"fixed_target_already_elapsed", "no_pending_own_order_work":True})
+
     def step(self, forecast):
         """One bounded execution/recovery step; the outer session owns retries."""
         initial = forecast_disposition(forecast, now=self.clock(), session_started_at=self.session_started_at,
@@ -648,6 +754,10 @@ class IntradayAccountExecutor:
                        "incomplete_ensemble", "wrong_session_date"}:
             return self._record(forecast, initial)
         with self._account():
+            if initial == "fixed_target_already_elapsed":
+                expired = self._expired_without_order_work(forecast)
+                if expired is not None:
+                    return expired
             self._capture()
             superseding = self._newer_forecasts(forecast)
             if superseding:
