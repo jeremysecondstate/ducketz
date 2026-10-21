@@ -1,0 +1,69 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T201552Z-970404564ef1411187c669a77b5bd5bd",
+  "change_id": "20261021T201552Z-970404564ef1411187c669a77b5bd5bd",
+  "commit_sha": "926d15d37cf30955e428c12f80a7560e85585554",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/starter_sizing.py",
+      "sha256": "f98903d36d1762a296ce5222918ad1d922aaa69a5762a9b935d557f63da4a8ef"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_direction_minimum.py",
+      "sha256": "af2f8db8fbd3d33d47d2375f29c1c9d8a4ccc5765be5a2b728bd77ba7bea535e"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_direction_minimum.py",
+      "sha256": "691b3fca7d45769a685009c5c34b7dc3dab5ade95f173a4241f16cac607b8273"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/technical_sizing.py",
+      "sha256": "f2bc944da925eb4b39c2b7d01e5db2456f0eea621333ea0a949e6a54a1928138"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_starter_sizing.py",
+      "sha256": "6158e4e286638731f10a28dfc0a2b4f29971f5a92cd6348e415567a81ec3deed"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_technical_sizing.py",
+      "sha256": "2a3162d76f6e435342bb31c729ae5090573d2475a0c888c7f788fb93defffdc8"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_stock_direction_policy.py",
+      "sha256": "16bef51d8f92115aa405c6140d29373e300c7aa05f015eb7c4805b805cded3e3"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_oct19_intraday_direction.py",
+      "sha256": "8707d636a672d2ebc30f79ed49c2747df94f1db28a7d6adc6d495bf7ced7e577"
+    }
+  ],
+  "limitations": [
+    "Stacks on retained source a121738f1c4cc50a2496af6a93b773765cf5ea7c; main integration and peer installation are separate facts.",
+    "Three repair files installed, five policy dependencies already exact. Current manual process predates installation; new loading and affected live exercise remain unproven.",
+    "Original uncertain order acceptance remains a separate retained incident. No private account, source data, fitted model, task evidence or local binding is exported."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/317",
+    "https://github.com/jeremysecondstate/atlas-scout/issues/29"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "A future ordinary human manual intraday start loads the policy and prior installed repairs. No immediate restart, test order, expired replay, reservation release, manual-stop change, operating prerequisite or peer acceptance is requested.",
+  "scope": "Shared correctness applies independently on both PCs. Retain each local model policy, symbols, original forecasts, intentions and manual controls.",
+  "summary": "Atlas preserves affordable whole-share opportunities for valid independent intraday directions",
+  "tests": {
+    "actual_installed_Atlas": "129 passed in 4.84s",
+    "baseline": "Three original quantity assertions fail at zero versus one.",
+    "independent_review": "Whole owned diff and dependencies reviewed without actionable findings; private original-effect replay passed with history preserved.",
+    "isolated_candidate": "129 passed",
+    "network": "denied",
+    "sealed_source": "129 passed"
+  }
+}

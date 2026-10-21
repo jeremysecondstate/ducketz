@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T20:19:37.504287Z",
+  "id": "20261021T201937Z-43c2940d992c4ba2bf8f7292b673b94e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas preserves affordable whole-share opportunities for valid independent intraday directions"
+}
