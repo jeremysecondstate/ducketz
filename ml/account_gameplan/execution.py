@@ -7,6 +7,7 @@ callback. Account reservations add protection; they never create native lots.
 from __future__ import annotations
 
 from contextlib import contextmanager
+from collections.abc import Mapping
 from dataclasses import asdict
 from decimal import Decimal, ROUND_CEILING
 import os
@@ -15,7 +16,7 @@ import uuid
 
 from ml.account_gameplan.authority import (
     AccountAuthority, AccountSnapshot, AuthorityBinding, AuthorityError,
-    BrokerReservation, Fill, OPEN, OrderEvidence, ReservationRequest,
+    BrokerReservation, Fill, OPEN, OrderEvidence, ReservationRequest, _money, _name, _symbol,
 )
 from ml.account_gameplan.config import assert_coordinator, load_account_config, verify_cutover
 from ml.stock_trader.contracts import utc
@@ -37,6 +38,85 @@ def _whole(value):
     if not number.is_finite() or number<0 or number!=number.to_integral_value():
         raise AuthorityError("EXACT_WHOLE_BROKER_QUANTITY_REQUIRED")
     return int(number)
+
+
+class OrderSnapshotCoherenceError(AuthorityError):
+    """Two valid reads disagree about the same tracked order's fill progress."""
+
+    schwab_retry_safe = True
+    stock_trader_operation = "tracked_order_snapshot_coherence"
+
+
+def assert_order_snapshot_coherence(native_ledger, order_evidence, portfolio):
+    """Recapture non-atomic order views before either own ledger is mutated.
+
+    Keep every working row for capacity accounting. Only a balanced fill/status
+    disagreement for an exact native order ID is a retryable read; identity,
+    symbol, side and total-quantity failures retain their fatal meaning.
+    """
+    rows = portfolio.broker_working_orders
+    if not isinstance(rows, (tuple, list)):
+        return  # Existing complete-account validation retains this failure.
+    known = {r.broker_order_id:r for r in native_ledger.snapshot().reservations if r.broker_order_id}
+    observed = {r.reservation_id:r for r in order_evidence}
+    seen = set()
+    incoherent = False
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue  # The existing account snapshot validator rejects it.
+        identity = str(row.get("order_id", ""))
+        native = known.get(identity)
+        if native is None:
+            continue  # Untracked broker orders remain ordinary capacity inputs.
+        if identity in seen:
+            raise AuthorityError("AMBIGUOUS_BROKER_RESERVATIONS")
+        seen.add(identity)
+        if (row.get("status") != "CURRENT" or row.get("asset_type") not in {"EQUITY","ETF","STOCK"}
+                or row.get("symbol") != native.symbol or row.get("instruction") != native.side):
+            raise AuthorityError("TRACKED_ORDER_SYMBOL_SIDE_OR_STATUS_MISMATCH")
+        filled = _whole(row.get("filled_quantity"))
+        remaining = _whole(row.get("remaining_quantity"))
+        if remaining <= 0 or filled + remaining != native.quantity:
+            raise AuthorityError("TRACKED_ORDER_QUANTITY_MISMATCH")
+        detail = observed.get(native.reservation_id)
+        if detail is None:
+            if native.status not in {"FILLED","CANCELLED","REJECTED"}:
+                continue  # Existing fresh exact authority evidence is required.
+            status, detail_filled, detail_remaining = native.status, native.filled_quantity, 0
+        else:
+            if (detail.broker_order_id != identity or detail.account_fingerprint != native_ledger.account_fingerprint
+                    or detail.order_quantity != native.quantity):
+                raise AuthorityError("NATIVE_AND_ACCOUNT_ORDER_IDENTITIES_DIFFER")
+            status = detail.status
+            detail_filled = _whole(detail.cumulative_filled_quantity)
+            detail_remaining = _whole(detail.remaining_quantity)
+            valid = (status == "WORKING" and detail_filled == 0 and detail_remaining == native.quantity
+                or status == "PARTIAL" and 0 < detail_filled < native.quantity
+                    and detail_remaining == native.quantity-detail_filled
+                or status == "FILLED" and detail_filled == native.quantity and detail_remaining == 0
+                or status == "CANCELLED" and detail_filled <= native.quantity and detail_remaining == 0
+                or status == "REJECTED" and detail_filled == detail_remaining == 0)
+            if not valid:
+                raise AuthorityError("TRACKED_ORDER_STATUS_OR_QUANTITY_INVALID")
+        if (status not in {"WORKING","PARTIAL"} or detail_filled != filled or detail_remaining != remaining):
+            incoherent = True
+    if incoherent:
+        # A valid progress disagreement must not hide another fatal snapshot
+        # defect. Normalize every retained row before permitting a read retry.
+        pending = _broker_pending(portfolio)
+        identities = set()
+        for row, item in zip(rows, pending):
+            identity = row.get("order_id")
+            _name(item.broker_order_id)
+            _symbol(item.symbol)
+            if (type(identity) not in (str, int) or not str(identity).strip()
+                    or str(identity) in identities):
+                raise AuthorityError("AMBIGUOUS_BROKER_RESERVATIONS")
+            identities.add(str(identity))
+            values = [_money(value) for value in (item.cash_reserved, item.exposure_reserved)]
+            if item.side == "SELL" and any(values):
+                raise AuthorityError("SALE_PROCEEDS_ARE_NOT_CAPACITY")
+        raise OrderSnapshotCoherenceError("TRACKED_ORDER_AND_WORKING_SNAPSHOT_NOT_YET_COHERENT")
 
 
 def evidence_ledger(root, ledger, config):
