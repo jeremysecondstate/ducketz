@@ -422,6 +422,42 @@ class IntradayAccountExecutor:
                     evidence_id="intraday-recover-never-sent:" + native.reservation_id)
             # SUBMITTING/UNKNOWN without a reliable ID remains committed.
 
+    @staticmethod
+    def _validate_authority_native_identities(records, native_by_id):
+        for record in records:
+            native = native_by_id.get(record["request"]["native_reservation_id"])
+            if native is None:
+                raise LedgerError("UNKNOWN_RESERVATION")
+            if native.broker_order_id != record["broker_order_id"] or native.allocation_id != record["request"]["native_allocation_id"]:
+                raise ContractError("Local authority/native identity mismatch")
+
+    def _reconcile_captured_authority_orders(self, evidence, uncertain, records, native_by_id):
+        self._validate_authority_native_identities(records, native_by_id)
+        by_native = {item.reservation_id:item for item in evidence}
+        for record in records:
+            native = native_by_id[record["request"]["native_reservation_id"]]
+            observed = by_native.get(native.reservation_id)
+            if observed is None and record["status"] in OPEN:
+                retained = uncertain.get(native.reservation_id)
+                if retained is None or asdict(native) != asdict(retained[0]) or record != retained[1]:
+                    raise ContractError("Local commitment lacks complete status evidence")
+            if observed is not None and sum(fill.quantity for fill in observed.fills) != observed.cumulative_filled_quantity:
+                raise LedgerError("COMPLETE_PER_ORDER_FILL_EVIDENCE_REQUIRED")
+        for record in records:
+            native = native_by_id[record["request"]["native_reservation_id"]]
+            observed = by_native.get(native.reservation_id)
+            if observed is None:
+                continue
+            if record["last_evidence_at"] and instant(observed.observed_at) <= instant(record["last_evidence_at"]):
+                if observed.cumulative_filled_quantity != record["filled_quantity"] or observed.status != record["status"]:
+                    raise ContractError("Local order evidence did not advance")
+                continue
+            self.authority.reconcile(self.lease.token, OrderEvidence(observed.evidence_id, record["reservation_id"],
+                observed.account_fingerprint, observed.broker_order_id, observed.observed_at, observed.status,
+                observed.order_quantity, observed.cumulative_filled_quantity, observed.remaining_quantity,
+                tuple(Fill(f.fill_id,f.quantity,f.price,f.executed_at) for f in observed.fills), complete=True,
+                fill_time_provenance=observed.fill_time_provenance))
+
     def _capture(self, required_evidence=()):
         self._execution_stage("capture_lease_current")
         self._assert_current()
@@ -487,6 +523,13 @@ class IntradayAccountExecutor:
             def pending_reservations(self):
                 return tuple(native for native in pending.values() if native.broker_order_id)
         owner = OwnEvidence()
+        # Validate the complete own identity graph before obtaining fresh order
+        # observations. Local history reads must not age those observations.
+        self._execution_stage("capture_identity_snapshot")
+        captured_native_by_id = {item.reservation_id:item for item in self.ledger.snapshot().reservations}
+        self._execution_stage("capture_authority_identity_read")
+        captured_records = self.authority.read_state()["reservations"]
+        self._validate_authority_native_identities(captured_records, captured_native_by_id)
         self._execution_stage("order_evidence_capture")
         evidence = capture_order_evidence(self.broker, owner, account_fingerprint=self.config.account_fingerprint,
                                          as_of=self.clock(), observation_clock=self.clock)
@@ -499,6 +542,14 @@ class IntradayAccountExecutor:
                     or any(new_fills[key] != value for key,value in old_fills.items())
                     or (prior.status in {"FILLED", "CANCELLED", "REJECTED"} and current.status != prior.status)):
                 raise ContractError("New account capture cannot discard observed order evidence")
+        # Persist exact accepted-order evidence while it is fresh. Portfolio
+        # capture and native reconciliation may take longer than the unchanged
+        # authority fence. A later native failure leaves a recoverable exact-ID
+        # authority/native asymmetry, never permission to resend an order.
+        self._execution_stage("captured_order_authority_reconcile")
+        self._binding()
+        self._lease_keeper.check()
+        self._reconcile_captured_authority_orders(evidence, uncertain, captured_records, captured_native_by_id)
         self._execution_stage("portfolio_capture")
         portfolio = capture_portfolio_state(self.broker, observed_at=self.clock(), parallel=True,
             literal_cash_only=True, use_actual_quote_timestamps=True, symbols=self.config.symbols,
@@ -524,7 +575,6 @@ class IntradayAccountExecutor:
             {s:portfolio.account_equity for s in self.config.symbols}, portfolio.source_fingerprint)
         self._execution_stage("native_reconcile")
         reconciliation = self.ledger.reconcile(native_evidence, order_evidence=evidence)
-        by_native = {item.reservation_id:item for item in evidence}
         # Validate every retained identity using one native transaction. Reopening
         # the database per historical order can outlive the unchanged 60s fence.
         self._execution_stage("native_identity_snapshot")
@@ -532,28 +582,7 @@ class IntradayAccountExecutor:
         self._execution_stage("authority_identity_read")
         records = self.authority.read_state()["reservations"]
         self._execution_stage("authority_identity_validation")
-        for record in records:
-            native = native_by_id.get(record["request"]["native_reservation_id"])
-            if native is None:
-                raise LedgerError("UNKNOWN_RESERVATION")
-            if native.broker_order_id != record["broker_order_id"] or native.allocation_id != record["request"]["native_allocation_id"]:
-                raise ContractError("Local authority/native identity mismatch")
-            observed = by_native.get(native.reservation_id)
-            if observed is None:
-                if record["status"] in OPEN:
-                    retained = uncertain.get(native.reservation_id)
-                    if retained is None or asdict(native) != asdict(retained[0]) or record != retained[1]:
-                        raise ContractError("Local commitment lacks complete status evidence")
-                continue
-            if record["last_evidence_at"] and instant(observed.observed_at) <= instant(record["last_evidence_at"]):
-                if observed.cumulative_filled_quantity != record["filled_quantity"] or observed.status != record["status"]:
-                    raise ContractError("Local order evidence did not advance")
-                continue
-            self.authority.reconcile(self.lease.token, OrderEvidence(observed.evidence_id, record["reservation_id"],
-                observed.account_fingerprint, observed.broker_order_id, observed.observed_at, observed.status,
-                observed.order_quantity, observed.cumulative_filled_quantity, observed.remaining_quantity,
-                tuple(Fill(f.fill_id,f.quantity,f.price,f.executed_at) for f in observed.fills), complete=True,
-                fill_time_provenance=observed.fill_time_provenance))
+        self._reconcile_captured_authority_orders(evidence, uncertain, records, native_by_id)
         retained_reasons = {f"{native.symbol}:UNRECONCILED_{native.status}:{identity}"
                            for identity, (native, _) in uncertain.items()}
         if not reconciliation.ready and (not reconciliation.reasons
