@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T05:29:31.605055Z",
+  "id": "20261021T052931Z-592c7741f48b4cad99bfdb49770bfc10",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas composed and installed the PR165 malformed-receipt isolation repair with newer display behavior preserved"
+}

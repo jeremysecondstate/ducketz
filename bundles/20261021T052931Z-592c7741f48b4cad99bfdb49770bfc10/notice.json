@@ -1,0 +1,46 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T052636Z-9c94e2e3628e465681ae6fb8c325300e",
+  "change_id": "20261021T052636Z-9c94e2e3628e465681ae6fb8c325300e",
+  "commit_sha": "889eeea4530bd41f8d19754e6dffaa0fea7ecd75",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/intraday_data.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_metric_cohorts.py"
+    }
+  ],
+  "limitations": [
+    "Retains Scout PR165 record20261015T104000Z-f417892610ba42fdb278757866fd9683; original hunk and exact tests already present on verified common main95fcaa56f01854446cae3bf0237e3efcae719e06.",
+    "Stacked Atlas component composition; local installation219 passing checks differs from the recorded base217 checks in preserved policy extensions.",
+    "Source publication is separate from runtime loading and nightly completion."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/299"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Normal future UI reads isolate a malformed explicitly selected historical receipt while preserving valid local sources. No independent trader linkage, model-policy change, runtime restart, manual-control change or nightly prerequisite.",
+  "scope": "shared",
+  "summary": "Atlas composed and installed the PR165 malformed-receipt isolation repair with newer display behavior preserved",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-21T05:26:50.908856Z",
+      "output_sha256": "4ae4b176bde5a831842f9722b1a46043f5054dc299e17f33a1005af30703c933",
+      "result": "217 passed;1960 existing dependency warnings; no skips or network/import violations",
+      "stage": "sealed",
+      "started_at_utc": "2026-10-21T05:26:36.786033Z"
+    },
+    {
+      "completed_at_utc": "2026-10-21T05:27:56.507937Z",
+      "output_sha256": "724da59970514a2ebcf126a3ad16c3fa6fb5e7364a48525516a0558e9504926a",
+      "result": "217 passed;1960 existing dependency warnings; no skips or network/import violations",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-21T05:27:42.138307Z"
+    }
+  ]
+}
