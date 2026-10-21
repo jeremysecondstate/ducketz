@@ -1,0 +1,51 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T062851Z-2ffc5af436f948fbacf9ac4a8c55486c",
+  "change_id": "20261021T062851Z-2ffc5af436f948fbacf9ac4a8c55486c",
+  "commit_sha": "85ed5c3604f203fbbfe3ae9f002d672c40ba158c",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/intraday.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/intraday_models.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_research_view.py"
+    }
+  ],
+  "limitations": [
+    "Retains Scout PR166 record20261015T105929Z-0c825390da9e4f21baf7f6fae65367e4 and Atlas PR136 ancestry. Generic behavior and exact reader already present on verified main95fcaa56f01854446cae3bf0237e3efcae719e06.",
+    "Stacked Atlas composition and three additional Atlas regressions. Candidate and installed source each337 passed with one Tk skip; existing dependency warnings retained.",
+    "Main composition of additional regressions and loaded UI adoption remain separate; source publication never gates production."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/300"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Normal future UI loads can select saved local research before any forecast and honor PC/source filters. Preserve Atlas input provenance, original reports, model policies, independent trader state and manual controls; no runtime restart or operating prerequisite.",
+  "scope": "shared",
+  "summary": "Atlas installed saved research selection and filter repairs before the first manual forecast",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-21T06:29:05.997627Z",
+      "output_sha256": "f69441feb35b1ca256fb029a82ee624ba3f6970ae35abde9252d4c88f1638cb6",
+      "result": "336 passed, 1960 warnings in 13.10s; no network/import violations",
+      "stage": "sealed",
+      "started_at_utc": "2026-10-21T06:28:51.539568Z"
+    },
+    {
+      "completed_at_utc": "2026-10-21T06:30:13.907432Z",
+      "output_sha256": "14d247f4d42a17d03ad9c383cb74f237fccd28b0822a7c8b754e0c422e3ba5da",
+      "result": "335 passed, 1 skipped, 1960 warnings in 12.96s; no network/import violations",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-21T06:29:59.560545Z"
+    }
+  ]
+}

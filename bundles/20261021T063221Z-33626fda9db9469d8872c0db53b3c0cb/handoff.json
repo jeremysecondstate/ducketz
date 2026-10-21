@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T06:32:21.944682Z",
+  "id": "20261021T063221Z-33626fda9db9469d8872c0db53b3c0cb",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed saved research selection and filter repairs before the first manual forecast"
+}
