@@ -145,3 +145,114 @@ def test_one_label_and_empty_cohorts_do_not_imply_balanced_accuracy():
 def test_unknown_scope_fails_explicitly():
     with pytest.raises(ValueError, match="Unknown metric scope"):
         metric_rows([row()], scope="unknown")
+
+
+def test_render_applies_selected_cohort_before_window_to_every_diagnostic(monkeypatch):
+    from types import SimpleNamespace
+    from app.ui import intraday
+    from app.ui.intraday_data import IntradaySnapshot
+
+    # The two oldest eligible forecasts are wrong. Newer synthetic, during,
+    # late and unknown-timing forecasts are also wrong, so applying Last 20
+    # before the cohort, or ignoring either selector, changes the answer.
+    forecasts = []
+    for index in range(22):
+        forecasts.append(row(str(index), pc="Scout", symbol="AAPL", mode="live",
+            issued_at=f"2026-10-14T20:15:{index:02d}Z", ensemble_status="full",
+            outcome={"target_not_down": index >= 2, "target_close_price": 101 if index >= 2 else 99},
+            models=[{"name": "alpha", "status": "success", "probability_not_down": .6 + .01 * index},
+                    {"name": "beta", "status": "success", "probability_not_down": .8 - .01 * index}]))
+    for identity, changes in (
+        ("synthetic", {"issued_at": "2026-10-14T20:29:00Z", "outcome_status": "synthetic"}),
+        ("during", {"issued_at": "2026-10-14T20:31:00Z"}),
+        ("late", {"issued_at": "2026-10-14T20:50:00Z"}),
+        ("unknown", {"issued_at": "2026-10-14T20:51:00Z", "target_open": None}),
+    ):
+        forecasts.append(row(identity, pc="Scout", symbol="AAPL", mode="live", ensemble_status="full",
+            probability_not_down=.9, outcome={"target_not_down": False, "target_close_price": 99},
+            models=[{"name": name, "status": "success", "probability_not_down": .9}
+                    for name in ("alpha", "beta")], **changes))
+    original = deepcopy(forecasts)
+    displayed, labels = {}, {}
+    monkeypatch.setattr(intraday, "_replace", lambda table, rows: displayed.update({table: rows}))
+
+    def variable(value):
+        state = SimpleNamespace(value=value)
+        return SimpleNamespace(get=lambda: state.value, set=lambda value: setattr(state, "value", value))
+
+    def label(name):
+        return SimpleNamespace(configure=lambda **values: labels.update({name: values}))
+
+    view = SimpleNamespace(
+        snapshot=IntradaySnapshot(datetime(2026, 10, 14, 22, tzinfo=timezone.utc), tuple(forecasts)),
+        pc=variable("All"), symbol=variable("All"), session=variable("All"), mode=variable("live"),
+        reference_slot=variable("All"), source_dataset=variable("All"),
+        metric_scope=variable(DEFAULT_METRIC_SCOPE), metric_window=variable("Last 20"),
+        consensus_choice=variable(""), consensus_box=label("consensus"),
+        metric_status=label("scope"), disagreement_label=label("disagreement"),
+        matrix="matrix", window_table="windows", model_table="models", calibration_table="calibration",
+        correlation_table="correlations", regime_table="regimes",
+        _metric_values=intraday.IntradayTab._metric_values,
+        _render_consensus=lambda: None, _render_operations=lambda: None,
+    )
+    for scope, cumulative_n, selected_n, accuracy, prevalence in (
+        (DEFAULT_METRIC_SCOPE, 22, 20, "100.0%", "100.0%"),
+        ("All saved outcomes", 26, 20, "80.0%", "80.0%"),
+        ("During target · observed", 1, 1, "0.0%", "0.0%"),
+    ):
+        view.metric_scope.set(scope)
+        intraday.IntradayTab.render(view)
+        models = {values[0]: values for values, _ in displayed["models"]}
+        for name in ("Ensemble", "alpha", "beta", "Full ensemble", "pc: Scout", "symbol: AAPL"):
+            assert models[name][1:4] == (selected_n, selected_n, accuracy)
+        assert models["Ensemble"][-1] == prevalence
+        windows = {values[0]: values for values, _ in displayed["windows"]}
+        assert windows["Cumulative"][2] == cumulative_n
+        assert windows["Last 20"][2:4] == (selected_n, accuracy)
+        assert sum(values[1] for values, _ in displayed["calibration"]) == selected_n
+        assert len(displayed["correlations"]) == 1
+        assert displayed["correlations"][0][0][0:3] == ("alpha", "beta", selected_n)
+        assert sum(values[2] for values, _ in displayed["regimes"]
+                   if values[0] == "Realized |return|") == selected_n
+        assert sum(values[2] for values, _ in displayed["regimes"]
+                   if values[0] == "Issue hour Pacific") == selected_n
+        assert f"n={selected_n} issues" in labels["disagreement"]["text"]
+        assert len(view.visible_rows) == 26
+        assert next(iter(view.consensus_rows.values()))["forecast_id"] == "unknown"
+        assert displayed["matrix"][0][0][-1] == "Timing unknown"
+    assert forecasts == original
+
+
+def test_malformed_receipt_is_isolated_and_loaded_synthetic_outcomes_remain_separate(tmp_path):
+    import hashlib
+    import json
+    from app.ui.intraday_data import load_intraday_snapshot
+    from ml.intraday.telemetry import PACKET_SCHEMA, RECEIPT_SCHEMA
+    from test_intraday_ui import NOW, forecast, write_store
+
+    observed = forecast("observed", pc="Scout", mode="live")
+    synthetic = forecast("synthetic", pc="Scout", mode="live", symbol="TSLA",
+                         outcome=dict(observed["outcome"], status="synthetic"))
+    database = tmp_path / "local.sqlite3"
+    write_store(database, [observed, synthetic],
+                [(value["forecast_id"], value["outcome"]) for value in (observed, synthetic)])
+    payload = {"producer_pc": "Atlas", "produced_at": "2026-10-12T17:47:00Z",
+        "source_version": "fixture", "forecasts": [], "cycles": [{
+            "cycle_id": "fixture", "pc": "Atlas", "reference_at": "2026-10-12T17:00:00Z",
+            "mode": [], "started_at": "2026-10-12T17:15:30Z", "status": "completed"}]}
+    packet_id = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":"),
+                                         ensure_ascii=True, allow_nan=False).encode()).hexdigest()
+    receipt = {"schema_version": RECEIPT_SCHEMA, "packet_id": packet_id, "producer_pc": "Atlas",
+        "local_pc": "Scout", "received_at": "2026-10-12T17:48:00Z",
+        "packet": {"schema_version": PACKET_SCHEMA, "packet_id": packet_id, "payload": payload}}
+    receipt_path = tmp_path / "malformed-receipt.json"
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+
+    snapshot = load_intraday_snapshot({"Peer": receipt_path, "Local": database}, now=NOW, local_pc="Scout")
+    assert [(source["label"], source["status"]) for source in snapshot.sources] == [
+        ("Peer", "unreadable"), ("Local", "read")]
+    assert len(snapshot.warnings) == 1 and "Peer: TypeError" in snapshot.warnings[0]
+    assert {value["forecast_id"]: value["outcome_status"] for value in snapshot.forecasts} == {
+        "observed": "scored", "synthetic": "synthetic"}
+    assert [value["forecast_id"] for value in metric_rows(snapshot.forecasts)] == ["observed"]
+    assert len(metric_rows(snapshot.forecasts, scope="Before target open · all outcomes")) == 2

@@ -319,7 +319,7 @@ def load_intraday_snapshot(database_paths: Mapping[str, Path] | None = None, *,
             forecasts.extend(saved)
             latest = max((timestamp(row.get("issued_at")) for row in saved if timestamp(row.get("issued_at"))), default=None)
             source.update(status="read", latest_issue=latest)
-        except (sqlite3.Error, OSError, ValueError, KeyError, IndexError) as exc:
+        except (sqlite3.Error, OSError, ValueError, TypeError, KeyError, IndexError) as exc:
             source["status"] = "unreadable"
             warnings.append(f"{label}: {type(exc).__name__}: {exc}")
     forecasts.sort(key=lambda row: (timestamp(row.get("issued_at")) or datetime.min.replace(tzinfo=UTC), row["forecast_id"]))
