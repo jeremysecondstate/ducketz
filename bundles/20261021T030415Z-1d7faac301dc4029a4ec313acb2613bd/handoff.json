@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T03:04:15.121050Z",
+  "id": "20261021T030415Z-1d7faac301dc4029a4ec313acb2613bd",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas completed matching native title-bar styling and a double-click UI launcher; tested PR 296 is available."
+}

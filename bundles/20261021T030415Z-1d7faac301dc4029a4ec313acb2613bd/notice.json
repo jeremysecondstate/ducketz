@@ -1,0 +1,51 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T030228Z-ea87d2617e4b4167a3f5b05380848bb1",
+  "change_id": "20261021T030228Z-ea87d2617e4b4167a3f5b05380848bb1",
+  "commit_sha": "46688d182cfedee553d448e67659dd575481f4bb",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "app/ui/ducket_bucket.py"
+    },
+    {
+      "operation": "add",
+      "path": "app/ui/window_chrome.py"
+    },
+    {
+      "operation": "add",
+      "path": "duckets-ui.cmd"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_window_chrome.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_ui_launcher.py"
+    }
+  ],
+  "limitations": [
+    "Windows 11 synthetic native-window smoke check; Windows 10 fallback has mock coverage only.",
+    "No operating application session, provider or trader was started."
+  ],
+  "peer_applicability": "Common UI styling and launcher apply to Atlas and Scout; preserve each PC environment and operating bindings.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/296",
+  "remote_sha": "46688d182cfedee553d448e67659dd575481f4bb",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source changes are present in the producing checkout; existing UI windows load them on next manual open. No merge, peer installation, process restart or runtime deployment is claimed.",
+  "scope": "shared",
+  "summary": "Atlas completed matching native title-bar styling and a double-click UI launcher; tested PR 296 is available.",
+  "supersedes": [
+    "20261021T030021Z-53a33c87f2c0495fa9d1adfda80b63b7"
+  ],
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-21T03:03:10.906697Z",
+      "kind": "isolated offline native API fixtures and synthetic Windows launcher",
+      "output_sha256": "90ac97ef131a1a6baf11153b6369815b77582aac55452d098e6c5d4b5d97905d",
+      "result": "10 passed",
+      "started_at_utc": "2026-10-21T03:03:09.776865Z"
+    }
+  ]
+}
