@@ -7,6 +7,8 @@ module has no broker connection and cannot create an order or a fill.
 import json
 from dataclasses import asdict
 
+from ml.stock_direction_policy import stock_direction
+
 from .prediction import ContractError, digest, encoded, identity, instant, quantity
 
 VERSION = "intraday-independent-intentions-v1"
@@ -49,9 +51,12 @@ class IntentionStore:
         """Valid sized intentions fence chronology even when no order was possible."""
         with self.store.connect() as db:
             ids = {row[0] for row in db.execute("SELECT forecast_id FROM intraday_intentions")}
-        # Unsized forecasts cannot fence an intention. Decode and validate only
-        # the persisted sizing identities, with no historical scan when empty.
-        return [f["forecast_id"] for f in self.store.forecasts(
+        if not ids:
+            return []
+        # Unsized forecasts cannot fence an intention. Reuse scalar headers of
+        # unchanged validated sizing identities; every selected byte is still
+        # hashed, and changed payloads/indexed identities are validated again.
+        return [f["forecast_id"] for f in self.store.execution_forecast_headers(
                     pc=forecast["pc"], symbol=forecast["symbol"], forecast_ids=ids)
                 if f["forecast_id"] in ids and f["forecast_id"] != forecast["forecast_id"]
                 and f["symbol"] == forecast["symbol"] and f["mode"] == "live"
@@ -61,9 +66,13 @@ class IntentionStore:
         value = result.payload()
         if value["forecast_id"] != forecast["forecast_id"] or value["symbol"] != forecast["symbol"]:
             raise ContractError("Sizing belongs to another forecast")
-        side = "BUY" if float(forecast["probability_not_down"]) >= .5 else "SELL"
+        existing = self.get(forecast["forecast_id"])
+        side = (existing["side"] if existing is not None else
+                {"BULLISH": "BUY", "BEARISH": "SELL"}.get(stock_direction(forecast["probability_not_down"]), "HOLD"))
         if value["side"] != side or instant(value["calculated_at"]) < instant(forecast["issued_at"]):
             raise ContractError("Sizing direction or availability differs from forecast")
+        if side == "HOLD" and value["status"] == "sized":
+            raise ContractError("A neutral forecast cannot request a trade")
         if value["status"] != "sized":
             return self.record(forecast, event_key="unavailable:" + result.result_id,
                 recorded_at=value["calculated_at"], disposition=value["reason"],
@@ -101,48 +110,84 @@ class IntentionStore:
         with self.store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             self._forecast(db, forecast)
-            intention = self._value(db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
-                                               (forecast["forecast_id"],)).fetchone())
-            desired = intention["desired_quantity"] if intention else None
-            side = "BUY" if float(forecast["probability_not_down"]) >= .5 else "SELL"
-            value = dict(version=VERSION, forecast_id=forecast["forecast_id"], symbol=forecast["symbol"],
-                side=side, kind=kind, desired_quantity=desired, adjusted_quantity=None,
-                disposition=disposition, evidence=evidence, submission_status="not_submitted",
-                submitted_quantity=0, filled_quantity=0, realized_pnl=None)
-            if capacity is not None:
-                cap = capacity.payload()
-                if desired is None or (cap["symbol"], cap["side"], cap["desired_quantity"]) != (forecast["symbol"], side, desired):
-                    raise ContractError("Capacity differs from original intended trade")
-                if instant(cap["calculated_at"]) > at:
-                    raise ContractError("Capacity evidence is in the future")
-                value.update(adjusted_quantity=cap["adjusted_quantity"], capacity=cap)
-            if order is not None:
-                raw = asdict(order)
-                if desired is None or order.symbol != forecast["symbol"] or order.side != side or order.quantity > desired:
-                    raise ContractError("Order differs from intended trade")
-                if order.forecast_id != forecast["forecast_id"]:
-                    raise ContractError("Order belongs to another forecast")
-                if order.filled_quantity and not order.broker_order_id:
-                    raise ContractError("Filled quantity requires exact broker identity")
-                value.update(order=raw, adjusted_quantity=order.quantity, filled_quantity=order.filled_quantity,
-                             submission_status=order.status, broker_order_id=order.broker_order_id,
-                             submitted_quantity=order.quantity if order.broker_order_id else
-                             None if order.status in {"UNKNOWN", "SUBMITTING"} else 0)
-            key = digest([forecast["forecast_id"], event_key])
-            value.update(event_identity=key, recorded_at=at.isoformat())
-            old = db.execute("SELECT i.id,i.payload,i.recorded_at FROM intraday_intention_events e JOIN intents i ON i.id=e.intent_entry_id WHERE e.event_key=?", (key,)).fetchone()
-            if old:
-                previous = json.loads(old[1])
-                value["recorded_at"] = previous["recorded_at"]
-                if digest(previous) != old[0] or previous["recorded_at"] != old[2] or encoded(value) != old[1]:
-                    raise ContractError("Intention event identity reused with changed evidence")
-                return json.loads(old[1])
-            latest = db.execute("SELECT max(i.recorded_at) FROM intraday_intention_events e JOIN intents i ON i.id=e.intent_entry_id WHERE e.forecast_id=?", (forecast["forecast_id"],)).fetchone()[0]
-            if latest and instant(latest) > at:
-                raise ContractError("Intention event cannot be backdated")
-            entry_id = digest(value)
-            db.execute("INSERT OR IGNORE INTO intents VALUES(?,?,?,?)", (entry_id, forecast["forecast_id"], at.isoformat(), encoded(value)))
-            db.execute("INSERT INTO intraday_intention_events VALUES(?,?,?)", (key, forecast["forecast_id"], entry_id))
+            return self._append(db, forecast, event_key=event_key, at=at,
+                disposition=disposition, evidence=evidence, kind=kind, capacity=capacity, order=order)
+
+    def record_recovery(self, forecast_id, *, actor, event_key, recorded_at, disposition, evidence, kind, order):
+        """Project an own order from its original, never from a caller's forecast.
+
+        Every read hashes exact original bytes and indexed identities. The
+        store's bounded scalar cache skips only repeated model-tree decoding;
+        first reads and changed rows retain full semantic validation.
+        """
+        identity(forecast_id); identity(event_key); identity(disposition); identity(kind)
+        if actor not in {"Atlas", "Scout"} or order is None:
+            raise ContractError("Recovery requires an explicit local actor")
+        at = instant(recorded_at)
+        with self.store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                             "FROM forecasts WHERE id=?", (forecast_id,)).fetchone()
+            if row is None:
+                raise ContractError("Native 15m order lacks original persisted intention")
+            forecast, _ = self.store._forecast_projection(row)
+            if forecast["pc"] != actor:
+                raise ContractError("Recovery forecast belongs to another actor")
+            if at < instant(forecast["issued_at"]) or not isinstance(evidence, dict) or not evidence:
+                raise ContractError("Intention event needs available explicit evidence")
+            return self._append(db, forecast, event_key=event_key, at=at,
+                disposition=disposition, evidence=evidence, kind=kind, order=order, required_sizing=True)
+
+    def _append(self, db, forecast, *, event_key, at, disposition, evidence, kind,
+                capacity=None, order=None, required_sizing=False):
+        intention = self._value(db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
+                                           (forecast["forecast_id"],)).fetchone())
+        if required_sizing and intention is None:
+            raise ContractError("Native 15m order lacks original persisted intention")
+        desired = intention["desired_quantity"] if intention else None
+        # Recovery preserves the first immutable intention and its actual
+        # order side across later policy changes. New unsized forecasts
+        # still take their direction from the current cutoff.
+        side = (intention["side"] if intention is not None else
+                {"BULLISH": "BUY", "BEARISH": "SELL"}.get(stock_direction(forecast["probability_not_down"]), "HOLD"))
+        value = dict(version=VERSION, forecast_id=forecast["forecast_id"], symbol=forecast["symbol"],
+            side=side, kind=kind, desired_quantity=desired, adjusted_quantity=None,
+            disposition=disposition, evidence=evidence, submission_status="not_submitted",
+            submitted_quantity=0, filled_quantity=0, realized_pnl=None)
+        if capacity is not None:
+            cap = capacity.payload()
+            if desired is None or (cap["symbol"], cap["side"], cap["desired_quantity"]) != (forecast["symbol"], side, desired):
+                raise ContractError("Capacity differs from original intended trade")
+            if instant(cap["calculated_at"]) > at:
+                raise ContractError("Capacity evidence is in the future")
+            value.update(adjusted_quantity=cap["adjusted_quantity"], capacity=cap)
+        if order is not None:
+            raw = asdict(order)
+            if desired is None or order.symbol != forecast["symbol"] or order.side != side or order.quantity > desired:
+                raise ContractError("Order differs from intended trade")
+            if order.forecast_id != forecast["forecast_id"]:
+                raise ContractError("Order belongs to another forecast")
+            if order.filled_quantity and not order.broker_order_id:
+                raise ContractError("Filled quantity requires exact broker identity")
+            value.update(order=raw, adjusted_quantity=order.quantity, filled_quantity=order.filled_quantity,
+                         submission_status=order.status, broker_order_id=order.broker_order_id,
+                         submitted_quantity=order.quantity if order.broker_order_id else
+                         None if order.status in {"UNKNOWN", "SUBMITTING"} else 0)
+        key = digest([forecast["forecast_id"], event_key])
+        value.update(event_identity=key, recorded_at=at.isoformat())
+        old = db.execute("SELECT i.id,i.payload,i.recorded_at FROM intraday_intention_events e JOIN intents i ON i.id=e.intent_entry_id WHERE e.event_key=?", (key,)).fetchone()
+        if old:
+            previous = json.loads(old[1])
+            value["recorded_at"] = previous["recorded_at"]
+            if digest(previous) != old[0] or previous["recorded_at"] != old[2] or encoded(value) != old[1]:
+                raise ContractError("Intention event identity reused with changed evidence")
+            return json.loads(old[1])
+        latest = db.execute("SELECT max(i.recorded_at) FROM intraday_intention_events e JOIN intents i ON i.id=e.intent_entry_id WHERE e.forecast_id=?", (forecast["forecast_id"],)).fetchone()[0]
+        if latest and instant(latest) > at:
+            raise ContractError("Intention event cannot be backdated")
+        entry_id = digest(value)
+        db.execute("INSERT OR IGNORE INTO intents VALUES(?,?,?,?)", (entry_id, forecast["forecast_id"], at.isoformat(), encoded(value)))
+        db.execute("INSERT INTO intraday_intention_events VALUES(?,?,?)", (key, forecast["forecast_id"], entry_id))
         return value
 
     def history(self, forecast_id):
