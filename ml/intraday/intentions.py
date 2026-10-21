@@ -189,6 +189,10 @@ class IntentionStore:
             if digest(previous) != old[0] or previous["recorded_at"] != old[2] or encoded(value) != old[1]:
                 raise ContractError("Intention event identity reused with changed evidence")
             return json.loads(old[1])
+        # Fresh projections cannot attach sizing before it was available.
+        # Exact immutable receipt replay above keeps its original time.
+        if intention is not None and at < instant(intention["sizing"]["calculated_at"]):
+            raise ContractError("Intention event cannot be backdated before sizing")
         latest = db.execute("SELECT max(i.recorded_at) FROM intraday_intention_events e JOIN intents i ON i.id=e.intent_entry_id WHERE e.forecast_id=?", (forecast["forecast_id"],)).fetchone()[0]
         if latest and instant(latest) > at:
             raise ContractError("Intention event cannot be backdated")
