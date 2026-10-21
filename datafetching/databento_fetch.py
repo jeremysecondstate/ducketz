@@ -1251,7 +1251,11 @@ def _fetch_cme_unlocked(store: ParquetStore) -> tuple[int, int, int]:
     context_capture_failed = False
 
     try:
-        specs = provider.specs()
+        specs = call_with_persistent_databento_retry(
+            provider.specs,
+            operation_name="CME endpoint discovery",
+            timing_reporter=print,
+        )
     except Exception as exc:
         store.save_error(
             source="databento",
