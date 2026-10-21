@@ -1401,3 +1401,55 @@ def test_ctrl_c_during_automatic_data_drain_still_joins_workers_and_records_manu
     assert any(row["event"] == "automatic_stop_requested" for row in logs)
     assert any(row["event"] == "manual_stop_requested" for row in logs)
     assert not any(row["event"] == "minute_data_day_complete" for row in logs)
+
+
+@pytest.mark.parametrize("with_collector", [False, True])
+def test_manual_status_retains_exact_worker_ids_without_lifecycle_changes(tmp_path, monkeypatch, with_collector):
+    kwargs, calls, executors = scout_manual_fixture(tmp_path, monkeypatch)
+    created, started, projected = [], [], []
+    class InlineThread:
+        def __init__(self, *, target, name, **unused):
+            self.target, self.name = target, name
+            self.native_id = None
+            created.append(self)
+        def start(self):
+            self.native_id = 7000 + len(started)
+            started.append(self.name)
+            self.target()
+        def is_alive(self):
+            return False
+        def join(self, **unused):
+            pass
+    class Collector:
+        def run(self, **unused):
+            calls.append("context")
+    monkeypatch.setattr(live_session.threading, "Thread", InlineThread)
+    monkeypatch.setattr(live_session, "prepare_market_collection",
+        lambda *a, **k: Collector() if with_collector else None)
+    real_project = live_session.worker_threads
+    def project(registry):
+        result = real_project(registry)
+        projected.append(result)
+        return result
+    monkeypatch.setattr(live_session, "worker_threads", project)
+    result = live_session.run_manual(**kwargs)
+    expected = [{"role": role, "thread_name": name, "native_thread_id": 7000 + i}
+        for i, (role, name) in enumerate([
+            ("forecast", "intraday-manual-forecast"),
+            ("scoring", "intraday-manual-scoring"),
+            ("minute_data", "intraday-manual-minute-data"),
+            *([("market_context", "intraday-manual-market-context")] if with_collector else [])])]
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert result["status"] == "STOPPED" and status["stop_reason"] == "manual_stop"
+    assert status["worker_threads"] == expected == projected[-1]
+    assert projected[:2] == [[], []]
+    assert [thread.name for thread in created] == started == [row["thread_name"] for row in expected]
+    assert not executors[0].kwargs["manual_authority"]()
+    assert status["broker_orders_automatically_cancelled"] is False
+    session_root = tmp_path / "intraday/sessions" / result["session_id"].replace(":", "-")
+    assert json.loads((session_root / "status.json").read_text()) == status
+    events = [json.loads(line) for line in (session_root / "events.jsonl").read_text().splitlines()]
+    assert [e["status"] for e in events if e["event"] == "session_status"] == [
+        "STARTING", "RUNNING", "STOPPING", "STOPPED"]
+    with ShadowStore(tmp_path / "intraday/shadow.sqlite3").connect() as connection:
+        assert connection.execute("SELECT count(*) FROM events WHERE kind LIKE '%worker_identity%'").fetchone()[0] == 0

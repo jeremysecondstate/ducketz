@@ -53,7 +53,7 @@ def test_uncaptured_instrumentation_never_reads_clocks_or_cache(monkeypatch):
 
 
 def test_failed_phase_retains_times_and_original_exception_without_private_payload(monkeypatch):
-    clocks = iter([(10.0, 2.0), (12.5, 2.75)])
+    clocks = iter([(10.0, 2.0, 5.0), (12.5, 2.75, 9.0)])
     monkeypatch.setattr(diagnostics, "_clocks", lambda: next(clocks))
     original = FixtureFailure("private fixture payload must not enter profiling")
     with pytest.raises(FixtureFailure) as caught:
@@ -63,7 +63,8 @@ def test_failed_phase_retains_times_and_original_exception_without_private_paylo
     assert caught.value is original
     assert profile["status"] == "error" and profile["cpu_scope"] == "current_thread"
     assert profile["phases"] == [{"phase": "base_dataset", "status": "error",
-        "wall_seconds": 2.5, "thread_cpu_seconds": .75, "error_type": "FixtureFailure"}]
+        "wall_seconds": 2.5, "thread_cpu_seconds": .75, "process_cpu_seconds": 4.0,
+        "error_type": "FixtureFailure"}]
     assert "private fixture" not in json.dumps(profile)
 
 
@@ -75,7 +76,7 @@ def test_observer_clock_failure_preserves_body_result_and_exception(monkeypatch,
         calls += 1
         if calls == failure_call:
             raise ValueError("private timer detail")
-        return 1.0, 1.0
+        return 1.0, 1.0, 1.0
     monkeypatch.setattr(diagnostics, "_clocks", clock)
     original = FixtureFailure("original")
     with pytest.raises(FixtureFailure) as caught:
@@ -365,3 +366,135 @@ def test_runtime_success_keeps_profiles_outside_frozen_snapshot(tmp_path, monkey
     assert frozen == control_frozen and frozen_hash == control_hash == digest(frozen)
     assert "dataset_build_profile" not in json.dumps(frozen)
     assert diagnostics._current.get() is None
+
+
+def test_process_cpu_scope_and_worker_identity_are_serializable(monkeypatch):
+    clocks = iter([(10.0, 2.0, 5.0), (12.5, 2.75, 9.0)])
+    monkeypatch.setattr(diagnostics, "_clocks", lambda: next(clocks))
+    monkeypatch.setattr(diagnostics.threading, "get_native_id", lambda: 12345)
+    monkeypatch.setattr(diagnostics.threading, "current_thread",
+        lambda: type("Worker", (), {"name": "dataset worker/" + "x" * 200})())
+    with diagnostics.capture_dataset_build() as profile:
+        with diagnostics.dataset_phase("base_dataset"):
+            pass
+    restored = json.loads(json.dumps(profile))
+    assert restored["cpu_scope"] == "current_thread"
+    assert restored["process_cpu_scope"] == "all_process_threads"
+    assert restored["worker"] == {"thread_name": "dataset_worker_" + "x" * 81,
+        "native_thread_id": 12345}
+    phase = restored["phases"][0]
+    assert phase["wall_seconds"] == 2.5 and phase["thread_cpu_seconds"] == .75
+    # Aggregate native CPU may exceed wall time; it must not be capped to wall.
+    assert phase["process_cpu_seconds"] == 4.0
+
+
+@pytest.mark.parametrize("failure_call", [1, 2])
+@pytest.mark.parametrize("has_original_error", [False, True])
+def test_process_clock_failure_never_replaces_operation(monkeypatch, failure_call, has_original_error):
+    calls = 0
+    def process_clock():
+        nonlocal calls
+        calls += 1
+        if calls == failure_call:
+            raise OSError("private process clock detail")
+        return 1.0
+    monkeypatch.setattr(diagnostics.time, "process_time", process_clock)
+    original = FixtureFailure("original body")
+    if has_original_error:
+        with pytest.raises(FixtureFailure) as caught:
+            with diagnostics.capture_dataset_build() as profile:
+                with diagnostics.dataset_phase("base_dataset"):
+                    raise original
+        assert caught.value is original
+    else:
+        with diagnostics.capture_dataset_build() as profile:
+            with diagnostics.dataset_phase("base_dataset"):
+                result = 42
+        assert result == 42 and profile["status"] == "success"
+    assert profile["observer_errors"] == ["OSError"] and profile["phases"] == []
+    assert "private process clock detail" not in json.dumps(profile)
+
+
+def test_worker_identity_failure_is_bounded_and_does_not_mask_body(monkeypatch):
+    def fail():
+        raise ValueError("private worker detail")
+    monkeypatch.setattr(diagnostics.threading, "get_native_id", fail)
+    original = FixtureFailure("original operation")
+    with pytest.raises(FixtureFailure) as caught:
+        with diagnostics.capture_dataset_build() as profile:
+            with diagnostics.dataset_phase("base_dataset"):
+                raise original
+    assert caught.value is original and profile["observer_errors"] == ["ValueError"]
+    assert "worker" not in profile and "private worker detail" not in json.dumps(profile)
+
+
+def test_new_manual_interrupt_while_reading_worker_identity_propagates(monkeypatch):
+    original = KeyboardInterrupt("manual stop fixture")
+    def fail():
+        raise original
+    monkeypatch.setattr(diagnostics.threading, "get_native_id", fail)
+    with pytest.raises(KeyboardInterrupt) as caught:
+        with diagnostics.capture_dataset_build():
+            pytest.fail("manual interrupt must precede body")
+    assert caught.value is original and diagnostics._current.get() is None
+
+
+def test_worker_identity_captures_concurrent_build_thread_not_caller():
+    barrier = threading.Barrier(2)
+    def build():
+        with diagnostics.capture_dataset_build() as profile:
+            barrier.wait(timeout=10)
+            with diagnostics.dataset_phase("base_dataset"):
+                pass
+        return profile
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="diagnostic-fixture") as pool:
+        futures = [pool.submit(build) for _ in range(2)]
+        profiles = [future.result(timeout=10) for future in futures]
+    identities = [p["worker"] for p in profiles]
+    assert all(i["thread_name"].startswith("diagnostic-fixture") for i in identities)
+    assert len({i["native_thread_id"] for i in identities}) == 2
+    assert threading.get_native_id() not in {i["native_thread_id"] for i in identities}
+
+
+def test_worker_registry_projection_never_controls_threads_and_bounds_errors():
+    class Worker:
+        native_id = 123
+        def start(self):
+            pytest.fail("metadata must not start workers")
+        join = is_alive = start
+    class Broken:
+        @property
+        def native_id(self):
+            raise ValueError("private native identity")
+    registry = [("forecast", "intraday-manual-forecast", Worker()),
+        ("scoring", "intraday-manual-scoring", object()),
+        ("minute_data", "intraday-manual-minute-data", Broken()),
+        ("market_context", "intraday-manual-market-context", type("Bad", (), {"native_id": True})()),
+        ("extra", "not emitted", Worker())]
+    records = json.loads(json.dumps(diagnostics.worker_threads(registry)))
+    assert len(records) == 4 and records[0]["native_thread_id"] == 123
+    assert records[1] == {"role": "scoring", "thread_name": "intraday-manual-scoring"}
+    assert records[2]["observer_error"] == records[3]["observer_error"] == "ValueError"
+    assert "private native identity" not in json.dumps(records)
+
+
+@pytest.mark.parametrize("has_original_error", [False, True])
+def test_worker_registry_control_interrupt_keeps_existing_exception(has_original_error):
+    interrupt = KeyboardInterrupt("fixture manual stop")
+    original = FixtureFailure("fixture original error")
+    class Interrupted:
+        @property
+        def native_id(self):
+            raise interrupt
+    registry = [("scoring", "intraday-manual-scoring", Interrupted())]
+    if has_original_error:
+        with pytest.raises(FixtureFailure) as caught:
+            try:
+                raise original
+            finally:
+                records = diagnostics.worker_threads(registry)
+        assert caught.value is original and records[0]["observer_error"] == "KeyboardInterrupt"
+    else:
+        with pytest.raises(KeyboardInterrupt) as caught:
+            diagnostics.worker_threads(registry)
+        assert caught.value is interrupt
