@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 import re
 import sys
+import threading
 import time
 
 
@@ -34,17 +35,52 @@ def _observer_error(profile, error):
 
 
 def _clocks():
-    return time.perf_counter(), time.thread_time()
+    return time.perf_counter(), time.thread_time(), time.process_time()
+
+
+def worker_identity():
+    """Bounded local identity for correlating native read-only CPU samples."""
+    native_id = threading.get_native_id()
+    if type(native_id) is not int or native_id < 1:
+        raise ValueError("Invalid diagnostic native thread identity")
+    return {"thread_name": re.sub(r"[^A-Za-z0-9_.-]", "_",
+                                threading.current_thread().name)[:96],
+            "native_thread_id": native_id}
+
+
+def worker_threads(registry):
+    """Project only the host's four known worker identities; no worker control."""
+    result = []
+    pending_error = sys.exception()
+    for role, name, thread in registry[:4]:
+        row = {"role": role, "thread_name": name}
+        try:
+            native_id = getattr(thread, "native_id", None)
+            if native_id is not None:
+                if type(native_id) is not int or native_id < 1:
+                    raise ValueError("Invalid diagnostic native thread identity")
+                row["native_thread_id"] = native_id
+        except BaseException as error:
+            if not isinstance(error, Exception) and pending_error is None:
+                raise
+            row["observer_error"] = _error_type(error)
+        result.append(row)
+    return result
 
 
 @contextmanager
 def capture_dataset_build():
     """Yield one bounded diagnostic record and restore the caller's capture."""
     profile = {"schema_version": "intraday-dataset-build-profile-v1",
-               "cpu_scope": "current_thread", "status": "running",
+               "cpu_scope": "current_thread", "process_cpu_scope": "all_process_threads",
+               "status": "running",
                "phases": [], "context_caches": [], "observer_errors": []}
     token = _current.set(profile)
     try:
+        try:
+            profile["worker"] = worker_identity()
+        except Exception as error:
+            _observer_error(profile, error)
         yield profile
     except BaseException as error:
         profile.update(status="error", error_type=_error_type(error))
@@ -57,7 +93,7 @@ def capture_dataset_build():
 
 @contextmanager
 def dataset_phase(name):
-    """Record inclusive wall/current-thread CPU time, including failed phases."""
+    """Record inclusive wall, own-thread CPU and all-process CPU, including failures."""
     profile = _current.get()
     started = None
     if profile is not None:
@@ -79,7 +115,8 @@ def dataset_phase(name):
                 finished = _clocks()
                 phase = {"phase": name, "status": "error" if error_type else "success",
                          "wall_seconds": max(0.0, finished[0] - started[0]),
-                         "thread_cpu_seconds": max(0.0, finished[1] - started[1])}
+                         "thread_cpu_seconds": max(0.0, finished[1] - started[1]),
+                         "process_cpu_seconds": max(0.0, finished[2] - started[2])}
                 if error_type is not None:
                     phase["error_type"] = error_type
                 if len(profile["phases"]) < _MAX_PHASES:

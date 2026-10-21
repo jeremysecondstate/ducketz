@@ -21,6 +21,7 @@ from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant, 
 from .runtime import (ResearchConfig, ShadowRunner, LiveHistories, local_symbols,
                       recorded_symbol_failures, _symbol_exception_diagnostics)
 from .store import ShadowStore, utcnow
+from .dataset_diagnostics import worker_threads
 
 VERSION = "manual-atlas-15m-session-v1"
 SCOUT_VERSION = "manual-scout-15m-session-v1"
@@ -460,6 +461,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                       "acquisition":str(root / "intraday/acquisition.sqlite3")}
     log_lock = threading.Lock()
     previous_status = [None]
+    diagnostic_workers = []
     def emit(value):
         event = {"recorded_at":instant(clock()).isoformat(),"session_id":session_id,"pc":pc,**value}
         with log_lock:
@@ -472,6 +474,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                      pid=os.getpid(),process_create_time=process_create_time,started_at=started.isoformat(),
                      heartbeat_at=instant(clock()).isoformat(),status=state,manual_start=True,
                      wake_at=wake_at.isoformat(),
+                     worker_threads=worker_threads(diagnostic_workers),
                       evidence_paths=evidence_paths,scout_admission=scout_admission if pc == "Scout" else None,
                       automatic_stop_at=automatic_stop_at.isoformat() if automatic_stop_at is not None else None,**extra)
         for destination in (session_status,status_path):
@@ -666,6 +669,12 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 stopped.set()
         context_worker = (threading.Thread(target=context_work,name="intraday-manual-market-context",daemon=True)
                           if market_collector is not None else None)
+        diagnostic_workers[:] = [
+            ("forecast", "intraday-manual-forecast", worker),
+            ("scoring", "intraday-manual-scoring", scorer),
+            ("minute_data", "intraday-manual-minute-data", data_worker)]
+        if context_worker is not None:
+            diagnostic_workers.append(("market_context", "intraday-manual-market-context", context_worker))
         worker.start()
         scorer.start()
         data_worker.start()
