@@ -1,0 +1,42 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T164758Z-a08e8a90693f46ce8d3911cc4953e0d4",
+  "change_id": "20261021T164758Z-a08e8a90693f46ce8d3911cc4953e0d4",
+  "commit_sha": "89c3ba787edae4abcb274fb1fec56ec414eaea05",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/intentions.py",
+      "sha256": "63bcab8cf895622957c523bf953cd1af8068eb5a805425afa3097965da2b69c9"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_intention_projection_identity.py",
+      "sha256": "34c950b5ada85ba95188c970a01eefe7874f0897f258c6d09b0fbfda914b9bab"
+    }
+  ],
+  "limitations": [
+    "Follow-on retains completed first-sizing identity repair and superseded alternative history; no private data, account state, raw logs or models are exported.",
+    "No retained live occurrence or historical SNDK cause established. Original unknown order acceptance and exact pending collection evidence remain separate.",
+    "Exact two reviewed files installed and independently checked; current manual process predates installation, so loading and affected live exercise remain unproven.",
+    "Main integration and peer installation remain separate facts."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/313",
+    "https://github.com/jeremysecondstate/ducketz/pull/312",
+    "https://github.com/jeremysecondstate/atlas-scout/issues/28"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Next ordinary human manual Atlas15m start loads the repair. No immediate restart, automatic start, order, expired replay, manual-stop change, nightly prerequisite or peer acceptance is requested.",
+  "scope": "Shared correctness independently applicable to both PCs. Preserve original scientific forecasts, local model and symbol policies, all original receipts and manual controls.",
+  "summary": "Atlas prevents fresh intention receipts from preceding the immutable sizing they use",
+  "tests": {
+    "actual_installed_Atlas": "210 passed in 55.57s",
+    "baseline": "Three temporary-ledger crash-window chronology regressions fail before the guard; 19 focused cases pass.",
+    "established": "Fresh scoped, default and own-order recovery projections reject pre-sizing clocks. Exact sizing time and timezone equivalence succeed. Existing exact receipt replay remains unchanged with older caller time; interrupted sized-receipt recovery succeeds.",
+    "final_source": "210 passed",
+    "isolated_candidate": "210 passed in 46.05s",
+    "network": "denied",
+    "sealed_source": "210 passed in 51.73s"
+  }
+}

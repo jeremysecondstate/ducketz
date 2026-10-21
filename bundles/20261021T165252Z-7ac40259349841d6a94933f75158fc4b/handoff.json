@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T16:52:52.222876Z",
+  "id": "20261021T165252Z-7ac40259349841d6a94933f75158fc4b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas prevents fresh intention receipts from preceding the immutable sizing they use"
+}
