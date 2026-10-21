@@ -14,7 +14,17 @@ import json
 from pathlib import Path
 import sqlite3
 
+from ml.stock_direction_policy import (
+    BEARISH_PROBABILITY, BULLISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION,
+    stock_direction, stock_direction_for_policy,
+)
+
 from .prediction import ContractError, STEP, TARGET_VERSION, digest, encoded, instant, number
+
+
+_DIRECTION_POLICY_FIELDS = (
+    "direction", "direction_policy_version", "direction_up_threshold", "direction_down_threshold",
+)
 
 
 def utcnow():
@@ -194,17 +204,24 @@ class ShadowStore:
                 cache.popitem(last=False)
         return dict(projection), value
 
-    def execution_forecast_headers(self, *, pc, symbol):
+    def execution_forecast_headers(self, *, pc, symbol, forecast_ids=None):
         """Validate own history, reusing unchanged headers on repeated scans.
 
         All bytes are still read and hashed. The bounded cache belongs to this
         store instance, not a database or another trader, and does not survive
         a process restart. Every changed row is fully validated again.
         """
+        clauses, parameters = ["pc=?", "symbol=?"], [pc, symbol]
+        if forecast_ids is not None:
+            identities = tuple(dict.fromkeys(forecast_ids))
+            if not identities:
+                return []
+            clauses.append("id IN (SELECT value FROM json_each(?))")
+            parameters.append(encoded(identities))
         headers = []
         with self.connect() as db:
             rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
-                "FROM forecasts WHERE pc=? AND symbol=? ORDER BY rowid", (pc, symbol))
+                "FROM forecasts WHERE " + " AND ".join(clauses) + " ORDER BY rowid", parameters)
             for row in rows:
                 projection, _ = self._forecast_projection(row)
                 headers.append(projection)
@@ -255,6 +272,81 @@ class ShadowStore:
         # or records an outcome on another connection.
         return selected
 
+    def retained_session_scoring_targets(self, *, pc, session_id, as_of, stopped=lambda: False):
+        """Validate ready targets for this manual session without model inventory reads.
+
+        The ordinary full-history scorer retains older-session work and its
+        corruption checks. This priority path reads lightweight own headers,
+        then validates the exact selected original, all revisions and candle.
+        Timestamp joins use actual instants rather than ISO text equality.
+        """
+        from .data import completed_15m_observation, synthetic_continuity_verified
+        now = instant(as_of)
+        if stopped():
+            return []
+        with self.connect() as db:
+            headers = db.execute("SELECT f.id,f.symbol,f.reference_at FROM forecasts f "
+                "JOIN cycles c ON c.id=f.cycle_id WHERE f.pc=? AND c.pc=? "
+                "AND json_extract(c.payload,'$.experiment')=? ORDER BY f.rowid",
+                (pc, pc, session_id)).fetchall()
+            targets = {}
+            for key, symbol, reference in headers:
+                if stopped():
+                    return []
+                targets.setdefault((symbol, instant(reference) + 2 * STEP), []).append(key)
+            if not targets:
+                return []
+            # Only scalar candle headers are scanned; unrelated model trees
+            # and candle payloads never enter this ready-target lookup.
+            candle_headers = db.execute("SELECT id,symbol,opened_at,available_at FROM candles "
+                                        "ORDER BY available_at,rowid").fetchall()
+            candidates = {}
+            for key, symbol, opened, available in candle_headers:
+                if stopped():
+                    return []
+                target = (symbol, instant(opened))
+                if target not in targets or instant(available) > now:
+                    continue
+                raw = db.execute("SELECT payload FROM candles WHERE id=?", (key,)).fetchone()[0]
+                value = json.loads(raw)
+                if digest(value) != key:
+                    raise ContractError("Persisted candle evidence hash changed")
+                if (value.get("availability_kind") == "actual"
+                        and completed_15m_observation(value) and synthetic_continuity_verified(value)
+                        and instant(value["available_at"]) <= now):
+                    candidates.setdefault((value["symbol"], instant(value["opened_at"])), []).append(value)
+            result = []
+            for target, keys in targets.items():
+                if stopped():
+                    return []
+                values = candidates.get(target, [])
+                if not values:
+                    continue
+                for key in keys:
+                    if stopped():
+                        return []
+                    row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                                     "FROM forecasts WHERE id=?", (key,)).fetchone()
+                    projection, full = self._forecast_projection(row)
+                    if projection["mode"] != "live" or instant(projection["target_close"]) > now:
+                        continue
+                    revisions = self.revisions(key)
+                    observed = next((value for value in reversed(values)
+                        if value.get("population_contract") == projection.get("population_contract")
+                        and all(not projection.get(field) or value.get(field) == projection[field]
+                                for field in ("source_dataset", "source_id"))), None)
+                    if observed is None:
+                        continue
+                    latest = revisions[-1] if revisions else None
+                    if (latest is not None and latest["status"] in {"scored", "synthetic"}
+                            and latest.get("candle_id") == digest(observed)
+                            and instant(latest["observed_at"]) <= now):
+                        continue
+                    if full is None:
+                        full = self._forecast_value(row)
+                    result.append((full, observed))
+        return result
+
     def save_forecast(self, payload, *, intent=None):
         # Return exactly the persisted JSON representation. Model metadata can
         # contain tuples; their decoded list form must compare identically on
@@ -295,28 +387,44 @@ class ShadowStore:
         value["execution_eligibility"] = ("manual_live_checks_required" if value["mode"] == "live"
                                           else "unresolved_shadow_only")
         value.pop("forecast_id", None)
-        key = digest(value)
-        value["forecast_id"] = key
-        intent_value = self._intent(key, value, intent)
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             old = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE cycle_id=? AND symbol=?", (value["cycle_id"], value["symbol"])).fetchone()
             previous = self._forecast_value(old) if old else None
-            if previous is not None and previous != value:
-                raise ContractError("Issued forecast is immutable")
-            if old:
+            if previous is not None:
+                # A raw producer retry has no policy fields. Retain the first
+                # issue's recorded policy, including its historical absence;
+                # supplied changes still participate in the exact comparison.
+                for field in _DIRECTION_POLICY_FIELDS:
+                    if field not in value and field in previous:
+                        value[field] = previous[field]
+                value["forecast_id"] = digest(value)
+                if previous != value:
+                    raise ContractError("Issued forecast is immutable")
                 return previous
+            policy = dict(direction=stock_direction_for_policy(value["probability_not_down"], STOCK_DIRECTION_POLICY_VERSION),
+                          direction_policy_version=STOCK_DIRECTION_POLICY_VERSION,
+                          direction_up_threshold=BULLISH_PROBABILITY,
+                          direction_down_threshold=BEARISH_PROBABILITY)
+            if any(field in value and value[field] != expected for field, expected in policy.items()):
+                raise ContractError("New forecast direction policy differs from the current policy")
+            value.update(policy)
+            key = digest(value)
+            value["forecast_id"] = key
+            intent_value = self._intent(key, value, intent)
             db.execute("INSERT INTO forecasts VALUES(?,?,?,?,?,?,?)", (key, value["pc"], value["symbol"], value["cycle_id"], value["reference_at"], value["issued_at"], encoded(value)))
             db.execute("INSERT INTO intents VALUES(?,?,?,?)", (digest(intent_value), key, value["issued_at"], encoded(intent_value)))
         return value
 
     @staticmethod
     def _intent(key, forecast, supplied):
-        side = "BUY" if float(forecast["probability_not_down"]) >= .5 else "SELL"
+        side = {"BULLISH": "BUY", "BEARISH": "SELL"}.get(stock_direction(forecast["probability_not_down"]), "HOLD")
         value = dict(supplied or {})
         if value.get("side", side) != side:
             raise ContractError("Intent direction disagrees with the forecast")
         desired, adjusted = value.get("desired_quantity"), value.get("adjusted_quantity")
+        if side == "HOLD" and (desired not in (None, 0) or adjusted not in (None, 0)):
+            raise ContractError("A neutral forecast cannot request a trade")
         if desired is None:
             if adjusted is not None:
                 raise ContractError("Adjusted quantity needs a desired quantity")

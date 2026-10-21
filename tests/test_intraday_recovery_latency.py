@@ -72,6 +72,8 @@ def test_recovery_decodes_only_referenced_own_forecasts(env, monkeypatch, empty_
     for offset in (60, 75, 90):
         env.forecast(offset=offset)
     expected = {forecast["forecast_id"] for forecast in required}
+    # Exercise cold referenced-original validation; warm reuse is checked separately.
+    getattr(env.store, "_forecast_header_cache", {}).clear()
     decoded = []
     original = env.store._forecast_value
 

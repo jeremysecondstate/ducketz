@@ -771,27 +771,21 @@ class IntradayAccountExecutor:
                 owned = self._owned_native_reservations(db)
             if not owned:
                 return []
-            identities = sorted({native.forecast_id for native in owned})
-            self._execution_stage("recovery_forecast_read")
-            with self.store.connect() as db:
-                rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts "
-                    "WHERE pc=? AND id IN (SELECT value FROM json_each(?)) ORDER BY rowid",
-                    (self.actor, json.dumps(identities))).fetchall()
-            # Selected rows still undergo the complete immutable/indexed-identity
-            # validator. Unrelated historical model payloads need no decoding.
-            self._execution_stage("recovery_forecast_validate")
-            forecasts = {row[0]:self.store._forecast_value(row) for row in rows}
             results = []
             self._execution_stage("recovery_intention_record")
             for native in owned:
-                forecast = forecasts.get(native.forecast_id)
-                if forecast is None or self.intents.get(native.forecast_id) is None:
-                    raise ContractError("Native 15m order lacks original persisted intention")
                 uncertain = not native.broker_order_id and native.status in {"RESERVED", "UNKNOWN"}
-                results.append(self._record(forecast,
-                    "unresolved_submission_retained" if uncertain else "order_status_reconciled", order=native,
-                    evidence={"native_reservation_id":native.reservation_id, "status":native.status,
-                              **({"commitment_retained":True, "complete_broker_order_evidence":False} if uncertain else {})}))
+                disposition = "unresolved_submission_retained" if uncertain else "order_status_reconciled"
+                evidence = {"native_reservation_id":native.reservation_id, "status":native.status,
+                            **({"commitment_retained":True, "complete_broker_order_evidence":False} if uncertain else {})}
+                kind = "execution_disposition"
+                # Read each original inside its intention transaction. The
+                # validated scalar cache retains all immutable/index checks
+                # without bulk-loading or repeatedly decoding model trees.
+                event_key = digest([kind, disposition, evidence, asdict(native), None])
+                results.append(self.intents.record_recovery(native.forecast_id, actor=self.actor,
+                    event_key=event_key, recorded_at=self.clock(), disposition=disposition,
+                    kind=kind, evidence=evidence, order=native))
             self._execution_stage("recovery_complete")
             return results
 
