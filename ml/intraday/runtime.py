@@ -20,6 +20,7 @@ import psutil
 
 from .prediction import ContractError, PACIFIC, STEP, TARGET_VERSION, UnresolvedPolicy, digest, instant
 from .store import ShadowStore, utcnow
+from .dataset_diagnostics import capture_dataset_build, dataset_phase
 
 
 @dataclass(frozen=True)
@@ -168,8 +169,12 @@ def _symbol_exception_diagnostics(exc):
             current, relation = current.__context__, "context"
         else:
             current = None
-    return {"schema_version": "intraday-symbol-exception-v1", "exception_chain": chain,
-            "chain_truncated": current is not None}
+    result = {"schema_version": "intraday-symbol-exception-v1", "exception_chain": chain,
+              "chain_truncated": current is not None}
+    profile = getattr(exc, "_intraday_dataset_build_profile", None)
+    if isinstance(profile, dict):
+        result["dataset_build_profile"] = profile
+    return result
 
 
 def _dataset_scope(value):
@@ -403,9 +408,41 @@ class ShadowRunner:
             scope = (supervised_policy["dataset_scope_by_symbol"][symbol] if supervised_policy is not None
                      else _dataset_scope(asdict(self.config)))
             phase_started=time.perf_counter()
-            dataset=builder(_frame(history),cutoff=cutoff,reference_at=reference,
-                            **scope)
-            preprocessing_profile["dataset_build_seconds"]=time.perf_counter()-phase_started
+            build_profile = None
+            build_error = None
+            try:
+                with capture_dataset_build() as build_profile:
+                    with dataset_phase("dataset_build"):
+                        dataset=builder(_frame(history),cutoff=cutoff,reference_at=reference,
+                                        **scope)
+            except BaseException as error:
+                build_error = error
+                # Existing symbol-failure evidence can retain partial phases if
+                # the additional diagnostic event cannot be written.
+                try:
+                    error._intraday_dataset_build_profile = build_profile
+                except BaseException:
+                    pass
+                raise
+            finally:
+                try:
+                    preprocessing_profile["dataset_build_seconds"]=time.perf_counter()-phase_started
+                except BaseException as error:
+                    # An observer clock failure must not replace a dataset
+                    # result or its original error, including BaseException.
+                    if not isinstance(error, Exception) and build_error is None:
+                        raise
+                    pass
+                if build_profile is not None:
+                    preprocessing_profile["dataset_build_profile"] = build_profile
+                    try:
+                        self.store.event(cycle_id,"dataset_build_profile",build_profile,symbol=symbol)
+                    except BaseException as error:
+                        # Diagnostic persistence must not reject otherwise
+                        # valid inputs or mask the original dataset exception.
+                        if not isinstance(error, Exception) and build_error is None:
+                            raise
+                        pass
             phase_started=time.perf_counter()
             inference=_jsonable(dataset.inference)
             if mode in {"shadow", "live"} and inference.get("availability_kind")!="actual":

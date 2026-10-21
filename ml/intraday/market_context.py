@@ -1111,22 +1111,28 @@ def augment_dataset(dataset, snapshots: Iterable[Mapping], *, training_decision_
     if cache_path is not None:
         from .market_context_cache import ContextCache
         manager = ContextCache(cache_path)
-    with manager as cache:
-        builder = cache.build if cache is not None else build_market_context
-        for row_index, reference in enumerate(dataset.training_reference_at):
-            reference = instant(reference)
-            if reference not in decisions:
-                raise ContractError("Every training reference requires its own decision/feature receipt cutoff")
-            decision = decisions[reference]
-            if not reference + timedelta(minutes=15) <= decision < reference + timedelta(minutes=30):
-                raise ContractError("Historical context decision must follow reference close and precede target open")
-            context = builder(_indexed_candidates(index, decision), symbol=dataset.inference["symbol"],
-                              cutoff=decision, source_ids=source_ids, contract=contract)
-            context_values[row_index] = context.values
-            context_hashes.append(context.snapshot_sha256)
-            rows_with_source += int(any(e.get("records_used") for e in context.source_evidence))
-        inference = builder(_indexed_candidates(index, inference_cutoff), symbol=dataset.inference["symbol"],
-                            cutoff=inference_cutoff, source_ids=source_ids, contract=contract)
+    try:
+        with manager as cache:
+            builder = cache.build if cache is not None else build_market_context
+            for row_index, reference in enumerate(dataset.training_reference_at):
+                reference = instant(reference)
+                if reference not in decisions:
+                    raise ContractError("Every training reference requires its own decision/feature receipt cutoff")
+                decision = decisions[reference]
+                if not reference + timedelta(minutes=15) <= decision < reference + timedelta(minutes=30):
+                    raise ContractError("Historical context decision must follow reference close and precede target open")
+                context = builder(_indexed_candidates(index, decision), symbol=dataset.inference["symbol"],
+                                  cutoff=decision, source_ids=source_ids, contract=contract)
+                context_values[row_index] = context.values
+                context_hashes.append(context.snapshot_sha256)
+                rows_with_source += int(any(e.get("records_used") for e in context.source_evidence))
+            inference = builder(_indexed_candidates(index, inference_cutoff), symbol=dataset.inference["symbol"],
+                                cutoff=inference_cutoff, source_ids=source_ids, contract=contract)
+    finally:
+        # Cache exit performs the optional flush; copy its final skip counts
+        # even when a context or source-validation operation has raised.
+        from .dataset_diagnostics import record_context_cache
+        record_context_cache(manager if cache_path is not None else None)
     if instant(inference_cutoff) < instant(dataset.inference["information_available_at"]):
         raise ContractError("Inference context cutoff precedes known base feature availability")
     names = (*dataset.feature_names, *inference.feature_names)

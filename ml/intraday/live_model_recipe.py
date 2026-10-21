@@ -28,6 +28,7 @@ from .observed_data import (
 from .prediction import ContractError, TARGET_VERSION, instant
 from .training_timing import (LEGACY, HISTORICAL_RESEARCH, OPERATIONAL_REPLAY,
                               timing_contract, timing_mode_from_metadata)
+from .dataset_diagnostics import dataset_phase
 
 
 SCHEMA_VERSION = "intraday-manual-observed-calibrated-v1"
@@ -582,19 +583,20 @@ def prepare_manual_models(config, *, datastore, pc, symbols, recipe_path=None):
                 raise ContractError("Manual recipe cannot train a symbol outside this PC's exact scope")
             symbol = next(iter(populations))
         selected_contract = symbol_contracts.get(symbol, feature_contract)
-        if symbol in symbol_contracts:
-            if reference_fill_policy is not None:
-                from .forward_fill import build_forward_fill_dataset as native_builder
+        with dataset_phase("base_dataset"):
+            if symbol in symbol_contracts:
+                if reference_fill_policy is not None:
+                    from .forward_fill import build_forward_fill_dataset as native_builder
+                else:
+                    from .native_interval import build_native_interval_dataset as native_builder
+                dataset = native_builder(candles, cutoff=cutoff, reference_at=reference_at,
+                    lookback_days=lookback_days, recovery_contract=recovery_contract, preparation_only=_preparation,
+                    timing_mode=timing_mode)
             else:
-                from .native_interval import build_native_interval_dataset as native_builder
-            dataset = native_builder(candles, cutoff=cutoff, reference_at=reference_at,
-                lookback_days=lookback_days, recovery_contract=recovery_contract, preparation_only=_preparation,
-                timing_mode=timing_mode)
-        else:
-            if candles is not None and "native_interval_contract" in candles and candles.native_interval_contract.notna().any():
-                raise ContractError("A default symbol cannot consume the opt-in native population")
-            dataset = build_observed_dataset(candles, cutoff=cutoff, reference_at=reference_at,
-                lookback_days=lookback_days, preparation_only=_preparation, timing_mode=timing_mode)
+                if candles is not None and "native_interval_contract" in candles and candles.native_interval_contract.notna().any():
+                    raise ContractError("A default symbol cannot consume the opt-in native population")
+                dataset = build_observed_dataset(candles, cutoff=cutoff, reference_at=reference_at,
+                    lookback_days=lookback_days, preparation_only=_preparation, timing_mode=timing_mode)
         if any(dataset.manifest.get(k) != selected_contract[k] for k in
                ("feature_version", "feature_policy", "label_provenance")):
             raise ContractError("Manual dataset differs from its frozen per-symbol feature contract")
@@ -602,72 +604,77 @@ def prepare_manual_models(config, *, datastore, pc, symbols, recipe_path=None):
             raise ContractError("Observed manual recipe cannot train a symbol outside this PC's scope")
         symbol = dataset.inference["symbol"]
         from .assessment_reservation import load_reservation, protect_dataset
-        dataset = protect_dataset(dataset, load_reservation(datastore, pc=pc, symbol=symbol))
+        with dataset_phase("assessment_reservation"):
+            dataset = protect_dataset(dataset, load_reservation(datastore, pc=pc, symbol=symbol))
         if (frozen_scope is not None
                 and dataset.inference.get("source_dataset") != frozen_scope["source_dataset"]):
             raise ContractError("Manual recipe source dataset differs from its frozen local selection")
-        input_rows_before_decision_filter = len(dataset.y)
-        decisions = None
-        if context_contract is not None:
-            # A recovered historical observation is acquired now and can only
-            # train after that receipt. Its reconstructed feature cutoff names
-            # the historical reference close, never today's receipt. Native
-            # contract validation proves the tag, cutoff and retained receipts.
-            decisions = {instant(row["opened_at"]): instant(
-                instant(row["opened_at"]) + pd.Timedelta(minutes=15) if timing_mode == HISTORICAL_RESEARCH
-                else row["feature_cutoff_at"] if recovery_contract is not None
-                    and row.get("availability_kind") == "actual_historical_recovery"
-                else row["available_at"]) for row in candles.to_dict("records")}
-            causal = np.asarray([instant(reference) + pd.Timedelta(minutes=15)
-                                 <= decisions[instant(reference)]
-                                 < instant(reference) + pd.Timedelta(minutes=30)
-                                 for reference in dataset.reference_at], dtype=bool)
-            # A delayed reference that arrived during/after its target cannot
-            # supply that decision's context. Exclude that row, not every later
-            # fit, then apply the unchanged support gates to eligible rows.
-            dataset = replace(dataset, X=dataset.X[causal], y=dataset.y[causal],
-                label_available_at=dataset.label_available_at[causal],
-                training_reference_at=dataset.reference_at[causal],
-                target_close_at=dataset.target_close_at[causal])
-        input_rows = len(dataset.y)
-        runtime_dataset = replace(dataset, X=dataset.X[-max_rows:], y=dataset.y[-max_rows:],
-            label_available_at=dataset.label_available_at[-max_rows:],
-            training_reference_at=dataset.reference_at[-max_rows:],
-            target_close_at=dataset.target_close_at[-max_rows:])
-        # Chronological assessment needs earlier rows for each fold's own
-        # 4096-row fit window. Capping once at the final decision silently
-        # shortens earlier fits. Keep a bounded assessment history separately;
-        # the runtime trainer below explicitly rejects it.
-        history_limit = max(8192, max_rows) if _assessment else max_rows
-        dataset = replace(dataset, X=dataset.X[-history_limit:], y=dataset.y[-history_limit:],
-            label_available_at=dataset.label_available_at[-history_limit:],
-            training_reference_at=dataset.reference_at[-history_limit:],
-            target_close_at=dataset.target_close_at[-history_limit:]) if _assessment else runtime_dataset
-        support = _training_support(runtime_dataset.y, runtime_dataset.reference_at, runtime_dataset.target_close_at,
-            runtime_dataset.label_available_at, cutoff=cutoff, support=support_contract, timing_mode=timing_mode,
-            calibration_fraction=calibration_fraction,
-            diagnostic_context={"symbol": dataset.inference.get("symbol"),
-                "reference_at": instant(reference_at).isoformat(), "feature_shape": list(runtime_dataset.X.shape),
-                "inference_shape": list(dataset.inference_X.shape), "input_training_rows": input_rows,
-                "recipe_sha256": recipe["sha256"], "feature_version": dataset.manifest.get("feature_version"),
-                "source_dataset": dataset.inference.get("source_dataset"),
-                "source_history_sha256": _sha(dataset.manifest.get("source_history", {})),
-                "lookback_days": lookback_days, "synthetic_policy": synthetic_policy})
+        with dataset_phase("causal_filter_and_window"):
+            input_rows_before_decision_filter = len(dataset.y)
+            decisions = None
+            if context_contract is not None:
+                # A recovered historical observation is acquired now and can only
+                # train after that receipt. Its reconstructed feature cutoff names
+                # the historical reference close, never today's receipt. Native
+                # contract validation proves the tag, cutoff and retained receipts.
+                decisions = {instant(row["opened_at"]): instant(
+                    instant(row["opened_at"]) + pd.Timedelta(minutes=15) if timing_mode == HISTORICAL_RESEARCH
+                    else row["feature_cutoff_at"] if recovery_contract is not None
+                        and row.get("availability_kind") == "actual_historical_recovery"
+                    else row["available_at"]) for row in candles.to_dict("records")}
+                causal = np.asarray([instant(reference) + pd.Timedelta(minutes=15)
+                                     <= decisions[instant(reference)]
+                                     < instant(reference) + pd.Timedelta(minutes=30)
+                                     for reference in dataset.reference_at], dtype=bool)
+                # A delayed reference that arrived during/after its target cannot
+                # supply that decision's context. Exclude that row, not every later
+                # fit, then apply the unchanged support gates to eligible rows.
+                dataset = replace(dataset, X=dataset.X[causal], y=dataset.y[causal],
+                    label_available_at=dataset.label_available_at[causal],
+                    training_reference_at=dataset.reference_at[causal],
+                    target_close_at=dataset.target_close_at[causal])
+            input_rows = len(dataset.y)
+            runtime_dataset = replace(dataset, X=dataset.X[-max_rows:], y=dataset.y[-max_rows:],
+                label_available_at=dataset.label_available_at[-max_rows:],
+                training_reference_at=dataset.reference_at[-max_rows:],
+                target_close_at=dataset.target_close_at[-max_rows:])
+            # Chronological assessment needs earlier rows for each fold's own
+            # 4096-row fit window. Capping once at the final decision silently
+            # shortens earlier fits. Keep a bounded assessment history separately;
+            # the runtime trainer below explicitly rejects it.
+            history_limit = max(8192, max_rows) if _assessment else max_rows
+            dataset = replace(dataset, X=dataset.X[-history_limit:], y=dataset.y[-history_limit:],
+                label_available_at=dataset.label_available_at[-history_limit:],
+                training_reference_at=dataset.reference_at[-history_limit:],
+                target_close_at=dataset.target_close_at[-history_limit:]) if _assessment else runtime_dataset
+        with dataset_phase("training_support"):
+            support = _training_support(runtime_dataset.y, runtime_dataset.reference_at, runtime_dataset.target_close_at,
+                runtime_dataset.label_available_at, cutoff=cutoff, support=support_contract, timing_mode=timing_mode,
+                calibration_fraction=calibration_fraction,
+                diagnostic_context={"symbol": dataset.inference.get("symbol"),
+                    "reference_at": instant(reference_at).isoformat(), "feature_shape": list(runtime_dataset.X.shape),
+                    "inference_shape": list(dataset.inference_X.shape), "input_training_rows": input_rows,
+                    "recipe_sha256": recipe["sha256"], "feature_version": dataset.manifest.get("feature_version"),
+                    "source_dataset": dataset.inference.get("source_dataset"),
+                    "source_history_sha256": _sha(dataset.manifest.get("source_history", {})),
+                    "lookback_days": lookback_days, "synthetic_policy": synthetic_policy})
         if context_contract is not None:
             from .market_collection import load_snapshots
             from .market_context import augment_dataset
             # A label becomes available after its decision. It must never be
             # used as the as-of join clock for that decision's features.
             earliest = min(decisions[instant(reference)] for reference in dataset.reference_at)
-            snapshots = load_snapshots(datastore, symbol=symbol, cutoff=cutoff, pc=pc,
-                since=earliest - pd.Timedelta(seconds=max(context_contract["max_receipt_age_seconds"].values())),
-                decision_cutoffs=[*(decisions[instant(reference)] for reference in dataset.reference_at), cutoff],
-                source_ids=context_contract["source_ids"], lazy=True)
-            dataset = augment_dataset(dataset, snapshots,
-                training_decision_at={reference: decisions[instant(reference)] for reference in dataset.reference_at},
-                inference_cutoff=cutoff, source_ids=context_contract["source_ids"],
-                contract=context_contract,
-                cache_path=Path(datastore) / "intraday" / pc.lower() / "market-data" / f"context-cache-{symbol}.sqlite3")
+            with dataset_phase("context_snapshot_load"):
+                snapshots = load_snapshots(datastore, symbol=symbol, cutoff=cutoff, pc=pc,
+                    since=earliest - pd.Timedelta(seconds=max(context_contract["max_receipt_age_seconds"].values())),
+                    decision_cutoffs=[*(decisions[instant(reference)] for reference in dataset.reference_at), cutoff],
+                    source_ids=context_contract["source_ids"], lazy=True)
+            with dataset_phase("context_augmentation"):
+                dataset = augment_dataset(dataset, snapshots,
+                    training_decision_at={reference: decisions[instant(reference)] for reference in dataset.reference_at},
+                    inference_cutoff=cutoff, source_ids=context_contract["source_ids"],
+                    contract=context_contract,
+                    cache_path=Path(datastore) / "intraday" / pc.lower() / "market-data" / f"context-cache-{symbol}.sqlite3")
             if tuple(dataset.feature_names) != expected_features:
                 raise ContractError("Market context feature order differs from the frozen local recipe")
         manifest = {**dataset.manifest, "manual_model_recipe": deepcopy(recipe),
