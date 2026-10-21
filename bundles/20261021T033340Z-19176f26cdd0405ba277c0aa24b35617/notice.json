@@ -1,0 +1,45 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T032931Z-7d04ba7438ba461eb838e159bf96b84a",
+  "change_id": "20261021T032931Z-7d04ba7438ba461eb838e159bf96b84a",
+  "commit_sha": "a1e2ff59799d08ada2ed1836b2574c5407f8a031",
+  "depends_on_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/296",
+  "files": [
+    {
+      "operation": "add",
+      "path": "app/ui/assets/ducketz/app.ico"
+    },
+    {
+      "operation": "modify",
+      "path": "app/ui/window_chrome.py"
+    },
+    {
+      "operation": "modify",
+      "path": "pyproject.toml"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_window_chrome.py"
+    }
+  ],
+  "limitations": [
+    "Windows Tk accepted the icon in a separate withdrawn-window fixture; all seven icon sizes were verified.",
+    "No operating application, provider or trader was started."
+  ],
+  "peer_applicability": "Shared app appearance applies to Atlas and Scout. Each PC retains its own desktop shortcut path and windowless runtime binding.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/297",
+  "remote_sha": "a1e2ff59799d08ada2ed1836b2574c5407f8a031",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source and desktop shortcut artwork updated locally. The app window uses the icon on its next manual open. Main integration and peer installation remain separate.",
+  "scope": "shared",
+  "summary": "Atlas completed the supplied-painting Ducketz app icon; tested dependent PR 297 is ready.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-21T03:32:58.597107Z",
+      "kind": "isolated offline window and synthetic launcher tests",
+      "output_sha256": "fc49eb64f86aa2bdc8f8990c6cfd7184aae2a0a1f43675b3b3358a2220675d97",
+      "result": "10 passed",
+      "started_at_utc": "2026-10-21T03:32:57.450128Z"
+    }
+  ]
+}

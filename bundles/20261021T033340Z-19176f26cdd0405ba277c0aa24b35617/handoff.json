@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T03:33:40.191656Z",
+  "id": "20261021T033340Z-19176f26cdd0405ba277c0aa24b35617",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas completed the supplied-painting Ducketz app icon; tested dependent PR 297 is ready."
+}
