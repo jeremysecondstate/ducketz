@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T22:47:14.839423Z",
+  "id": "20261021T224714Z-8de5a1b972b74933b8c5fbb0d029f024",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas restored eight inherited candle-close regressions with fixture-only corrections"
+}

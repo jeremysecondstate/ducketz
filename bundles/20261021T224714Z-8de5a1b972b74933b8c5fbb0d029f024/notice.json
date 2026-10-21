@@ -1,0 +1,38 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T224505Z-5202ba3dce3e4b2cbca79d97cb17c7c6",
+  "change_id": "20261021T224505Z-5202ba3dce3e4b2cbca79d97cb17c7c6",
+  "commit_sha": "4c3e2ecbebb71a76e806e21912c11e0609663f7f",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_candle_close.py",
+      "sha256": "59548cbc30ed95c0b580a25b3c7ff32da10e26504ba9b155275beadc076b8ccb"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_candle_close.py",
+      "sha256": "ca5bbfc281480e6c2380164eee1608644f8e9f3b8f9bebdfcc523702f753db0f"
+    }
+  ],
+  "limitations": [
+    "Synthetic temporary-datastore coverage does not establish live storage recovery.",
+    "Stacked on the reviewed storage repair source. Main integration and peer installation remain separate."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/324",
+    "https://github.com/jeremysecondstate/atlas-scout/issues/1#issuecomment-6328242266"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Exact two test files installed on Atlas. No runtime restart, manual-control change, provider call, order, model change, schedule change or nightly prerequisite.",
+  "scope": "Shared offline regression coverage independently applicable to both PCs; no application implementation change.",
+  "summary": "Atlas restored eight inherited candle-close regressions with fixture-only corrections",
+  "tests": {
+    "independent_review": "Whole diff and import closure clean",
+    "installed_Atlas": "28 passed in 2.17s",
+    "isolated_candidate": "28 passed",
+    "network": "denied",
+    "original_failure": "8 inherited fixture failures reproduced",
+    "sealed_source": "28 passed"
+  }
+}
