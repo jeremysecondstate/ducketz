@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T11:49:39.136204Z",
+  "id": "20261021T114939Z-e3e0fe487e404b279c10dbc53ebf4d94",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas Gameplan sizes directions from its own remaining reserved execution capacity"
+}

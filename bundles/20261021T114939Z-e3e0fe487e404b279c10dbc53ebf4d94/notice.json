@@ -1,0 +1,128 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T114445Z-5604031cd8e0497994784d9d29f02f11",
+  "change_id": "20261021T114445Z-5604031cd8e0497994784d9d29f02f11",
+  "commit_sha": "1ac52af46ca1ae6cbc0cb9a936f680968a354ca1",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/account_gameplan/authority.py",
+      "sha256": "41a1d79fcc293c6f3627fdd979d5ee53396c71456ede78899ad431c8b8836753"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/account_gameplan/execution.py",
+      "sha256": "9ef758fb0e477dd8cc4809a62293b4dd0ef6546b1ad1a4b7fb06325e79cdefb0"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_runtime.py",
+      "sha256": "c123c291a73dfa00520d3ab7c097afec04d4929c11d463afd0470f531118618e"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan_direction_engine.py",
+      "sha256": "a1d270033cc9133aa31f7092d34418acacfab1bd72229f8d10247e5eff81668b"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_direction_policy.py",
+      "sha256": "dd90c71de9a1165043f912b5d19c5b0eb5b445b74a397710238c3c16844015ff"
+    },
+    {
+      "operation": "add",
+      "path": "ml/gameplan_execution_policy.py",
+      "sha256": "0f64032d8c390fab3e0a457b83b2fdff7859bc4e98672c1526ff9d71f06aa567"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_authority_capacity.py",
+      "sha256": "8b4f1c2f879f11a966cb8eae906db0f2c808238cf7f4b622ed949e2f6dbcb21a"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_gameplan_authority_capacity.py",
+      "sha256": "0e11bf1844b761e77a59501fa282ecbf27d5b03cae1b82d78fec8407b80e487b"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_gameplan_session.py",
+      "sha256": "617b316208b41a667fe635eef8b6cfbb0cfef4af25374feb3164784a958b6273"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/sizing_policy.py",
+      "sha256": "62e88ef30a3a8a8d27281a82f36ef99f76acbedab9e567754a60b3948d9302fc"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan_execution.py",
+      "sha256": "c8ffec40e25612499720b3437af4bbda867cd77108f1b63d126478fe2957dc64"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/fixed_horizon_budget.py",
+      "sha256": "18c3a97743ce5452bb781a241ddf97609783a1a19249b2885fb70ce6f1870043"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_oct19_direction_execution.py",
+      "sha256": "433004693b86fe709e4567e177ee888f26ea80a46ba59ebdd6a414431b4af395"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/horizon_ledger.py",
+      "sha256": "16f45f796cb23a6ca440e2e1a22feccb6ac97d8471010ad717b7c3d30d0136e3"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_account_gameplan_authority.py",
+      "sha256": "2dcec6b1dccd15fe1849c15a386d3f28a28da11edfd9891644d31635db6ff80f"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_direction_engine.py",
+      "sha256": "f01808bc9e97b2eaaa43bf7770c6aac4225b049f033697753169a017d5e13be7"
+    },
+    {
+      "operation": "modify",
+      "path": "app/ui/gameplan_data.py",
+      "sha256": "7818155f78ff1110a3dc8dc15504937c501f56ebabe2ada8a3d09897626ed640"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/joint_capital_adoption.py",
+      "sha256": "660040933b7d88593c3ab0c25e4ee14824c92435e7b1657b0428214112e1a3cd"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/joint_capital_plan.py",
+      "sha256": "d619b520f3b0e0a3b870ae80bb82b354574b70bf6e9d4527c03b379c59895028"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/joint_capital_handoff.py",
+      "sha256": "e6a8fff9ed3789b3ebbb72fb1735219d8dd10f6c26127d1782fc71dd875eb332"
+    }
+  ],
+  "limitations": [
+    "Draft stack on existing reviewed independent-trader Gameplan base; main integration and peer installation are separate facts.",
+    "Offline checks establish execution-capacity accounting and preserve final atomic reservation; no live affected-path exercise or new fill is claimed.",
+    "Public fixtures are synthetic; original operating evidence remains private."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/303"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Exact reviewed source installed on Atlas. Current Gameplan worker predates this repair; Jeremy alone chooses its next manual start. No automatic control, manual-stop change, replay, test order, schedule change or nightly prerequisite.",
+  "scope": "Shared Gameplan execution and current direction-only readers; local symbols, models, bindings, tasks and independent traders preserved.",
+  "summary": "Atlas Gameplan sizes directions from its own remaining reserved execution capacity",
+  "tests": {
+    "installed_Atlas": "262 passed, 4 deselected in 23.05s",
+    "installed_fingerprints": 106,
+    "isolated_candidate": "262 passed;4original calendar-fixture cases deselected",
+    "network": "denied",
+    "sealed_source": "262 passed;4original calendar-fixture cases deselected",
+    "source_fingerprints": 115
+  }
+}
