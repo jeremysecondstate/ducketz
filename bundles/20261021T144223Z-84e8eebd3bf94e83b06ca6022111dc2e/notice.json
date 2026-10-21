@@ -1,0 +1,44 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T143123Z-8cba7f44499c4a5ea1e6d3abbd6eb4c9",
+  "change_id": "20261021T143123Z-8cba7f44499c4a5ea1e6d3abbd6eb4c9",
+  "commit_sha": "e3a56edb65bdfbe31aeac8d439fbeb983b61c340",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/coverage.py",
+      "sha256": "2a249d2caa57026e12ff7933f453bbf50aa3612612af63fd623d62a9a24f5bd3"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_source_alignment.py",
+      "sha256": "6c858c5dd2f7199f1259eb816b984f909cbb62d665798362c6d52a1e1f2cd9b2"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_source_alignment.py",
+      "sha256": "4b2deb9de336c1c2a24617a8f1b3afb58a1f5b0ea2f352a6acfbdc29f7ebdca5"
+    }
+  ],
+  "limitations": [
+    "Bounded optimization does not establish complete original preparation-delay cause.",
+    "Draft stacks on PR307; main integration and peer installation remain separate facts.",
+    "Existing manual Atlas worker predates installation; loaded and affected live behavior are unproven.",
+    "Private original inputs, operating state, models and detailed performance evidence remain local."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/308"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Exact reviewed source installed locally; next ordinary human manual start loads it. No immediate restart, trader control, order or expired replay. No nightly prerequisite or peer acknowledgment round.",
+  "scope": "Shared source-evidence validation optimization for independent local traders; preserve local model policies, symbols, targets, probabilities and manual controls.",
+  "summary": "Atlas native-source timestamp validation reuses fixed pandas offsets with exact evidence guards retained",
+  "tests": {
+    "actual_installed_Atlas": "179 passed in 6.68s",
+    "isolated_candidate": "122 passed",
+    "network": "denied",
+    "new_regressions": 39,
+    "original_source": "3 intended operation-count failures; 36 passes",
+    "sealed_source": "122 passed"
+  }
+}

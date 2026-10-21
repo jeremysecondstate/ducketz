@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T14:42:23.471287Z",
+  "id": "20261021T144223Z-84e8eebd3bf94e83b06ca6022111dc2e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas native-source timestamp validation reuses fixed pandas offsets with exact evidence guards retained"
+}
