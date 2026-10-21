@@ -1,0 +1,110 @@
+{
+  "author": "Scout",
+  "base_commit": "50a1fc1d4bc063730134792fbf450c5a04ace18d",
+  "branch": "codex/scout/20261021T212611Z-2a59a5d50ce5473590b6baddc94205b1",
+  "change_details": [
+    "Scout order recovery now reads only immutable forecasts referenced by its local order journals, using the existing primary-key index.",
+    "Selected originals retain payload-hash and indexed-identity validation before Scout scope filtering. Reuse lasts only for one recovery pass; the next pass validates the original again.",
+    "Original intention checks, known-order handling, UNKNOWN identities, permanent send fences and manual trader controls are preserved.",
+    "This source change contains no model selection, calibration, probability-cutoff, sizing-policy or operating-configuration changes."
+  ],
+  "change_id": "20261021T212611Z-2a59a5d50ce5473590b6baddc94205b1",
+  "commit_sha": "7bdde11fd2ee09d8705c14800c58fec04e7173ec",
+  "dependency_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/286",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/store.py",
+      "sha256": "c4f8a3e3fc48370e5fa42aaa0a60018f15f41ba37a2012b93ce983bada837ddf"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/scout_local_execution.py",
+      "sha256": "2a668d62d060ece7ba3992e2843ddf6e67ef70961d13990936509da69611b512"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_forecast_lookup.py",
+      "sha256": "e113cf4995577b7088316cd433062d5abeeedf09dc5bda6c2a295fca2e473b4d"
+    }
+  ],
+  "limitations": [
+    "Counts from author, publication and installed-runtime stages overlap. They are not independent additional coverage.",
+    "An unchanged legacy exclusive-lock test expects one read while the reviewed base performs eight bounded retries. Its failure was reproduced on the clean reviewed base and retained separately; its file is excluded from the scoped passing source suite.",
+    "The first publication attempt omitted two technicals imports from its declared dependency closure. The completed record includes them and passed isolated verification against 841 source files.",
+    "Scout has manually loaded the installed repair. This confirms code loading; affected recovery behavior and full-cycle latency remain unconfirmed by operation-specific runtime evidence.",
+    "Main preparation is blocked because origin/main does not descend from the reviewed source base. Resume this same Completion-Record after the PR 286 dependency is integrated; do not create a replacement completion identity.",
+    "Private account state, original operating records, credentials, source datasets and fitted outputs are excluded from this notice."
+  ],
+  "main_integration": {
+    "dependency_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/286",
+    "peer_installation": "not established",
+    "reason": "origin/main does not descend from reviewed source base",
+    "resume_completion_record": "20261021T212611Z-2a59a5d50ce5473590b6baddc94205b1",
+    "source_publication": "remote SHA verified",
+    "status": "blocked"
+  },
+  "peer_applicability": "The common storage lookup and Scout local executor repair are shareable. Each PC retains its local operating configuration. Source publication does not establish peer installation or main integration.",
+  "pull_request_base_branch": "codex/scout/20261020T202048Z-e38449b43e99474fa748081beae95e9e",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/319",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout completed a manual reload of this repair; no additional restart is required for this change. Imported store and executor code use the reviewed exact-ID recovery behavior. Starts and restarts remain manually controlled. Runtime recovery and full-cycle latency remain under observation.",
+  "scope": "shared",
+  "summary": "Scout journal-scoped immutable forecast recovery repair published and locally loaded",
+  "tests": [
+    {
+      "bound_imports": 94,
+      "bound_source_files": 841,
+      "checks_passed": 685,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_forecast_lookup.py",
+        "tests/test_intraday_store.py",
+        "tests/test_intraday_intentions.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_local_start.py",
+        "tests/test_intraday_native_recovery.py",
+        "tests/test_intraday_commitment_clearance.py",
+        "tests/test_intraday_pretransport_clearance.py",
+        "tests/test_intraday_initial_gate_clearance.py",
+        "tests/test_intraday_closed_window_clearance.py",
+        "tests/test_intraday_recovery_clocks.py",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "import_evidence_sha256": "45aa3497c16bdb456ab066887acdf81b69f67e8e456b219fbb179df07a6b2a8c",
+      "network_connections": "disabled",
+      "output_sha256": "744284878b297540801734d089032801ecab0c3aa3568035744d47650d851470",
+      "stage": "publication_candidate"
+    },
+    {
+      "bound_source_files": 464,
+      "check_results": [
+        693,
+        69
+      ],
+      "checks_passed": 762,
+      "import_validation": "passed",
+      "network_connections": "disabled",
+      "output_sha256": [
+        "9b6e5352a2118191b3a1fa7fb3e2f02c817d4b11a1e563a4ae74389ab22c7b34",
+        "8832e3544ff6266236f6003b65c30a61968a4e426baf8987875fbc6dcc96238c"
+      ],
+      "stage": "combined_local_runtime"
+    },
+    {
+      "bound_imports": 24,
+      "network_attempts": 0,
+      "passed": true,
+      "stage": "offline_launcher_check",
+      "trader_started_by_check": false
+    }
+  ],
+  "verified_remote_sha": "7bdde11fd2ee09d8705c14800c58fec04e7173ec"
+}

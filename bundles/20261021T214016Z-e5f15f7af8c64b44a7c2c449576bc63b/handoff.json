@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T21:40:16.129685Z",
+  "id": "20261021T214016Z-e5f15f7af8c64b44a7c2c449576bc63b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout journal-scoped immutable forecast recovery repair published and locally loaded"
+}
