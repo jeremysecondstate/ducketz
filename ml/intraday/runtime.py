@@ -536,7 +536,10 @@ class ShadowRunner:
                         "max_training_rows": tail, "model_selection_id": entry["selection_id"]}
                     snapshot["model_selection"].update(selection="selected_manifest", selection_id=entry["selection_id"])
             # Retain the actual observations used, rather than only transformed features.
-            frame=_frame(history)
+            # History provenance stays in the manifests. Pandas otherwise copies
+            # bulky attrs into every column and slice during this projection.
+            frame=_frame(history).copy(deep=False)
+            frame.attrs={}
             available=pd.to_datetime(frame.available_at,utc=True)
             used=frame.loc[available.le(pd.Timestamp(cutoff)) & pd.to_datetime(frame.opened_at,utc=True).le(pd.Timestamp(reference))]
             snapshot["candles"]=_jsonable(used.to_dict("records"))
