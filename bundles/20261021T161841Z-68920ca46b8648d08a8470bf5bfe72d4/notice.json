@@ -1,0 +1,60 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T160515Z-a954cf4cfce84361b9136e57c204af22",
+  "change_id": "20261021T160515Z-a954cf4cfce84361b9136e57c204af22",
+  "commit_sha": "ed43d628f8c13a6cd16e4384d73531c2482cc40d",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/account_execution.py",
+      "sha256": "8e35c053eabe922d801aa141df64a028b864b8cdddd4be1e1fdb8cf8c909b58a"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py",
+      "sha256": "5ca7e34ace918733771ff8f9470740b1a1dc0944d8721dee57108c0d1e5eb6c6"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_operation_diagnostics.py",
+      "sha256": "cf085c8a692ff85db86709e3b6f18755d7157d568f34f2054d80866864258ce6"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_operation_diagnostics.py",
+      "sha256": "272059e8b063bce841671882b4d6899f7fb259536705f4e61ad8d79c06334085"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_sqlite_diagnostics.py",
+      "sha256": "c429370b79a8418666a64102908bb04406739b974445d70948f0e3ffe3aa1fec"
+    }
+  ],
+  "limitations": [
+    "Source and owned changes installed on Atlas; main integration, peer installation and loaded runtime remain separate facts.",
+    "The running trader was not restarted, hotpatched, started or traded to demonstrate recovery. A normal operation return never proves historical order acceptance.",
+    "Existing sizing-unavailable telemetry is unchanged; the new normal operation event alone uses the optional zero-busy-timeout sink.",
+    "A separately diagnosed implicit sizing projection identity defect remains independent work; this timing repair does not resolve it. No private operating evidence is published."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/311",
+    "https://github.com/jeremysecondstate/ducketz/pull/307"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Exact reviewed owned changes installed while preserving newer local session code; all trader controls, state and existing nightly operation remain independent. Human manual starts remain unchanged.",
+  "scope": "Shared diagnostic correctness for each independent fifteen-minute trader; retain local symbols, models, account bindings and manual controls. Stack on exact source2d026d75 and preserve parent publication ancestry.",
+  "summary": "Atlas independent fifteen-minute normal operation diagnostics retain bounded phase timings after cleanup",
+  "tests": {
+    "actual_installed_Atlas": "153passed60.69s;117actualimportfingerprints exact",
+    "excluded_cases": 0,
+    "isolated_candidate": "153passed;130sealedfingerprints",
+    "normal_operation_cases": 19,
+    "reviewed": "153passed38.94s;networkdenied",
+    "sealed_source": "153passed;130sealedfingerprints"
+  }
+}
