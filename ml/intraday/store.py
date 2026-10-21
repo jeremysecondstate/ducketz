@@ -369,3 +369,80 @@ class ShadowStore:
     def revisions(self, forecast_id):
         with self.connect() as db:
             return [self._outcome_value(row) for row in db.execute("SELECT id,forecast_id,observed_at,payload FROM outcomes WHERE forecast_id=? ORDER BY rowid", (forecast_id,))]
+
+
+class ScoringForecastReader:
+    """Keep bounded, verified routing projections for one scoring worker.
+
+    Forecast model evidence can be megabytes per row. Polls reread the small
+    indexed identities in original row order, not every model payload. New or
+    changed identities are fully validated before projection. The cache retains
+    immutable serialized projections only; originals are reloaded and validated
+    again immediately before a scoring mutation. This is not an all-history
+    payload-corruption audit on every poll.
+    """
+
+    MAX_ENTRIES = 4096
+    MAX_BYTES = 16 * 1024 * 1024
+    _FIELDS = ("forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at",
+               "mode", "target_open", "target_close", "reference_open", "source_dataset",
+               "source_id", "feature_version", "native_interval_contract")
+
+    def __init__(self, store, *, pc):
+        if pc not in {"Atlas", "Scout"}:
+            raise ContractError("Explicit scoring participant required")
+        self.store, self.pc = store, pc
+        self._cache = {}
+        self._cache_bytes = 0
+
+    @classmethod
+    def _projection(cls, forecast):
+        value = {key: forecast[key] for key in cls._FIELDS if key in forecast}
+        # These are the only nested fields read by interval matching and outcome
+        # classification. Never retain the model's full dataset manifest.
+        for name, field in (("dataset_manifest", "native_interval_contract"),
+                            ("reference_provenance", "forward_fill_contract")):
+            if name in forecast:
+                nested = forecast[name]
+                value[name] = ({field: nested[field]} if field in nested else {}) if isinstance(nested, dict) else nested
+        return encoded(value)
+
+    def _discard(self, identity):
+        old = self._cache.pop(identity, None)
+        if old is not None:
+            self._cache_bytes -= old[2]
+
+    def __iter__(self):
+        with self.store.connect() as db:
+            rows = db.execute("SELECT rowid,id,pc,symbol,cycle_id,reference_at,issued_at "
+                              "FROM forecasts WHERE pc=? ORDER BY rowid", (self.pc,)).fetchall()
+        present = {row[1] for row in rows}
+        for identity in self._cache.keys() - present:
+            self._discard(identity)
+        for row in rows:
+            identity = row[1]
+            cached = self._cache.get(identity)
+            if cached is None or cached[0] != row:
+                self._discard(identity)
+                original = self.store.forecast_by_id(identity, pc=self.pc)
+                if original is None or any(original.get(field) != indexed for field, indexed in
+                        zip(("forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at"), row[1:])):
+                    raise ContractError("Scoring forecast identity changed during selection")
+                projection = self._projection(original)
+                del original
+                size = len(projection.encode("utf-8"))
+                if len(self._cache) < self.MAX_ENTRIES and self._cache_bytes + size <= self.MAX_BYTES:
+                    self._cache[identity] = (row, projection, size)
+                    self._cache_bytes += size
+            else:
+                projection = cached[1]
+            # A consumer cannot mutate the cached projection or retain a large
+            # original through a projection's nested dictionaries.
+            yield json.loads(projection)
+
+    def original(self, projection):
+        """Validate the complete original and its routing before every write."""
+        original = self.store.forecast_by_id(projection["forecast_id"], pc=self.pc)
+        if original is None or self._projection(original) != encoded(projection):
+            raise ContractError("Scoring forecast changed before outcome mutation")
+        return original
