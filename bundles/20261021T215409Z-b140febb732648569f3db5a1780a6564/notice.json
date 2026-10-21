@@ -1,0 +1,122 @@
+{
+  "author": "Scout",
+  "base_commit": "7bdde11fd2ee09d8705c14800c58fec04e7173ec",
+  "branch": "codex/scout/20261021T214739Z-6e468cbfd8e349fd9ba26d4c5ff776fc",
+  "change_details": [
+    "Ordinary Scout order-recovery projections now require and fully validate the original immutable sizing intention once inside the existing projection transaction, avoiding the redundant outer validation read.",
+    "The required original forecast and intention are checked before either insertion or an idempotent return. Missing or corrupt originals still fail.",
+    "Clearance-only recovery still performs one full original-intention validation because it does not write a projection transaction. Pure saved-clearance proof reads now precede that check.",
+    "Pre-sizing rejection, failed sizing and HOLD recording keep their existing optional-original behavior. Original sizing, UNKNOWN identities, permanent send fences and manual trader controls are preserved.",
+    "The prior journal-scoped exact-ID forecast lookup is retained as the reviewed source dependency. No model-selection, calibration, probability-cutoff, sizing-policy or operating-configuration changes are included."
+  ],
+  "change_id": "20261021T214739Z-6e468cbfd8e349fd9ba26d4c5ff776fc",
+  "commit_sha": "4cea98568ba72584904016ce5b64e6f2cabfc037",
+  "dependency_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/319",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/intentions.py",
+      "sha256": "6c10bde2c7d3bdae6e30862a6691bb0da23aab083c7e5eb7bbdf529bc0a4162e"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/scout_local_execution.py",
+      "sha256": "3c1eecc408c43243b827f2eb8c87a7628095eca6f715d84ad6a0c7d170849c0a"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_forecast_lookup.py",
+      "sha256": "66e3a33f50c7636eeb93fd97e66f80bf10b180722720054cbaa8b085970395c1"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_recovery_intentions.py",
+      "sha256": "67395e9834beb15fff0a93568c545de2079c246be4c5fae1927da783d005250c"
+    }
+  ],
+  "limitations": [
+    "Author, source-queue, candidate and combined-runtime stage counts overlap and are not independent additional coverage.",
+    "The targeted suite covers actual projection transactions, missing and corrupt original evidence, idempotent returns, per-pass validation counts, optional pre-sizing dispositions, UNKNOWN preservation and representative clearance/cancellation paths. It does not claim a rerun of every unchanged proof permutation.",
+    "An unchanged legacy exclusive-lock test expects one read while the reviewed base performs eight bounded retries. Its clean-base failure remains preserved separately and its file is excluded from the scoped passing source suite.",
+    "Installation at 2026-10-21T21:49:54.912433+00:00 preserved all 461 unowned files and prior private intention behavior through an exact hunk and inverse proof. Installation does not establish loaded runtime behavior or full-cycle latency recovery.",
+    "The most recent reviewed runtime evidence still uses the earlier repair. This installed follow-on awaits a manual reload and operation-specific recovery observation.",
+    "Main preparation is blocked because origin/main does not descend from the reviewed source base. Resume this same Completion-Record after the PR 319 dependency is integrated; do not create a replacement completion identity.",
+    "Private account state, symbol lists, credentials, source datasets, fitted outputs and original operating logs are excluded from this notice."
+  ],
+  "main_integration": {
+    "dependency_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/319",
+    "peer_installation": "not established",
+    "reason": "origin/main does not descend from reviewed source base",
+    "resume_completion_record": "20261021T214739Z-6e468cbfd8e349fd9ba26d4c5ff776fc",
+    "source_publication": "remote SHA verified",
+    "status": "blocked"
+  },
+  "peer_applicability": "The common intention recorder and Scout local executor changes are shareable source. Each PC retains its local operating configuration. Source publication does not establish peer installation or main integration.",
+  "pull_request_base_branch": "codex/scout/20261021T212611Z-2a59a5d50ce5473590b6baddc94205b1",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/320",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Manual trader restart required — Scout’s 15-minute trader. The intention recorder and executor are startup imports; the existing running session cannot load this installed follow-on without a manual reload. Starts and restarts remain manually controlled. Offline checks passed; loaded behavior and affected runtime recovery remain pending.",
+  "scope": "shared",
+  "summary": "Scout original-intention recovery validation repaired, published and installed",
+  "tests": [
+    {
+      "bound_imports": 95,
+      "bound_source_files": 842,
+      "checks_passed": 176,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_recovery_intentions.py",
+        "tests/test_intraday_forecast_lookup.py",
+        "tests/test_intraday_store.py",
+        "tests/test_intraday_intentions.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_local_start.py",
+        "tests/test_intraday_native_recovery.py",
+        "tests/test_intraday_recovery_clocks.py",
+        "tests/test_intraday_initial_gate_clearance.py::test_native_before_post_expiry_has_exact_proof_and_never_replays",
+        "tests/test_intraday_initial_gate_clearance.py::test_outer_gate_expiry_has_durable_clearance_without_rearming_original",
+        "tests/test_intraday_initial_gate_clearance.py::test_clearance_keeps_new_forecast_manual_and_target_guards",
+        "tests/test_intraday_pretransport_clearance.py::test_recover_retains_unknown_without_inventing_or_appending_execution_history",
+        "tests/test_intraday_pretransport_clearance.py::test_distinct_new_forecast_uses_fresh_capacity_and_original_never_replays",
+        "tests/test_intraday_commitment_clearance.py::test_later_exact_acceptance_uses_ordinary_status_recovery_without_replaying",
+        "tests/test_intraday_closed_window_clearance.py::test_closed_window_proof_is_durable_without_rewriting_unknown_or_rearming",
+        "tests/test_intraday_scout_cancellation_final_expiry.py::test_prior_manual_sessions_native_unsent_proof_preserves_known_order_identity",
+        "tests/test_intraday_scout_cancellation_final_expiry.py::test_valid_native_cancellation_remains_single_send",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "import_evidence_sha256": "de8fed5044056c4d3deb6fcf6cdf5d851b4919e6e9e5e067b303eb4f900567f8",
+      "network_connections": "disabled",
+      "output_sha256": "326e3e37c8152079973817cc7c64db6ca4a4011a44a5aaacc5b2b0c01d71578b",
+      "stage": "publication_candidate"
+    },
+    {
+      "bound_source_files": 465,
+      "check_results": [
+        184,
+        69
+      ],
+      "checks_passed": 253,
+      "import_validation": "passed",
+      "network_connections": "disabled",
+      "output_sha256": [
+        "a445209fc06f60e9ba33d5d9dcb7cca1c59b201c245348dbd3dd02bef49b0015",
+        "b89ce86722926d0f064f1baf785d11249ec9cb64691b2d78406c669823d36585"
+      ],
+      "stage": "combined_local_runtime"
+    },
+    {
+      "bound_imports": 24,
+      "network_attempts": 0,
+      "passed": true,
+      "stage": "offline_launcher_check",
+      "trader_started_by_check": false
+    }
+  ],
+  "verified_remote_sha": "4cea98568ba72584904016ce5b64e6f2cabfc037"
+}

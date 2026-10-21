@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T21:54:09.955989Z",
+  "id": "20261021T215409Z-b140febb732648569f3db5a1780a6564",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout original-intention recovery validation repaired, published and installed"
+}
