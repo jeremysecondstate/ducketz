@@ -1,0 +1,46 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T043850Z-05c285336a6d4cc998c7d41371268af8",
+  "change_id": "20261021T043850Z-05c285336a6d4cc998c7d41371268af8",
+  "commit_sha": "f25ba1b80c07978f1d5181e68f6c8b5ed4741dbf",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "datafetching/databento_fetch.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_inline_cme_discovery_retry.py"
+    }
+  ],
+  "limitations": [
+    "Offline fixtures; current gateway error remains a real saved failure until ordinary nightly continuation succeeds.",
+    "Existing worker continues its current work with loaded source; no provider request or restart was used as verification."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/298"
+  ],
+  "main_sha": "95fcaa56f01854446cae3bf0237e3efcae719e06",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Future imports use the existing persistent retry policy for CME endpoint discovery. Preserve local models, independent trader state and manual controls.",
+  "scope": "shared",
+  "summary": "Atlas repaired inline CME discovery retry; exact source installed and published",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-21T04:39:05.455162Z",
+      "output_sha256": "bb81991a160ddf29a61de5812f2db646e4b67a23a66ebc6b33cfeb5ef4651892",
+      "result": "160 passed; no skips or network/import violations",
+      "stage": "sealed",
+      "started_at_utc": "2026-10-21T04:38:50.096867Z"
+    },
+    {
+      "completed_at_utc": "2026-10-21T04:39:58.634190Z",
+      "output_sha256": "77b45c13d6372e8f31461818e1ab1c94e54e7b4e0f716dfae614566c83d646e0",
+      "result": "160 passed; no skips or network/import violations",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-21T04:39:43.073414Z"
+    }
+  ]
+}

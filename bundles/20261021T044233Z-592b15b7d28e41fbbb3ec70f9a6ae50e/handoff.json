@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T04:42:33.450870Z",
+  "id": "20261021T044233Z-592b15b7d28e41fbbb3ec70f9a6ae50e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas repaired inline CME discovery retry; exact source installed and published"
+}
