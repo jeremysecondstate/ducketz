@@ -46,13 +46,31 @@ class IntentionStore:
                                           (forecast_id,)).fetchone())
 
     def processed_at_or_after(self, forecast):
-        """Valid sized intentions fence chronology even when no order was possible."""
+        """Saved sized intentions fence chronology even when no order was possible.
+
+        Read only this scope's possible fencing originals, rather than decoding
+        every historical model payload. As with the store's scoped readers,
+        integrity validation applies to selected originals, not unrelated rows.
+        """
+        reference = instant(forecast["reference_at"])
         with self.store.connect() as db:
-            ids = {row[0] for row in db.execute("SELECT forecast_id FROM intraday_intentions")}
-        return [f["forecast_id"] for f in self.store.forecasts(pc=forecast["pc"])
-                if f["forecast_id"] in ids and f["forecast_id"] != forecast["forecast_id"]
-                and f["symbol"] == forecast["symbol"] and f["mode"] == "live"
-                and instant(f["reference_at"]) >= instant(forecast["reference_at"])]
+            # SQLite compares offsets correctly. The one-second margin keeps
+            # this a conservative prefilter despite julianday's finite precision;
+            # exact Python instants below decide the inclusive chronology fence.
+            rows = db.execute(
+                "SELECT f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,f.payload "
+                "FROM forecasts f JOIN intraday_intentions i ON i.forecast_id=f.id "
+                "WHERE f.pc=? AND f.symbol=? "
+                "AND julianday(f.reference_at)>=julianday(?)-1.0/86400 "
+                "ORDER BY f.rowid",
+                (forecast["pc"], forecast["symbol"], forecast["reference_at"]))
+            result = []
+            for row in rows:
+                f = self.store._forecast_value(row)
+                if (f["forecast_id"] != forecast["forecast_id"] and f["mode"] == "live"
+                        and instant(f["reference_at"]) >= reference):
+                    result.append(f["forecast_id"])
+        return result
 
     def save_sizing(self, forecast, result):
         value = result.payload()
