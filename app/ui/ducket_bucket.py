@@ -23,6 +23,7 @@ from app.ui.gameplan_stats import GameplanStatsTab
 from app.ui.gameplan import GameplanTab
 from app.ui.intraday import IntradayTab
 from app.ui.schwab_duckets import SchwabDucketsTab
+from app.ui.window_chrome import theme_title_bar
 from app.ui.theme import (
     ACCENT,
     BACKGROUND,
@@ -347,6 +348,7 @@ class DucketBucketApp:
         self.root.title("Duckets")
         self.root.geometry("1180x760")
         self.root.configure(background=BACKGROUND)
+        theme_title_bar(self.root)
         self._apply_theme()
 
         self._build_layout()
