@@ -90,9 +90,14 @@ def recovery_fixture(store, forecast_id, *, copies=1, clearance=None, intention=
         return record
     executor._recover_record = recover_record
     executor._commitment_clearance = lambda actual_journal, record: clearance
-    executor._project = lambda actual_journal, record, saved, disposition: dict(
-        forecast_id=saved["forecast_id"], disposition=disposition, state=record["state"],
-        send_token=record["send_token"])
+    def project(actual_journal, record, saved, disposition):
+        # This orchestration double retains the required-original contract.
+        # Real projection transaction validation is covered separately.
+        if not intention:
+            raise ContractError("Local order lacks its original immutable intention")
+        return dict(forecast_id=saved["forecast_id"], disposition=disposition,
+                    state=record["state"], send_token=record["send_token"])
+    executor._project = project
     return SimpleNamespace(executor=executor, records=records, original=original, events=events)
 
 

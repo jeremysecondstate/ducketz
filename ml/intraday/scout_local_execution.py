@@ -142,11 +142,13 @@ class ScoutLocalAccountExecutor:
             saved = self.books.save_receipt(kind='local-preflight', request_id=self.session_id, payload=proof)
             return dict(mode=MODE, session_id=self.session_id, ready=True, local_proof=proof, local_receipt=saved)
 
-    def _record(self, forecast, disposition, *, evidence=None, capacity=None, order=None):
+    def _record(self, forecast, disposition, *, evidence=None, capacity=None, order=None,
+                require_original_intention=False):
         evidence = dict(mode=MODE, **(evidence or {'reason': disposition}))
         key = digest([disposition, evidence, capacity.payload() if capacity else None, asdict(order) if order else None])
+        required = {'require_original_intention': True} if require_original_intention else {}
         return self.intents.record(forecast, event_key=key, recorded_at=self.clock(), disposition=disposition,
-            evidence=evidence, kind='execution_disposition', capacity=capacity, order=order)
+            evidence=evidence, kind='execution_disposition', capacity=capacity, order=order, **required)
 
     def _adapter(self, journal, record, broker=None):
         return ScoutBrokerAdapter(broker or self.broker, journal,
@@ -178,7 +180,7 @@ class ScoutLocalAccountExecutor:
     def _project(self, journal, record, forecast, disposition):
         order = self._order(journal, record)
         lifecycle = journal.order_state(record['request']['request_id'])
-        return self._record(forecast, disposition, order=order,
+        return self._record(forecast, disposition, order=order, require_original_intention=True,
             evidence=dict(request_id=record['request']['request_id'], local_state=record['state'],
                           order_evidence=lifecycle['evidence']))
 
@@ -212,11 +214,16 @@ class ScoutLocalAccountExecutor:
                     # Reject changed original bytes before recovery can revoke
                     # a pending attempt or request broker status for this row.
                     record = self._recover_record(journal, old)
-                    if forecast is None or self.intents.get(forecast['forecast_id']) is None:
+                    if forecast is None:
                         raise ContractError('Local order lacks its original immutable intention')
                     clearance = (self._commitment_clearance(journal, record)
                                  if record['state'] == 'UNKNOWN' else None)
                     if clearance:
+                        # Clearances return without a projection transaction.
+                        # Its pure proof reads precede this validation; ordinary
+                        # projections validate once inside IntentionStore.record.
+                        if self.intents.get(forecast['forecast_id']) is None:
+                            raise ContractError('Local order lacks its original immutable intention')
                         # The receipt is durable. Do not append a historical
                         # intention with invented zero fills or acceptance.
                         results.append(dict(disposition=('historical_submission_unknown_no_transport_commitment'

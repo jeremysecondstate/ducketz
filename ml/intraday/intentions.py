@@ -84,7 +84,7 @@ class IntentionStore:
         return payload
 
     def record(self, forecast, *, event_key, recorded_at, disposition, evidence, kind,
-               capacity=None, order=None):
+               capacity=None, order=None, require_original_intention=False):
         """Append one idempotent projection; execution counts require exact evidence.
 
         ``order`` is a native ledger ReservationState with complete identified
@@ -100,6 +100,8 @@ class IntentionStore:
             self._forecast(db, forecast)
             intention = self._value(db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
                                                (forecast["forecast_id"],)).fetchone())
+            if require_original_intention and intention is None:
+                raise ContractError("Local order lacks its original immutable intention")
             desired = intention["desired_quantity"] if intention else None
             side = "BUY" if float(forecast["probability_not_down"]) >= .5 else "SELL"
             value = dict(version=VERSION, forecast_id=forecast["forecast_id"], symbol=forecast["symbol"],
