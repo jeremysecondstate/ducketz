@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T22:21:24.461009Z",
+  "id": "20261021T222124Z-825a95ca760d4468a5a22b3b7c8870d6",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scope sized-intention chronology lookup without decoding unrelated forecast history"
+}

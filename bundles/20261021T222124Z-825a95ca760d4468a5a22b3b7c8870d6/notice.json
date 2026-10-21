@@ -1,0 +1,106 @@
+{
+  "author": "Scout",
+  "base_commit": "4cea98568ba72584904016ce5b64e6f2cabfc037",
+  "branch": "codex/scout/20261021T221438Z-2f46c9f9f59d406b81dc25405663d730",
+  "change_details": [
+    "Replace all-history forecast decoding with a sized-intention join scoped to PC, symbol and a conservative time bound.",
+    "Validate each selected original forecast hash and all indexed identities, then compare exact parsed timestamps for the inclusive chronology fence.",
+    "Retain original row order, live-only decisions and current-forecast exclusion. Unrelated out-of-scope rows are not audited by this scoped reader.",
+    "Preserve prior intention and recovery behavior, permanent send fences, original sizing, manual controls and each PC local model recipe."
+  ],
+  "change_id": "20261021T221438Z-2f46c9f9f59d406b81dc25405663d730",
+  "commit_sha": "00c5e099664eb41a1c5240a33162d0dea5fdd12b",
+  "dependency_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/320",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/intentions.py",
+      "sha256": "13218905691fa52bbf7428fb60cc5d9d097d3dea582f65de482591d1fd6d4f8c"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_intention_chronology.py",
+      "sha256": "e75b061772e30c91dc7ab0d83ab9151075e9e490cbbf369f8788029d8cbe641c"
+    }
+  ],
+  "limitations": [
+    "Stage counts overlap; they are not unique additional coverage.",
+    "One inherited exclusive-lock test expects one connection while the reviewed source retries eight times. Its same-base failure is retained and the passing source suite deselects only that node.",
+    "The chronology reader validates selected originals; unrelated or indexed-out-of-scope rows are not audited by this operation.",
+    "Local installation preserves all prior private intention bytes outside the exact chronology method and all other runtime source files.",
+    "Offline checks do not establish loaded runtime or full-cycle and dataset latency recovery.",
+    "Main preparation is blocked because main does not descend from the reviewed parent source. Resume the same Completion-Record after the parent is integrated.",
+    "Private account state, credentials, raw datasets, fitted models, local recipe identities and original operating logs are excluded."
+  ],
+  "main_integration": {
+    "dependency_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/320",
+    "peer_installation": "not established",
+    "reason": "origin/main does not descend from reviewed source base",
+    "resume_completion_record": "20261021T221438Z-2f46c9f9f59d406b81dc25405663d730",
+    "source_publication": "remote SHA verified",
+    "status": "blocked"
+  },
+  "peer_applicability": "Shared intention-store processing repair applies to either PC. Preserve each PC local recipes, symbols, source data and operating bindings. Peer installation is not established.",
+  "pull_request_base_branch": "codex/scout/20261021T214739Z-6e468cbfd8e349fd9ba26d4c5ff776fc",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/322",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The intention store is a startup import. Installation selects the combined reviewed repair for the next human manual start. Trader starts and restarts remain manual; affected runtime observations remain separate.",
+  "scope": "shared",
+  "summary": "Scope sized-intention chronology lookup without decoding unrelated forecast history",
+  "tests": [
+    {
+      "checks_passed": 793,
+      "commands": [
+        [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--deselect=tests/test_intraday_local_forecast.py::test_exclusive_database_lock_fails_immediately_with_read_only_zero_timeout",
+          "tests/test_intraday_intention_chronology.py",
+          "tests/test_intraday_intentions.py",
+          "tests/test_intraday_store.py",
+          "tests/test_intraday_forecast_lookup.py",
+          "tests/test_intraday_local_forecast.py",
+          "tests/test_intraday_recovery_intentions.py",
+          "tests/test_intraday_recovery_clocks.py",
+          "tests/test_intraday_saved_forecast_busy.py",
+          "tests/test_intraday_scout_local_execution.py",
+          "tests/test_intraday_scout_journal.py",
+          "tests/test_intraday_pretransport_clearance.py",
+          "tests/test_intraday_initial_gate_clearance.py",
+          "tests/test_intraday_closed_window_clearance.py"
+        ]
+      ],
+      "import_validation": "passed",
+      "network_connections": "disabled",
+      "sealed_receipt_sha256": "c494fca6857cfa3b372e0d8b8868d77434002e7ac1eb7853fe703704c5896752",
+      "stage": "publication_candidate"
+    },
+    {
+      "check_results": [
+        807,
+        35
+      ],
+      "checks_passed": 842,
+      "import_validation": "passed",
+      "network_connections": "disabled",
+      "output_sha256": [
+        "7b285d7b0ba0161492aa73e12ada30f719192ecca18ac229baf1151a1277596a",
+        "b3308fe73afa2ee41a862675b4966a1e3ee519301e5209fe104e25c542ebda1b"
+      ],
+      "stage": "combined_local_runtime"
+    },
+    {
+      "network_attempts": 0,
+      "passed": true,
+      "stage": "offline_launcher_check",
+      "trader_started_by_check": false
+    }
+  ],
+  "verified_remote_sha": "00c5e099664eb41a1c5240a33162d0dea5fdd12b"
+}
