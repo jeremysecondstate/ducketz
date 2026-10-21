@@ -1,0 +1,61 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T111509Z-191e94fdf6004a1f8b84e0e6a1b579cb",
+  "change_id": "20261021T111509Z-191e94fdf6004a1f8b84e0e6a1b579cb",
+  "commit_sha": "d5db0654d3563ae600a60bf05b16abe5f76780de",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py",
+      "sha256": "0e99ba207a159d1783e3ba12b3afbc16805afd3e65700bf89aaec3b2a11dfbf0"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/intentions.py",
+      "sha256": "bafd01bd7374ba5e5428c0eb9f800e0ecdc82b59a56e4eb85e1b9093f5fca439"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/store.py",
+      "sha256": "f2d887bb96ea6bd7df02e0967fba14c3d29a18ad39487cf9305b237e7d061b91"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_direction_policy.py",
+      "sha256": "dd90c71de9a1165043f912b5d19c5b0eb5b445b74a397710238c3c16844015ff"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_recovery_forecast_reuse.py",
+      "sha256": "98e024837ec9d9376b97813658b2a5728733db68b14ab635655602c82b839018"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_recovery_reuse.py",
+      "sha256": "67bd0d28003b01f136238def49d39ee41067dd866a9e819fa1ed2027d5fbae47"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_recovery_latency.py",
+      "sha256": "2c43aa24b7fd721e18cb25d5b2ef11c9fd7e1227a6d610f718f9ee6b1a6d4cb5"
+    }
+  ],
+  "limitations": [
+    "Draft stacked on PR294; main integration and peer installation are separate.",
+    "Offline checks establish validation and recovery semantics; live performance remains unmeasured."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/301"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas installation complete. Existing worker loads this source on its next human-controlled manual launch. Manual controls remain unchanged.",
+  "scope": "Shared source for each independent intraday trader; local statistical settings and bindings preserved.",
+  "summary": "Atlas published and locally installed validated original reuse during intraday recovery",
+  "tests": {
+    "fingerprints": 112,
+    "installed_Atlas": "301 passed",
+    "isolated_candidate": "301 passed",
+    "network": "denied",
+    "sealed_source": "301 passed"
+  }
+}

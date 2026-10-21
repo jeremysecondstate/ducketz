@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T11:23:07.065914Z",
+  "id": "20261021T112307Z-26948ed3947a432aad84849bd4c806d3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published and locally installed validated original reuse during intraday recovery"
+}
