@@ -1,0 +1,47 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T134112Z-8c7ae92ab8b14eb3a0560fd37d59838e",
+  "change_id": "20261021T134112Z-8c7ae92ab8b14eb3a0560fd37d59838e",
+  "commit_sha": "2d026d7581b13f03e93257f00dc7216b0d5d5b6d",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py",
+      "sha256": "4d7bab8ed923c2e2fbcb1f4fda83a7eb28d74b116361bce31936e1974fed44e0"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_submission_diagnostics.py",
+      "sha256": "74dabe6bf278c4c622c35ab23981f83b35ec6e225fe402a9626d7dbda39cb9a4"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_submission_diagnostics.py",
+      "sha256": "eb4d3fc0b455df8edbcab97d18784f8653e09b980bff5c55591ae7c4c0227353"
+    }
+  ],
+  "limitations": [
+    "Original diagnostics PR305 remains preserved for ancestry; PR307 is the composed installation revision. Never replace the completed expiry source with the older whole-file diagnostic snapshot.",
+    "Offline checks establish diagnostic retention and both source repairs; no loaded-runtime or affected live-operation recovery is claimed.",
+    "Historical uncertain submission acceptance remains unproven without exact attributable evidence; original expired instructions remain unreplayed.",
+    "No private operating record, account state, raw data or fitted model is published."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/307",
+    "https://github.com/jeremysecondstate/ducketz/pull/305",
+    "https://github.com/jeremysecondstate/ducketz/pull/306"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Exact composed reviewed source installed on Atlas without restart, hotpatch, trader controls or orders. Human-controlled manual start remains unchanged; source publication and historical errors impose no nightly prerequisite.",
+  "scope": "Shared diagnostics for each independent fifteen-minute trader. Compose original diagnostics record 20261021T132715Z-1ea83e8af9bb49ffb238a64c655e94d2 on completed expiry source 8cd3c4c13c86c6c0ee1b92066013c14fd31ed80c; preserve both original publications and local symbols, models, accounts and manual controls.",
+  "summary": "Atlas fifteen-minute final submission diagnostics retain exact clocks and phase timings alongside reviewed expiry handling",
+  "tests": {
+    "actual_installed_Atlas": "102 passed in 45.67s; all 119 before/after and 105 imported fingerprints exact",
+    "adjacent_cases": 53,
+    "isolated_candidate": "102 passed; exit code 0; 119 exact sealed fingerprints",
+    "network": "denied",
+    "new_diagnostic_cases": 19,
+    "retained_expiry_cases": 30,
+    "sealed_source": "102 passed; exit code 0; 119 exact sealed fingerprints"
+  }
+}
