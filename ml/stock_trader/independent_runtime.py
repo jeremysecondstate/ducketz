@@ -547,6 +547,9 @@ def run_independent_stock_trader_once(
                 raise ValueError("BROKER_PORTFOLIO_CAPTURE_IN_FUTURE")
             if capture_age > ledger.maximum_evidence_age_seconds:
                 raise ValueError("BROKER_PORTFOLIO_CAPTURE_TOO_OLD")
+            if account_config is not None:
+                from ml.account_gameplan.execution import assert_order_snapshot_coherence
+                assert_order_snapshot_coherence(ledger, current_evidence, current_portfolio)
             if sizing_policy == GAMEPLAN_SIZING_POLICY:
                 # The state API names request start, while actual quote times
                 # can fall later within that read. Declare information readiness
