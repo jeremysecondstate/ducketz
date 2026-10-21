@@ -208,14 +208,18 @@ def build_gameplan_direction_trade_decisions(
     fallback_policy: dict | None = None,
     fallback_source_binding: dict | None = None,
     fallback_sell_plans: Mapping[tuple[str, str], dict] | None = None,
+    execution_capacity: Mapping[str, object] | None = None,
 ) -> tuple[TradeDecision, ...]:
     """Apply saved directions using actual capital, inventory, and current quotes.
 
     Bearish capacities are an explicit caller attestation of authorized,
-    disjoint inventory slices. They must exclude pending sells, protected other
-    horizons, and every allocation represented in ``exit_decisions``. The batch
+    inventory. They must exclude pending sells and every allocation represented
+    in ``exit_decisions``. One-hour and four-hour sales may use any owned horizon;
+    longer horizons retain their existing inventory policy. The batch
     additionally caps their sum at current held shares minus pending sells.
     Submitted sells never increase the cash or exposure budgets for this batch.
+    Supplied own-authority capacity only narrows these current-portfolio limits;
+    cash uses order limits while gross and symbol exposure use current asks.
     """
     active_policy = policy or StockTraderPolicy()
     active_policy.validate()
@@ -241,8 +245,24 @@ def build_gameplan_direction_trade_decisions(
     for key, signal in signals.items():
         if key != (signal.symbol, signal.primary_horizon) or signal.primary_horizon not in FIXED_HORIZON_WEIGHTS:
             raise ValueError("Gameplan signal key differs from its stock/horizon")
-        if signal.planned_quantity is not None and (type(signal.planned_quantity) is not int or signal.planned_quantity <= 0):
-            raise ValueError("Accepted-plan quantity must be positive whole shares")
+    if execution_capacity is not None:
+        required = {"cash_available", "gross_available", "symbol_available", "eligible_shares"}
+        symbols = {signal.symbol for signal in signals.values()} | {d.symbol for d in exit_decisions}
+        try:
+            if not isinstance(execution_capacity, Mapping) or set(execution_capacity) != required:
+                raise ValueError("Incomplete execution capacity")
+            for key in ("symbol_available", "eligible_shares"):
+                if (not isinstance(execution_capacity[key], Mapping)
+                        or not symbols.issubset(execution_capacity[key])):
+                    raise ValueError("Incomplete execution capacity symbols")
+            _money(execution_capacity["cash_available"])
+            _money(execution_capacity["gross_available"])
+            for value in execution_capacity["symbol_available"].values():
+                _money(value)
+            if any(type(q) is not int or q < 0 for q in execution_capacity["eligible_shares"].values()):
+                raise ValueError("Invalid execution capacity shares")
+        except (TypeError, ValueError, ArithmeticError) as exc:
+            raise ValueError("Invalid Gameplan execution capacity") from exc
     timestamp = utc(decided_at)
     fallback_sell_plans = dict(fallback_sell_plans or {})
     if fallback_policy is not None:
@@ -260,6 +280,9 @@ def build_gameplan_direction_trade_decisions(
     capacity = active_policy.maximum_orders_per_wake
     sell_remaining = {symbol: _shares(max(_ZERO, _money(held) - _money(portfolio.pending_sell_shares.get(symbol, 0))), Decimal(1))
                       for symbol, held in portfolio.held_shares.items()}
+    if execution_capacity is not None:
+        sell_remaining = {symbol: min(q, execution_capacity["eligible_shares"].get(symbol, 0))
+                          for symbol, q in sell_remaining.items()}
     results, seen = [], set()
     for decision in exit_decisions:
         result, capacity = _due_exit(decision, portfolio, activation, active_policy, timestamp,
@@ -272,6 +295,12 @@ def build_gameplan_direction_trade_decisions(
         budget_error = False
     except (TypeError, ValueError, ArithmeticError):
         available, symbol_remaining, budget_error = _ZERO, {}, True
+    gross_remaining = None
+    if execution_capacity is not None:
+        available = min(available, _money(execution_capacity["cash_available"]))
+        gross_remaining = _money(execution_capacity["gross_available"])
+        symbol_remaining = {symbol: min(value, _money(execution_capacity["symbol_available"].get(symbol, 0)))
+                            for symbol, value in symbol_remaining.items()}
 
     def rank(key):
         probability = finite(signals[key].calibrated_probability)
@@ -299,8 +328,10 @@ def build_gameplan_direction_trade_decisions(
             code = "HORIZON_LEDGER_UNRECONCILED"
         elif not ready:
             code = "FORECAST_PROBABILITY_INVALID"
+        elif signal.target_definition_version == "accepted-gameplan-catchup-v1" or signal.catchup_components:
+            code, reason = "LEGACY_PROJECTED_INTENTION", "Historical projected quantities cannot authorize a fresh Gameplan order."
         elif direction == "NO_EDGE":
-            code, reason = "NEUTRAL_HOLD", "An exact 50% probability has no directional signal."
+            code, reason = "NEUTRAL_HOLD", "The probability is between 49.99% and 50.01% and has no directional signal."
         else:
             start, end = utc(signal.target_window_start), utc(signal.target_window_end)
             deadline = min(utc(signal.actionable_until), end)
@@ -314,8 +345,6 @@ def build_gameplan_direction_trade_decisions(
                     single_cap = _shares(_money(portfolio.account_equity) * _money(active_policy.maximum_single_order_equity_fraction),
                         max(price, _money(portfolio.quotes[signal.symbol].ask)))
                     hypothetical = min(sell_capacity, single_cap)
-                    if signal.planned_quantity is not None:
-                        hypothetical = min(hypothetical, signal.planned_quantity)
                     quantity = min(hypothetical, sell_remaining.get(signal.symbol, 0))
                     if not quantity:
                         code = "NO_AUTHORIZED_SELL_SHARES"
@@ -331,11 +360,15 @@ def build_gameplan_direction_trade_decisions(
                     # The native inventory ledger values exposure at the ask,
                     # even when the operator's limit is the lower midpoint.
                     valuation = max(price, _money(portfolio.quotes[signal.symbol].ask))
+                    if execution_capacity is not None:
+                        # AccountAuthority.reserve requires cent-rounded
+                        # conservative exposure, including fractional asks.
+                        valuation = valuation.quantize(Decimal(".01"), rounding=ROUND_CEILING)
                     hypothetical = _shares(ceiling, valuation)
-                    if signal.planned_quantity is not None:
-                        hypothetical = min(hypothetical, signal.planned_quantity)
                     quantity = min(hypothetical, _shares(available, price),
                                    _shares(symbol_remaining.get(signal.symbol, _ZERO), valuation))
+                    if gross_remaining is not None:
+                        quantity = min(quantity, _shares(gross_remaining, valuation))
                     if not quantity or quantity * price < _money(active_policy.minimum_order_notional):
                         quantity, code = 0, "JOINT_PORTFOLIO_BUDGET_EXHAUSTED"
                 if quantity and not capacity:
@@ -345,7 +378,9 @@ def build_gameplan_direction_trade_decisions(
                         sell_remaining[signal.symbol] -= quantity
                     else:
                         available -= quantity * price
-                        symbol_remaining[signal.symbol] -= quantity * max(price, _money(portfolio.quotes[signal.symbol].ask))
+                        symbol_remaining[signal.symbol] -= quantity * valuation
+                        if gross_remaining is not None:
+                            gross_remaining -= quantity * valuation
                     capacity -= 1
         if not quantity and code not in {"TRADER_INACTIVE", "NEUTRAL_HOLD"}:
             reason = "The current forecast, entry window, quote, reconciled inventory, actual capital, or configured batch limit does not permit this order."

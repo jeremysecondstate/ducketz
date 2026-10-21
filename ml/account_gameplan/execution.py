@@ -175,6 +175,11 @@ class AccountExecutionContext:
             {s:int(Decimal(str(q)).to_integral_value(rounding="ROUND_FLOOR")) for s,q in portfolio.held_shares.items()},
             pending,accounted,portfolio.source_fingerprint,self.config.account_fingerprint,self.config.account_fingerprint,True))
 
+    def available_capacity(self):
+        """Use the same own commitments for sizing and final reservation."""
+        self.assert_current()
+        return self.authority.available_capacity(self.lease.token,self.snapshot_id)
+
     def reserve(self, decision, native):
         self.assert_current()
         forecast_id = decision.prediction["prediction_id"]

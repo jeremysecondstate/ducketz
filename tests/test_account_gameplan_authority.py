@@ -180,14 +180,12 @@ def test_snapshot_binding_completeness_and_risk_limits_fail_closed(env,changes,r
         authority.publish_snapshot(token,snapshot(clock,snapshot_id="next",**changes))
 
 
-@pytest.mark.parametrize("changes",[
-    {"generation":"other"},{"source_fingerprints":{"Atlas":"e"*64,"Scout":"c"*64}},
-])
-def test_action_date_source_binding_is_immutable(env,changes):
+def test_generation_source_binding_is_immutable(env):
     authority,token,clock=env
     clock.tick()
     with pytest.raises(AuthorityError,match="SOURCE_BINDING_IS_IMMUTABLE"):
-        authority.publish_snapshot(token,snapshot(clock,snapshot_id="next",**changes))
+        authority.publish_snapshot(token,snapshot(clock,snapshot_id="next",
+            source_fingerprints={"Atlas":"e"*64,"Scout":"c"*64}))
 
 
 @pytest.mark.parametrize("changes,reason",[

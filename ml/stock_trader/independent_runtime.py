@@ -5,7 +5,7 @@ import json
 import os
 import sqlite3
 import time
-from contextlib import closing
+from contextlib import closing, ExitStack
 from dataclasses import replace
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -39,7 +39,7 @@ from ml.stock_trader.runtime import (
 )
 from ml.stock_trader.session import StockExecutionWindow, stock_execution_window
 from ml.stock_trader.state import capture_portfolio_state
-from ml.stock_trader.sizing_policy import LEARNED_SIZING_POLICY, FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY, validate_sizing_policy
+from ml.stock_trader.sizing_policy import LEARNED_SIZING_POLICY, FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY, effective_sizing_policy, validate_sizing_policy
 from ml.stock_direction_policy import stock_direction
 
 LEDGER_RELATIVE_PATH = Path("state/gameplan-trader/holdings.sqlite3")
@@ -226,9 +226,18 @@ def _loaded_fallback_policy(root, run, action_date):
     """Bind the verified future policy to this exact immutable receipt."""
     from ml.artifacts import file_checksum
     if run is not None and Path(run).resolve().parent == (Path(root) / "ml/joint-gameplan-runs").resolve():
-        # Combined instructions already contain the bounded synthesized donor
-        # quantities. The catch-up adapter attributes these to that donor.
-        return None, None
+        # The current combined plan has no projected donor quantities. Keep its
+        # saved policy for the unchanged longer-horizon ownership rules; 1h/4h
+        # autonomous sales use actual eligible shares in the local ledger.
+        from ml.joint_capital_adoption import read_accepted_joint_plan
+        from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy
+        selected = read_accepted_joint_plan(root, action_date)
+        if selected is None or Path(selected[2]).resolve() != Path(run).resolve():
+            raise ValueError("Fallback source is not the selected combined Gameplan")
+        policy = validate_fallback_policy(selected[0].get("cross_horizon_fallback_policy"), action_date)
+        return (None, None) if policy is None else (policy, {
+            "source_run": Path(run).relative_to(Path(root).resolve()).as_posix(),
+            "source_receipt_sha256": file_checksum(Path(run) / "accepted-plan.json")})
     from ml.account_gameplan.config import load_account_config
     from ml.stock_trader.cross_horizon_fallback import read_gameplan_fallback_policy, validate_fallback_policy
     if load_account_config(root) is not None:
@@ -279,8 +288,8 @@ def run_independent_stock_trader_once(
     """Consume exact independent forecasts and manage only their owned shares.
 
     Both stock controls, current broker cash/shares, and durable reservations
-    apply. Gameplan execution uses saved instructions directly; learned and
-    fixed strategies retain their model qualification. Exits remain available
+    apply. Current execution uses original saved probabilities and live capacity.
+    Historical pre-policy selections retain their original engines. Exits remain available
     when a newer plan is unavailable because they derive from filled holdings.
     Live entries additionally require the bounded session worker so opening a
     longer holding cannot silently omit its subsequent exit management.
@@ -294,14 +303,16 @@ def run_independent_stock_trader_once(
     if broker_state_retry_max_attempts < 1:
         raise ValueError("broker_state_retry_max_attempts must be at least 1")
     root = Path(datastore_root).resolve()
-    sizing_policy = validate_sizing_policy(sizing_policy)
+    requested_sizing_policy = validate_sizing_policy(sizing_policy)
+    clock = runtime_clock or (lambda: utc() if decided_at is None else utc(decided_at))
+    timestamp = utc(clock())
+    sizing_policy = effective_sizing_policy(requested_sizing_policy,
+        timestamp.tz_convert("America/Los_Angeles").date())
     from ml.account_gameplan.config import assert_coordinator, load_account_config, verify_cutover
     account_config = load_account_config(root)
     assert_coordinator(account_config, sizing_policy)
     if account_config is not None:
         verify_cutover(root, account_config)
-    clock = runtime_clock or (lambda: utc() if decided_at is None else utc(decided_at))
-    timestamp = utc(clock())
     if resume_quote_run is not None or resume_quote_symbol is not None:
         if not (resume_quote_run and resume_quote_symbol and session_managed and sizing_policy == GAMEPLAN_SIZING_POLICY) or late_opening_date:
             raise ValueError("Quote recovery requires a run, symbol and the managed Gameplan session")
@@ -325,7 +336,8 @@ def run_independent_stock_trader_once(
     abandoned_catchup = []
     deferred_orders = []
     metadata = {"mode": "INDEPENDENT_STOCK_HORIZONS", "allocation_weights": {"1h": 1, "4h": 2, "1d": 3, "1w": 4},
-                "session_managed": session_managed, "sizing_policy": sizing_policy}
+                "session_managed": session_managed, "sizing_policy": sizing_policy,
+                "requested_sizing_policy": requested_sizing_policy}
     entry_allowed = entries and (not execute or session_managed)
     if entries and execute and not session_managed:
         metadata["entry_management_status"] = "ENTRY_REQUIRES_SESSION_MANAGER"
@@ -358,7 +370,7 @@ def run_independent_stock_trader_once(
             execute, activation.active, error=error, broker_state_capture=broker_state_capture,
         )
 
-    with exclusive_runtime_lock(root / "locks/stock-trader-hourly.lock", process_name="stock-trader-hourly"):
+    with exclusive_runtime_lock(root / "locks/stock-trader-hourly.lock", process_name="stock-trader-hourly"), ExitStack() as execution_stack:
         if not activation.active:
             return finish("TRADER_INACTIVE")
         window = stock_execution_window(timestamp)
@@ -381,6 +393,16 @@ def run_independent_stock_trader_once(
                         root, resume_quote_run, resume_quote_symbol, as_of=timestamp)
                 else:
                     signals, sources = load_current_independent_gameplan_signals(root, as_of=timestamp, **signal_options)
+                if sizing_policy == GAMEPLAN_SIZING_POLICY:
+                    # Genuine forecast decisions use live broker capacity. Keep
+                    # source IDs and targets; an old planning quantity is not a
+                    # current execution cap. Synthetic archival catch-up signals
+                    # retain their identity for explicit recovery validation.
+                    signals = {key: replace(signal, planned_quantity=None)
+                        if signal.target_definition_version != "accepted-gameplan-catchup-v1"
+                        and not signal.catchup_components else signal
+                        for key, signal in signals.items()}
+                    metadata["execution_quantity_basis"] = "live_broker_capacity"
                 if signals or sources:
                     source_gameplan_run = _loaded_gameplan_run(root, signals, sources,
                         execution_ready_plan=sizing_policy == GAMEPLAN_SIZING_POLICY and not resume_quote_run)
@@ -609,34 +631,22 @@ def run_independent_stock_trader_once(
             error = None if window.reason == "OUTSIDE_US_EQUITY_ACTIONABLE_SESSION" else window.reason
             return finish("EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE", error=error)
         state = ledger.snapshot()
-        if source_gameplan_run is not None and (source_gameplan_run / "accepted-plan.json").is_file():
-            from ml.joint_capital_adoption import read_accepted_joint_plan
-            from ml.stock_trader.catchup import catchup_signals
-            accepted = read_accepted_joint_plan(root, timestamp.tz_convert("America/Los_Angeles").date().isoformat())
-            qualified = catchup_signals(accepted[0], as_of=timestamp, source_fingerprint=source_gameplan_run.name,
-                                       reservations=state.reservations, blocked=rejected_catchup,
-                                       abandoned=abandoned_catchup)
-            metadata["catchup"] = {"plan_sha256": accepted[0]["plan_sha256"],
-                "policy": "cumulative-due-intentions-less-fills-and-open-reservations-v1",
-                "blocked_intentions": rejected_catchup,
-                "abandoned_intentions": abandoned_catchup,
-                "net_quantities": {f"{s}/{h}": signal.planned_quantity * (1 if signal.calibrated_probability else -1)
-                                   for (s, h), signal in qualified.items()}}
-        elif any(Path(source).name == "receipt.json" and Path(source).resolve().parent.parent ==
-                 (root / "ml/gameplan-trade-plan-runs").resolve() for source in sources):
-            from ml.stock_trader.catchup import native_catchup_plan, catchup_signals
-            native = native_catchup_plan(root, action_date=timestamp.tz_convert("America/Los_Angeles").date().isoformat(),
-                                        source_run=source_gameplan_run)
-            if native is None or any(not signal.prediction_id.startswith("catchup:" + native[0]["plan_sha256"] + ":")
-                                     for signal in signals.values()):
-                return finish("INDEPENDENT_TARGET_PLAN_UNAVAILABLE", error="Native catch-up source changed during broker capture")
-            qualified = catchup_signals(native[0], as_of=timestamp, source_fingerprint=source_gameplan_run.name,
-                                       reservations=state.reservations, blocked=rejected_catchup,
-                                       abandoned=abandoned_catchup)
-            fallback_policy, fallback_source_binding = None, None
-            metadata["catchup"] = {"plan_sha256": native[0]["plan_sha256"],
-                "policy": "cumulative-due-intentions-less-fills-and-open-reservations-v1",
-                "blocked_intentions": rejected_catchup, "abandoned_intentions": abandoned_catchup}
+        # Accepted/native publications already supplied the original saved
+        # probabilities, targets and forecast IDs. Historical projected fills
+        # must not replace them with synthetic catch-up probabilities/quantities.
+        # Existing reservations and fills remain in this trader's own ledger.
+        if sizing_policy == GAMEPLAN_SIZING_POLICY:
+            acceptance = (source_gameplan_run / "accepted-plan.json"
+                          if source_gameplan_run is not None else None)
+            selected = (json.loads(acceptance.read_text(encoding="utf-8"))
+                        if acceptance is not None and acceptance.is_file() else {})
+            # Retain the concurrent current-reader repair's audit fields without
+            # reloading a projected ledger or replacing the original signals.
+            metadata["direction_only_execution"] = {
+                "plan_sha256": selected.get("plan_sha256"),
+                "policy": "current-due-direction-live-broker-capacity-v1",
+                "forecast_ids": [signal.prediction_id for signal in qualified.values()],
+                "planned_quantities": False}
         if qualified:
             try:
                 _assert_execution_deployment(root, source_gameplan_run,
@@ -677,6 +687,23 @@ def run_independent_stock_trader_once(
             if cancelled or cancellation_error:
                 metadata["entry_cancellations_requested"] = cancelled
                 return finish("ENTRY_CANCELLATION_AWAITING_RECONCILIATION", error=cancellation_error)
+        account_context = None
+        execution_capacity = None
+        if execute and account_config is not None:
+            from ml.account_gameplan.execution import account_execution_context
+            from ml.stock_trader.gameplan_execution import account_execution_plan
+            try:
+                account_plan, current_config = account_execution_plan(root,
+                    action_date=timestamp.tz_convert("America/Los_Angeles").date().isoformat())
+                if current_config.fingerprint != account_config.fingerprint or account_plan.path != source_gameplan_run:
+                    raise ValueError("ACCOUNT_EXECUTION_BINDING_CHANGED_DURING_CAPTURE")
+                account_context = execution_stack.enter_context(account_execution_context(
+                    root, account_config, account_plan, portfolio, ledger, evidence,
+                    snapshot_id=snapshot_id, policy=active_policy, clock=clock))
+                execution_capacity = account_context.available_capacity()
+                metadata["account_execution_capacity"] = {"snapshot_id": snapshot_id, **execution_capacity}
+            except (OSError, ValueError, RuntimeError) as exc:
+                return finish("ACCOUNT_RESERVATION_AUTHORITY_UNAVAILABLE", error=f"{type(exc).__name__}: {exc}")
         # Manual Gameplan holdings persist across forecast boundaries. Only a
         # new bearish instruction sells from that horizon's inventory.
         exits = (() if sizing_policy == GAMEPLAN_SIZING_POLICY else
@@ -699,7 +726,8 @@ def run_independent_stock_trader_once(
                 bearish_sell_capacities=capacities, maximum_quote_age_seconds=ledger.maximum_evidence_age_seconds,
                 **decision_options, **({'late_opening_date':late_opening_date} if late_opening_date is not None else {}),
                 **({"recovered_forecast_ids":frozenset(s.prediction_id for s in qualified.values())} if resume_quote_run else {}),
-                fallback_policy=fallback_policy, fallback_source_binding=fallback_source_binding)
+                fallback_policy=fallback_policy, fallback_source_binding=fallback_source_binding,
+                execution_capacity=execution_capacity)
             if fallback_policy is not None and reconciliation.ready:
                 try:
                     fallback_plans = _direction_fallback_plans(
@@ -713,7 +741,7 @@ def run_independent_stock_trader_once(
                         qualified, portfolio, activation, verified_promoted_signals=frozenset(qualified),
                         bearish_sell_capacities=capacities, maximum_quote_age_seconds=ledger.maximum_evidence_age_seconds,
                         **decision_options, fallback_policy=fallback_policy, fallback_sell_plans=fallback_plans,
-                        fallback_source_binding=fallback_source_binding,
+                        fallback_source_binding=fallback_source_binding, execution_capacity=execution_capacity,
                         **({"recovered_forecast_ids":frozenset(s.prediction_id for s in qualified.values())} if resume_quote_run else {}))
                 metadata["cross_horizon_fallback_plans"] = {f"{s}/{h}": plan for (s,h),plan in fallback_plans.items()}
         elif sizing_policy == FIXED_SIZING_POLICY:
@@ -728,8 +756,6 @@ def run_independent_stock_trader_once(
         if blocked_exit_quotes:
             metadata["blocked_owned_exit_quotes"] = sorted(set(blocked_exit_quotes))
         if sizing_policy == GAMEPLAN_SIZING_POLICY:
-            from ml.stock_trader.price_comparison import attach_price_comparisons
-            decisions = attach_price_comparisons(root, decisions)
             decisions, metadata["self_trade_prevention"] = _defer_opposing_limit_orders(decisions, portfolio)
             deferred_orders.extend(metadata["self_trade_prevention"]["deferred"])
         publication = publish_decision_run(
@@ -742,25 +768,14 @@ def run_independent_stock_trader_once(
         )
         if not execute:
             return finish("DRY_RUN_INDEPENDENT_STOCK_DECISIONS", decisions=decisions, publication=publication)
-        if account_config is not None:
-            from ml.account_gameplan.execution import account_execution_context
-            from ml.stock_trader.gameplan_execution import account_execution_plan
-            try:
-                account_plan, current_config = account_execution_plan(root,
-                    action_date=timestamp.tz_convert("America/Los_Angeles").date().isoformat())
-                if current_config.fingerprint != account_config.fingerprint or account_plan.path != source_gameplan_run:
-                    raise ValueError("ACCOUNT_EXECUTION_BINDING_CHANGED_DURING_CAPTURE")
-                with account_execution_context(root, account_config, account_plan, portfolio, ledger, evidence,
-                        snapshot_id=snapshot_id, policy=active_policy, clock=clock) as account_context:
-                    result = _submit_batch(root, broker, ledger, decisions, publication, window, snapshot_id,
-                        stable_identity, clock, finish, source_gameplan_run=source_gameplan_run,
-                        account_context=account_context)
-            except (OSError, ValueError, RuntimeError) as exc:
-                return finish("ACCOUNT_RESERVATION_AUTHORITY_UNAVAILABLE", decisions=decisions,
-                              publication=publication, error=f"{type(exc).__name__}: {exc}")
-        else:
+        try:
             result = _submit_batch(root, broker, ledger, decisions, publication, window, snapshot_id, stable_identity, clock, finish,
-                                   source_gameplan_run=source_gameplan_run)
+                                   source_gameplan_run=source_gameplan_run, account_context=account_context)
+        except (OSError, ValueError, RuntimeError) as exc:
+            if account_context is None:
+                raise
+            return finish("ACCOUNT_RESERVATION_AUTHORITY_UNAVAILABLE", decisions=decisions,
+                          publication=publication, error=f"{type(exc).__name__}: {exc}")
         if metadata.get("gameplan_deployment_error") and not result.error:
             return replace(result,
                 status="OWNED_EXITS_SUBMITTED_WITH_ENTRY_PLAN_UNAVAILABLE" if result.submitted_orders else "INDEPENDENT_TARGET_PLAN_UNAVAILABLE",

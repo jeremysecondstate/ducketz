@@ -17,7 +17,7 @@ execution-window checks, and invoke the supplied gate immediately before POST.
 """
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
@@ -27,6 +27,7 @@ from pathlib import Path
 import re
 import secrets
 import sqlite3
+import time
 from typing import Callable, Mapping
 from zoneinfo import ZoneInfo
 
@@ -43,6 +44,40 @@ ZERO = Decimal(0)
 
 class AuthorityError(ValueError):
     pass
+
+
+class _LeaseAcquisitionFailure:
+    """Only acquisition's locally constructed timings cross diagnostic boundaries."""
+    def __init__(self, evidence):
+        self.evidence = evidence
+
+
+def lease_acquisition_failure_evidence(exc):
+    saved = getattr(exc, "lease_acquisition_failure", None)
+    if isinstance(saved, _LeaseAcquisitionFailure):
+        return {**saved.evidence, "phases": [dict(item) for item in saved.evidence["phases"]]}
+    return None
+
+
+class _LeaseAcquisitionTrace:
+    def __init__(self):
+        self.started = self.stage_started = time.monotonic()
+        self.stage, self.attempt, self.phases = "validation", 0, []
+
+    def advance(self, stage, attempt):
+        now = time.monotonic()
+        self.phases.append({"attempt": self.attempt, "stage": self.stage,
+                            "elapsed_seconds": round(max(0, now-self.stage_started), 6)})
+        self.phases = self.phases[-20:]
+        self.stage, self.attempt, self.stage_started = stage, attempt, now
+
+    def remember(self, exc):
+        now = time.monotonic()
+        exc.lease_acquisition_failure = _LeaseAcquisitionFailure({
+            "attempt": self.attempt, "stage": self.stage,
+            "elapsed_seconds": round(max(0, now-self.started), 6),
+            "stage_elapsed_seconds": round(max(0, now-self.stage_started), 6),
+            "phases": [dict(item) for item in self.phases]})
 
 
 class SubmissionNotStarted(AuthorityError):
@@ -277,6 +312,7 @@ class AccountAuthority:
                 "CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL)",
                 "CREATE TABLE IF NOT EXISTS lease(singleton INTEGER PRIMARY KEY CHECK(singleton=1),token TEXT NOT NULL,epoch INTEGER NOT NULL,holder TEXT NOT NULL,expires TEXT NOT NULL)",
                 "CREATE TABLE IF NOT EXISTS plans(action_date TEXT PRIMARY KEY,generation TEXT UNIQUE NOT NULL,sources TEXT NOT NULL)",
+                "CREATE TABLE IF NOT EXISTS plan_revisions(generation TEXT PRIMARY KEY,action_date TEXT NOT NULL,sources TEXT NOT NULL)",
                 "CREATE TABLE IF NOT EXISTS snapshots(id TEXT PRIMARY KEY,observed TEXT NOT NULL,payload TEXT NOT NULL)",
                 "CREATE TABLE IF NOT EXISTS reservations(id TEXT PRIMARY KEY,key TEXT UNIQUE NOT NULL,native_id TEXT UNIQUE NOT NULL,forecast_key TEXT UNIQUE NOT NULL,request TEXT NOT NULL,status TEXT NOT NULL,filled INTEGER NOT NULL,broker_id TEXT UNIQUE,created TEXT NOT NULL,last_evidence TEXT)",
                 "CREATE TABLE IF NOT EXISTS order_evidence(id TEXT PRIMARY KEY,payload TEXT NOT NULL)",
@@ -285,6 +321,11 @@ class AccountAuthority:
                 "CREATE TABLE IF NOT EXISTS events(sequence INTEGER PRIMARY KEY AUTOINCREMENT,observed TEXT NOT NULL,kind TEXT NOT NULL,payload TEXT NOT NULL)",
             ):
                 db.execute(statement)
+            # Preserve the original date binding as historical evidence. A
+            # current plan revision has its own immutable generation; it does
+            # not replace earlier snapshots, reservations or order evidence.
+            db.execute("INSERT OR IGNORE INTO plan_revisions(generation,action_date,sources) "
+                       "SELECT generation,action_date,sources FROM plans")
             saved = db.execute("SELECT value FROM metadata WHERE key='binding'").fetchone()
             value = _json({"version":VERSION, **self.binding})
             if saved and saved[0] != value:
@@ -312,9 +353,9 @@ class AccountAuthority:
     def _transaction(self):
         db = sqlite3.connect(self.path, timeout=30, isolation_level=None)
         db.row_factory = sqlite3.Row
-        db.execute("PRAGMA synchronous=EXTRA")
-        db.execute("BEGIN IMMEDIATE")
         try:
+            db.execute("PRAGMA synchronous=EXTRA")
+            db.execute("BEGIN IMMEDIATE")
             yield db
             db.commit()
         except BaseException:
@@ -345,23 +386,52 @@ class AccountAuthority:
         return seconds
 
     def acquire_lease(self, *, coordinator_id: str, holder_id: str, ttl_seconds=60) -> Lease:
-        if coordinator_id != self.binding["coordinator_id"]:
-            raise AuthorityError("HOST_IS_NOT_THE_REVIEWED_COORDINATOR")
-        holder = _name(holder_id)
-        with self._transaction() as db:
-            now = self._now(db)
-            previous = db.execute("SELECT * FROM lease WHERE singleton=1").fetchone()
-            if previous and now < _time(previous["expires"]):
-                raise AuthorityError("LEASE_ALREADY_OWNED")
-            lease = Lease(secrets.token_hex(32), 1 if not previous else previous["epoch"]+1,
-                          holder, (now+timedelta(seconds=self._ttl(ttl_seconds))).isoformat())
-            db.execute("INSERT OR REPLACE INTO lease VALUES(1,?,?,?,?)", (lease.token,lease.epoch,holder,lease.expires_at))
-            self._event(db,now,"lease-acquired",{"epoch":lease.epoch,"holder":holder})
-            # An earlier sender may have received an exact ID after its lease
-            # expired. Promote that immutable evidence only under this new fence.
-            current, owner = self._lease(db,lease.token)
-            self._recover_submission_receipts(db,current,owner["epoch"])
-            return lease
+        trace = _LeaseAcquisitionTrace()
+        try:
+            if coordinator_id != self.binding["coordinator_id"]:
+                raise AuthorityError("HOST_IS_NOT_THE_REVIEWED_COORDINATOR")
+            holder, ttl = _name(holder_id), self._ttl(ttl_seconds)
+            for attempt in range(1, 4):
+                trace.advance("transaction_enter", attempt)
+                with self._transaction() as db:
+                    now = self._now(db)
+                    previous = db.execute("SELECT * FROM lease WHERE singleton=1").fetchone()
+                    if previous and now < _time(previous["expires"]):
+                        raise AuthorityError("LEASE_ALREADY_OWNED")
+                    lease = Lease(secrets.token_hex(32), 1 if not previous else previous["epoch"]+1,
+                                  holder, (now+timedelta(seconds=ttl)).isoformat())
+                    db.execute("INSERT OR REPLACE INTO lease VALUES(1,?,?,?,?)",
+                               (lease.token,lease.epoch,holder,lease.expires_at))
+                    trace.advance("lease_event", attempt)
+                    self._event(db,now,"lease-acquired",{"epoch":lease.epoch,"holder":holder})
+                    # An earlier sender may have received an exact ID after its lease
+                    # expired. Promote that immutable evidence only under this new fence.
+                    # This new fence is still unpublished inside BEGIN IMMEDIATE;
+                    # no competing owner can commit while receipt recovery runs.
+                    # Grant its TTL after that work, rather than returning a lease
+                    # already consumed by acquisition. Published expiry remains strict.
+                    trace.advance("receipt_recovery", attempt)
+                    current = self._now(db)
+                    self._recover_submission_receipts(db,current,lease.epoch)
+                    trace.advance("grant_timestamp", attempt)
+                    granted = self._now(db)
+                    lease = Lease(lease.token,lease.epoch,holder,
+                                  (granted+timedelta(seconds=ttl)).isoformat())
+                    db.execute("UPDATE lease SET expires=? WHERE singleton=1", (lease.expires_at,))
+                    trace.advance("transaction_commit", attempt)
+                trace.advance("post_commit_clock", attempt)
+                observed = _time(self.clock())
+                if observed < granted:
+                    raise AuthorityError("AUTHORITY_CLOCK_MOVED_BACKWARDS")
+                if observed < _time(lease.expires_at):
+                    return lease
+                # This token has never escaped acquire_lease. A slow commit
+                # may consume its entire TTL: try a new epoch, using normal
+                # owner exclusion again. Never revive an expired token.
+            raise AuthorityError("LEASE_ACQUISITION_EXPIRED_BEFORE_RETURN")
+        except BaseException as exc:
+            trace.remember(exc)
+            raise
 
     def renew_lease(self, token: str, *, ttl_seconds=60) -> Lease:
         with self._transaction() as db:
@@ -476,9 +546,11 @@ class AccountAuthority:
             reconciled = db.execute("SELECT MAX(last_evidence) FROM reservations").fetchone()[0]
             if reconciled and observed <= _time(reconciled):
                 raise AuthorityError("ACCOUNT_SNAPSHOT_MUST_FOLLOW_ORDER_RECONCILIATION")
-            plan = db.execute("SELECT * FROM plans WHERE action_date=?", (snapshot.action_date,)).fetchone()
-            if plan and (plan["generation"]!=snapshot.generation or plan["sources"]!=_json(sources)):
-                raise AuthorityError("ACTION_DATE_SOURCE_BINDING_IS_IMMUTABLE")
+            plan = db.execute("SELECT * FROM plan_revisions WHERE generation=?", (snapshot.generation,)).fetchone()
+            if plan and (plan["action_date"]!=snapshot.action_date or plan["sources"]!=_json(sources)):
+                raise AuthorityError("GENERATION_SOURCE_BINDING_IS_IMMUTABLE")
+            db.execute("INSERT OR IGNORE INTO plan_revisions VALUES(?,?,?)",
+                       (snapshot.generation,snapshot.action_date,_json(sources)))
             db.execute("INSERT OR IGNORE INTO plans VALUES(?,?,?)", (snapshot.action_date,snapshot.generation,_json(sources)))
             db.execute("INSERT INTO snapshots VALUES(?,?,?)", (snapshot.snapshot_id,observed.isoformat(),_json(payload)))
             self._event(db,now,"account-snapshot",{"snapshot_id":snapshot.snapshot_id,"fingerprint":_sha(payload)})
@@ -735,6 +807,21 @@ class AccountAuthority:
                 raise AuthorityError("INTRADAY_FORECAST_NOT_CURRENT")
             return self._intraday_snapshot(db,now,request["snapshot_id"])
         return self._snapshot(db,now,request["snapshot_id"])
+
+    def available_capacity(self, token: str, snapshot_id: str):
+        """Expose this Gameplan trader's exact conservative reservation limits.
+
+        The caller sizes before creating a native reservation. Final reserve
+        still checks the same snapshot and commitments atomically.
+        """
+        with self._transaction() as db:
+            now, _ = self._lease(db,token)
+            snapshot = self._snapshot(db,now,snapshot_id)
+            cash,gross,symbols,shares = self._remaining(db,snapshot)
+            return {"cash_available":_amount(max(ZERO,cash)),
+                    "gross_available":_amount(max(ZERO,gross)),
+                    "symbol_available":{s:_amount(max(ZERO,v)) for s,v in symbols.items()},
+                    "eligible_shares":{s:max(0,q) for s,q in shares.items()}}
 
     def reserve(self, token: str, request: ReservationRequest) -> Reservation:
         payload = asdict(request)
@@ -1079,8 +1166,18 @@ class AccountAuthority:
             return self._reservation(self._row(db,evidence.reservation_id))
 
     def read_state(self):
-        with self._transaction() as db:
-            return {"version":VERSION,"binding":json.loads(_json(self.binding)),
-                    "reservations":[asdict(self._reservation(row)) for row in db.execute("SELECT * FROM reservations ORDER BY created,id")],
-                    "snapshot_count":db.execute("SELECT COUNT(*) FROM snapshots").fetchone()[0],
-                    "event_count":db.execute("SELECT COUNT(*) FROM events").fetchone()[0]}
+        # Read one coherent SQLite snapshot without taking the writer lock needed
+        # by this operation's lease renewal. Aggregate raw scalar rows in SQLite
+        # to avoid a GIL handoff per reservation. Close even the read transaction
+        # before Python decoding: a long reader can block commits in DELETE mode.
+        columns = ("id", "request", "status", "filled", "broker_id", "last_evidence")
+        with closing(sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True,
+                                     timeout=30, isolation_level=None)) as db:
+            rows, snapshot_count, event_count = db.execute("""SELECT
+                (SELECT json_group_array(json_array(id,request,status,filled,broker_id,last_evidence))
+                 FROM (SELECT id,request,status,filled,broker_id,last_evidence
+                       FROM reservations ORDER BY created,id)),
+                (SELECT COUNT(*) FROM snapshots), (SELECT COUNT(*) FROM events)""").fetchone()
+        return {"version":VERSION,"binding":json.loads(_json(self.binding)),
+                "reservations":[asdict(self._reservation(dict(zip(columns, row)))) for row in json.loads(rows)],
+                "snapshot_count":snapshot_count,"event_count":event_count}
