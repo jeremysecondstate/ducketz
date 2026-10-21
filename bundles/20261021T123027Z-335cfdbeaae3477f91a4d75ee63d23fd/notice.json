@@ -1,0 +1,46 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T121912Z-f288a735f6c84ffbbb904905c932a795",
+  "change_id": "20261021T121912Z-f288a735f6c84ffbbb904905c932a795",
+  "commit_sha": "9e978c1eebeec453414f61aa33ffef865a3c4a4a",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py",
+      "sha256": "8bab720b7718435e437b2c3bbc8c3bc16adec5fd1a0f4a65f3db178e4560df71"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_capture_freshness.py",
+      "sha256": "fc35b9fe9caf4f4ad3680ca2fa879c02ff962476ca150458bccd775e1c59a274"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_capture_freshness.py",
+      "sha256": "f26b0731bf3d3e446f29cd4acd84f29c72b357578873bb8baf2feffdd02d130f"
+    }
+  ],
+  "limitations": [
+    "Narrow three-file stack on reviewed recovery PR301; main integration and peer installation are separate facts.",
+    "Offline checks establish supported sequencing and exact partial recovery; no live affected-path exercise or fill is claimed.",
+    "Original uncertain submission acceptance remains unproven and fully committed. Original expired intentions remain unreplayed.",
+    "Public tests are synthetic; retained original evidence and all private operating state remain local."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/304"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Exact reviewed source installed on Atlas. Current Atlas15m worker predates installation; Jeremy alone chooses its next ordinary manual start. No automatic control, stop clearing, replay, test order, schedule change or nightly prerequisite.",
+  "scope": "Shared own-order capture correctness for each independent fifteen-minute trader; local symbols, models, accounts and manual controls remain local.",
+  "summary": "Atlas independent fifteen-minute capture applies fresh own order evidence before slow portfolio work",
+  "tests": {
+    "actual_installed_Atlas": "314 passed in 66.38s (0:01:06)",
+    "baseline": "Three original-source targeted failures reproduce; all existing tests retained without exclusions.",
+    "installed_fingerprints": 113,
+    "isolated_candidate": "314 passed in 48.70s",
+    "network": "denied",
+    "new_synthetic_regressions": 13,
+    "sealed_source": "314 passed in 82.95s (0:01:22)",
+    "sealed_source_fingerprints": 115
+  }
+}

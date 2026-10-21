@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T12:30:27.556375Z",
+  "id": "20261021T123027Z-335cfdbeaae3477f91a4d75ee63d23fd",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas independent fifteen-minute capture applies fresh own order evidence before slow portfolio work"
+}
