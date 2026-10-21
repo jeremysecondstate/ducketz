@@ -10,6 +10,7 @@ from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 from pathlib import Path
 from urllib.parse import urlparse
 import json
+import math
 import sqlite3
 import threading
 import time
@@ -162,7 +163,100 @@ class _ExecutionTrace:
         evidence = _submission_failure_evidence(exc, self.stage)
         evidence.pop("submission_stage")
         evidence.update(self.snapshot())
+        # A later failure while retaining a submission must not erase the
+        # originating clock evidence. Trust only this operation's own marker.
+        current = exc.__cause__ or (None if exc.__suppress_context__ else exc.__context__)
+        seen = set()
+        while current is not None and id(current) not in seen and len(seen) < 8:
+            seen.add(id(current))
+            prior = getattr(current, "intraday_execution_failure", None)
+            if (isinstance(prior, _ExecutionFailure) and prior.trace is self
+                    and "submission_final_gate" in prior.evidence):
+                evidence["original_submission_failure"] = dict(prior.evidence)
+                break
+            current = current.__cause__ or (None if current.__suppress_context__ else current.__context__)
         exc.intraday_execution_failure = _ExecutionFailure(evidence, self)
+
+
+class _SubmissionDiagnostics:
+    """Best-effort local clocks only; never change a submission decision."""
+    def __init__(self):
+        self.unavailable = False
+        self.stage = "prepare_order_submission"
+        self.started = self.stage_started = self._now()
+        self.phases = []
+        self.quote_at = self.target_at = None
+        self.final_gate = dict(clock_reached=False, checked_at=None,
+            quote_observed_at=None, quote_age_seconds=None, maximum_quote_age_seconds=None,
+            target_close_at=None, seconds_to_target_close=None, snapshot_id=None, snapshot_observed_at=None)
+
+    def _now(self):
+        try:
+            value = time.monotonic()
+            if type(value) in {int, float} and math.isfinite(value):
+                return value
+        except Exception:
+            pass
+        self.unavailable = True
+        return None
+
+    def _elapsed(self, end, start):
+        if end is not None and start is not None:
+            elapsed = max(0, end - start)
+            if math.isfinite(elapsed):
+                return round(elapsed, 6)
+        self.unavailable = True
+        return None
+
+    def context(self, executor, forecast, quote):
+        try:
+            # These are the actual execution observation, never frozen sizing.
+            self.quote_at, self.target_at = instant(quote.freshness_observed_at), instant(forecast["target_close"])
+            self.final_gate.update(quote_observed_at=self.quote_at.isoformat(),
+                target_close_at=self.target_at.isoformat(),
+                snapshot_observed_at=instant(executor.portfolio.observed_at).isoformat())
+            snapshot = executor.snapshot_id
+            if type(snapshot) is str and len(snapshot) == 64 and all(c in "0123456789abcdef" for c in snapshot):
+                self.final_gate["snapshot_id"] = snapshot
+            else:
+                self.unavailable = True
+            age_limit = executor.ledger.maximum_evidence_age_seconds
+            if type(age_limit) in {int, float} and math.isfinite(age_limit):
+                self.final_gate["maximum_quote_age_seconds"] = age_limit
+            else:
+                self.unavailable = True
+        except Exception:
+            self.unavailable = True
+
+    def advance(self, stage):
+        now = self._now()
+        self.phases.append(dict(stage=self.stage, elapsed_seconds=self._elapsed(now, self.stage_started)))
+        self.phases = self.phases[-32:]
+        self.stage, self.stage_started = stage, now
+
+    def evaluated(self, current):
+        self.final_gate["clock_reached"] = True
+        try:
+            self.final_gate["checked_at"] = current.isoformat()
+            for name, delta in (("quote_age_seconds", current - self.quote_at),
+                                ("seconds_to_target_close", self.target_at - current)):
+                value = delta.total_seconds()
+                if math.isfinite(value):
+                    self.final_gate[name] = value
+                else:
+                    self.unavailable = True
+        except Exception:
+            self.unavailable = True
+
+    def snapshot(self):
+        now = self._now()
+        result = dict(submission_final_gate=dict(self.final_gate), submission_timing=dict(
+            stage=self.stage, elapsed_seconds=self._elapsed(now, self.started),
+            stage_elapsed_seconds=self._elapsed(now, self.stage_started),
+            phases=[dict(phase) for phase in self.phases]))
+        if self.unavailable:
+            result["submission_diagnostics_unavailable"] = True
+        return result
 
 
 class _LeaseKeeper:
@@ -940,9 +1034,22 @@ class IntradayAccountExecutor:
         admitted = [r for r in attempts if r.reservation_id in account_records]
         account_previous = admitted[-1].reservation_id if admitted else None
         native = account = None
-        context = self.broker.prepare_order_submission()
-        stage = "reserve_native"
+        detail = _SubmissionDiagnostics()
+        detail.context(self, forecast, quote)
+        stage = "prepare_order_submission"
+        frozen = None
+        def advance(stage_name):
+            nonlocal stage
+            stage = stage_name
+            detail.advance(stage_name)
+        def failure_clocks():
+            nonlocal frozen
+            if frozen is None:
+                frozen = detail.snapshot()
+            return frozen
         try:
+            context = self.broker.prepare_order_submission()
+            advance("reserve_native")
             native = self.ledger.reserve_intraday(symbol=forecast["symbol"], forecast_id=forecast["forecast_id"],
                 side=capacity.side, quantity=capacity.adjusted_quantity, limit_price=capacity.limit_price,
                 snapshot_id=self.snapshot_id, idempotency_key=key, batch_id=forecast["cycle_id"], as_of=self.clock(),
@@ -953,7 +1060,7 @@ class IntradayAccountExecutor:
                     for row in self.portfolio.broker_working_orders
                     if row["symbol"] == forecast["symbol"] and row["instruction"] == "SELL"},
                 retry_of_reservation_id=previous.reservation_id if previous else None, stream=self.stream)
-            stage = "reserve_account"
+            advance("reserve_account")
             account = self.authority.reserve_intraday(self.lease.token, IntradayReservationRequest(
                 key, self.snapshot_id, self.config.account_fingerprint, instant(self.clock()).astimezone(PACIFIC).date().isoformat(),
                 self.config.machine_id, forecast["symbol"], forecast["forecast_id"], capacity.side,
@@ -961,53 +1068,64 @@ class IntradayAccountExecutor:
                 native.reservation_id, native.allocation_id, forecast["forecast_id"], forecast["snapshot_hash"],
                 forecast["issued_at"], forecast["reference_at"], forecast["target_close"], TARGET_VERSION, self.symbols,
                 retry_of_native_reservation_id=account_previous, stream=self.stream))
-            stage = "build_order_payload"
+            advance("build_order_payload")
             payload = build_schwab_stock_order_payload(symbol=forecast["symbol"], instruction=capacity.side,
                 order_type="LIMIT", time_in_force=window.time_in_force, position_effect="AUTO",
                 quantity=capacity.adjusted_quantity, price=capacity.limit_price)
             def send(authority_gate):
                 def gate():
-                    nonlocal stage
                     try:
-                        stage = "current_manual_session_and_account"
+                        advance("current_manual_session_and_account")
                         self._assert_current()
-                        stage = "latest_forecast"
+                        advance("latest_forecast")
                         self._assert_latest(forecast)
-                        stage = "broker_snapshot_identity"
+                        advance("broker_snapshot_identity")
                         self.broker.verify_read_snapshot(self.portfolio.broker_identity_fingerprint)
-                        stage = "prepared_context_identity"
+                        advance("prepared_context_identity")
                         if context.identity_fingerprint != self.portfolio.broker_identity_fingerprint:
                             raise ContractError("Prepared order context differs from account snapshot")
-                        stage = "current_manual_session_and_account"
+                        advance("current_manual_session_and_account")
                         self._renew_current_lease()
                         current = instant(self.clock())
-                        stage = "forecast_eligibility"
+                        detail.evaluated(current)
+                        advance("forecast_eligibility")
                         if forecast_disposition(forecast, now=current, session_started_at=self.session_started_at,
                                                 local_symbols=self.symbols, actor=self.actor) != "eligible_for_account_checks":
                             raise ContractError("Forecast eligibility changed before submission")
-                        stage = "market_session"
+                        advance("market_session")
                         if stock_execution_window(current).time_in_force != window.time_in_force:
                             raise ContractError("Market session changed before submission")
-                        stage = "quote_freshness"
+                        advance("quote_freshness")
                         if not 0 <= (current-instant(quote.freshness_observed_at)).total_seconds() <= self.ledger.maximum_evidence_age_seconds:
                             raise ContractError("Quote needs refresh before submission")
-                        stage = "authority_submission_gate"
+                        advance("authority_submission_gate")
                         authority_gate()
-                        stage = "broker_submission"
+                        advance("broker_submission")
                     except Exception as exc:
+                        failure_clocks()
                         raise SubmissionNotStarted(str(exc)) from exc
-                location = self.broker.submit_prepared_order(payload, context, before_post=gate)
+                try:
+                    location = self.broker.submit_prepared_order(payload, context, before_post=gate)
+                except BaseException:
+                    # The authority records no-send/unknown receipts before
+                    # rethrowing. Their latency is not the failed broker stage.
+                    failure_clocks()
+                    raise
                 return urlparse(str(location or "")).path.rstrip("/").split("/")[-1]
-            stage = "authority_submit"
+            advance("authority_submit")
             accepted = self.authority.submit(self.lease.token, account.reservation_id, send)
-            stage = "persist_native_submission"
+            advance("persist_native_submission")
             self.ledger.mark_submission(native.reservation_id, status="SUBMITTED", observed_at=self.clock(),
                 evidence_id=key + ":submitted", broker_order_id=accepted.broker_order_id)
             return self._record(forecast, "submitted", order=self.ledger.lookup_reservation(native.reservation_id),
                                 evidence={"account_reservation_id":account.reservation_id})
         except Exception as exc:
+            # Freeze the originating clocks before receipt reads or cleanup.
+            diagnostics = {**_submission_failure_evidence(exc, stage), **failure_clocks()}
+            if self._execution_trace is not None:
+                self._execution_trace.remember(exc)
+                execution_failure_evidence(exc).update(diagnostics)
             if native is not None:
-                diagnostics = _submission_failure_evidence(exc, stage)
                 state = self.authority.reservation(account.reservation_id) if account else None
                 receipt = self.authority.submission_receipt(account.reservation_id) if account else None
                 if receipt and receipt["outcome"] == "NOT_SUBMITTED" and state.status in {"SUBMITTING", "UNKNOWN"}:
@@ -1058,7 +1176,7 @@ class IntradayAccountExecutor:
                     "forecast_id":forecast["forecast_id"],
                     "native_reservation_id":native.reservation_id if native else None,
                     "account_reservation_id":account.reservation_id if account else None,
-                    "diagnostics":_submission_failure_evidence(exc, stage),
+                    "diagnostics":{**_submission_failure_evidence(exc, stage), **failure_clocks()},
                     "acceptance_requires_exact_evidence":True,
                 }, symbol=forecast["symbol"])
             except Exception:
