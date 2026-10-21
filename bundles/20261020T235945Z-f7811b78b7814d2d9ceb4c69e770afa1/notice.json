@@ -1,0 +1,104 @@
+{
+  "author": "Scout",
+  "base_commit": "576029bcf6b466adf49761704fb1204fca7bc7dc",
+  "branch": "codex/scout/20261020T235056Z-6ccbcf65263f48039f14787df00bad99",
+  "change_id": "20261020T235056Z-6ccbcf65263f48039f14787df00bad99",
+  "commit_sha": "2adaf494d60e3eebb352d0828b1b14e273d81f04",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py",
+      "sha256": "207a3b34b96da041087c7ee03a35a160f0464a9f296559b200b7bbd6918f6e47"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_queue_selection.py",
+      "sha256": "e02d067d76ea8634e60008b05f8b51d07b7f24371a5784837db698ce17eff3f4"
+    }
+  ],
+  "limitations": [
+    "Selected immutable payload and indexed-identity checks remain unchanged; unrelated historical payloads are no longer loaded by this operation.",
+    "Wider canonical author suite retained one pre-existing stale SQLite retry assertion independently reproduced at unchanged base; actual combined runtime retains its corrected test and passes without deselection.",
+    "Tests overlap across stages; offline selected-query reproduction does not prove loaded runtime recovery or attribute every historical delay. No private inputs, model recipes, account state or ledgers included."
+  ],
+  "local_installation": {
+    "actor": "Scout",
+    "check_counts_are_unique": false,
+    "installed_check_results": [
+      208,
+      495
+    ],
+    "launcher_check": "passed_offline_bound_imports",
+    "loaded": false,
+    "manual_restart_required": true,
+    "other_source_and_recipe_preserved": true,
+    "stage": "installed_for_next_manual_restart",
+    "trader_controls_untouched": true
+  },
+  "peer_applicability": "Common queue selection correctness and performance applies to either PC while preserving its own private model recipe, symbols, qualification, broker capacity, order identity and manual controls.",
+  "producer": "human-authorized-development",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/295",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout installed a verified immutable local release selected for the next human manual trader restart. Maintenance starts no trader, changes no controls and submits no order. Main integration and peer installation remain separate.",
+  "scope": "shared",
+  "summary": "Read only eligible immutable forecasts during live queue polling",
+  "task": "scout-15m-first-live-session-watch",
+  "tests": [
+    {
+      "bound_file_count": 3796,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_intraday_queue_selection.py",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_store.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_local_start.py",
+        "tests/test_intraday_manual_launcher.py",
+        "tests/test_independent_loop_isolation.py"
+      ],
+      "completed_at_utc": "2026-10-20T23:47:19.963292+00:00",
+      "exit_code": 0,
+      "network_connections": "disabled",
+      "output_sha256": "4743a388f1105bb0fb26c581dc257fa4f8a8df131bc1bd3fe1f13d06d88341cd",
+      "result": "216 passed",
+      "stage": "source_author",
+      "started_at_utc": "2026-10-20T23:46:55.609953+00:00"
+    },
+    {
+      "bound_file_count": 842,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_intraday_queue_selection.py",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_store.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_local_start.py",
+        "tests/test_intraday_manual_launcher.py",
+        "tests/test_independent_loop_isolation.py"
+      ],
+      "completed_at_utc": "2026-10-20T23:54:53.415465Z",
+      "exit_code": 0,
+      "network_connections": "disabled",
+      "output_sha256": "e5d8715a46d1a262bc1d03058dc999c4fb18b1949dc4009eec54dc13f7bf1260",
+      "result": "216 passed",
+      "stage": "publication_candidate",
+      "started_at_utc": "2026-10-20T23:54:30.076247Z"
+    }
+  ],
+  "verified_remote_sha": "2adaf494d60e3eebb352d0828b1b14e273d81f04"
+}
