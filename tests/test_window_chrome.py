@@ -25,6 +25,9 @@ class FakeRoot:
     def winfo_id(self):
         return 123
 
+    def iconbitmap(self, *, default):
+        self.icon_path = default
+
 
 def test_titlebar_applies_after_creation_and_restore_only(monkeypatch):
     monkeypatch.setattr(window_chrome.sys, "platform", "win32")

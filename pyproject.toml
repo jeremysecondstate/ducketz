@@ -90,6 +90,7 @@ include = [
 [tool.setuptools.package-data]
 "datafetching" = ["watchlist.txt"]
 "app.ui" = [
+    "assets/ducketz/*.ico",
     "assets/hyperliquid/*.png",
     "assets/hyperliquid/*.md",
     "assets/security_marks/*.png",

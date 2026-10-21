@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import ctypes
 from ctypes import wintypes
+from pathlib import Path
 import sys
 import tkinter as tk
 
@@ -13,6 +14,12 @@ def theme_title_bar(root: tk.Tk) -> None:
     """Apply after Tk creates its native wrapper, and again after restoration."""
     if sys.platform != "win32":
         return
+
+    try:
+        root.iconbitmap(default=str(Path(__file__).with_name("assets") / "ducketz" / "app.ico"))
+    except tk.TclError:
+        # A missing icon must not prevent the UI from opening.
+        pass
 
     def apply(event: tk.Event | None = None) -> None:
         # Toplevel bindings also see descendant Map events.
