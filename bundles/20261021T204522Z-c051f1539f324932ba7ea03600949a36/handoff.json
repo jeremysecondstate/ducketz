@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T20:45:22.898222Z",
+  "id": "20261021T204522Z-c051f1539f324932ba7ea03600949a36",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Reduce collection queue normalization CPU while preserving canonical bytes"
+}

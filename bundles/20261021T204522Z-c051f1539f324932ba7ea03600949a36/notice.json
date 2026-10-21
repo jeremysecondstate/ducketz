@@ -1,0 +1,87 @@
+{
+  "author": "Scout",
+  "base_commit": "a521df4189887afe0e3165c14426a0d86c97b082",
+  "branch": "codex/scout/20261021T204203Z-84a4211b4bf64c3b84c07caea8ad606f",
+  "change_id": "20261021T204203Z-84a4211b4bf64c3b84c07caea8ad606f",
+  "commit_sha": "61e7e814e3e6b06aa418fe9cf46c3e8b74b471af",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/market_collection.py",
+      "sha256": "c7d67d74dc7a060b92001d96a4e3a3fa30ff92ddfc601bc7e169beaab467f938"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_market_collection_canonical.py",
+      "sha256": "5735c890b41f09607c2ab82cce22405471dbddcce5477012f8c6feae057bd2b3"
+    }
+  ],
+  "limitations": [
+    "Offline regression and private fixture measurements establish the normalization improvement; broader dataset latency and historical input sufficiency remain separate open issues.",
+    "Private workload inputs, operating evidence, symbols, account state, task memory, raw data, fitted models and local recipes are excluded from this source publication.",
+    "Installed source and loaded runtime behavior are separate facts; affected natural-session behavior requires manual loading and operation-specific observation.",
+    "Passing counts overlap between stages; private fixture inputs and operating evidence are excluded."
+  ],
+  "local_installation": {
+    "actor": "Scout",
+    "check_counts_are_unique_between_stages": false,
+    "installed_check_results": [
+      345,
+      487
+    ],
+    "launcher_check": "passed_offline_bound_imports_zero_network_attempts",
+    "loaded": false,
+    "manual_restart_required": true,
+    "other_source_recipe_and_cache_namespace_preserved": true,
+    "stage": "installed_for_next_manual_restart",
+    "trader_controls_untouched": true
+  },
+  "main_integration": "prepare_blocked_origin_main_does_not_descend_from_reviewed_source_base; retain PR278 dependency and same Completion-Record for retry",
+  "peer_applicability": "Common canonical serialization optimization applies to either PC while retaining its own model recipe, cache namespace and operating bindings.",
+  "peer_installation": "not_inferred",
+  "producer": "human-authorized-development",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/318",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The normalizer is loaded with application source at startup. Existing sessions retain their prior implementation until a human manually restarts the trader. This repair preserves each PC model recipe, fitted models, inputs, cache namespace, historical records and manual trader controls.",
+  "scope": "shared",
+  "summary": "Reduce collection queue normalization CPU while preserving canonical bytes",
+  "task": "Scout stock15-minute scalar-normalization repair",
+  "tests": [
+    {
+      "bound_file_count": 846,
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_market_collection_canonical.py",
+        "tests/test_intraday_market_collection.py",
+        "tests/test_intraday_market_collection_index.py",
+        "tests/test_intraday_market_collection_lock_retry.py",
+        "tests/test_intraday_market_collection_pipeline_repair.py",
+        "tests/test_intraday_market_fs_diagnostics.py",
+        "tests/test_intraday_market_collection_schwab_stream.py",
+        "tests/test_intraday_market_collection_extended.py",
+        "tests/test_intraday_market_collection_history.py",
+        "tests/test_intraday_market_collection_fmp_context.py",
+        "tests/test_intraday_market_context.py",
+        "tests/test_intraday_market_context_cache.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--tb=short"
+      ],
+      "completed_at_utc": "2026-10-21T20:43:43.333542Z",
+      "exit_code": 0,
+      "network_connections": "disabled",
+      "output_sha256": "eb10c1186e482e2dfd29f4f5223b4456e85f3ee581ab5a301cbb8920ffe2d2cb",
+      "result": "345 passed",
+      "stage": "publication_candidate",
+      "started_at_utc": "2026-10-21T20:43:23.121073Z"
+    }
+  ],
+  "verified_remote_sha": "61e7e814e3e6b06aa418fe9cf46c3e8b74b471af"
+}
