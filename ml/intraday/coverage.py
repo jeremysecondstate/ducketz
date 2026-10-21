@@ -20,6 +20,10 @@ from .prediction import ContractError, STEP, instant
 POPULATION_CONTRACT = "intraday-verified-source-observations-v1"
 RECOVERY_POPULATION_CONTRACT = "intraday-multi-provider-recovery-v1"
 NO_TRADE_EVIDENCE_VERSION = "intraday-independent-complete-scope-no-trade-v1"
+# Reuse pandas' fixed rounding rules without parsing a frequency for every
+# native observation in each source proof.
+_NATIVE_MINUTE = pd.offsets.Minute(1)
+_SOURCE_QUARTER = pd.offsets.Minute(15)
 
 
 def check_population_contract(value):
@@ -124,7 +128,7 @@ def verified_source_observation(candle: Mapping) -> bool:
                 or not 1 <= observed <= 15 or empty != 15-observed):
             return False
         op, av = _utc(candle["opened_at"]), _utc(candle["available_at"])
-        if op != op.floor("15min") or av < op+STEP:
+        if op != op.floor(_SOURCE_QUARTER) or av < op+STEP:
             return False
         evidence = candle["evidence_json"]
         evidence = evidence if isinstance(evidence, Mapping) else json.loads(evidence)
@@ -137,7 +141,7 @@ def verified_source_observation(candle: Mapping) -> bool:
         _require_native_observations([candle, *evidence["observations"]])
         times = [_utc(row["opened_at"]) for row in evidence["observations"]]
         if (len(times) != observed or len(set(times)) != len(times) or times != sorted(times)
-                or any(t < op or t+pd.Timedelta(minutes=1) > op+STEP or t != t.floor("min") for t in times)):
+                or any(t < op or t+pd.Timedelta(minutes=1) > op+STEP or t != t.floor(_NATIVE_MINUTE) for t in times)):
             return False
         if _utc(candle["native_first_opened_at"]) != times[0] or _utc(candle["native_last_opened_at"]) != times[-1]:
             return False
