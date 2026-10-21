@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T22:19:51.592184Z",
+  "id": "20261021T221951Z-bcbf053ea7644ff9be02575f30e993f3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas Gameplan recaptures coherent order views within existing read bounds"
+}

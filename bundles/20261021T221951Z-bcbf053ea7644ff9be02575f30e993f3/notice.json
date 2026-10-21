@@ -1,0 +1,50 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T221256Z-cdcaaddbc26f4b47925922fd8855988e",
+  "change_id": "20261021T221256Z-cdcaaddbc26f4b47925922fd8855988e",
+  "commit_sha": "29da190f03c60af7648bc2523ca151106c9a03cf",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/account_gameplan/execution.py",
+      "sha256": "58e5f68a618607400ed1eb3a8a190c39a27c8e358e863ee49f663ab3a2fd9772"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_runtime.py",
+      "sha256": "6efaf751d4715a12a65fb794eae6fdbecc2d0a846b7c6255b152d5534fd04809"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_order_snapshot_coherence.py",
+      "sha256": "7e7d5224f0a6baedeb0555489caf823e5605f4ca6c1b55aea4f7c79ed114192c"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_gameplan_order_coherence.py",
+      "sha256": "b3dedd6f11626181cb369c1d44da80d8468fa8b7013d6106ee10e1844cbb32b8"
+    }
+  ],
+  "limitations": [
+    "Stacked on the reviewed Gameplan predecessor; main integration and peer installation remain separate.",
+    "Original rejected working-row bytes were unavailable; original exact predicate remains unproven. The supported failure class is reproduced.",
+    "Source installed on Atlas; current manual Gameplan process predates it. Loading and affected live exercise are not established by offline tests. Operating evidence remains private."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/321",
+    "https://github.com/jeremysecondstate/atlas-scout/issues/30"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "A future ordinary Jeremy manual Gameplan start loads installed source. No immediate restart, test order, replay, manual-stop change, cross-trader condition, task change or nightly prerequisite.",
+  "scope": "Shared Gameplan correctness; both PCs retain independent trader state, local model policy, symbols and manual controls.",
+  "summary": "Atlas Gameplan recaptures coherent order views within existing read bounds",
+  "tests": {
+    "baseline": "Original stale-view class reproduces authority mismatch before submission.",
+    "independent_review": "Whole owned diff and complete dependencies reviewed; no open findings.",
+    "installed_Atlas": "280 passed in 29.01s",
+    "installed_intraday_composition": "353 passed in 67.11s",
+    "isolated_candidate": "280 passed",
+    "network": "denied",
+    "sealed_source": "280 passed"
+  }
+}
