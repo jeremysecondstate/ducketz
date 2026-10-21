@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-21T22:28:11.970819Z",
+  "id": "20261021T222811Z-49718a8c6a0349f3a4021610fc478adc",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas forecast storage contention repair is published for independent peer review"
+}

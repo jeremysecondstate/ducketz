@@ -1,0 +1,31 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261021T222451Z-0fbb587e772a4da1af6a5c4c0623455f",
+  "change_id": "20261021T222451Z-0fbb587e772a4da1af6a5c4c0623455f",
+  "files": [
+    "ml/intraday/live_session.py",
+    "tests/test_intraday_forecast_storage_retry.py",
+    "tests/check_isolated_intraday_forecast_storage_retry.py"
+  ],
+  "limitations": [
+    "Historical fault omitted exact stack and lock holder; no attribution invented.",
+    "Offline tests and local installation are established; main integration, peer installation and live recovery are separate.",
+    "Per-symbol failures and other worker paths retain existing behavior.",
+    "Eight unrelated stale candle-close fixture failures reproduce unchanged on the parent."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/323",
+  "remote_sha": "334d14e0b7e61ba5bc5b9c40b4bc955dff43efc3",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Each PC adopts independently under existing authority. The repair loads on a future human manual start; do not start, restart, trade or clear stops for validation.",
+  "scope": "shared",
+  "source_sha": "334d14e0b7e61ba5bc5b9c40b4bc955dff43efc3",
+  "summary": "Atlas forecast storage contention repair is published for independent peer review",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-21T22:26:39.444256Z",
+      "description": "93 offline temporary SQLite and independent-runtime regressions passed",
+      "output_sha256": "f5e2f3e1c21d13391fdec8dad4c19c9484c402c8e091f4addada6fcb4ff4fbf9",
+      "started_at_utc": "2026-10-21T22:26:20.030931Z"
+    }
+  ]
+}
