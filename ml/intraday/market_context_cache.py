@@ -20,7 +20,7 @@ import zlib
 
 from .market_context import (
     MarketContext, _hash, _json, _selectors, _build_resolved_context, instant,
-    _resolved_contract, snapshot_digest,
+    _resolved_contract, _owned_context_digest, snapshot_digest,
 )
 from .prediction import ContractError
 
@@ -195,7 +195,9 @@ class ContextCache(AbstractContextManager):
                         or len(result.values) != len(result.feature_names)
                         or not all(math.isfinite(v) for v in result.values)
                         or result.feature_version != contract["version"]
-                        or result.snapshot_sha256 != _hash(result.snapshot)):
+                        # json.loads above owns every nested evidence object;
+                        # validate it immediately before returning any reference.
+                        or result.snapshot_sha256 != _owned_context_digest(result)):
                     raise ValueError("Cached context contract mismatch")
                 self.hits += 1
                 return result

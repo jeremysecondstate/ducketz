@@ -13,6 +13,7 @@ from pathlib import Path
 import sqlite3
 
 from .prediction import ContractError, STEP, TARGET_VERSION, digest, encoded, instant, number
+from .direction_metadata import FIELDS as DIRECTION_FIELDS, recorded_direction, stamp_new_direction
 
 
 def utcnow():
@@ -200,26 +201,43 @@ class ShadowStore:
         value["classification"] = "not-down" if expected >= Decimal("0.50") else "down"
         value["execution_eligibility"] = ("manual_live_checks_required" if value["mode"] == "live"
                                           else "unresolved_shadow_only")
-        value.pop("forecast_id", None)
-        key = digest(value)
-        value["forecast_id"] = key
-        intent_value = self._intent(key, value, intent)
+        supplied_id = value.pop("forecast_id", None)
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             old = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE cycle_id=? AND symbol=?", (value["cycle_id"], value["symbol"])).fetchone()
             previous = self._forecast_value(old) if old else None
-            if previous is not None and previous != value:
-                raise ContractError("Issued forecast is immutable")
-            if old:
+            if previous is not None:
+                # Inherit only omitted store-derived fields. Never stamp an old
+                # forecast or reinterpret its action with the loaded policy.
+                for field in DIRECTION_FIELDS:
+                    if field not in value and field in previous:
+                        value[field] = previous[field]
+                key = digest(value)
+                value["forecast_id"] = key
+                if previous != value or supplied_id not in (None, key):
+                    raise ContractError("Issued forecast is immutable")
+                if intent:
+                    original = db.execute("SELECT id,payload FROM intents WHERE forecast_id=? ORDER BY rowid LIMIT 1", (key,)).fetchone()
+                    saved_intent = json.loads(original[1]) if original else None
+                    if (saved_intent is None or digest(saved_intent) != original[0]
+                            or any(field not in saved_intent or saved_intent[field] != item for field, item in intent.items())):
+                        raise ContractError("Original forecast intention is immutable")
                 return previous
+            value = stamp_new_direction(value)
+            key = digest(value)
+            value["forecast_id"] = key
+            intent_value = self._intent(key, value, intent)
             db.execute("INSERT INTO forecasts VALUES(?,?,?,?,?,?,?)", (key, value["pc"], value["symbol"], value["cycle_id"], value["reference_at"], value["issued_at"], encoded(value)))
             db.execute("INSERT INTO intents VALUES(?,?,?,?)", (digest(intent_value), key, value["issued_at"], encoded(intent_value)))
         return value
 
     @staticmethod
     def _intent(key, forecast, supplied):
-        side = "BUY" if float(forecast["probability_not_down"]) >= .5 else "SELL"
+        side = forecast["stock_action"]
         value = dict(supplied or {})
+        metadata = recorded_direction(forecast)
+        if any(field in value and value[field] != item for field, item in metadata.items()):
+            raise ContractError("Intent stock direction metadata differs from forecast")
         if value.get("side", side) != side:
             raise ContractError("Intent direction disagrees with the forecast")
         desired, adjusted = value.get("desired_quantity"), value.get("adjusted_quantity")
@@ -233,7 +251,11 @@ class ShadowStore:
             disposition = value.get("disposition")
             if not disposition:
                 raise ContractError("Explicit execution disposition required")
-        return {**value, "forecast_id": key, "side": side, "desired_quantity": desired,
+        if side == "HOLD":
+            if desired not in (None, 0):
+                raise ContractError("Neutral forecast cannot create a trade intention")
+            disposition = "probability_between_action_cutoffs"
+        return {**value, **metadata, "forecast_id": key, "side": side, "desired_quantity": desired,
                 "adjusted_quantity": adjusted, "disposition": disposition, "submission_status": "not_submitted_shadow",
                 "submitted_quantity": 0, "filled_quantity": 0, "realized_pnl": None}
 
