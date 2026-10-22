@@ -1,0 +1,41 @@
+{
+  "author": "Atlas",
+  "change_id": "20261022T224357Z-bac6e90566ab43c59c441c4ba6929f64",
+  "commit_sha": "cc124533954959791646e9272436e7e2c0157d8f",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_pending_presence.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_pending_presence.py"
+    }
+  ],
+  "limitations": [
+    "Large saved-payload presence checks support a cost hypothesis; all live latency is not attributed to this path.",
+    "Main integration, peer installation, current running-process loading and exercised recovery are separate unproved stages."
+  ],
+  "pr": "https://github.com/jeremysecondstate/ducketz/pull/344",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas installed only reviewed minimal hunks while preserving other source repairs. No start, restart, hotpatch, trade or operating wait. Future manual starts remain with Jeremy.",
+  "scope": "shared generic scheduler performance; independently applicable to Atlas and Scout",
+  "summary": "Atlas pending forecast selection uses indexed symbol presence instead of decoding saved model payloads",
+  "tests": [
+    "82 offline tests passed on final source through runpy, immutable queue and isolated publication candidate.",
+    "82 offline tests passed in composed local preview and installed source.",
+    "Original pending selector fails the payload-read regression; forecast consumption still rejects corrupt evidence."
+  ]
+}
