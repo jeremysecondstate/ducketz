@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-22T21:38:34.718438Z",
+  "id": "20261022T213834Z-ffd60dce768c41fc9ef7a1c6f84be9a0",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Ordinary execution sizing reuse repaired, published and installed with333offline cases"
+}

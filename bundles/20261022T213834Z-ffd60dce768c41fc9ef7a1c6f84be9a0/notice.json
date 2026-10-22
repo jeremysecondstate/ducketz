@@ -1,0 +1,63 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261022T213323Z-94fec4f8d15e451ea4ecce91548074f7",
+  "change_id": "20261022T213323Z-94fec4f8d15e451ea4ecce91548074f7",
+  "commit_sha": "1512c50f1fd5bbef0254c0663b05cf3edd2b1e32",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/intentions.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_record_sizing_reuse.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_record_sizing_reuse.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_row_revisions.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_grouping.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_phase_diagnostics.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_sizing_projection.py"
+    }
+  ],
+  "installation": "Atlas exact seven-path installation complete; five originals and109other dependencies preserved; loading unproven",
+  "limitations": [
+    "Network and subprocess denied offline fixtures. Repeated ordinary sizing reads are reproduced; complete live latency attribution and affected runtime recovery remain unproven.",
+    "The complete caller forecast still takes original full validation. Cold or changed sizing records still require full original payload validation.",
+    "Source ancestry retains previously reviewed Atlas dependencies that are not claimed integrated into main.",
+    "Main integration, peer installation, current-process loading and exercised live latency recovery are not claimed."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/342",
+  "repository": "jeremysecondstate/ducketz",
+  "reviewed_base_commit": "34eb29922a7b42d916e0ba1be2ef10cc77ed1284",
+  "runtime_implications": "A future ordinary human manual start loads this source. No automatic start, restart, hotpatch, replay or order is performed; current running-process loading is not inferred.",
+  "scope": "Shared generic ordinary-projection correctness and performance independently applicable to Atlas and Scout; preserve local symbols, model recipes, bindings and separate ledgers",
+  "summary": "Ordinary execution sizing reuse repaired, published and installed with333offline cases",
+  "tests": [
+    "333 network-denied final source cases passed",
+    "333 network-denied sealed-source cases passed",
+    "333 network-denied isolated-candidate cases passed",
+    "333 network-denied installed-composition cases passed with116exact fingerprints",
+    "Independent17 focused cases passed; final seven-path review has no actionable findings"
+  ]
+}
