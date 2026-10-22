@@ -1,0 +1,187 @@
+{
+  "author": "Scout",
+  "base_commit": "85e76019893d473996c70ba972cf136adb4fa3ca",
+  "branch": "codex/scout/20261022T124726Z-bea1874dfde747b1b9a9a24923a7cf87",
+  "change_details": [
+    "New forecast and intention records freeze original saved stock action, exact inclusive v3 cutoffs and policy; existing IDs, historical sides and scientific classifier semantics remain intact.",
+    "Sizing and optional portable telemetry retain frozen policy evidence and legacy absence without relabeling history.",
+    "Fresh privately decoded context cache hits retain canonical integrity validation without defensive public snapshot copying; public mutation isolation remains.",
+    "Bounded verified candle routing avoids repeated full payload work; every audit/outcome write reloads and validates the selected original while preserving source/availability/correction/order/stop behavior."
+  ],
+  "change_id": "20261022T124726Z-bea1874dfde747b1b9a9a24923a7cf87",
+  "commit_sha": "ea077fc852b07a3dd405e4e2b7d686ef85a8d585",
+  "dependency_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/329",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/store.py",
+      "sha256": "d1e247fd72cb35441b28d0add3cba4f2d0489a3b92da76e9cf001982ffa36e0d"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/technical_sizing.py",
+      "sha256": "01d2d28c9de0a4e440f16ccc14688b8fb2cc142013683b31dd1e17c910318d66"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/intentions.py",
+      "sha256": "6c53c9aac2ebde4cee7b31d29f8e73c9e778e90ae4e42d3dcdfdc1bbe00e1897"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/telemetry.py",
+      "sha256": "875ae4a8154256da115f2e3fd532bd86dd2011ae8b6de1651798387a4b994713"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/direction_metadata.py",
+      "sha256": "4e701b9f1f247e7bd727db188dbecb48f3a6039f43f8ac53bf23d95fa0ff003e"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_direction_metadata.py",
+      "sha256": "ff1a291aaca0338f704bc0998fe6e422378e1b42153397ddab48a77ee7a1475d"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_direction_policy.py",
+      "sha256": "7db9af80d8205e1fbad54c57cdf7aaee3545cbfc83e48e4a65d9126e08845d94"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_stock_direction_policy.py",
+      "sha256": "520ea7c54b7839945a255b94a80d963c3ad622142728ebf17a1b6bdd564f5a76"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/market_context_cache.py",
+      "sha256": "62ed451d035af4e7c70dbe150f8d6ad0b8631679d7290f29451219705a74987a"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/market_context.py",
+      "sha256": "7fff80853e34e6277be651e85cdf14f329452835aa4d1b6f04cadad919560348"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_context_digest.py",
+      "sha256": "434582148b4aa6850a175ed71326407d85fac115ff37dfa065959a72612618a4"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_technical_sizing.py",
+      "sha256": "fd5c0db9ee72f416a0cb9ab323aca150ced879700ce47ad8d473c61a01de3c92"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_recovery_intentions.py",
+      "sha256": "07a0afe18506c4338741f502f62232715f67f5f8240b8d074e0afb496377aef5"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/live_session.py",
+      "sha256": "5d0545a14f3547fb6e3d8e6165be411d5de63ded7c06407c1fd80dfb5a59001d"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/scoring_candles.py",
+      "sha256": "3c5420b7ecd415c913d415f989b5986568e1b08f5208c557b759f5451314ddcf"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scoring_candles.py",
+      "sha256": "5304739a04ee216e4d84b4270d8a3aff58f89c490784ca8836c43b58657b8ed4"
+    }
+  ],
+  "limitations": [
+    "Offline checks do not establish loaded runtime or full-cycle latency recovery.",
+    "Warm scoring polls are not complete historical payload corruption audits; selected originals are validated before mutation.",
+    "Context implementation fingerprints change, retaining older derived entries while new keys may refill naturally.",
+    "Main does not descend from the reviewed parent source; retain the Completion-Record and parent dependency.",
+    "Private account state, credentials, raw data, fitted models, recipes, operating logs and native bindings are excluded."
+  ],
+  "main_integration": {
+    "dependency_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/329",
+    "reason": "Current main does not descend from reviewed parent source",
+    "resume_completion_record": "20261022T124726Z-bea1874dfde747b1b9a9a24923a7cf87",
+    "status": "blocked"
+  },
+  "peer_applicability": "Shared correctness and processing source applies to either PC under existing local authority. Preserve each PC model selection, calibration, recipe, symbols, private evidence and operating bindings. This notice supplies no new operating authority.",
+  "pull_request_base_branch": "codex/scout/20261022T112616Z-31c9d2d8858949e2a59df5b5738b2c3b",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/334",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source publication and local installation are separate. Private local runtime preparation continues independently; startup imports require a human-controlled manual reload after installation. Publication does not control any trader.",
+  "scope": "shared",
+  "summary": "Preserve frozen intraday stock policy and reduce repeated context and scoring-candle work",
+  "tests": [
+    {
+      "commands": [
+        [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--tb=short",
+          "-o",
+          "tmp_path_retention_policy=all",
+          "tests/test_stock_direction_policy.py",
+          "tests/test_intraday_direction_metadata.py",
+          "tests/test_intraday_store.py",
+          "tests/test_intraday_intentions.py",
+          "tests/test_intraday_technical_sizing.py",
+          "tests/test_intraday_recovery_intentions.py",
+          "tests/test_intraday_telemetry.py",
+          "tests/test_intraday_forecast_lookup.py",
+          "tests/test_intraday_local_forecast.py",
+          "tests/test_intraday_saved_forecast_busy.py",
+          "tests/test_intraday_snapshot_validation_cache.py"
+        ],
+        [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--tb=short",
+          "-o",
+          "tmp_path_retention_policy=all",
+          "tests/test_intraday_context_digest.py",
+          "tests/test_intraday_market_context.py",
+          "tests/test_intraday_market_context_cache.py",
+          "tests/test_intraday_partial_context.py",
+          "tests/test_intraday_context_observation_quality.py",
+          "tests/test_intraday_market_collection_index.py"
+        ],
+        [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--tb=short",
+          "-o",
+          "tmp_path_retention_policy=all",
+          "tests/test_intraday_scoring_candles.py",
+          "tests/test_intraday_scoring_scan.py",
+          "tests/test_intraday_live_session.py",
+          "tests/test_intraday_completed_observations.py",
+          "tests/test_intraday_native_feed.py",
+          "tests/test_intraday_legacy_stop.py"
+        ]
+      ],
+      "counts_overlap_between_stages": true,
+      "passed": 728,
+      "sealed_receipt_sha256": "1ba2a81f849952b88acc5e825099c133b903375e1f2e4cc520c47e8377589c6c",
+      "stage": "source_and_publication_candidate"
+    }
+  ],
+  "verified_remote_sha": "ea077fc852b07a3dd405e4e2b7d686ef85a8d585"
+}
