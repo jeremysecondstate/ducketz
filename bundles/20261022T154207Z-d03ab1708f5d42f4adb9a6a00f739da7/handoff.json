@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-22T15:42:07.053571Z",
+  "id": "20261022T154207Z-d03ab1708f5d42f4adb9a6a00f739da7",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Shared retained-target scoring payload-read repair published and locally installed"
+}

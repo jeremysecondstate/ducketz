@@ -1,0 +1,45 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261022T152743Z-4a96037fe3934d51bda4bf91c19e816e",
+  "change_id": "20261022T152743Z-4a96037fe3934d51bda4bf91c19e816e",
+  "files": [
+    "ml/intraday/store.py",
+    "ml/intraday/live_session.py",
+    "tests/test_intraday_retained_target_priority.py",
+    "tests/test_intraday_scoring_revision_cache.py",
+    "tests/check_isolated_intraday_scoring_revision_cache.py"
+  ],
+  "limitations": [
+    "Warm unchanged already-scored targets avoid full scientific payload I/O using existing exact revision markers; cold/changed originals, relevant prior revisions, corrections and observed evidence remain validated.",
+    "Publication includes required ready-target priority caller and fixtures; other installed source repairs are preserved. Draft PR338 stacks on336.",
+    "Offline regressions prove the source behavior; actual live latency contribution, loading and affected exercised behavior remain unproven. Existing sessions were not restarted or hotpatched.",
+    "Main integration and peer installation are separate facts; this shared source applies independently to either PC and introduces no operating acceptance or readiness dependency."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/338",
+  "remote_sha": "af640b8d52213c2945a23154b6277e34acf880f7",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "A future human manual start loads this source. Reuse the existing forecast revision schema; no observer trading-state or database migration, process start/restart/hotpatch, order, native task, schedule or binding changes. Preserve expired signals and all independent manual controls.",
+  "scope": "shared",
+  "source_sha": "af640b8d52213c2945a23154b6277e34acf880f7",
+  "summary": "Shared retained-target scoring payload-read repair published and locally installed",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-22T15:28:01.968773Z",
+      "description": "Sealed author candidate:155offline checks passed",
+      "output_sha256": "2149b90eac1006f98f18892e45e7cd918513519022c60bbc1269fd0e3c307e64",
+      "started_at_utc": "2026-10-22T15:27:43.730467Z"
+    },
+    {
+      "completed_at_utc": "2026-10-22T15:40:16.287076Z",
+      "description": "Isolated publication candidate:155offline checks passed",
+      "output_sha256": "e6404be7b1c4765606f947c1c0131769ba1dddf6529ccf96c091d6de33405dd1",
+      "started_at_utc": "2026-10-22T15:39:56.715138Z"
+    },
+    {
+      "completed_at_utc": "2026-10-22T15:40:10.125556+00:00",
+      "description": "Retained Atlas local composition:155offline checks passed;120current import/input fingerprints match",
+      "output_sha256": "b5ec271a172c8298dd5411590d5e986c9f689a3383a2423b45aaad18cc23fe2e",
+      "started_at_utc": "2026-10-22T15:39:55.963508+00:00"
+    }
+  ]
+}
