@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-22T20:28:57.892013Z",
+  "id": "20261022T202857Z-b0893a023f2c49bb9b1f9a4d0cee68eb",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Validated warm original-row reuse published and installed for independent15m recovery"
+}

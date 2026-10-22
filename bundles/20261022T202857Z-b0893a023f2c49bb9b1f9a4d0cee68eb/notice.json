@@ -1,0 +1,62 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261022T202104Z-21423743bdb5479da93dbdbaa18af383",
+  "change_id": "20261022T202104Z-21423743bdb5479da93dbdbaa18af383",
+  "commit_sha": "34eb29922a7b42d916e0ba1be2ef10cc77ed1284",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/intentions.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_grouping.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_row_revisions.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_recovery_row_revisions.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_phase_diagnostics.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_forecast_reuse.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_latency.py"
+    }
+  ],
+  "installation": "Atlas exact seven-path source installation complete; originals and108other dependencies preserved; loading unknown",
+  "limitations": [
+    "Network-denied offline fixtures only. Repeated original I/O is reproduced; no complete live latency cause, current-process loading, original acceptance or exercised recovery is inferred.",
+    "Cold or changed originals still require full payload validation. Forecast-read diagnostics include protected header lookup and cold semantic validation.",
+    "Publication ancestry retains previously reviewed Atlas dependencies not yet integrated into main.",
+    "No main integration, peer installation, current-process loading or exercised live recovery claimed."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/341",
+  "repository": "jeremysecondstate/ducketz",
+  "reviewed_base_commit": "c65c9e10d6796552ce9ae1f7e037d1bffa618850",
+  "runtime_implications": "A future human manual process loads this change and initializes supplementary sizing revision markers in its own evidence database; original rows, forecasts, sizing, orders and fills remain unchanged. No trader start, restart, hotpatch, replay or order is performed.",
+  "scope": "shared generic recovery code independently applicable to Atlas and Scout; preserve local model recipes, symbols and operating bindings",
+  "summary": "Validated warm original-row reuse published and installed for independent15m recovery",
+  "tests": [
+    "316 network-denied final source fixtures passed",
+    "316 network-denied sealed-source fixtures passed",
+    "316 network-denied isolated-candidate fixtures passed",
+    "316 network-denied installed-composition fixtures passed;115exact source/dependency fingerprints before and after"
+  ]
+}
