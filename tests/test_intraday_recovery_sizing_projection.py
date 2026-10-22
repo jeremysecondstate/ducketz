@@ -48,6 +48,9 @@ def test_recovery_matches_full_projection_and_hashes_every_read_without_redecodi
     expected = intents.record(original, event_key="own-recovery", recorded_at="2026-10-08T17:17:00Z",
         disposition="unresolved_submission_retained", evidence={"own_order":"own-order"},
         kind="execution_disposition", order=order)
+    # The expected ordinary projection now warms sizing. Reopen for a cold
+    # first single-call recovery, preserving the original decode assertion.
+    intents = IntentionStore(store)
     with store.connect() as db:
         saved_row = db.execute("SELECT forecast_id,id,payload FROM intraday_intentions").fetchone()
         before = db.execute("SELECT * FROM intents ORDER BY rowid").fetchall()
@@ -171,14 +174,16 @@ def test_missing_sizing_is_not_cached_and_later_saved_sizing_can_recover(tmp_pat
     assert recover(intents, original, order)["desired_quantity"] == 4
 
 
-def test_nonrecovery_records_continue_full_sizing_validation(tmp_path, monkeypatch):
+def test_nonrecovery_records_reuse_protected_scalars_but_get_keeps_full_validation(tmp_path, monkeypatch):
     _, original, intents, order = prepared(tmp_path)
     recover(intents, original, order)
     decoded = decoding_spy(intents, monkeypatch)
     for index in range(2):
         intents.record(original, event_key="ordinary-" + str(index), recorded_at="2026-10-08T17:18:00Z",
             disposition="waiting", evidence={"test":True}, kind="execution_disposition", order=order)
-    assert decoded == [original["forecast_id"]] * 2
+    assert decoded == []
+    assert intents.get(original["forecast_id"])["sizing"]["research"]["models"][0]["history"] == list(range(100))
+    assert decoded == [original["forecast_id"]]
 
 
 @pytest.mark.parametrize("irregular", ["float_quantity", "null_clock", "sizing_list"])

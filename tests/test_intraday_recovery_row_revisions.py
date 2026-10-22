@@ -75,6 +75,9 @@ def external(path):
 
 def test_cold_and_warm_exact_group_validate_originals_without_warm_payload_reads(tmp_path, monkeypatch):
     store, original, intents, order = prepared(tmp_path)
+    # First sizing records an ordinary projection and warms its protected row.
+    # Reopen to exercise genuinely cold recovery rather than construction work.
+    intents = IntentionStore(store)
     filled = replace(order, reservation_id="filled", status="FILLED", broker_order_id="exact-broker",
                      filled_quantity=order.quantity)
     unknown = replace(order, reservation_id="unknown", status="UNKNOWN")
@@ -295,6 +298,7 @@ def test_concurrent_group_and_chronology_reads_follow_shared_lock_order(tmp_path
 
 def test_failed_member_does_not_advance_committed_sizing_watermark(tmp_path):
     store, original, intents, order = prepared(tmp_path)
+    intents = IntentionStore(store)
     assert intents._recovery_row_highwater == 0
     with pytest.raises(ContractError):
         group(intents, original, observation(order, evidence={}))

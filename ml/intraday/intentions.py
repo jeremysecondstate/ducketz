@@ -331,17 +331,29 @@ class IntentionStore:
         The native/account ledgers, not this projection, own broker recovery.
         ``scope_to_intention`` binds execution observations to the immutable
         sizing available in this transaction; unsized identities stay unchanged.
+        Protected unchanged sizing rows reuse only scalar facts. The supplied
+        forecast still requires complete equality with its validated original.
         """
         identity(event_key); identity(disposition); identity(kind)
         at = instant(recorded_at)
         if at < instant(forecast["issued_at"]) or not isinstance(evidence, dict) or not evidence:
             raise ContractError("Intention event needs available explicit evidence")
-        with self.store.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            self._forecast(db, forecast)
-            return self._append(db, forecast, event_key=event_key, at=at,
-                disposition=disposition, evidence=evidence, kind=kind, capacity=capacity, order=order,
-                scope_to_intention=scope_to_intention)
+        # Share recovery's cache-lock -> connection ordering and pinned marker
+        # snapshot. Full caller equality cannot be certified by scalar headers.
+        with self.store._execution_forecast_lock:
+            with self.store.connect() as db:
+                db.execute("BEGIN IMMEDIATE")
+                self._forecast(db, forecast)
+                row, intention, generation = self._revision_sizing(
+                    db, forecast["forecast_id"], lambda stage: nullcontext())
+                result = self._append_validated(db, forecast, row, intention,
+                    event_key=event_key, at=at, disposition=disposition,
+                    evidence=evidence, kind=kind, capacity=capacity, order=order,
+                    scope_to_intention=scope_to_intention)
+            # A failed append, rollback or transaction exit cannot publish a
+            # committed sizing watermark for an unsuccessful projection.
+            self._recovery_row_highwater = generation
+            return result
 
     def record_recovery(self, forecast_id, *, actor, event_key, recorded_at, disposition, evidence, kind, order):
         """Project an own order from its original, never from a caller's forecast.
