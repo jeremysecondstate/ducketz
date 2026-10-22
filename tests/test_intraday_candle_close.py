@@ -113,7 +113,8 @@ def fake_live_histories(monkeypatch, *, persist=True):
 
     class Incoming:
         def __init__(self, *, histories, provider, store, journal, reference_at, clock,
-                     bounded, stopped, reuse_saved):
+                     bounded, stopped, reuse_saved, population_contract=None):
+            assert population_contract is None
             assert bounded and reuse_saved
             self.histories, self.provider, self.store = histories, provider, store
             self.reference, self.clock, self.stopped = instant(reference_at), clock, stopped
@@ -377,7 +378,8 @@ def test_execution_clock_crossing_17_rechecks_authority_before_any_order_or_reco
         def recover(self):
             pytest.fail("A new recovery request began after the clock crossed 17:00")
 
-    module("ml.intraday.account_execution", IntradayAccountExecutor=Executor)
+    module("ml.intraday.account_execution", IntradayAccountExecutor=Executor,
+           execution_failure_evidence=lambda exc: pytest.fail("No execution error expected"))
     module("ml.intraday.local_execution", load_local_binding=lambda _: SimpleNamespace(actor="Atlas", symbols=("AAPL",)))
     module("ml.intraday.cancellation", retry_delay=lambda *args: pytest.fail("No broker operation should fail"))
     module("app.services.schwab", SchwabSession=lambda: object())

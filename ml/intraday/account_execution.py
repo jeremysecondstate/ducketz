@@ -1082,21 +1082,29 @@ class IntradayAccountExecutor:
                 owned = self._owned_native_reservations(db)
             if not owned:
                 return []
-            results = []
+            results = [None] * len(owned)
             self._execution_stage("recovery_intention_record")
-            for native in owned:
-                uncertain = not native.broker_order_id and native.status in {"RESERVED", "UNKNOWN"}
-                disposition = "unresolved_submission_retained" if uncertain else "order_status_reconciled"
-                evidence = {"native_reservation_id":native.reservation_id, "status":native.status,
-                            **({"commitment_retained":True, "complete_broker_order_evidence":False} if uncertain else {})}
-                kind = "execution_disposition"
-                # Read each original inside its intention transaction. The
-                # validated scalar cache retains all immutable/index checks
-                # without bulk-loading or repeatedly decoding model trees.
-                event_key = digest([kind, disposition, evidence, asdict(native), None])
-                results.append(self.intents.record_recovery(native.forecast_id, actor=self.actor,
-                    event_key=event_key, recorded_at=self.clock(), disposition=disposition,
-                    kind=kind, evidence=evidence, order=native))
+            groups = {}
+            for index, native in enumerate(owned):
+                groups.setdefault(native.forecast_id, []).append((index, native))
+            for forecast_id, attempts in groups.items():
+                observations = []
+                for _, native in attempts:
+                    uncertain = not native.broker_order_id and native.status in {"RESERVED", "UNKNOWN"}
+                    disposition = "unresolved_submission_retained" if uncertain else "order_status_reconciled"
+                    evidence = {"native_reservation_id":native.reservation_id, "status":native.status,
+                                **({"commitment_retained":True, "complete_broker_order_evidence":False} if uncertain else {})}
+                    kind = "execution_disposition"
+                    event_key = digest([kind, disposition, evidence, asdict(native), None])
+                    observations.append(dict(event_key=event_key, recorded_at=self.clock(),
+                        disposition=disposition, kind=kind, evidence=evidence, order=native))
+                # A single forecast's attempts share exact validated originals
+                # only within this transaction. Keep every attempt and restore
+                # native snapshot order in the public result.
+                projected = self.intents.record_recovery_group(forecast_id, actor=self.actor,
+                                                               observations=observations)
+                for (index, _), value in zip(attempts, projected):
+                    results[index] = value
             self._execution_stage("recovery_complete")
             return results
 
