@@ -157,6 +157,9 @@ def test_default_record_still_allows_unsized_and_neutral_probability_disposition
     store, saved, intents = setup_store(tmp_path, sizing=False)
     if probability != .72:
         payload = {k: v for k, v in saved.items() if k != "forecast_id"}
+        # This constructs a different forecast, not a retry of saved policy.
+        for key in ("stock_action", "direction_policy_version", "direction_up_threshold", "direction_down_threshold"):
+            payload.pop(key, None)
         payload.update(cycle_id="neutral", probability_not_down=probability,
                        models=[dict(name="original", status="success", probability_not_down=probability)])
         saved = store.save_forecast(payload)

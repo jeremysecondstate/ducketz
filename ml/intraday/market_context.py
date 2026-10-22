@@ -219,11 +219,25 @@ class MarketContext:
 
     @property
     def snapshot(self):
-        return {"symbol": self.symbol, "cutoff": self.cutoff,
-                "feature_version": self.feature_version, "feature_policy": (STATE_POLICY if self.feature_version == FEATURE_VERSION else FEATURE_POLICY),
-                "feature_names": list(self.feature_names), "features": list(self.values),
-                "source_ids": {k: list(v) for k, v in self.source_ids}, "sources": deepcopy(list(self.source_evidence)),
-                "missing_encoding": "zero_placeholder_plus_per_value_missing_indicator"}
+        return _context_snapshot(self, deepcopy(list(self.source_evidence)))
+
+
+def _context_snapshot(context, sources):
+    return {"symbol": context.symbol, "cutoff": context.cutoff,
+            "feature_version": context.feature_version, "feature_policy": (STATE_POLICY if context.feature_version == FEATURE_VERSION else FEATURE_POLICY),
+            "feature_names": list(context.feature_names), "features": list(context.values),
+            "source_ids": {k: list(v) for k, v in context.source_ids}, "sources": sources,
+            "missing_encoding": "zero_placeholder_plus_per_value_missing_indicator"}
+
+
+def _owned_context_digest(context):
+    """Hash a newly decoded private cache context before its references escape.
+
+    Immediate read-only JSON serialization needs no detached copy of the owned
+    evidence. Keep the public snapshot property detached for mutable callers.
+    No projection or reference escapes this helper, and every call rehashes.
+    """
+    return _hash(_context_snapshot(context, list(context.source_evidence)))
 
 
 def _number(row, *names, nonnegative=False, positive=False):
