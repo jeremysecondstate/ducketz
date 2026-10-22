@@ -513,7 +513,15 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                             queue.broker_wait(now=clock(),seconds=result["evidence"].get("retry_after_seconds") or 3)
                             queue.complete(forecast["forecast_id"],disposition)
                         elif result["kind"] == "sizing_unavailable":
-                            queue.complete(forecast["forecast_id"],"sizing_unavailable")
+                            if (disposition == "quote_stale_or_future"
+                                    and instant(clock()) < instant(forecast["target_close"])):
+                                # No desired quantity exists yet. Retain the failed
+                                # observation and retry fresh evidence for this
+                                # signal; the executor still enforces its expiry.
+                                queue.defer(forecast["forecast_id"],now=clock(),
+                                    seconds=3,broker_wait=False)
+                            else:
+                                queue.complete(forecast["forecast_id"],"sizing_unavailable")
                         else:
                             queue.complete(forecast["forecast_id"],disposition)
                     except Exception as exc:
