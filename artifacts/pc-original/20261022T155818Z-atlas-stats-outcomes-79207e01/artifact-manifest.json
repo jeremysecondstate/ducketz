@@ -1,0 +1,56 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-22T15:59:52.735799Z",
+  "completion_id": "20261022T155818Z-atlas-stats-outcomes-79207e01",
+  "details": [
+    "Actor Atlas; task Atlas Trader Representative; completed cumulative Stats supplement for ten original saved forecasts.",
+    "Original probabilities, direction labels, policy identities, target definitions and observed endpoint hashes are preserved.",
+    "This derived supplement retains original combined Gameplan, frozen completed-session Stats and cumulative receipt ancestry.",
+    "Peer applicability: scientific outcomes for Atlas symbols may be read independently; no peer tuning or execution-state installation.",
+    "Native raw receipts, account state, fitted models, operating bindings and all historical publications remain private and unchanged.",
+    "No source changes, application runtime loading, trader controls, orders, model fitting or deployment result from this export."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261022T155818Z-atlas-stats-outcomes-79207e01/gameplan-stats/20261022T155818Z-atlas-stats-outcomes-79207e01/original-outcome-supplement.json",
+      "expected_sha256": "ba1f608890778cddb35903f6a31489e428df9c7d99fb03dc67baebbca7ba6033",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261022T155818Z-atlas-stats-outcomes-79207e01/original-outcome-supplement.json",
+      "published_sha256": "ba1f608890778cddb35903f6a31489e428df9c7d99fb03dc67baebbca7ba6033",
+      "published_size": 13185,
+      "sha256": "ba1f608890778cddb35903f6a31489e428df9c7d99fb03dc67baebbca7ba6033",
+      "size": 13185,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "ba1f608890778cddb35903f6a31489e428df9c7d99fb03dc67baebbca7ba6033",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261022T155818Z-atlas-stats-outcomes-79207e01/original-outcome-supplement.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "human-authorized-development",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "symbol-specific",
+  "source_head": "90704d21801f60426493bd6cc650a7fac38d4f61",
+  "summary": "Atlas Trader Representative: publish ten original stock-direction outcomes",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "COST",
+    "GOOG",
+    "IONQ",
+    "MU",
+    "NVDA",
+    "PATH",
+    "SNDK",
+    "TWST"
+  ]
+}
