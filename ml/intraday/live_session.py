@@ -134,7 +134,8 @@ def _pending_cycle_passes(store, session_id, now):
     for identity, cycle in _session_cycles(store, session_id):
         if cycle.get("status") == "completed":
             continue
-        missing = [symbol for symbol in cycle["symbols"] if store.forecast(identity, symbol) is None]
+        published = store.forecast_symbols(identity)
+        missing = [symbol for symbol in cycle["symbols"] if symbol not in published]
         failures = dict(cycle.get("failures", {}))
         # The failure event is durable even if a crash preceded the cycle-map
         # update. Latest events override that possibly older summary.
