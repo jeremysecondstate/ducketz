@@ -14,6 +14,8 @@ from contextlib import contextmanager
 from dataclasses import asdict
 from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 import json
+import sqlite3
+import sys
 from pathlib import Path
 import uuid
 
@@ -23,13 +25,15 @@ from ml.stock_trader.horizon_ledger import ReservationState
 from ml.stock_trader.state import capture_portfolio_state, validated_symbols
 
 from .capacity import clip_to_capacity
+from .dataset_diagnostics import capture_dataset_build, dataset_phase
 from .commitment_clearance import load_clearance
 from .pretransport_clearance import load_clearance as load_pretransport_clearance
 from .initial_gate_clearance import (load_clearance as load_initial_gate_clearance,
                                      create_clearance as create_initial_gate_clearance)
 from .exact_status import TERMINAL, retry_delay
 from .intentions import IntentionStore
-from .prediction import ContractError, digest, instant
+from .prediction import ContractError, digest, encoded, instant
+from .store import utcnow
 from .scout_session_books import ScoutBooks
 from .scout_broker import ScoutBrokerAdapter
 from .scout_client import ScoutClient, exception_details
@@ -147,8 +151,9 @@ class ScoutLocalAccountExecutor:
         evidence = dict(mode=MODE, **(evidence or {'reason': disposition}))
         key = digest([disposition, evidence, capacity.payload() if capacity else None, asdict(order) if order else None])
         required = {'require_original_intention': True} if require_original_intention else {}
-        return self.intents.record(forecast, event_key=key, recorded_at=self.clock(), disposition=disposition,
-            evidence=evidence, kind='execution_disposition', capacity=capacity, order=order, **required)
+        with dataset_phase("disposition_persist"):
+            return self.intents.record(forecast, event_key=key, recorded_at=self.clock(), disposition=disposition,
+                evidence=evidence, kind='execution_disposition', capacity=capacity, order=order, **required)
 
     def _adapter(self, journal, record, broker=None):
         return ScoutBrokerAdapter(broker or self.broker, journal,
@@ -378,9 +383,45 @@ class ScoutLocalAccountExecutor:
             raise ContractError('Local account snapshot is stale')
         return portfolio
 
+    def _record_execution_profile(self, forecast, profile):
+        # Diagnostics never hold the account lock or wait for an application
+        # writer. Missing/busy evidence storage leaves execution unchanged.
+        pending_error = sys.exception()
+        db = None
+        try:
+            db = sqlite3.connect(self.store.path.resolve().as_uri() + "?mode=rw",
+                                 uri=True, timeout=0)
+            with db:
+                db.execute("INSERT INTO events(cycle_id,symbol,recorded_at,kind,payload) VALUES(?,?,?,?,?)",
+                    (self.session_id, forecast["symbol"], instant(utcnow()).isoformat(),
+                     "local_execution_profile", encoded(profile)))
+        except BaseException as error:
+            if not isinstance(error, Exception) and pending_error is None:
+                raise
+        finally:
+            if db is not None:
+                try:
+                    db.close()
+                except BaseException as error:
+                    if not isinstance(error, Exception) and pending_error is None:
+                        raise
+
     def step(self, forecast):
-        with self._account():
-            return self._step(forecast)
+        profile = None
+        try:
+            with capture_dataset_build() as profile:
+                profile["schema_version"] = "intraday-local-execution-profile-v1"
+                try:
+                    profile.update(forecast_id=forecast.get("forecast_id"), symbol=forecast.get("symbol"),
+                        manual_session_id=self.session_id, target_close=forecast.get("target_close"))
+                except Exception as error:
+                    profile["observer_errors"].append(type(error).__name__[:96])
+                with dataset_phase("total_step"):
+                    with self._account():
+                        return self._step(forecast)
+        finally:
+            if profile is not None:
+                self._record_execution_profile(forecast, profile)
 
     def _step(self, forecast):
         if self.journal is None:
@@ -388,10 +429,13 @@ class ScoutLocalAccountExecutor:
         disposition = forecast_disposition(forecast, now=self.clock(), session_started_at=self.session_started_at, local_symbols=self.symbols)
         if disposition != 'eligible_for_account_checks':
             return self._record(forecast, disposition)
-        _saved_forecast(self.store.path, forecast, session_id=self.session_id, session_started=self.session_started_at)
-        if self.intents.processed_at_or_after(forecast):
-            return self._record(forecast, 'newer_or_same_reference_intention_already_processed')
-        portfolio = self._capture()
+        with dataset_phase("snapshot_validation"):
+            _saved_forecast(self.store.path, forecast, session_id=self.session_id, session_started=self.session_started_at)
+        with dataset_phase("chronology_check"):
+            if self.intents.processed_at_or_after(forecast):
+                return self._record(forecast, 'newer_or_same_reference_intention_already_processed')
+        with dataset_phase("initial_capture"):
+            portfolio = self._capture()
         disposition = forecast_disposition(forecast, now=self.clock(), session_started_at=self.session_started_at,
             local_symbols=self.symbols)
         if disposition != 'eligible_for_account_checks':
@@ -399,21 +443,25 @@ class ScoutLocalAccountExecutor:
         # Quotes can arrive while the account capture is in progress. Their
         # availability is capture completion; keep the original account time.
         quote_available_at = instant(self.clock()).isoformat()
-        original = self.intents.get(forecast['forecast_id'])
+        with dataset_phase("intention_lookup"):
+            original = self.intents.get(forecast['forecast_id'])
         if original is None:
-            frozen = self.store.inputs(forecast['cycle_id'], forecast['symbol'])
-            if frozen is None or frozen[0] != forecast['snapshot_hash']:
-                raise ContractError('Original forecast inputs unavailable')
+            with dataset_phase("snapshot_load"):
+                frozen = self.store.inputs(forecast['cycle_id'], forecast['symbol'])
+                if frozen is None or frozen[0] != forecast['snapshot_hash']:
+                    raise ContractError('Original forecast inputs unavailable')
             quote = portfolio.quotes[forecast['symbol']]
-            result = size_forecast(forecast, forecast_snapshot=frozen[1],
-                account_equity=AvailableInput(portfolio.account_equity, portfolio.observed_at,
-                    'schwab-liquidation-equity', dict(account_fingerprint=self.account_fingerprint,
-                        snapshot_identity=portfolio.broker_identity_fingerprint,
-                        snapshot_sha256=portfolio.source_fingerprint, observed_at=portfolio.observed_at)),
-                quote=QuoteObservation(quote.bid, quote.ask, quote.freshness_observed_at, quote_available_at,
-                    'schwab-current-quote', {'quote': asdict(quote)}), calculated_at=self.clock(),
-                maximum_quote_age_seconds=self.maximum_evidence_age_seconds)
-            original = self.intents.save_sizing(forecast, result)
+            with dataset_phase("sizing"):
+                result = size_forecast(forecast, forecast_snapshot=frozen[1],
+                    account_equity=AvailableInput(portfolio.account_equity, portfolio.observed_at,
+                        'schwab-liquidation-equity', dict(account_fingerprint=self.account_fingerprint,
+                            snapshot_identity=portfolio.broker_identity_fingerprint,
+                            snapshot_sha256=portfolio.source_fingerprint, observed_at=portfolio.observed_at)),
+                    quote=QuoteObservation(quote.bid, quote.ask, quote.freshness_observed_at, quote_available_at,
+                        'schwab-current-quote', {'quote': asdict(quote)}), calculated_at=self.clock(),
+                    maximum_quote_age_seconds=self.maximum_evidence_age_seconds)
+            with dataset_phase("save_sizing"):
+                original = self.intents.save_sizing(forecast, result)
             if result.status != 'sized':
                 return original
         # Preserve the full intention even when an old order or zero cash means
@@ -423,39 +471,41 @@ class ScoutLocalAccountExecutor:
         if disposition != 'eligible_for_account_checks':
             return self._record(forecast, disposition)
         outstanding = []
-        for journal in self._journals():
-            for old in journal.records():
-                if not old['request']['request_id'].startswith(PREFIX):
-                    continue
-                record = self._recover_record(journal, old)
-                if record['request']['forecast_id'] == forecast['forecast_id']:
-                    return self._project(journal, record, forecast, 'recover_existing_intention')
-                if record['state'] == 'UNKNOWN':
-                    # The original send stays UNKNOWN and can never be replayed.
-                    # Reviewed exact pre-transport proof or complete post-expiry
-                    # absence can remove only the block on distinct new requests.
-                    if self._commitment_clearance(journal, record) is not None:
+        with dataset_phase("own_journal_recovery"):
+            for journal in self._journals():
+                for old in journal.records():
+                    if not old['request']['request_id'].startswith(PREFIX):
                         continue
-                    return self._record(forecast, 'submission_recovery_required',
-                        evidence={'unresolved_request_id': record['request']['request_id'], 'retry_after_seconds': 3})
-                if record['state'] == 'ACCEPTED':
-                    state = journal.order_state(record['request']['request_id'])['evidence']
-                    if state['status'] in TERMINAL:
-                        continue
-                    if record['request']['symbol'] == forecast['symbol']:
-                        disposition = forecast_disposition(forecast, now=self.clock(),
-                            session_started_at=self.session_started_at, local_symbols=self.symbols)
-                        if disposition != 'eligible_for_account_checks':
-                            return self._record(forecast, disposition)
-                        cancellation_disposition = self._cancel(journal, record, forecast)
-                        if cancellation_disposition is not None:
-                            return self._record(forecast, cancellation_disposition)
-                        return self._record(forecast, 'previous_intention_reconciliation',
-                            evidence={'request_id': record['request']['request_id'], 'retry_after_seconds': 3})
-                    outstanding.append((record, state))
+                    record = self._recover_record(journal, old)
+                    if record['request']['forecast_id'] == forecast['forecast_id']:
+                        return self._project(journal, record, forecast, 'recover_existing_intention')
+                    if record['state'] == 'UNKNOWN':
+                        # The original send stays UNKNOWN and can never be replayed.
+                        # Reviewed exact pre-transport proof or complete post-expiry
+                        # absence can remove only the block on distinct new requests.
+                        if self._commitment_clearance(journal, record) is not None:
+                            continue
+                        return self._record(forecast, 'submission_recovery_required',
+                            evidence={'unresolved_request_id': record['request']['request_id'], 'retry_after_seconds': 3})
+                    if record['state'] == 'ACCEPTED':
+                        state = journal.order_state(record['request']['request_id'])['evidence']
+                        if state['status'] in TERMINAL:
+                            continue
+                        if record['request']['symbol'] == forecast['symbol']:
+                            disposition = forecast_disposition(forecast, now=self.clock(),
+                                session_started_at=self.session_started_at, local_symbols=self.symbols)
+                            if disposition != 'eligible_for_account_checks':
+                                return self._record(forecast, disposition)
+                            cancellation_disposition = self._cancel(journal, record, forecast)
+                            if cancellation_disposition is not None:
+                                return self._record(forecast, cancellation_disposition)
+                            return self._record(forecast, 'previous_intention_reconciliation',
+                                evidence={'request_id': record['request']['request_id'], 'retry_after_seconds': 3})
+                        outstanding.append((record, state))
         # Recovery/cancellation may have taken time and fills may have changed
         # capacity; obtain fresh account evidence after clearance.
-        portfolio = self._capture()
+        with dataset_phase("second_capture"):
+            portfolio = self._capture()
         visible = {str(order['order_id']): order for order in portfolio.broker_working_orders or ()}
         for record, state in outstanding:
             pending = visible.get(record['broker_order_id'])
@@ -465,13 +515,14 @@ class ScoutLocalAccountExecutor:
                 return self._record(forecast, 'broker_capacity_reconciliation_required',
                     evidence={'request_id': record['request']['request_id'], 'retry_after_seconds': 3,
                               'proven_unsent_retry_eligible': True})
-        quote = portfolio.quotes[forecast['symbol']]
-        price = Decimal(str(quote.ask if original['side'] == 'BUY' else quote.bid)).quantize(Decimal('.01'),
-            rounding=ROUND_CEILING if original['side'] == 'BUY' else ROUND_FLOOR)
-        capacity = clip_to_capacity(symbol=forecast['symbol'], side=original['side'],
-            desired_quantity=original['desired_quantity'], limit_price=format(price.normalize(), 'f'),
-            available_cash=portfolio.available_cash, available_shares=int(Decimal(str(portfolio.available_sell_shares(forecast['symbol']))).to_integral_value(rounding=ROUND_FLOOR)),
-            capacity_evidence_id=portfolio.source_fingerprint, observed_at=portfolio.observed_at, calculated_at=self.clock())
+        with dataset_phase("capacity"):
+            quote = portfolio.quotes[forecast['symbol']]
+            price = Decimal(str(quote.ask if original['side'] == 'BUY' else quote.bid)).quantize(Decimal('.01'),
+                rounding=ROUND_CEILING if original['side'] == 'BUY' else ROUND_FLOOR)
+            capacity = clip_to_capacity(symbol=forecast['symbol'], side=original['side'],
+                desired_quantity=original['desired_quantity'], limit_price=format(price.normalize(), 'f'),
+                available_cash=portfolio.available_cash, available_shares=int(Decimal(str(portfolio.available_sell_shares(forecast['symbol']))).to_integral_value(rounding=ROUND_FLOOR)),
+                capacity_evidence_id=portfolio.source_fingerprint, observed_at=portfolio.observed_at, calculated_at=self.clock())
         # Account evidence, sizing and own-order recovery can cross the fixed
         # target. Classify that boundary before creating a new attempt, using
         # the same instant for classification and its immutable DTO issuance.
@@ -510,7 +561,8 @@ class ScoutLocalAccountExecutor:
                  'capacity_evidence_id', 'observed_at', 'calculated_at')})
             if checked != capacity or granted.quantity != capacity.adjusted_quantity:
                 raise ContractError('Local permitted quantity differs from account capacity')
-            _saved_forecast(self.store.path, forecast, session_id=self.session_id, session_started=self.session_started_at)
+            with dataset_phase("authorization_validation"):
+                _saved_forecast(self.store.path, forecast, session_id=self.session_id, session_started=self.session_started_at)
             # Integrity validation can wait briefly for SQLite recovery. Check
             # current freshness and eligibility after it, before any send gate.
             current = instant(self.clock())
@@ -533,7 +585,8 @@ class ScoutLocalAccountExecutor:
                 expected_snapshot_identity=portfolio.broker_identity_fingerprint,
                 authorization_gate=local_authorization, final_gate=local_authorization)
         try:
-            client.submit(request.request_id, final_gate=local_authorization, send=send)
+            with dataset_phase("submission"):
+                client.submit(request.request_id, final_gate=local_authorization, send=send)
             return self._record(forecast, 'submitted', capacity=capacity,
                 order=self.journal.lookup_reservation(permit.reservation_id), evidence={'request_id': request.request_id})
         except Exception as exc:

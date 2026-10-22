@@ -108,7 +108,10 @@ def test_owned_hit_hash_preserves_warm_payload_rejection_and_verified_recomputat
         elif damage == "shape":
             value["values"].pop()
         elif damage == "feature_order":
-            value["feature_names"].reverse()
+            # Exercise the retained legacy named-envelope order guard. New
+            # compact envelopes restore names from the exact frozen contract.
+            envelope.pop("context_format", None)
+            value["feature_names"] = list(reversed(expected.feature_names))
         elif damage == "source_ids":
             value["source_ids"].append(["wrong_kind", ["unowned_source"]])
         elif damage == "key":
