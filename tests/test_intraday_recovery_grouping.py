@@ -88,6 +88,8 @@ def spy_original_reads(store, intents, monkeypatch):
 
 def test_same_forecast_group_reads_and_hashes_once_while_preserving_each_attempt(tmp_path, monkeypatch):
     store, original, intents, order = prepared(tmp_path)
+    # Compare cold grouped work after only the single-call cache is warmed.
+    intents = module.IntentionStore(store)
     orders = [order, replace(order, reservation_id="rejected-attempt", status="REJECTED"),
               replace(order, reservation_id="unknown-attempt", status="UNKNOWN")]
     items = [observation(value) for value in orders]

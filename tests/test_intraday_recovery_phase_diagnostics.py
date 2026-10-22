@@ -128,6 +128,8 @@ def test_phase_clocks_separate_writer_reads_validation_append_and_commit(tmp_pat
 
 def test_many_groups_aggregate_fixed_phase_keys_and_return_detached_snapshots(tmp_path, monkeypatch):
     store, original, intents, order = prepared(tmp_path)
+    # Construction's ordinary sizing receipt is outside these diagnostic clocks.
+    intents = module.IntentionStore(store)
     delayed_stages(store, intents, monkeypatch)
     timings = module._RecoveryTimings()
     item = observation(order)
