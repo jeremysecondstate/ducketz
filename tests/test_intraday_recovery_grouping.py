@@ -56,6 +56,8 @@ def spy_original_reads(store, intents, monkeypatch):
             return row
         def __getattr__(self, name):
             return getattr(self.cursor, name)
+        def __iter__(self):
+            return iter(self.cursor)
 
     class Connection:
         def __init__(self, db):
@@ -99,7 +101,10 @@ def test_same_forecast_group_reads_and_hashes_once_while_preserving_each_attempt
     counts.clear()
     assert group(intents, original, *items) == expected
     assert counts["forecast_reads"] == counts["sizing_reads"] == counts["transactions"] == 1
-    assert counts["forecast_raw_hashes"] == counts["sizing_raw_hashes"] == 1
+    assert counts["forecast_raw_hashes"] == 1
+    # First row-revision observation retains full sizing semantic validation,
+    # even after legacy single-call recovery warmed its raw-byte cache.
+    assert counts["sizing_raw_hashes"] == 2
     assert 3 * (counts["forecast_bytes"] + counts["sizing_bytes"]) == single_bytes
     assert projection_rows(store) == before
     assert len({row["event_identity"] for row in expected}) == 3
@@ -107,8 +112,8 @@ def test_same_forecast_group_reads_and_hashes_once_while_preserving_each_attempt
     assert all(row["order"]["reservation_id"] == value.reservation_id for row, value in zip(expected, orders))
     counts.clear()
     assert group(intents, original, *(item | {"recorded_at": "2026-10-08T17:20:00Z"} for item in items)) == expected
-    assert counts["forecast_reads"] == counts["sizing_reads"] == 1
-    assert counts["forecast_raw_hashes"] == counts["sizing_raw_hashes"] == 1
+    assert counts["forecast_reads"] == counts["sizing_reads"] == 0
+    assert counts["forecast_raw_hashes"] == counts["sizing_raw_hashes"] == 0
 
 
 @pytest.mark.parametrize("damage", ["payload", "pc", "symbol", "cycle_id", "reference_at", "issued_at", "missing"])

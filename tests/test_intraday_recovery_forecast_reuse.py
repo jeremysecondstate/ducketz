@@ -23,6 +23,7 @@ def decoding_spy(env, monkeypatch):
 def test_repeated_recovery_validates_each_exact_original_once_then_reuses_header(env, monkeypatch):
     originals = terminal_orders(env, 2)
     env.store._forecast_header_cache.clear()
+    env.store._execution_forecast_cache.clear()
     decoded = decoding_spy(env, monkeypatch)
     count = len(env.broker.submissions)
     advance(env)
