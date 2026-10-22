@@ -1,0 +1,38 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261022T134539Z-7e2a7ff50ed24901be7896377668e5f6",
+  "change_id": "20261022T134539Z-7e2a7ff50ed24901be7896377668e5f6",
+  "files": [
+    "ml/intraday/live_session.py",
+    "tests/test_intraday_transient_sizing_retry.py",
+    "tests/check_isolated_intraday_transient_sizing_retry.py"
+  ],
+  "limitations": [
+    "Retry only quote_stale_or_future sizing results before the original target closes, without global broker cooldown. Other unavailable reasons retain existing handling.",
+    "Original dispatch counterfactual fails four focused regressions. Independent review pins exact bytes. First valid sizing, forecast identities, policies, actual capacity and manual controls remain intact.",
+    "Generic repair applies independently to either PC; preserve local models, symbols, bindings and execution records.",
+    "Draft PR336 stacks on335. Main integration, peer installation, runtime loading and affected live recovery are separate facts.",
+    "Existing process was not restarted or hotpatched. Original terminal and expired instructions remain unchanged."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/336",
+  "remote_sha": "219e2f9ff07247f8677231b4aa26da39fa55e535",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "A future human manual start loads this source. No schema migration or native task change. Retain independent trader state and manual controls.",
+  "scope": "shared",
+  "source_sha": "219e2f9ff07247f8677231b4aa26da39fa55e535",
+  "summary": "Atlas transient unsized quote failure retry repair published and locally installed",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-22T13:48:15.101002Z",
+      "description": "Isolated publication candidate: 209 network-denied checks passed including 11 focused queue regressions.",
+      "output_sha256": "459d0521b6a0452de9ca09df4c54798c0eddcad5afe70319f32c16454b41446d",
+      "started_at_utc": "2026-10-22T13:47:22.199121Z"
+    },
+    {
+      "completed_at_utc": "2026-10-22T13:49:58.738745+00:00",
+      "description": "Retained Atlas installed composition: 233 network-denied checks passed; 136 current import hashes match.",
+      "output_sha256": "d91ffb7c021cbf74c5affce75763bef599da37339b00c78b98709bace868c460",
+      "started_at_utc": "2026-10-22T13:49:26.305919+00:00"
+    }
+  ]
+}
