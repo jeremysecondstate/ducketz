@@ -1,10 +1,22 @@
 # Nightly Codex CLI discovery after desktop updates
 
 A desktop update can remove the versioned executable recorded by a local nightly
-workflow while an installed `codex` remains discoverable on PATH. The resolver
-`ml/codex_cli.py` keeps an existing configured file first, then uses an existing
-file returned by `shutil.which("codex")`. It returns `None` when neither exists.
-Resolution launches nothing and does not change local configuration.
+workflow while the current CLI remains installed. The desktop app can inject
+its CLI directory into its own process PATH even when persisted user/machine
+PATH contains no CLI directory. A Task Scheduler worker inherits that persisted
+environment, so PATH-only fallback can still fail there.
+
+The resolver `ml/codex_cli.py` keeps an existing configured file first, then uses
+an existing file returned by `shutil.which("codex")`. If both are unavailable,
+only an absolute configured `OpenAI/Codex/bin/<16-hex-version>/codex.exe` layout
+permits one shallow inventory of immediate version directories in that same bin.
+Only an existing resolved file still named `codex.exe`, directly inside a
+16-hex version directory directly inside that bin, is eligible. Directory aliases
+to the same executable are deduplicated;
+distinct executables are ambiguous and return `None`. Missing, rg-only or
+out-of-bin targets supply no candidate. Unknown/relative layouts and inaccessible
+inventories return unavailable. No version is selected by name or recency.
+Resolution launches nothing and does not change local configuration or links.
 
 The reviewed common main `95fcaa56f01854446cae3bf0237e3efcae719e06` has no
 `ml/nightly_workflow.py` consumer or `tests/test_nightly_workflow.py` suite. Each
@@ -19,7 +31,9 @@ resolver import and changes only the executable lookup in `run_reviewer` and
 `--check`. Both calls pass `which=shutil.which`, retaining existing caller lookup
 injection. The saved reviewed-proposal reuse branch still precedes CLI resolution
 and inference. CLI arguments, selected reviewer model, timeout and subprocess
-controls are unchanged.
+controls are unchanged. This scheduler-safe resolver revision requires no further
+consumer patch; the three reference hashes below remain unchanged. It supersedes
+the PATH-only helper record `20261022T073332Z-e6f48569259e41d6a433f11dc8793cda`.
 
 Reference consumer SHA-256 values:
 
@@ -37,7 +51,8 @@ Reference consumer SHA-256 values:
    retain its existing behavior and record its own before/after hashes.
 3. Run `python -B -m unittest discover -s tests -p test_codex_cli.py` against the
    installed helper. Run the relevant local workflow tests with inference mocked,
-   covering stale-path fallback, `--check`, unavailable CLI, and saved-review reuse.
+   covering stale-path fallback with both normal PATH and an empty scheduler PATH,
+   `--check`, unavailable CLI, and saved-review reuse.
 4. Resume the existing unfinished nightly responsibility through its existing
    dispatcher. Keep its run identity, original config, saved diagnostics, completed
    data/Stats and historical error receipts. No configuration or state rewrite is

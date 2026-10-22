@@ -63,6 +63,100 @@ class CodexCliResolutionTests(unittest.TestCase):
             self.assertEqual(resolve_codex_executable(), str(current))
         lookup.assert_called_once_with("codex")
 
+    def known_install(self):
+        return self.root / "OpenAI" / "Codex" / "bin"
+
+    def test_scheduler_without_codex_on_path_uses_the_only_installed_sibling(self):
+        install = self.known_install()
+        configured = install / "0000000000000000" / "codex.exe"
+        current = self.binary("OpenAI/Codex/bin/1111111111111111/codex.exe")
+        self.binary("OpenAI/Codex/bin/2222222222222222/rg.exe")
+        (install / "3333333333333333").mkdir()
+        before = current.read_bytes()
+
+        self.assertEqual(resolve_codex_executable(configured, which=lambda _: None), str(current.resolve()))
+        self.assertEqual(current.read_bytes(), before)
+        self.assertFalse(configured.exists())
+
+    def test_unrecognized_or_relative_layout_does_not_search_for_siblings(self):
+        self.binary("OtherApp/bin/1111111111111111/codex.exe")
+        unknown = self.root / "OtherApp/bin/0000000000000000/codex.exe"
+        relative = Path("OpenAI/Codex/bin/0000000000000000/codex.exe")
+        for configured in (unknown, relative):
+            with self.subTest(configured=configured):
+                self.assertIsNone(resolve_codex_executable(configured, which=lambda _: None))
+
+    def test_distinct_installed_executables_are_unavailable_without_a_binding(self):
+        configured = self.known_install() / "0000000000000000/codex.exe"
+        self.binary("OpenAI/Codex/bin/1111111111111111/codex.exe")
+        self.binary("OpenAI/Codex/bin/2222222222222222/codex.exe")
+        self.assertIsNone(resolve_codex_executable(configured, which=lambda _: None))
+
+    def test_path_binding_still_precedes_a_known_install_fallback(self):
+        configured = self.known_install() / "0000000000000000/codex.exe"
+        self.binary("OpenAI/Codex/bin/1111111111111111/codex.exe")
+        selected = self.binary("explicit-path/codex.exe")
+        self.assertEqual(resolve_codex_executable(configured, which=lambda _: str(selected)), str(selected))
+
+    def directory_alias(self, link, target):
+        try:
+            link.symlink_to(target, target_is_directory=True)
+        except OSError as error:
+            self.skipTest("Directory symlinks unavailable: " + str(error))
+
+    def test_aliases_to_one_installed_executable_do_not_create_ambiguity(self):
+        current = self.binary("OpenAI/Codex/bin/1111111111111111/codex.exe")
+        self.directory_alias(self.known_install() / "2222222222222222", current.parent)
+        configured = self.known_install() / "0000000000000000/codex.exe"
+        self.assertEqual(resolve_codex_executable(configured, which=lambda _: None), str(current.resolve()))
+
+    def test_sibling_link_cannot_select_an_executable_outside_the_install(self):
+        outside = self.binary("outside/codex.exe")
+        install = self.known_install()
+        install.mkdir(parents=True)
+        self.directory_alias(install / "1111111111111111", outside.parent)
+        configured = install / "0000000000000000/codex.exe"
+        self.assertIsNone(resolve_codex_executable(configured, which=lambda _: None))
+
+    def test_inaccessible_install_is_unavailable(self):
+        self.known_install().mkdir(parents=True)
+        configured = self.known_install() / "0000000000000000/codex.exe"
+        with patch("ml.codex_cli.Path.iterdir", side_effect=PermissionError("fixture denied")):
+            self.assertIsNone(resolve_codex_executable(configured, which=lambda _: None))
+
+    def test_many_irrelevant_entries_do_not_suppress_the_only_installed_cli(self):
+        current = self.binary("OpenAI/Codex/bin/1111111111111111/codex.exe")
+        install = self.known_install()
+        for number in range(64):
+            (install / f"{number:016x}").mkdir()
+        configured = install / "ffffffffffffffff/codex.exe"
+        self.assertEqual(resolve_codex_executable(configured, which=lambda _: None), str(current.resolve()))
+
+    def test_alias_cannot_select_a_misdirected_in_bin_target(self):
+        install = self.known_install()
+        configured = install / "0000000000000000/codex.exe"
+        misplaced = self.binary("OpenAI/Codex/bin/not-a-version/codex.exe")
+        self.directory_alias(install / "1111111111111111", misplaced.parent)
+        self.assertIsNone(resolve_codex_executable(configured, which=lambda _: None))
+
+    def test_alias_cannot_select_a_nested_version_directory(self):
+        install = self.known_install()
+        configured = install / "0000000000000000/codex.exe"
+        nested = self.binary("OpenAI/Codex/bin/nested/1111111111111111/codex.exe")
+        self.directory_alias(install / "2222222222222222", nested.parent)
+        self.assertIsNone(resolve_codex_executable(configured, which=lambda _: None))
+
+    def test_codex_file_alias_cannot_select_a_different_executable_name(self):
+        target = self.binary("OpenAI/Codex/bin/1111111111111111/rg.exe")
+        alias = self.known_install() / "2222222222222222/codex.exe"
+        alias.parent.mkdir()
+        try:
+            alias.symlink_to(target)
+        except OSError as error:
+            self.skipTest("File symlinks unavailable: " + str(error))
+        configured = self.known_install() / "0000000000000000/codex.exe"
+        self.assertIsNone(resolve_codex_executable(configured, which=lambda _: None))
+
 
 if __name__ == "__main__":
     unittest.main()
