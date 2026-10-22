@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-22T22:34:47.581592Z",
+  "id": "20261022T223447Z-1ba89485511045e2ba26e00cd581167f",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Due original forecast retries progress across long fresh quarters; reviewed, published and locally installed"
+}

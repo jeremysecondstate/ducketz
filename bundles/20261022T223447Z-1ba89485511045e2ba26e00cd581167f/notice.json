@@ -1,0 +1,43 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261022T223119Z-949cf8a0d52f4dd78ba0a7a7b8fd6bd3",
+  "change_id": "20261022T223119Z-949cf8a0d52f4dd78ba0a7a7b8fd6bd3",
+  "commit_sha": "b8204388b0fbc3b6c968a1f312fa22b94e78c9c6",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_forecast_retry_fairness.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_forecast_retry_fairness.py"
+    }
+  ],
+  "installation": "Atlas narrow scheduler composition locally installed and221offline cases passed; prior local storage retries preserved; loading unproven",
+  "limitations": [
+    "Offline fake-clock reproduction establishes scheduler starvation under long fresh passes; historical elapsed time is not wholly attributed to this cause.",
+    "The source base retains reviewed publication ancestry; additional locally installed storage retries are preserved by narrow-hunk composition and tested separately.",
+    "No running trader is started, restarted, hotpatched or used for a test order. Source loading and affected live recovery remain unproven.",
+    "Main integration, peer installation, current runtime loading and live recovery are not claimed."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/343",
+  "repository": "jeremysecondstate/ducketz",
+  "reviewed_base_commit": "1512c50f1fd5bbef0254c0663b05cf3edd2b1e32",
+  "runtime_implications": "A future ordinary Jeremy manual start loads installed scheduler fairness. No immediate restart requested; current trader controls and valid execution timing remain unchanged.",
+  "scope": "Shared scheduler correctness repair independently applicable to Atlas and Scout; preserve local symbols, model recipes and separate ledgers",
+  "summary": "Due original forecast retries progress across long fresh quarters; reviewed, published and locally installed",
+  "tests": [
+    "62 final source cases passed",
+    "62 sealed queue cases passed",
+    "62 isolated candidate cases passed",
+    "94 fairness,116 storage-retry and11 transient-sizing installed-composition cases passed",
+    "Unchanged baseline fails six affected regressions; independent whole-owned review and two-cycle persistent-error experiment passed"
+  ]
+}
