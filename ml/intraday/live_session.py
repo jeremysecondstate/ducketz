@@ -152,7 +152,7 @@ def _pending_cycle_passes(store, session_id, now):
 
 def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
                      clock=utcnow, pause=time.sleep, close_at=None):
-    """New quarters first; durable acquisition retries get bounded fair passes.
+    """New quarters receive a turn before one due recovery symbol.
 
     Only missing data prerequisites retry automatically. Already issued model
     outputs remain immutable, and older recovered outputs never enter execution.
@@ -160,12 +160,27 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
     """
     saved = _session_cycles(runner.store, queue.session_id)
     last = max((instant(c["reference_at"]) for _, c in saved), default=None)
+    recovery_due = False
     while not stopped():
         if close_at is not None and instant(clock()) >= instant(close_at):
             return
         newest = latest_completed_reference(clock(), publication_offset_seconds=runner.config.publication_offset_seconds)
         retry_symbols = None
-        if last is None or newest > last:
+        recovery_symbol = None
+        # A long new-quarter pass can cross the next boundary every time.
+        # Reserve one symbol's recovery turn so those boundaries cannot starve
+        # already saved scientific work. The next fresh quarter follows it.
+        fair = _pending_cycle_passes(runner.store, queue.session_id, clock()) if recovery_due else []
+        if fair:
+            _, cycle, due = fair[0]
+            symbols = cycle["symbols"]
+            previous = cycle.get("last_recovery_symbol")
+            start = symbols.index(previous) + 1 if previous in symbols else 0
+            retry_symbols = [next(symbol for symbol in symbols[start:] + symbols[:start] if symbol in due)]
+            recovery_symbol = retry_symbols[0]
+            reference = instant(cycle["reference_at"])
+            recovery_due = False
+        elif last is None or newest > last:
             reference = newest
             if last is not None and reference > last + STEP:
                 runner.store.event(queue.session_id, "missed_cycle_boundaries",
@@ -192,7 +207,12 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
                          on_published=queue.enqueue,acquisition={"kind":"existing_databento_exact_interval"},
                          retry_symbols=retry_symbols,allow_execution=reference == newest)
         if result and result.get("cycle_id"):
-            runner.store.update_cycle(result["cycle_id"], {"last_recovery_attempt_at":instant(clock()).isoformat()})
+            update = {"last_recovery_attempt_at":instant(clock()).isoformat()}
+            if recovery_symbol is not None:
+                update["last_recovery_symbol"] = recovery_symbol
+            runner.store.update_cycle(result["cycle_id"], update)
+        if retry_symbols is None:
+            recovery_due = True
         pause(1)
 
 
