@@ -10,12 +10,15 @@ quote freshness, broker capacity and one-send order journal.
 """
 from __future__ import annotations
 
+from collections import OrderedDict
 from contextlib import closing
+from hashlib import sha256
 import json
 import os
 from pathlib import Path
 import sqlite3
 import stat
+from threading import Lock
 import time
 
 from .prediction import ContractError, PACIFIC, TARGET_VERSION, digest, instant
@@ -27,6 +30,36 @@ _FORECAST_COLUMNS = "id,pc,symbol,cycle_id,reference_at,issued_at,payload"
 _READ_RETRY_SECONDS = .25
 _READ_RETRY_PAUSE_SECONDS = .01
 _READ_MAX_ATTEMPTS = 8
+_SNAPSHOT_CACHE_LIMIT = 64
+_SNAPSHOT_VALIDATIONS = OrderedDict()
+_SNAPSHOT_VALIDATIONS_LOCK = Lock()
+
+
+def _validate_saved_snapshot(key, raw):
+    """Recheck exact bytes without repeatedly decoding a validated snapshot.
+
+    A witness records only the immutable ID and raw-byte fingerprint after the
+    original dictionary/canonical-hash validator succeeds. Every caller still
+    reads the current row and validates its forecast/session links separately.
+    """
+    if type(raw) is not str:
+        # json.loads detects encodings for bytes, but rejects some equivalent
+        # text (for example a UTF-8 BOM). Never reuse a binary witness for text.
+        ShadowStore._snapshot_value(key, raw)
+        return
+    witness = (key, sha256(raw.encode("utf-8")).digest())
+    with _SNAPSHOT_VALIDATIONS_LOCK:
+        if witness in _SNAPSHOT_VALIDATIONS:
+            _SNAPSHOT_VALIDATIONS.move_to_end(witness)
+            return
+    # No long validation or database work under the cache lock. Concurrent
+    # misses may validate twice; only successfully validated bytes are added.
+    ShadowStore._snapshot_value(key, raw)
+    with _SNAPSHOT_VALIDATIONS_LOCK:
+        _SNAPSHOT_VALIDATIONS[witness] = None
+        _SNAPSHOT_VALIDATIONS.move_to_end(witness)
+        while len(_SNAPSHOT_VALIDATIONS) > _SNAPSHOT_CACHE_LIMIT:
+            _SNAPSHOT_VALIDATIONS.popitem(last=False)
 
 
 def forecast_disposition(forecast, *, now, session_started_at, local_symbols):
@@ -115,7 +148,7 @@ def _saved_forecast_once(path, forecast, *, session_id, session_started):
             "WHERE i.cycle_id=? AND i.symbol=?", (forecast["cycle_id"], forecast["symbol"])).fetchone()
         if snapshot is None or snapshot[0] != forecast["snapshot_hash"]:
             raise ContractError("Exact frozen forecast snapshot is missing")
-        ShadowStore._snapshot_value(*snapshot)
+        _validate_saved_snapshot(*snapshot)
 
         # julianday compares offsets correctly and limits returned payloads to
         # this or later references, rather than loading historical forecast books.
