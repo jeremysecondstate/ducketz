@@ -1,0 +1,30 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261022T000128Z-5b887cc8ae2a4bf0923e7b29a21d93ff",
+  "change_id": "20261022T000128Z-5b887cc8ae2a4bf0923e7b29a21d93ff",
+  "files": [
+    "ml/intraday/live_session.py",
+    "tests/test_intraday_reconciliation_queue.py",
+    "tests/check_isolated_intraday_reconciliation_queue.py"
+  ],
+  "limitations": [
+    "Local unknown-order commitments remain retained; no acceptance or no-send proof is inferred.",
+    "Shared correction applies independently to either PC; retain local runtime improvements, scoped data access, model recipes, symbols and bindings.",
+    "Main integration, peer adoption and loaded live effect remain separate; draft PR is not an installation blocker."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/326",
+  "remote_sha": "f46d8bbf712394975dd07542e9df5e2eaf365235",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Only defer the exact local missing-identity reconciliation without a broker-wide wait when no explicit provider delay exists; preserve all provider cooldowns and manual controls. Load on a later human manual start; never restart or submit trades to validate.",
+  "scope": "shared",
+  "source_sha": "f46d8bbf712394975dd07542e9df5e2eaf365235",
+  "summary": "Atlas local missing-order reconciliation queue repair is published and locally installed",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-22T00:02:45.436552Z",
+      "description": "87 isolated offline regressions passed; one cancellation-module fixture skipped because absent in this source base. Atlas installed composition separately passed51 including that fixture.",
+      "output_sha256": "75d4cf0648a87ca44d02d4cd2890bfb8670d599247c800e5e0f1ce0abcfa6ecf",
+      "started_at_utc": "2026-10-22T00:02:33.639054Z"
+    }
+  ]
+}
