@@ -1,0 +1,52 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261022T075448Z-4c0a74e6010b40fa91c1592233bf5dfc",
+  "change_id": "20261022T075448Z-4c0a74e6010b40fa91c1592233bf5dfc",
+  "commit_sha": "544fc9e8a1a1775e58e5027e08905c18968e759b",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/nightly-codex-cli-fallback.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/codex_cli.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_codex_cli.py"
+    }
+  ],
+  "limitations": [
+    "Supersedes 20261022T073332Z-e6f48569259e41d6a433f11dc8793cda; preserves original source and exact consumer patch.",
+    "Candidate and installed suites:69 passed,8 subtests passed,5 Windows symlink-privilege skips;zero network/import violations.",
+    "Common main lacks the locally composed nightly consumer; existing installations compose the unchanged published three-hunk patch."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/328"
+  ],
+  "main_sha": "14d034a6a34a6ccc366ef1efc810fc196c70feb9",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Uses one uniquely installed sibling when frozen configured path and scheduler PATH are unavailable; no config, task, trader or operating prerequisite changes.",
+  "scope": "shared",
+  "summary": "Atlas installed and published scheduler CLI fallback with absent PATH; immutable revision supersedes PR327",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-22T07:54:48.920649Z",
+      "output_sha256": "25ab996b3df4444ab17d58cb0ed6c247cd8741f009223caebdb0dae63be6bddb",
+      "result": "10 passed;5 symlink-privilege skips;zero network/import violations",
+      "stage": "sealed",
+      "started_at_utc": "2026-10-22T07:54:48.210159Z"
+    },
+    {
+      "completed_at_utc": "2026-10-22T07:55:27.864491Z",
+      "output_sha256": "c17f28535062494e8eb30660bea55616c7d57067c4fff7dd816f1431387e7c72",
+      "result": "10 passed;5 symlink-privilege skips;zero network/import violations",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-22T07:55:26.919744Z"
+    }
+  ]
+}

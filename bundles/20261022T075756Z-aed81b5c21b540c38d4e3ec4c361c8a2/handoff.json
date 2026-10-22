@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-22T07:57:56.434580Z",
+  "id": "20261022T075756Z-aed81b5c21b540c38d4e3ec4c361c8a2",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed and published scheduler CLI fallback with absent PATH; immutable revision supersedes PR327"
+}
