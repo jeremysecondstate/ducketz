@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-22T19:47:42.135529Z",
+  "id": "20261022T194742Z-c54cfc53d3f241c4b7c4e77ad3445c09",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas recovery phase diagnostics published and locally installed; live cause and loading remain unproved"
+}

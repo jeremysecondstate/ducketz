@@ -1,0 +1,42 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261022T194102Z-be17e07d9c344100847ceafb33bef895",
+  "change_id": "20261022T194102Z-be17e07d9c344100847ceafb33bef895",
+  "commit_sha": "c65c9e10d6796552ce9ae1f7e037d1bffa618850",
+  "coordination_handoff": "https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6349789726",
+  "diagnostics_only": true,
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/intentions.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_phase_diagnostics.py"
+    }
+  ],
+  "installation": "Atlas exact three-path installation completed; current loading unknown",
+  "limitations": [
+    "No main integration or peer installation claimed",
+    "No current-process loading or exercised latency recovery established",
+    "Inclusive group total overlaps inner phases; counts are groups reaching each phase"
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/340",
+  "repository": "jeremysecondstate/ducketz",
+  "reviewed_base_commit": "af640b8d52213c2945a23154b6277e34acf880f7",
+  "runtime_implications": "Local installation prepares prospective diagnostics for a future human manual start; do not restart or hotpatch an existing trader.",
+  "scope": "shared generic 15-minute recovery diagnostics; local model recipes and operating bindings preserved",
+  "summary": "Atlas recovery phase diagnostics published and locally installed; live cause and loading remain unproved",
+  "tests": [
+    "83 network-denied offline source checks passed",
+    "83 network-denied isolated candidate checks passed",
+    "83 network-denied installed local checks passed"
+  ]
+}
