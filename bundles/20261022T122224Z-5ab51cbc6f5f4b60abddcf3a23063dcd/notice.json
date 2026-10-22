@@ -1,0 +1,38 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261022T121712Z-49d2a34c289f42569a061bbfb3208f73",
+  "change_id": "20261022T121712Z-49d2a34c289f42569a061bbfb3208f73",
+  "files": [
+    "ml/intraday/candle_collection.py",
+    "tests/test_intraday_collection_completion_retry.py",
+    "tests/check_isolated_intraday_collection_completion_retry.py"
+  ],
+  "limitations": [
+    "Follow-on retains the original collector contention incident; historical fatal SQL site and lock holder remain unknown.",
+    "Both real-lock callback recovery regressions fail on original source and pass after repair; no historical cause or live recovery claim.",
+    "Shared repair applies independently to either PC while preserving local models, symbols and bindings.",
+    "Draft PR333 extends PR330; main integration and peer adoption remain separate.",
+    "Installation is complete; running sessions retain their loaded source. Future human manual start loads the repair; no restart or test order."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/333",
+  "remote_sha": "944aa146dcb565022e38d75993617ff0282c77eb",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Retry the exact final scoring callback through native SQLite contention using the actual session stop predicate. Keep completed collection result and immutable outcome evidence; manual stops and non-contention failures preserve existing behavior.",
+  "scope": "shared",
+  "source_sha": "944aa146dcb565022e38d75993617ff0282c77eb",
+  "summary": "Atlas final collection scoring callback contention repair published and locally installed",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-22T12:18:21.146439Z",
+      "description": "Isolated publication candidate: 88 network-denied checks passed, including real final callback contention and manual-stop behavior.",
+      "output_sha256": "93a46ed3194135c83534bb90501fccd35ff3070ee3219f8b47f57196649d6217",
+      "started_at_utc": "2026-10-22T12:18:11.353971Z"
+    },
+    {
+      "completed_at_utc": "2026-10-22T12:21:02.478343+00:00",
+      "description": "Installed Atlas retained composition: 88 network-denied checks passed.",
+      "output_sha256": "6fec617b4fc9a2847248ede28fb22c8d8d0f7b7749afbdd22186940e75fd7435",
+      "started_at_utc": "2026-10-22T12:20:55.080687+00:00"
+    }
+  ]
+}
