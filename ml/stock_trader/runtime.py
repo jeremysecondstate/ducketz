@@ -8,6 +8,8 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Callable, Mapping, Protocol, Sequence
 
+from requests.exceptions import ChunkedEncodingError
+
 from app.services.schwab import SchwabSession
 from app.services.schwab_retry import is_retryable_schwab_error
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
@@ -1082,6 +1084,11 @@ def _capture_portfolio_state_with_retry(
         except Exception as exc:
             elapsed = max(0.0, float(monotonic()) - started)
             retryable = is_retryable_schwab_error(exc)
+            # A truncated response can safely recapture this complete read-only
+            # snapshot. Keep explicit ambiguity overrides and broker writes out.
+            if (getattr(exc, "schwab_retry_safe", None) is not False
+                    and isinstance(exc, ChunkedEncodingError)):
+                retryable = True
             if retryable:
                 transient_failures += 1
             last_error_type = type(exc).__name__
