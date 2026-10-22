@@ -1,0 +1,87 @@
+{
+  "author": "Scout",
+  "base_commit": "a476d6641821dbcc50753be31264e86633e547f7",
+  "branch": "codex/scout/20261022T112616Z-31c9d2d8858949e2a59df5b5738b2c3b",
+  "change_details": [
+    "Bounded process-local witnesses avoid repeated semantic validation of identical frozen text snapshots after full dictionary and canonical-hash validation.",
+    "Every call reads and fingerprints current snapshot bytes and retains forecast/index/cycle/session/mapping/supersession checks.",
+    "Changed text is fully revalidated; binary and unusual representations retain the original validator.",
+    "Regression coverage preserves expiry, manual controls, capacity, order identities, encoding behavior and bounded concurrency."
+  ],
+  "change_id": "20261022T112616Z-31c9d2d8858949e2a59df5b5738b2c3b",
+  "commit_sha": "85e76019893d473996c70ba972cf136adb4fa3ca",
+  "dependency_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/325",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/local_forecast.py",
+      "sha256": "58308de70bba3299ba00e1798b5055316c2ef6cf1f7202f044009268f78a6ba4"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_local_forecast.py",
+      "sha256": "3c9ef57743105171842cfe0deeb95311aa7a6be7d24d37638fbc0f597e050611"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_snapshot_validation_cache.py",
+      "sha256": "6f3d8b2baef663940b63e145cd4c184a31ea09b4dd70fecc2f1fee8215491395"
+    }
+  ],
+  "limitations": [
+    "First reads, changed bytes and cache eviction still require full semantic validation.",
+    "Offline results do not establish loaded runtime or full-cycle latency recovery.",
+    "Main preparation is blocked until the reviewed parent source becomes an ancestor of main; resume the same Completion-Record.",
+    "Private account state, credentials, raw data, fitted models, recipe identities and operating logs are excluded."
+  ],
+  "main_integration": {
+    "dependency_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/325",
+    "reason": "origin/main does not descend from reviewed source base",
+    "resume_completion_record": "20261022T112616Z-31c9d2d8858949e2a59df5b5738b2c3b",
+    "status": "blocked"
+  },
+  "peer_applicability": "Shared processing repair applies to either PC. Preserve private direction-policy changes, recipes, symbols, data and operating bindings. Peer installation is not established.",
+  "pull_request_base_branch": "codex/scout/20261021T225507Z-0ef81904f57f41ada7c479f52a2a2da2",
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/329",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Local forecast source is imported at startup. The reviewed repair was installed locally for a later human manual reload; affected runtime behavior remains unconfirmed. Publication performs no trader controls.",
+  "scope": "shared",
+  "summary": "Avoid repeated frozen snapshot decoding during local order authorization",
+  "tests": [
+    {
+      "commands": [
+        [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_intraday_snapshot_validation_cache.py",
+          "tests/test_intraday_local_forecast.py",
+          "tests/test_intraday_saved_forecast_busy.py",
+          "tests/test_intraday_scout_local_execution.py",
+          "tests/test_intraday_scout_expiry_during_capacity.py",
+          "tests/test_intraday_scout_cancellation_final_expiry.py",
+          "tests/test_intraday_scout_initial_local_window.py",
+          "tests/test_intraday_initial_gate_clearance.py",
+          "tests/test_intraday_scout_broker.py",
+          "tests/test_intraday_scout_client.py",
+          "-q",
+          "-p",
+          "no:cacheprovider"
+        ]
+      ],
+      "network": "disabled",
+      "passed": 475,
+      "sealed_receipt_sha256": "e611507180636851df65a02f7445958edf2a79729dd916a7a784bf47cbcd4e30",
+      "stage": "publication_candidate"
+    },
+    {
+      "counts_overlap_with_source": true,
+      "offline_launcher_check": "passed; network disabled",
+      "passed": 528,
+      "stage": "local_combined_runtime"
+    }
+  ],
+  "verified_remote_sha": "85e76019893d473996c70ba972cf136adb4fa3ca"
+}
