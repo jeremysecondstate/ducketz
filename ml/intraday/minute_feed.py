@@ -676,11 +676,22 @@ class QuarterHourMinuteFeed:
                 history = self.histories.get(symbol)
                 if history is not None:
                     frame = history.frame
-                    matching = frame.loc[pd.to_datetime(frame.opened_at, utc=True).eq(pd.Timestamp(reference))
-                        & pd.to_datetime(frame.available_at, utc=True).le(pd.Timestamp(instant(self.clock())))
+                    # Validated histories already own UTC datetime columns.
+                    # Keep the original conversion/error path for every other
+                    # representation; do not repeatedly inspect all timestamps.
+                    opened = frame.opened_at
+                    if not (isinstance(opened, pd.Series) and isinstance(opened.dtype, pd.DatetimeTZDtype)
+                            and str(opened.dtype.tz) == "UTC"):
+                        opened = pd.to_datetime(opened, utc=True)
+                    available = frame.available_at
+                    if not (isinstance(available, pd.Series) and isinstance(available.dtype, pd.DatetimeTZDtype)
+                            and str(available.dtype.tz) == "UTC"):
+                        available = pd.to_datetime(available, utc=True)
+                    matching = frame.loc[opened.eq(pd.Timestamp(reference))
+                        & available.le(pd.Timestamp(instant(self.clock())))
                         & frame.availability_kind.eq("actual")
                         & frame.source_id.eq(self.source_id) & frame.source_dataset.eq(self.dataset)]
-                    if any(self._matches_interval_contract(symbol, row)
+                    if not matching.empty and any(self._matches_interval_contract(symbol, row)
                            and data.completed_15m_observation(row, from_frame=True) and data.synthetic_continuity_verified(row)
                            for row in matching.to_dict("records")):
                         return history
