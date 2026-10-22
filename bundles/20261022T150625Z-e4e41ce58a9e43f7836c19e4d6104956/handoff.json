@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-22T15:06:25.321043Z",
+  "id": "20261022T150625Z-e4e41ce58a9e43f7836c19e4d6104956",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Compact context cache and reduce repeated sizing and scoring work with bounded execution diagnostics"
+}
