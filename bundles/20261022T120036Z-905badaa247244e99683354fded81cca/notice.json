@@ -1,0 +1,54 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261022T114813Z-8896fdcbcfaa4ed88273d984a007dcb7",
+  "change_id": "20261022T114813Z-8896fdcbcfaa4ed88273d984a007dcb7",
+  "files": [
+    "ml/intraday/account_execution.py",
+    "ml/intraday/intentions.py",
+    "ml/intraday/candle_collection.py",
+    "tests/test_intraday_recovery_grouping.py",
+    "tests/check_isolated_intraday_recovery_grouping.py",
+    "tests/test_intraday_collection_storage_retry.py",
+    "tests/check_isolated_intraday_collection_storage_retry.py",
+    "tests/test_intraday_candle_close.py"
+  ],
+  "limitations": [
+    "Historical collector SQL site and lock holder were omitted; offline reproduction supports the repaired contention path.",
+    "Shared repair applies independently to either PC; preserve local model policy, symbols, bindings and runtime improvements.",
+    "Draft PR330 extends PR314; main integration and peer adoption remain separate.",
+    "Publication, installation, runtime loading and live recovery are separate facts; live recovery remains unproven."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/330",
+  "remote_sha": "899011011c73cf12dfe5ed384f82c3b70f3c5047",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Retry native SQLite BUSY/LOCKED while preserving manual stop and final interval behavior. Validate each original once per forecast recovery transaction, retaining every attempt and its evidence. Load on a future human manual start; never restart or submit a test order for verification.",
+  "scope": "shared",
+  "source_sha": "899011011c73cf12dfe5ed384f82c3b70f3c5047",
+  "summary": "Atlas collector contention continuation and grouped recovery validation published and locally installed",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-22T11:54:55.187591Z",
+      "description": "177 recovery regression checks passed in the isolated publication candidate.",
+      "output_sha256": "341d992115dcc4fac131cd2e2188ac88de88779411fb0867f2c4dc2b78a65650",
+      "started_at_utc": "2026-10-22T11:54:18.366666Z"
+    },
+    {
+      "completed_at_utc": "2026-10-22T11:55:02.108135Z",
+      "description": "81 collector regression checks passed in the isolated publication candidate.",
+      "output_sha256": "63ad6c9f68597654acf05ab447f21c2368aa2e905ed89b4e627fd00df75290a5",
+      "started_at_utc": "2026-10-22T11:54:55.333550Z"
+    },
+    {
+      "completed_at_utc": "2026-10-22T11:57:19.390293+00:00",
+      "description": "Installed Atlas composition: 177 passed in 32.58s; network denied and fresh imports.",
+      "output_sha256": "7a8bf731465b3c7d988550740845d6fc39901f9a4a1df5b1097781c1061855e7",
+      "started_at_utc": "2026-10-22T11:56:42.164950+00:00"
+    },
+    {
+      "completed_at_utc": "2026-10-22T11:56:58.523805+00:00",
+      "description": "Installed Atlas composition: 105 passed in 11.84s; network denied and fresh imports.",
+      "output_sha256": "38c62cd138e05f09a82425da3ebd3c1fe9e4f314621e81597cd2e9420a7b9727",
+      "started_at_utc": "2026-10-22T11:56:42.176705+00:00"
+    }
+  ]
+}
