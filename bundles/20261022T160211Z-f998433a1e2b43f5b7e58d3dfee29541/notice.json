@@ -1,0 +1,39 @@
+{
+  "artifact_commit_sha": "df9c6306e27cc971ae2cb12e807ec59e1bf863dc",
+  "artifact_completion_id": "20261022T155818Z-atlas-stats-outcomes-79207e01",
+  "author": "Atlas",
+  "branch": "main",
+  "change_id": "20261022T155818Z-atlas-stats-outcomes-79207e01",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/df9c6306e27cc971ae2cb12e807ec59e1bf863dc",
+  "files": [
+    "artifacts/pc-original/20261022T155818Z-atlas-stats-outcomes-79207e01/artifact-manifest.json",
+    "artifacts/pc-original/20261022T155818Z-atlas-stats-outcomes-79207e01/gameplan-stats/20261022T155818Z-atlas-stats-outcomes-79207e01/original-outcome-supplement.json"
+  ],
+  "limitations": [
+    "Derived scientific outcome supplement for ten Atlas original forecasts only; no raw data, fitted parameters, account state, ledgers or local operating identities.",
+    "Original combined Gameplan and daily completed-session Stats packages remain immutable. This cumulative supplement does not replace their midnight cutoff or modify trading instructions.",
+    "Peer receipt, display and runtime installation are separate facts. Missing original observations remain13 Atlas and49 Scout targets; no fabricated data or substituted expired trade."
+  ],
+  "remote_sha": "df9c6306e27cc971ae2cb12e807ec59e1bf863dc",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No source change, model tuning, trader start/restart, order, application installation or new operating prerequisite. Existing independent nightly preparation and manual controls continue.",
+  "scope": "symbol-specific",
+  "summary": "Atlas original saved outcomes supplement: ten newly matured targets published",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-22T15:58:18.113481+00:00",
+      "description": "Exact original probability, saved label, policy, observed endpoint and portable export review:155 checks passed",
+      "output_sha256": "4376d70a3e1cf965a627906348a98b98f39cfd06519a50c2861723418057e00c"
+    },
+    {
+      "completed_at_utc": "2026-10-22T15:57:41.868590+00:00",
+      "description": "Native cumulative evaluation:6 checks passed;8054 previously evaluated rows preserved",
+      "output_sha256": "1f5293260c384169947ade3c238a180dab250d10c444cb942098ca4a4050caf8"
+    },
+    {
+      "completed_at_utc": "2026-10-22T16:01:12.408232+00:00",
+      "description": "Committed bytes, machine namespace and remote main verification:9 checks passed",
+      "output_sha256": "4e8b1cdc9142143f9eab064a5ca9a31e4cd70b7e570f1fd216f86d70421ca088"
+    }
+  ]
+}
