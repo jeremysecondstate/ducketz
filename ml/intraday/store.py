@@ -235,6 +235,12 @@ class ShadowStore:
             row = db.execute("SELECT s.id,s.payload FROM snapshots s JOIN symbol_inputs i ON i.snapshot_id=s.id WHERE i.cycle_id=? AND i.symbol=?", (cycle_id, symbol)).fetchone()
         return (row[0], self._snapshot_value(row[0], row[1])) if row else None
 
+    def forecast_symbols(self, cycle_id):
+        """Indexed presence for scheduling; consumption still validates originals."""
+        with self.connect() as db:
+            return {row[0] for row in db.execute(
+                "SELECT symbol FROM forecasts WHERE cycle_id=?", (cycle_id,))}
+
     def forecast(self, cycle_id, symbol):
         with self.connect() as db:
             row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE cycle_id=? AND symbol=?", (cycle_id, symbol)).fetchone()
