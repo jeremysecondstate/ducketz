@@ -176,6 +176,47 @@ class IntentionStore:
             return self._append(db, forecast, event_key=event_key, at=at,
                 disposition=disposition, evidence=evidence, kind=kind, order=order, required_sizing=True)
 
+    def record_recovery_group(self, forecast_id, *, actor, observations):
+        """Project every native attempt for one original in a pinned transaction.
+
+        Exact forecast and sizing bytes are read and validated once per group.
+        No original is reused across transactions without those checks. The
+        transaction covers one forecast, rather than the entire own history;
+        each attempt retains its separate identity, evidence and chronology.
+        """
+        identity(forecast_id)
+        if actor not in {"Atlas", "Scout"}:
+            raise ContractError("Recovery requires an explicit local actor")
+        observations = tuple(dict(item) for item in observations)
+        if not observations:
+            return []
+        with self.store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                             "FROM forecasts WHERE id=?", (forecast_id,)).fetchone()
+            if row is None:
+                raise ContractError("Native 15m order lacks original persisted intention")
+            forecast, _ = self.store._forecast_projection(row)
+            if forecast["pc"] != actor:
+                raise ContractError("Recovery forecast belongs to another actor")
+            intention_row = db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
+                                       (forecast_id,)).fetchone()
+            intention = self._recovery_sizing(intention_row)
+            if intention is None:
+                raise ContractError("Native 15m order lacks original persisted intention")
+            results = []
+            for item in observations:
+                identity(item["event_key"]); identity(item["disposition"]); identity(item["kind"])
+                if item["order"] is None:
+                    raise ContractError("Recovery requires an explicit local actor")
+                at = instant(item["recorded_at"])
+                if at < instant(forecast["issued_at"]) or not isinstance(item["evidence"], dict) or not item["evidence"]:
+                    raise ContractError("Intention event needs available explicit evidence")
+                results.append(self._append_validated(db, forecast, intention_row, intention,
+                    event_key=item["event_key"], at=at, disposition=item["disposition"],
+                    evidence=item["evidence"], kind=item["kind"], order=item["order"]))
+            return results
+
     def _append(self, db, forecast, *, event_key, at, disposition, evidence, kind,
                 capacity=None, order=None, required_sizing=False, scope_to_intention=False):
         intention_row = db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
@@ -184,6 +225,12 @@ class IntentionStore:
                      else self._value(intention_row))
         if required_sizing and intention is None:
             raise ContractError("Native 15m order lacks original persisted intention")
+        return self._append_validated(db, forecast, intention_row, intention,
+            event_key=event_key, at=at, disposition=disposition, evidence=evidence, kind=kind,
+            capacity=capacity, order=order, scope_to_intention=scope_to_intention)
+
+    def _append_validated(self, db, forecast, intention_row, intention, *, event_key, at,
+                          disposition, evidence, kind, capacity=None, order=None, scope_to_intention=False):
         desired = intention["desired_quantity"] if intention else None
         # Recovery preserves the first immutable intention and its actual
         # order side across later policy changes. New unsized forecasts
