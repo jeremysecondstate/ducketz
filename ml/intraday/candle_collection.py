@@ -322,7 +322,7 @@ def collection_loop(store, *, histories, provider, journal, symbols, session_id,
             result = collector._storage("pass_once", collector.pass_once)
             if result["final_complete"]:
                 if on_completed is not None:
-                    on_completed(result)
+                    collector._storage("on_completed", lambda: on_completed(result))
                 return result
             pause(1)
     except InterruptedError:
