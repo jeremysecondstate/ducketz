@@ -13,6 +13,7 @@ import hashlib
 import json
 from pathlib import Path
 import sqlite3
+from threading import RLock
 
 from ml.stock_direction_policy import (
     BEARISH_PROBABILITY, BULLISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION,
@@ -25,6 +26,54 @@ from .prediction import ContractError, STEP, TARGET_VERSION, digest, encoded, in
 _DIRECTION_POLICY_FIELDS = (
     "direction", "direction_policy_version", "direction_up_threshold", "direction_down_threshold",
 )
+
+
+# These local change markers let execution recheck chronology without rereading
+# unchanged scientific model trees while a broker quote ages. Forecast originals
+# remain untouched. Every SQL mutation, including updates outside this class,
+# advances one generation in the same transaction as the original row.
+_EXECUTION_FORECAST_SCHEMA = {
+    "execution_forecast_generation": """CREATE TABLE execution_forecast_generation(
+        singleton INTEGER PRIMARY KEY CHECK(singleton=1),
+        generation INTEGER NOT NULL CHECK(generation>=0),
+        epoch TEXT NOT NULL CHECK(length(epoch)=32))""",
+    "execution_forecast_revisions": """CREATE TABLE execution_forecast_revisions(
+        forecast_id TEXT PRIMARY KEY, generation INTEGER NOT NULL CHECK(generation>=0))""",
+    "execution_generation_insert": """CREATE TRIGGER execution_generation_insert
+        BEFORE INSERT ON execution_forecast_generation
+        WHEN EXISTS(SELECT 1 FROM execution_forecast_generation) BEGIN
+        SELECT RAISE(ABORT,'Execution forecast generation cannot be replaced'); END""",
+    "execution_generation_update": """CREATE TRIGGER execution_generation_update
+        BEFORE UPDATE ON execution_forecast_generation
+        WHEN NEW.singleton!=OLD.singleton OR NEW.generation!=OLD.generation+1
+            OR typeof(NEW.generation)!='integer' OR NEW.epoch!=OLD.epoch BEGIN
+        SELECT RAISE(ABORT,'Execution forecast generation must advance'); END""",
+    "execution_generation_delete": """CREATE TRIGGER execution_generation_delete
+        BEFORE DELETE ON execution_forecast_generation BEGIN
+        SELECT RAISE(ABORT,'Execution forecast generation cannot be deleted'); END""",
+    "execution_revision_insert": """CREATE TRIGGER execution_revision_insert
+        BEFORE INSERT ON execution_forecast_revisions
+        WHEN NEW.generation!=(SELECT generation FROM execution_forecast_generation WHERE singleton=1) BEGIN
+        SELECT RAISE(ABORT,'Execution forecast revision must name current generation'); END""",
+    "execution_revision_update": """CREATE TRIGGER execution_revision_update
+        BEFORE UPDATE ON execution_forecast_revisions BEGIN
+        SELECT RAISE(ABORT,'Execution forecast revisions cannot be updated'); END""",
+}
+for _operation in ("INSERT", "UPDATE", "DELETE"):
+    _name = "execution_forecast_" + _operation.lower()
+    _identity = "NEW.id" if _operation == "INSERT" else "OLD.id"
+    _remove = f"DELETE FROM execution_forecast_revisions WHERE forecast_id={_identity};"
+    if _operation == "UPDATE":
+        _remove += " DELETE FROM execution_forecast_revisions WHERE forecast_id=NEW.id;"
+    _add = """INSERT INTO execution_forecast_revisions VALUES(
+        NEW.id,(SELECT generation FROM execution_forecast_generation WHERE singleton=1));""" if _operation != "DELETE" else ""
+    _EXECUTION_FORECAST_SCHEMA[_name] = f"""CREATE TRIGGER {_name} AFTER {_operation} ON forecasts BEGIN
+        UPDATE execution_forecast_generation SET generation=generation+1 WHERE singleton=1;
+        SELECT CASE WHEN changes()!=1 THEN RAISE(ABORT,'Missing execution forecast generation') END;
+        {_remove}
+        {_add}
+    END"""
+del _operation, _name, _identity, _remove, _add
 
 
 def utcnow():
@@ -49,6 +98,38 @@ class ShadowStore:
                 CREATE INDEX IF NOT EXISTS outcomes_forecast ON outcomes(forecast_id);
                 CREATE INDEX IF NOT EXISTS forecasts_target ON forecasts(pc,symbol,reference_at);
             """)
+            db.execute("BEGIN IMMEDIATE")
+            present = self._execution_forecast_schema(db)
+            if not present:
+                for statement in _EXECUTION_FORECAST_SCHEMA.values():
+                    db.execute(statement)
+                db.execute("INSERT INTO execution_forecast_generation VALUES(1,0,lower(hex(randomblob(16))))")
+                db.execute("INSERT INTO execution_forecast_revisions SELECT id,0 FROM forecasts")
+            self._execution_forecast_generation(db)
+        self._execution_forecast_lock = RLock()
+        self._execution_forecast_cache = OrderedDict()
+        self._execution_forecast_highwater = 0
+        self._execution_forecast_identity = None
+
+    @staticmethod
+    def _execution_forecast_schema(db):
+        names = tuple(_EXECUTION_FORECAST_SCHEMA)
+        rows = dict(db.execute("SELECT name,sql FROM sqlite_master WHERE name IN (" +
+                               ",".join("?" for _ in names) + ")", names))
+        if rows and rows != _EXECUTION_FORECAST_SCHEMA:
+            raise ContractError("Execution forecast revision schema changed")
+        return rows
+
+    @classmethod
+    def _execution_forecast_generation(cls, db):
+        if cls._execution_forecast_schema(db) != _EXECUTION_FORECAST_SCHEMA:
+            raise ContractError("Execution forecast revision schema is missing")
+        rows = db.execute("SELECT singleton,generation,epoch FROM execution_forecast_generation").fetchall()
+        if (len(rows) != 1 or rows[0][0] != 1 or type(rows[0][1]) is not int or rows[0][1] < 0
+                or not isinstance(rows[0][2], str) or len(rows[0][2]) != 32
+                or any(c not in "0123456789abcdef" for c in rows[0][2])):
+            raise ContractError("Execution forecast generation is invalid")
+        return rows[0][1], rows[0][2]
 
     @contextmanager
     def connect(self):
@@ -205,26 +286,55 @@ class ShadowStore:
         return dict(projection), value
 
     def execution_forecast_headers(self, *, pc, symbol, forecast_ids=None):
-        """Validate own history, reusing unchanged headers on repeated scans.
+        """Revalidate changed originals and reuse unchanged scalar headers.
 
-        All bytes are still read and hashed. The bounded cache belongs to this
-        store instance, not a database or another trader, and does not survive
-        a process restart. Every changed row is fully validated again.
+        Exact trigger definitions and monotonic row revisions are checked in the
+        same fresh read transaction as payloads. Cold and changed rows retain
+        full semantic/index validation, including obsolete history and BLOBs.
+        No read transaction survives this method or spans broker operations.
         """
-        clauses, parameters = ["pc=?", "symbol=?"], [pc, symbol]
+        clauses, parameters = ["f.pc=?", "f.symbol=?"], [pc, symbol]
         if forecast_ids is not None:
             identities = tuple(dict.fromkeys(forecast_ids))
             if not identities:
                 return []
-            clauses.append("id IN (SELECT value FROM json_each(?))")
+            clauses.append("f.id IN (SELECT value FROM json_each(?))")
             parameters.append(encoded(identities))
         headers = []
-        with self.connect() as db:
-            rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
-                "FROM forecasts WHERE " + " AND ".join(clauses) + " ORDER BY rowid", parameters)
+        # Serialize this instance's cache publication so concurrent snapshots
+        # cannot make a valid older reader look like a generation rollback.
+        with self._execution_forecast_lock, self.connect() as db:
+            db.execute("BEGIN")
+            generation, epoch = self._execution_forecast_generation(db)
+            stat = self.path.stat()
+            identity = (stat.st_dev, stat.st_ino, db.execute("PRAGMA schema_version").fetchone()[0], epoch)
+            if identity != self._execution_forecast_identity:
+                self._execution_forecast_cache.clear()
+                self._execution_forecast_highwater = 0
+                self._execution_forecast_identity = identity
+            if generation < self._execution_forecast_highwater:
+                raise ContractError("Execution forecast generation regressed")
+            rows = db.execute("SELECT f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,r.generation "
+                "FROM forecasts f LEFT JOIN execution_forecast_revisions r ON r.forecast_id=f.id WHERE " +
+                " AND ".join(clauses) + " ORDER BY f.rowid", parameters).fetchall()
             for row in rows:
-                projection, _ = self._forecast_projection(row)
+                revision = row[6]
+                if type(revision) is not int or not 0 <= revision <= generation:
+                    raise ContractError("Execution forecast row revision is invalid")
+                signature = (*row[:6], revision)
+                previous = self._execution_forecast_cache.get(row[0])
+                if previous is not None and previous[0] == signature:
+                    projection = dict(previous[1])
+                else:
+                    original = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                                          "FROM forecasts WHERE id=?", (row[0],)).fetchone()
+                    projection, _ = self._forecast_projection(original)
+                    if all(item is None or isinstance(item, str) for item in projection.values()):
+                        self._execution_forecast_cache[row[0]] = (signature, tuple(projection.items()))
+                        if len(self._execution_forecast_cache) > 4096:
+                            self._execution_forecast_cache.popitem(last=False)
                 headers.append(projection)
+            self._execution_forecast_highwater = generation
         return headers
 
     def scoring_forecasts(self, *, pc, observed_candidates, as_of, stopped=lambda: False):
