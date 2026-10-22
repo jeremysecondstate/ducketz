@@ -126,10 +126,13 @@ class ExecutionQueue:
                 AND NOT EXISTS(SELECT 1 FROM intraday_live_queue n JOIN forecasts nf ON nf.id=n.forecast_id
                     WHERE n.session_id=q.session_id AND nf.pc=f.pc AND n.symbol=q.symbol
                     AND (nf.reference_at>f.reference_at OR (nf.reference_at=f.reference_at AND n.issued_at>q.issued_at)))
-                ORDER BY f.reference_at,q.symbol""",
+                ORDER BY f.reference_at,q.symbol,q.forecast_id""",
                               (self.session_id,self.pc,current)).fetchall()
-        ids = {row[0] for row in rows}
-        return [f for f in self.store.forecasts(pc=self.pc) if f["forecast_id"] in ids]
+        ids = [row[0] for row in rows]
+        if not ids:
+            return []
+        forecasts = {f["forecast_id"]:f for f in self.store.forecasts(pc=self.pc)}
+        return [forecasts[identity] for identity in ids]
 
     def broker_due(self, now):
         with self.store.connect() as db:
@@ -564,7 +567,17 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                                 "disposition","submission_status","submitted_quantity","filled_quantity")}})
                         disposition = result["disposition"]
                         if disposition == "previous_intention_reconciliation" or result["evidence"].get("proven_unsent_retry_eligible"):
-                            queue.defer(forecast["forecast_id"],now=clock(),seconds=result["evidence"].get("retry_after_seconds") or 3,broker_wait=True)
+                            # Missing original order identity is local evidence,
+                            # not a provider cooldown for every other symbol.
+                            # Keep that commitment and retry only this forecast.
+                            unknown_without_broker_wait = (
+                                disposition == "previous_intention_reconciliation"
+                                and result["evidence"].get("reason_code") == "EXACT_BROKER_ORDER_ID_UNAVAILABLE"
+                                and result["evidence"].get("retry_after_seconds") is None
+                                and not result["evidence"].get("proven_unsent_retry_eligible"))
+                            queue.defer(forecast["forecast_id"],now=clock(),
+                                seconds=result["evidence"].get("retry_after_seconds") or 3,
+                                broker_wait=not unknown_without_broker_wait)
                         elif disposition == "submission_recovery_required":
                             # UNKNOWN is never requeued for submission. Status
                             # recovery and other symbols still honor its wait.
