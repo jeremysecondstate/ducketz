@@ -1,0 +1,28 @@
+--- a/ml/nightly_workflow.py
++++ b/ml/nightly_workflow.py
+@@ -24,6 +24,7 @@
+ 
+ from datafetching.runtime_lock import exclusive_runtime_lock
+ from ml.artifacts import file_checksum, utc_timestamp
++from ml.codex_cli import resolve_codex_executable
+ 
+ VERSION = "ducketz-nightly-workflow-v1"
+ STEPS = ("prepare_stats", "model_review", "train_and_plan", "verify_display", "local_handoff")
+@@ -432,7 +433,7 @@
+         return _review_outputs(feedback, saved, reviewed["proposal"]["reviewed_by"], reused=True)
+     diagnostics = _json(feedback / "diagnostics.json")
+     model = config["reviewer"]["model"]
+-    binary = config.get("codex_executable") or shutil.which("codex")
++    binary = resolve_codex_executable(config.get("codex_executable"), which=shutil.which)
+     if not binary or not Path(binary).is_file():
+         raise RuntimeError("Codex CLI is unavailable; saved Stats remain ready for a review retry")
+     answer = feedback / ("codex-answer-" + uuid.uuid4().hex + ".json")
+@@ -1353,7 +1354,7 @@
+         elif args.status:
+             result = status(config, action_date=args.action_date)
+         elif args.check:
+-            binary = config.get("codex_executable") or shutil.which("codex")
++            binary = resolve_codex_executable(config.get("codex_executable"), which=shutil.which)
+             result = {"status": "CONFIGURATION_VERIFIED", "actor": config["actor"],
+                 "codex_available": bool(binary and Path(binary).is_file()),
+                 "peer_communication_enabled": False, "source_identity": source_identity(Path(config["repository"]))}
