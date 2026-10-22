@@ -5,8 +5,11 @@ and fill observations append records without rewriting that intention. This
 module has no broker connection and cannot create an order or a fill.
 """
 from collections import OrderedDict
+from contextlib import contextmanager, nullcontext
 import hashlib
 import json
+import math
+import time
 from dataclasses import asdict
 
 from ml.stock_direction_policy import stock_direction
@@ -15,6 +18,65 @@ from .prediction import ContractError, digest, encoded, identity, instant, quant
 
 VERSION = "intraday-independent-intentions-v1"
 _RECOVERY_SIZING_CACHE_LIMIT = 4096
+
+
+class _RecoveryTimings:
+    """Bounded, private aggregate timings; no forecast or account values.
+
+    Group totals include connection entry, commit/rollback and close. Named
+    inner phases are subsets, so their totals must not be added to group_total.
+    Diagnostic clock failures never change a recovery result or exception.
+    """
+    _STAGES = frozenset({"group_total", "writer_lock", "forecast_read",
+                         "forecast_validate", "sizing_read", "sizing_validate",
+                         "projection_append"})
+
+    def __init__(self):
+        self.phases = {}
+        self.unavailable = False
+
+    def _now(self):
+        try:
+            value = time.monotonic()
+            if type(value) in {int, float} and math.isfinite(value):
+                return value
+        except Exception:
+            pass
+        self.unavailable = True
+        return None
+
+    @contextmanager
+    def measure(self, stage):
+        started = self._now()
+        try:
+            yield
+        finally:
+            ended = self._now()
+            try:
+                if stage not in self._STAGES or started is None or ended is None or ended < started:
+                    self.unavailable = True
+                else:
+                    elapsed = ended - started
+                    if not math.isfinite(elapsed):
+                        self.unavailable = True
+                    else:
+                        value = self.phases.setdefault(stage, dict(count=0, total_seconds=0., maximum_seconds=0.))
+                        total = value["total_seconds"] + elapsed
+                        if not math.isfinite(total):
+                            self.unavailable = True
+                        else:
+                            value["count"] += 1
+                            value["total_seconds"] = total
+                            value["maximum_seconds"] = max(value["maximum_seconds"], elapsed)
+            except Exception:
+                self.unavailable = True
+
+    def snapshot(self):
+        return dict(schema_version="intraday-recovery-phase-timings-v1",
+                    phases={name: {key: round(value, 6) if type(value) is float else value
+                                   for key, value in phase.items()}
+                            for name, phase in self.phases.items()},
+                    diagnostics_unavailable=self.unavailable)
 
 
 class IntentionStore:
@@ -176,7 +238,7 @@ class IntentionStore:
             return self._append(db, forecast, event_key=event_key, at=at,
                 disposition=disposition, evidence=evidence, kind=kind, order=order, required_sizing=True)
 
-    def record_recovery_group(self, forecast_id, *, actor, observations):
+    def record_recovery_group(self, forecast_id, *, actor, observations, timings=None):
         """Project every native attempt for one original in a pinned transaction.
 
         Exact forecast and sizing bytes are read and validated once per group.
@@ -190,31 +252,38 @@ class IntentionStore:
         observations = tuple(dict(item) for item in observations)
         if not observations:
             return []
-        with self.store.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
-                             "FROM forecasts WHERE id=?", (forecast_id,)).fetchone()
+        measure = timings.measure if isinstance(timings, _RecoveryTimings) else lambda stage: nullcontext()
+        with measure("group_total"), self.store.connect() as db:
+            with measure("writer_lock"):
+                db.execute("BEGIN IMMEDIATE")
+            with measure("forecast_read"):
+                row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                                 "FROM forecasts WHERE id=?", (forecast_id,)).fetchone()
             if row is None:
                 raise ContractError("Native 15m order lacks original persisted intention")
-            forecast, _ = self.store._forecast_projection(row)
+            with measure("forecast_validate"):
+                forecast, _ = self.store._forecast_projection(row)
             if forecast["pc"] != actor:
                 raise ContractError("Recovery forecast belongs to another actor")
-            intention_row = db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
-                                       (forecast_id,)).fetchone()
-            intention = self._recovery_sizing(intention_row)
+            with measure("sizing_read"):
+                intention_row = db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
+                                           (forecast_id,)).fetchone()
+            with measure("sizing_validate"):
+                intention = self._recovery_sizing(intention_row)
             if intention is None:
                 raise ContractError("Native 15m order lacks original persisted intention")
             results = []
-            for item in observations:
-                identity(item["event_key"]); identity(item["disposition"]); identity(item["kind"])
-                if item["order"] is None:
-                    raise ContractError("Recovery requires an explicit local actor")
-                at = instant(item["recorded_at"])
-                if at < instant(forecast["issued_at"]) or not isinstance(item["evidence"], dict) or not item["evidence"]:
-                    raise ContractError("Intention event needs available explicit evidence")
-                results.append(self._append_validated(db, forecast, intention_row, intention,
-                    event_key=item["event_key"], at=at, disposition=item["disposition"],
-                    evidence=item["evidence"], kind=item["kind"], order=item["order"]))
+            with measure("projection_append"):
+                for item in observations:
+                    identity(item["event_key"]); identity(item["disposition"]); identity(item["kind"])
+                    if item["order"] is None:
+                        raise ContractError("Recovery requires an explicit local actor")
+                    at = instant(item["recorded_at"])
+                    if at < instant(forecast["issued_at"]) or not isinstance(item["evidence"], dict) or not item["evidence"]:
+                        raise ContractError("Intention event needs available explicit evidence")
+                    results.append(self._append_validated(db, forecast, intention_row, intention,
+                        event_key=item["event_key"], at=at, disposition=item["disposition"],
+                        evidence=item["evidence"], kind=item["kind"], order=item["order"]))
             return results
 
     def _append(self, db, forecast, *, event_key, at, disposition, evidence, kind,

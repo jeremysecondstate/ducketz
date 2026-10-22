@@ -29,7 +29,7 @@ from app.services.schwab_stock_orders import build_schwab_stock_order_payload
 
 from .capacity import clip_to_capacity
 from .execution_policy import submission_gate
-from .intentions import IntentionStore
+from .intentions import IntentionStore, _RecoveryTimings
 from .prediction import ContractError, PACIFIC, TARGET_VERSION, digest, encoded, instant
 from .starter_sizing import QuoteObservation, size_forecast
 from .technical_sizing import AvailableInput
@@ -140,6 +140,7 @@ class _ExecutionTrace:
         self.started = self.stage_started = self._now()
         self.stage = "account_entry"
         self.phases = []
+        self.recovery_timings = None
         self.lease_expires_at = self.snapshot_observed_at = None
 
     def _now(self):
@@ -176,6 +177,8 @@ class _ExecutionTrace:
             lease_expires_at=self.lease_expires_at, snapshot_observed_at=self.snapshot_observed_at)
         if self.unavailable:
             result["execution_diagnostics_unavailable"] = True
+        if self.recovery_timings is not None:
+            result["recovery_phase_timings"] = self.recovery_timings.snapshot()
         return result
 
     def remember(self, exc):
@@ -1084,6 +1087,10 @@ class IntradayAccountExecutor:
                 return []
             results = [None] * len(owned)
             self._execution_stage("recovery_intention_record")
+            trace = getattr(self, "_execution_trace", None)
+            timings = _RecoveryTimings() if trace is not None else None
+            if trace is not None:
+                trace.recovery_timings = timings
             groups = {}
             for index, native in enumerate(owned):
                 groups.setdefault(native.forecast_id, []).append((index, native))
@@ -1102,7 +1109,7 @@ class IntradayAccountExecutor:
                 # only within this transaction. Keep every attempt and restore
                 # native snapshot order in the public result.
                 projected = self.intents.record_recovery_group(forecast_id, actor=self.actor,
-                                                               observations=observations)
+                                                               observations=observations, timings=timings)
                 for (index, _), value in zip(attempts, projected):
                     results[index] = value
             self._execution_stage("recovery_complete")
