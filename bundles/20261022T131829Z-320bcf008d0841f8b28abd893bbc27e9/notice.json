@@ -1,0 +1,38 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261022T130047Z-9dfef5b107ff43af88341e3773eaf4f4",
+  "change_id": "20261022T130047Z-9dfef5b107ff43af88341e3773eaf4f4",
+  "files": [
+    "ml/intraday/store.py",
+    "tests/test_intraday_execution_revision_cache.py",
+    "tests/check_isolated_intraday_execution_revision_cache.py"
+  ],
+  "limitations": [
+    "Cold originals still undergo full validation; repeated unchanged reads use bounded validated scalar headers.",
+    "Both targeted regressions fail on original source and pass after repair. Scientific originals and policies are preserved.",
+    "Shared implementation applies independently to either PC; models, symbols, bindings and manual controls remain local.",
+    "Draft PR335 extends PR333; main integration and peer installation remain separate.",
+    "Future human manual start loads this source; current process was not restarted or hotpatched, and exact live repair effect remains unproven."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/335",
+  "remote_sha": "ff493e84be2a02a8795e5047095563e9f510495d",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Each own ShadowStore adds transaction-bound local revision metadata when normally opened. Preserve original forecasts, outcomes, chronology checks, quote limit, execution identities and manual controls.",
+  "scope": "shared",
+  "source_sha": "ff493e84be2a02a8795e5047095563e9f510495d",
+  "summary": "Atlas execution chronology performance repair published and locally installed",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-22T13:03:25.457054Z",
+      "description": "Isolated publication candidate:153 network-denied checks passed, including quote-aging, corruption detection and final supersession.",
+      "output_sha256": "26080d85bce05dde3a52b2a9994b51d629874ff30cb32e2dd315c3763635c2b0",
+      "started_at_utc": "2026-10-22T13:02:33.070553Z"
+    },
+    {
+      "completed_at_utc": "2026-10-22T13:07:13.923079+00:00",
+      "description": "Installed Atlas retained composition:153 network-denied checks passed with exact current import closure.",
+      "output_sha256": "f3a5a46209f3b277b1426fa1955374e41be90c558b33cf5954088312e0ec26e3",
+      "started_at_utc": "2026-10-22T13:06:26.410662+00:00"
+    }
+  ]
+}
