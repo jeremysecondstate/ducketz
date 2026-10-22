@@ -393,11 +393,12 @@ def indicator_snapshot(candles, *, symbol, reference_at, data_cutoff, indicator_
                                    for v in frame["available_at"]], index=frame.index)
             return validate_candles(frame.loc[available.le(pd.Timestamp(cutoff)) & opened.le(pd.Timestamp(reference))])
         frame = admitted(candles)
-        frozen = admitted(forecast_snapshot["candles"])
+        same_candles = candles is forecast_snapshot["candles"]
+        frozen = frame if same_candles else admitted(forecast_snapshot["candles"])
     except (ContractError, ValueError, KeyError) as exc:
         value["reason"] = "invalid_or_unavailable_modern_candles: " + str(exc)
         return IndicatorSnapshot(digest(value), encoded(value))
-    if _records(frame) != _records(frozen):
+    if not same_candles and _records(frame) != _records(frozen):
         raise ContractError("Sizing candles differ from the original forecast snapshot")
     if frame.empty or frame.symbol.nunique() != 1 or frame.symbol.iloc[0] != symbol or frame.source_id.nunique() != 1:
         value["reason"] = "one_symbol_and_source_required"

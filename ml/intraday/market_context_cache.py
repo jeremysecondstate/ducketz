@@ -31,6 +31,10 @@ MAX_COMPRESSED_BYTES = 4 * 1024 * 1024
 MAX_DECODED_BYTES = 16 * 1024 * 1024
 MAX_PENDING_BYTES = 16 * 1024 * 1024
 MAX_PENDING_ENTRIES = 4096
+# Ordered feature names are already frozen by the fully validated contract
+# in each cache key. Repeating them in every vector dominated the staged-byte
+# budget; restore them only from that exact contract and rehash the full context.
+CONTEXT_FORMAT = "fixed-feature-contract-v1"
 
 
 def _busy(error):
@@ -186,7 +190,14 @@ class ContextCache(AbstractContextManager):
                 if not isinstance(envelope, dict) or envelope.get("cache_key") != key:
                     raise ValueError("Cached context belongs to different receipt inputs")
                 value = envelope["context"]
-                result = MarketContext(value["symbol"], value["cutoff"], tuple(value["feature_names"]),
+                if "context_format" not in envelope:
+                    # Retain exact order validation for older named envelopes.
+                    feature_names = value["feature_names"]
+                elif envelope["context_format"] == CONTEXT_FORMAT and "feature_names" not in value:
+                    feature_names = contract["feature_names"]
+                else:
+                    raise ValueError("Unsupported cached context format")
+                result = MarketContext(value["symbol"], value["cutoff"], tuple(feature_names),
                     tuple(value["values"]), tuple(value["source_evidence"]), value["snapshot_sha256"],
                     tuple((k, tuple(v)) for k, v in value["source_ids"]), value["feature_version"])
                 if (result.symbol != symbol or result.cutoff != cutoff.isoformat()
@@ -217,8 +228,9 @@ class ContextCache(AbstractContextManager):
         # JSON immediately serializes these owned immutable vectors. Recursive
         # dataclass conversion copies thousands of scalar coordinates per miss
         # without changing their bytes or providing an additional validation.
-        value = {name:getattr(result,name) for name in result.__dataclass_fields__}
-        payload = zlib.compress(_json({"cache_key": key, "context": value}).encode("utf-8"))
+        value = {name:getattr(result,name) for name in result.__dataclass_fields__ if name != "feature_names"}
+        payload = zlib.compress(_json({"cache_key": key, "context_format": CONTEXT_FORMAT,
+                                      "context": value}).encode("utf-8"))
         if len(payload) <= MAX_COMPRESSED_BYTES:
             if (len(self._pending) < MAX_PENDING_ENTRIES
                     and self._pending_bytes + len(payload) <= MAX_PENDING_BYTES):
