@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-22T07:37:29.877025Z",
+  "id": "20261022T073729Z-f0e6381ecb8a4a73b72f1f05dec84125",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas repaired nightly CLI discovery after desktop update; source published and exact consumer patch installed"
+}

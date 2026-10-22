@@ -1,0 +1,56 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261022T073332Z-e6f48569259e41d6a433f11dc8793cda",
+  "change_id": "20261022T073332Z-e6f48569259e41d6a433f11dc8793cda",
+  "commit_sha": "50dc155601c2d31ebf5814bfe88cfe5999f274e9",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/codex_cli.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_codex_cli.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/nightly-codex-cli-fallback.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/nightly-codex-cli-fallback.patch"
+    }
+  ],
+  "limitations": [
+    "No model or runtime call used as verification. Separate installed consumer suite passed60checks and6subtests.",
+    "Common main lacks nightly workflow consumer; existing local installations apply the exact portable patch while preserving their other source composition."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/327"
+  ],
+  "main_sha": "bc12b32d9d10b537117d98bdf0f81cf74029c8d9",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Ordinary nightly continuation resolves current installed CLI while retaining configuration, saved Stats and reviewer model. No trader or scheduler changes.",
+  "scope": "shared",
+  "summary": "Atlas repaired nightly CLI discovery after desktop update; source published and exact consumer patch installed",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-22T07:33:32.712763Z",
+      "output_sha256": "a55c61a4dabb57c3d03c96a6f1ca3dbc9951e52fdac1bd18bd603fd5dd4b638f",
+      "result": "4 unittest methods with 8 resolution scenarios passed; no network/import violations",
+      "stage": "sealed",
+      "started_at_utc": "2026-10-22T07:33:32.058643Z"
+    },
+    {
+      "completed_at_utc": "2026-10-22T07:34:28.094693Z",
+      "output_sha256": "2336474bc1fa1586f632c017ae93d11b788369fbd828dd5549de10944a2557e4",
+      "result": "4 unittest methods with 8 resolution scenarios passed; no network/import violations",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-22T07:34:27.413602Z"
+    }
+  ]
+}
