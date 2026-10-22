@@ -1,0 +1,58 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261022T121405Z-323f57ffa4cb4faa8fcd65cfcbeb7fe6",
+  "change_id": "20261022T121405Z-323f57ffa4cb4faa8fcd65cfcbeb7fe6",
+  "commit_sha": "386263e355520c0635e01627159a031179f3b296",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/runtime.py",
+      "sha256": "f462a93e48e0c4c98af5e88572d3ca6f0347b22e65e802f8db71a6d9b4d08f05"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_transport_capture_retry.py",
+      "sha256": "d647be07e1575c6af1cccde0daef2f587f9295d5e4c229c3c8b5cde2a40ea336"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_gameplan_transport_retry.py",
+      "sha256": "2a7ebd8b2658d046f9fc8bdeebc25f2d8418adf3894051121b435e7f4c4e2db0"
+    }
+  ],
+  "limitations": [
+    "Offline fixtures and retained own execution records; no broker request, order, manual control change or trader restart.",
+    "Current Gameplan process predates installation; affected live retry exercise and loaded memory fingerprint are unproven.",
+    "Superseded immutable first source record and closed draft331 retained; draft332 preserves Git base LF bytes."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/332",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed Atlas source hunk installed while preserving existing local composition. A future human-chosen manual Gameplan start or restart loads this new repair. Scout may review the generic correctness repair without copying symbol/model recipes.",
+  "scope": "shared",
+  "summary": "Atlas Gameplan safe-read truncated-response repair published and locally installed",
+  "supersedes": [
+    {
+      "closed_pr": "https://github.com/jeremysecondstate/ducketz/pull/331",
+      "completion_record": "20261022T121026Z-84dfebfc90004fd4bd0c5bcd6748b4e3",
+      "source_sha": "0d7b60667443027ea0a24d9c974670ae8518a4f8"
+    }
+  ],
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-22T12:14:14.752069Z",
+      "result": "44 passed, 32 deselected",
+      "stage": "sealed source"
+    },
+    {
+      "completed_at_utc": "2026-10-22T12:14:46.726713Z",
+      "result": "44 passed, 32 deselected",
+      "stage": "managed isolated candidate"
+    },
+    {
+      "network_disabled": true,
+      "result": "44 passed, 32 deselected in7.92s",
+      "stage": "Atlas installed composition"
+    }
+  ],
+  "verified_remote_sha": "386263e355520c0635e01627159a031179f3b296"
+}
