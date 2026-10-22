@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-22T15:50:54.739378Z",
+  "id": "20261022T155054Z-01e9f27e988e4d8cb374eb5e8217ead9",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Compact intraday context and restore bounded scoring regression checks"
+}

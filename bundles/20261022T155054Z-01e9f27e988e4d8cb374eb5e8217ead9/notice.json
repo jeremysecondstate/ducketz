@@ -1,0 +1,203 @@
+{
+  "author": "Scout",
+  "base_commit": "ea077fc852b07a3dd405e4e2b7d686ef85a8d585",
+  "branch": "codex/scout/20261022T153639Z-92add89e52ae4f86a68f7294d94cf566",
+  "change_details": [
+    "Actor: Scout; task: independent 15-minute trader repair; common correctness and processing changes apply to both PCs while local recipes remain private.",
+    "Store fixed ordered feature names once in the verified context contract, reconstruct compact cache envelopes on read, and retain full context integrity and legacy named-envelope rejection.",
+    "Keep existing pending byte and entry limits, final source validation, optional contention behavior and original provider evidence unchanged.",
+    "Avoid immediately repeated snapshot hashing and repeated validation of the same original candle object during sizing, preserving exact output, standalone validation and distinct-candle rejection.",
+    "Reuse already normalized UTC history columns and omit empty history record projection during scoring, retaining every original source, timing, availability and synthetic-observation admission rule.",
+    "Record bounded wall and current-thread CPU timings across local execution phases with one best-effort nonblocking diagnostic event after the account lock is released.",
+    "Preserve current stock direction, live broker capacity and fresh second capture, scientific qualification, original orders and unknown-send recovery; starts remain manual.",
+    "Add current-reader scoring regressions with bounded stop fixtures and complete original validation before actual outcome mutation; preserve the prior twelve completed source bytes."
+  ],
+  "change_id": "20261022T153639Z-92add89e52ae4f86a68f7294d94cf566",
+  "commit_sha": "3c0f4cfd920bda83c5efab8435d46c643725a741",
+  "dependency_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/334",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/market_context_cache.py",
+      "sha256": "6e85b99c02016649aa71ef640cf4e697ca00c9e8beb92ed6b4588c0dc3484d81"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_context_digest.py",
+      "sha256": "28e400efff4f8eb05752e507dddd82013592d82b238c19ad3d25ae0da82684fc"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_context_cache_envelope.py",
+      "sha256": "491f629d44565a92960fa71418eafbbb9112b1c5fdf6e956c18245dcc2ca252b"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/starter_sizing.py",
+      "sha256": "d0a0996941b45b208c198e0d5bbe47544a27dcaffe737e3656060332f4705e08"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/technical_sizing.py",
+      "sha256": "1be128e4629aa84b7732ba4b19b0ba759283ba5e08eb2559b38812fe4c452f75"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/scout_local_execution.py",
+      "sha256": "62b221ccaf536b1bf3e7d9379783ea5a4c0b905c77a590fee1e64d3852275e96"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/dataset_diagnostics.py",
+      "sha256": "aa6e43d31d5761bb30d9aac431cfd8a430447d62103fca5c3f661ed3adb052bc"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_sizing_reuse.py",
+      "sha256": "c86deebf73c722c9c67d8a8dd24f81b6c340ab43336e1c4b5ebda6b6f4fbdd38"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_local_execution_profile.py",
+      "sha256": "d3138027f38299132dd57fd2f9358801927237b718b7422341cf6305b32b6d19"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_starter_sizing.py",
+      "sha256": "84a5a2f39c7c37633c6d978ad420959a0497238bf249745a18dacb524e40376c"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/minute_feed.py",
+      "sha256": "00b9992a41f7c4279ce5a79a95e77acf92c0fd7375c62db8cf46a0bd37d55110"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_history_projection.py",
+      "sha256": "f80065ce3e74847d79c51e37419e7c9487d3f326501315766294f03614f0025e"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scoring_dedup.py",
+      "sha256": "916b7062a26e1c238ca5ca18c7656838501b10ba214e0368fe99782ba57dcca5"
+    }
+  ],
+  "limitations": [
+    "Component improvements do not establish full-cycle live latency recovery or identify the entire historical uninstrumented execution delay.",
+    "Optional derived caches may refill after implementation fingerprints change; diagnostics can be skipped on contention or I/O failure.",
+    "Historical source gaps, synthetic exclusions and original uncertain-order identities remain preserved. Stage test counts overlap."
+  ],
+  "local_runtime_validation": {
+    "complete_test_modules": 37,
+    "fit_or_prediction_attempts": 0,
+    "network_attempts": 0,
+    "passed": 1513,
+    "trader_started": false
+  },
+  "main_integration": {
+    "checked_at_utc": "2026-10-22T15:49:09.427248+00:00",
+    "main_commit": "14d034a6a34a6ccc366ef1efc810fc196c70feb9",
+    "reason": "Fresh main does not descend from the reviewed source base; the source Completion-Record and own-branch publication remain preserved. This does not block independent operation.",
+    "status": "pending_parent_ancestry"
+  },
+  "peer_applicability": "Shared correctness, processing and regression repairs apply through each PC existing local authority. Keep local model recipes, symbols and private operating evidence; this notice supplies no additional authority.",
+  "prior_twelve_source_bytes_preserved": true,
+  "pull_request_state": "draft",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/339",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Separate local installation completed and remains subject to human-controlled startup reload. Preserve each PC model recipe, private bindings, original runtime and manual controls. Zero-network/no-fit launcher verification started no trader.",
+  "scope": "shared",
+  "summary": "Compact intraday context and restore bounded scoring regression checks",
+  "supersedes": [
+    "20261022T145117Z-2075bc1e8e814e4f88160ed463822d7f"
+  ],
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-22T15:33:58.612410Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "cc84f0c6c1be984479a6bf982f83929c24afafc8f40a9d53fa4b46deed3afd0c",
+      "output_sha256": "1c6ad6e2d2fb2f6daba129357b36b24f5445c6f6236fd93e9469b777e8e8ce3b",
+      "passed": 1152,
+      "portable_argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_context_digest.py",
+        "tests/test_intraday_context_cache_envelope.py",
+        "tests/test_intraday_market_context_cache.py",
+        "tests/test_intraday_market_context.py",
+        "tests/test_intraday_sizing_reuse.py",
+        "tests/test_intraday_local_execution_profile.py",
+        "tests/test_intraday_starter_sizing.py",
+        "tests/test_intraday_technical_sizing.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_local_forecast.py",
+        "tests/test_intraday_scout_initial_local_window.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_intraday_initial_gate_clearance.py",
+        "tests/test_intraday_pretransport_clearance.py",
+        "tests/test_intraday_commitment_clearance.py",
+        "tests/test_intraday_closed_window_clearance.py",
+        "tests/test_intraday_scout_broker.py",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "tests/test_intraday_recovery_intentions.py",
+        "tests/test_intraday_history_projection.py",
+        "tests/test_intraday_minute_feed.py",
+        "tests/test_intraday_minute_persistence.py",
+        "tests/test_intraday_verified_no_trade.py",
+        "tests/test_intraday_scoring_dedup.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "stage": "final_source",
+      "started_at_utc": "2026-10-22T15:31:27.680653Z",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    },
+    {
+      "completed_at_utc": "2026-10-22T15:44:58.529255Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "cc84f0c6c1be984479a6bf982f83929c24afafc8f40a9d53fa4b46deed3afd0c",
+      "output_sha256": "6cb9ffb0ab9bb4d92d2851157a80ec5cb0c1e17566fb46c2f954f3076e4fc18d",
+      "passed": 1152,
+      "portable_argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_context_digest.py",
+        "tests/test_intraday_context_cache_envelope.py",
+        "tests/test_intraday_market_context_cache.py",
+        "tests/test_intraday_market_context.py",
+        "tests/test_intraday_sizing_reuse.py",
+        "tests/test_intraday_local_execution_profile.py",
+        "tests/test_intraday_starter_sizing.py",
+        "tests/test_intraday_technical_sizing.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_local_forecast.py",
+        "tests/test_intraday_scout_initial_local_window.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_intraday_initial_gate_clearance.py",
+        "tests/test_intraday_pretransport_clearance.py",
+        "tests/test_intraday_commitment_clearance.py",
+        "tests/test_intraday_closed_window_clearance.py",
+        "tests/test_intraday_scout_broker.py",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "tests/test_intraday_recovery_intentions.py",
+        "tests/test_intraday_history_projection.py",
+        "tests/test_intraday_minute_feed.py",
+        "tests/test_intraday_minute_persistence.py",
+        "tests/test_intraday_verified_no_trade.py",
+        "tests/test_intraday_scoring_dedup.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "stage": "isolated_publication_candidate",
+      "started_at_utc": "2026-10-22T15:42:26.141867Z",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ],
+  "verified_remote_sha": "3c0f4cfd920bda83c5efab8435d46c643725a741"
+}
