@@ -300,41 +300,47 @@ class ShadowStore:
                 return []
             clauses.append("f.id IN (SELECT value FROM json_each(?))")
             parameters.append(encoded(identities))
-        headers = []
-        # Serialize this instance's cache publication so concurrent snapshots
-        # cannot make a valid older reader look like a generation rollback.
+        # Serialize cache publication so older concurrent snapshots cannot
+        # appear to roll back the forecast generation.
         with self._execution_forecast_lock, self.connect() as db:
             db.execute("BEGIN")
-            generation, epoch = self._execution_forecast_generation(db)
-            stat = self.path.stat()
-            identity = (stat.st_dev, stat.st_ino, db.execute("PRAGMA schema_version").fetchone()[0], epoch)
-            if identity != self._execution_forecast_identity:
-                self._execution_forecast_cache.clear()
-                self._execution_forecast_highwater = 0
-                self._execution_forecast_identity = identity
-            if generation < self._execution_forecast_highwater:
-                raise ContractError("Execution forecast generation regressed")
-            rows = db.execute("SELECT f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,r.generation "
-                "FROM forecasts f LEFT JOIN execution_forecast_revisions r ON r.forecast_id=f.id WHERE " +
-                " AND ".join(clauses) + " ORDER BY f.rowid", parameters).fetchall()
-            for row in rows:
-                revision = row[6]
-                if type(revision) is not int or not 0 <= revision <= generation:
-                    raise ContractError("Execution forecast row revision is invalid")
-                signature = (*row[:6], revision)
-                previous = self._execution_forecast_cache.get(row[0])
-                if previous is not None and previous[0] == signature:
-                    projection = dict(previous[1])
-                else:
-                    original = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
-                                          "FROM forecasts WHERE id=?", (row[0],)).fetchone()
-                    projection, _ = self._forecast_projection(original)
-                    if all(item is None or isinstance(item, str) for item in projection.values()):
-                        self._execution_forecast_cache[row[0]] = (signature, tuple(projection.items()))
-                        if len(self._execution_forecast_cache) > 4096:
-                            self._execution_forecast_cache.popitem(last=False)
-                headers.append(projection)
-            self._execution_forecast_highwater = generation
+            return self._revision_forecast_headers(db, clauses, parameters)
+
+    def _revision_forecast_headers(self, db, clauses, parameters, stopped=lambda: False):
+        """Reuse exact headers inside the caller's locked read transaction."""
+        headers = []
+        generation, epoch = self._execution_forecast_generation(db)
+        stat = self.path.stat()
+        identity = (stat.st_dev, stat.st_ino, db.execute("PRAGMA schema_version").fetchone()[0], epoch)
+        if identity != self._execution_forecast_identity:
+            self._execution_forecast_cache.clear()
+            self._execution_forecast_highwater = 0
+            self._execution_forecast_identity = identity
+        if generation < self._execution_forecast_highwater:
+            raise ContractError("Execution forecast generation regressed")
+        rows = db.execute("SELECT f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,r.generation "
+            "FROM forecasts f LEFT JOIN execution_forecast_revisions r ON r.forecast_id=f.id WHERE " +
+            " AND ".join(clauses) + " ORDER BY f.rowid", parameters).fetchall()
+        for row in rows:
+            if stopped():
+                return []
+            revision = row[6]
+            if type(revision) is not int or not 0 <= revision <= generation:
+                raise ContractError("Execution forecast row revision is invalid")
+            signature = (*row[:6], revision)
+            previous = self._execution_forecast_cache.get(row[0])
+            if previous is not None and previous[0] == signature:
+                projection = dict(previous[1])
+            else:
+                original = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                                      "FROM forecasts WHERE id=?", (row[0],)).fetchone()
+                projection, _ = self._forecast_projection(original)
+                if all(item is None or isinstance(item, str) for item in projection.values()):
+                    self._execution_forecast_cache[row[0]] = (signature, tuple(projection.items()))
+                    if len(self._execution_forecast_cache) > 4096:
+                        self._execution_forecast_cache.popitem(last=False)
+            headers.append(projection)
+        self._execution_forecast_highwater = generation
         return headers
 
     def scoring_forecasts(self, *, pc, observed_candidates, as_of, stopped=lambda: False):
@@ -394,7 +400,8 @@ class ShadowStore:
         now = instant(as_of)
         if stopped():
             return []
-        with self.connect() as db:
+        with self._execution_forecast_lock, self.connect() as db:
+            db.execute("BEGIN")
             headers = db.execute("SELECT f.id,f.symbol,f.reference_at FROM forecasts f "
                 "JOIN cycles c ON c.id=f.cycle_id WHERE f.pc=? AND c.pc=? "
                 "AND json_extract(c.payload,'$.experiment')=? ORDER BY f.rowid",
@@ -425,6 +432,17 @@ class ShadowStore:
                         and completed_15m_observation(value) and synthetic_continuity_verified(value)
                         and instant(value["available_at"]) <= now):
                     candidates.setdefault((value["symbol"], instant(value["opened_at"])), []).append(value)
+            # The revision markers are checked in this same read snapshot.
+            # Warm, unchanged scored originals need no model-payload I/O;
+            # cold/changed eligible rows still take full semantic validation.
+            ready_ids = [key for target, keys in targets.items()
+                         if candidates.get(target) for key in keys]
+            if not ready_ids:
+                return []
+            projections = self._revision_forecast_headers(db,
+                ["f.pc=?", "f.id IN (SELECT value FROM json_each(?))"],
+                [pc, encoded(ready_ids)], stopped=stopped)
+            projections = {row["forecast_id"]: row for row in projections}
             result = []
             for target, keys in targets.items():
                 if stopped():
@@ -435,9 +453,9 @@ class ShadowStore:
                 for key in keys:
                     if stopped():
                         return []
-                    row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
-                                     "FROM forecasts WHERE id=?", (key,)).fetchone()
-                    projection, full = self._forecast_projection(row)
+                    projection = projections.get(key)
+                    if projection is None:
+                        continue
                     if projection["mode"] != "live" or instant(projection["target_close"]) > now:
                         continue
                     revisions = self.revisions(key)
@@ -452,8 +470,9 @@ class ShadowStore:
                             and latest.get("candle_id") == digest(observed)
                             and instant(latest["observed_at"]) <= now):
                         continue
-                    if full is None:
-                        full = self._forecast_value(row)
+                    row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                                     "FROM forecasts WHERE id=?", (key,)).fetchone()
+                    full = self._forecast_value(row)
                     result.append((full, observed))
         return result
 
