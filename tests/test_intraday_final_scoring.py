@@ -211,6 +211,47 @@ def test_market_close_suppresses_score_interrupt_but_not_unfinished_collection_f
         assert result["status"] == "FAILED" and status["worker_errors"][0]["worker"] == "collection"
 
 
+@pytest.mark.parametrize("diagnostic_unavailable", [False, True])
+def test_collection_failure_latches_original_before_diagnostic_persistence(
+        tmp_path, monkeypatch, capsys, diagnostic_unavailable):
+    inert_manual(monkeypatch)
+    original = RuntimeError("original collection failure fixture")
+    stopped, diagnostics = [], []
+    event = live_session.ShadowStore.event
+
+    def collect(*args, **kwargs):
+        stopped.append(kwargs["stopped"].__self__)
+        raise original
+
+    def record(store, cycle_id, kind, payload, **kwargs):
+        if kind == "collection_worker_stopped":
+            assert stopped[0].is_set()
+            diagnostics.append(payload)
+            if diagnostic_unavailable:
+                raise RuntimeError("private-token=diagnostic-sink-secret")
+        return event(store, cycle_id, kind, payload, **kwargs)
+
+    monkeypatch.setattr(live_session, "collection_loop", collect)
+    monkeypatch.setattr(live_session.ShadowStore, "event", record)
+    result = live_session.run_manual(repository=tmp_path, datastore=tmp_path,
+        profile=tmp_path / "profile.json", watchlist=tmp_path / "watchlist.txt",
+        config=live_session.ResearchConfig(), clock=lambda: CLOSE - timedelta(minutes=1),
+        sleep=lambda _: pytest.fail("Failed worker must not enter an operating loop"))
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert result["status"] == status["status"] == "FAILED"
+    assert status["stop_reason"] == "worker_failure" and stopped[0].is_set()
+    assert len(status["worker_errors"]) == len(diagnostics) == 1
+    failure = status["worker_errors"][0]
+    assert failure["worker"] == "collection" and failure["error_type"] == "RuntimeError"
+    assert failure["message"] == str(original)
+    assert failure["diagnostics"] == diagnostics[0]["diagnostics"]
+    assert failure["diagnostics"]["root_cause"]["frames"][-1]["function"] == "collect"
+    output = capsys.readouterr().out
+    if diagnostic_unavailable:
+        assert "collection_worker_stopped" in output and "diagnostic_failure" in output
+    assert "private-token" not in output and "diagnostic-sink-secret" not in output
+
+
 def test_collection_completion_scores_before_marking_market_close_stop(tmp_path, monkeypatch):
     inert_manual(monkeypatch)
     clock = [CLOSE - timedelta(seconds=1)]
