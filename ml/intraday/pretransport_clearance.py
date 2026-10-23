@@ -463,6 +463,268 @@ def _historical_client_final_gate_proof(evidence, record, *, journal_id, events,
 
 
 
+# Separate original FAILED-session profile. It never converts a failed stop
+# into a clean stop, changes manual authority or rearms a consumed send token.
+FAILED_TERMINAL_CLIENT_FINAL_GATE_VERSION = "scout-reviewed-failed-terminal-client-final-gate-history-v1"
+FAILED_TERMINAL_CLIENT_FINAL_GATE_LAUNCHER = '1d544928f99cacef1af6cb3adc194121e73122b9a646b633b861d0f072db5b47'
+FAILED_TERMINAL_CLIENT_FINAL_GATE_MANIFEST = '88af48af7ce1b3b2bc1e50951ba627bebd046e0801f672a97fcf2b1250665bf7'
+FAILED_TERMINAL_CLIENT_FINAL_GATE_SOURCE = {'ml/intraday/scout_client.py': '99afce435afd32ef27d148d0c46872ac4b1d9a5f6f4044ec567abf0db5bb4025',
+ 'ml/intraday/scout_broker.py': '82b4ae2625ed5b112427861a147a428c9a98b0dfff15ef1001b320cecd14101d',
+ 'ml/intraday/scout_local_execution.py': '62b221ccaf536b1bf3e7d9379783ea5a4c0b905c77a590fee1e64d3852275e96',
+ 'ml/intraday/scout_journal.py': 'a9da4c9b5735bf9f446f0449be451c3a4c82cb5674802fef5151728053c6cead',
+ 'ml/intraday/local_forecast.py': '38191f6f3f08cf8dca66fd8b90c6659d4806d22caa8a4dc09d631876d1dffe33',
+ 'ml/intraday/live_session.py': '29235e868957a1ad037a1a6254f4a8e999ba94e94101a85f04c979d25bf95712',
+ 'app/services/schwab.py': '41a3cf8b3e5e412083b864afbdafb7056b44a9390051aaca087c4e271a704951',
+ 'app/services/schwab_stock_orders.py': '9989209f1431b02cb43943cb8923d9463bfabd20cb8af6808445d3fb22104261',
+ 'app/services/schwab_order_fields.py': '74ce11f6bad9e88601f6681cd19d62161659d0d1beecff4e36518ccd63421321',
+ 'ml/stock_trader/session.py': 'b7af001f9dc4bed9677cf66cd881e637b1f4d5c8a536dd3bb934b17d59019784',
+ 'ml/intraday/initial_gate_clearance.py': '2ff22f507cf98c88f055c5a7a149488616b43f8bbc053dab5794282225e2f503',
+ 'ml/intraday/pretransport_clearance.py': 'a1c23dfb00f0d68ee91c2cfbbd72b2dd85a22f23d1122f63d81c4a2fa1ca3c61',
+ 'ml/intraday/market_collection.py': 'c7d67d74dc7a060b92001d96a4e3a3fa30ff92ddfc601bc7e169beaab467f938',
+ 'ml/intraday/runtime.py': 'd1a5d4e246e18334b0a1025553a22e8864f6661d96f658eb1975cef6365342f2'}
+FAILED_TERMINAL_CLIENT_FINAL_GATE_FRAMES = [{'file': 'live_session.py', 'function': 'context_work', 'line': 678},
+ {'file': 'market_collection.py', 'function': 'run', 'line': 446},
+ {'file': 'market_collection.py', 'function': 'collect', 'line': 438},
+ {'file': 'market_collection.py', 'function': 'step', 'line': 480},
+ {'file': '_api.py', 'function': '__enter__', 'line': 967},
+ {'file': '_api.py', 'function': 'acquire', 'line': 1075},
+ {'file': '_api.py', 'function': '_poll_until_acquired', 'line': 1235}]
+FAILED_TERMINAL_EXECUTION_CONTROL_FRAMES = [{'file': 'live_session.py', 'function': 'run_manual', 'line': 719},
+ {'file': 'scout_local_execution.py', 'function': 'step', 'line': 421},
+ {'file': 'scout_local_execution.py', 'function': '_step', 'line': 438},
+ {'file': 'scout_local_execution.py', 'function': '_capture', 'line': 375},
+ {'file': 'scout_local_execution.py', 'function': '_controls', 'line': 86}]
+
+
+def _failed_terminal_client_final_gate_source(value):
+    """Accept only the full reviewed original source and exact manifest bytes."""
+    _keys(value, {"manifest_text", "manifest_sha256", "files"}, "source proof fields differ")
+    _require(type(value["manifest_text"]) is str, "manifest bytes missing")
+    raw = value["manifest_text"].encode("utf-8")
+    _require(value["manifest_sha256"] == FAILED_TERMINAL_CLIENT_FINAL_GATE_MANIFEST
+             and _sha(raw) == FAILED_TERMINAL_CLIENT_FINAL_GATE_MANIFEST,
+             "not the reviewed failed-terminal client final-gate manifest")
+    manifest = json.loads(raw)
+    _require(manifest.get("schema") == "scout-isolated-live-runtime-v1"
+             and type(manifest.get("files")) is dict, "unsupported original manifest")
+    _keys(value["files"], FAILED_TERMINAL_CLIENT_FINAL_GATE_SOURCE,
+          "complete reviewed failed-terminal client final-gate dependencies required")
+    for name, digest in FAILED_TERMINAL_CLIENT_FINAL_GATE_SOURCE.items():
+        contents = value["files"][name]
+        _require(type(contents) is str and _sha(contents.encode("utf-8")) == digest
+                 and manifest["files"].get(name) == digest,
+                 "unsupported or changed original source: " + name)
+    return manifest
+
+def _failed_terminal_client_final_gate_proof(evidence, record, *, journal_id, events, as_of):
+    _keys(evidence, {"version", "original_record", "original_record_sha256", "journal_id", "journal_events",
+        "execution_event", "execution_event_sha256", "stop_event", "stop_event_sha256", "process_end", "source",
+        "runtime_observation", "terminal_events", "terminal_events_sha256",
+        "terminal_checkpoint", "terminal_status_text", "terminal_status_sha256"},
+        "proof fields differ")
+    _require(evidence["version"] == FAILED_TERMINAL_CLIENT_FINAL_GATE_VERSION and evidence["original_record"] == record
+             and evidence["original_record_sha256"] == canonical_sha256(record)
+             and evidence["journal_id"] == journal_id and evidence["journal_events"] == events,
+             "original record or single-claim history differs")
+    error_type = evidence["execution_event"]["payload"]["evidence"]["error_type"]
+    request, permit = record["request"], record["grant"]
+    session, rid = request["session_id"], request["request_id"]
+    row = evidence["execution_event"]
+    at = _event(row, session=session, kind="execution_step")
+    _require(canonical_sha256(row) == evidence["execution_event_sha256"], "execution event changed")
+    payload = row["payload"]
+    _require(row["symbol"] == request["symbol"] and payload.get("symbol") == request["symbol"]
+             and payload.get("forecast_id") == request["forecast_id"]
+             and payload.get("kind") == "execution_disposition"
+             and payload.get("disposition") == "submission_recovery_required"
+             and payload.get("submission_status") == "UNKNOWN"
+             and payload.get("submitted_quantity") is None and payload.get("broker_order_id") is None,
+             "execution disposition does not bind original UNKNOWN")
+    detail = payload["evidence"]
+    _keys(detail, {"mode", "error_type", "local_state", "request_id", "retry_after_seconds", "submission_failure"},
+          "execution diagnostic fields differ")
+    _require(detail["mode"] == "scout-local-broker-account" and detail["request_id"] == rid
+             and detail["local_state"] == "UNKNOWN" and detail["error_type"] == error_type,
+             "diagnostic request differs")
+    failure = detail["submission_failure"]
+    _keys(failure, {"stage", "original"}, "submission diagnostics incomplete")
+    _require(failure["stage"] == "final_gate", "failure was not the reviewed client final gate")
+    original = failure["original"]
+    _keys(original, {"chain", "chain_truncated"}, "exception-chain fields differ")
+    _require(original["chain_truncated"] is False and type(original["chain"]) is list
+             and len(original["chain"]) == 1, "complete single exception required")
+    error = original["chain"][0]
+    manifest = _failed_terminal_client_final_gate_source(evidence["source"])
+    _keys(error, {"type", "message", "sqlite_errorcode", "frames"}, "exception fields differ")
+    _require(error_type == error["type"] == "OperationalError"
+             and error["message"] == "database is locked"
+             and type(error["sqlite_errorcode"]) is int and error["sqlite_errorcode"] == 261
+             and error["frames"] == HISTORICAL_CLIENT_FINAL_GATE_FRAMES,
+             "not the reviewed historical client final-gate SQLite failure")
+    _require(instant(request["issued_at"]) <= instant(events[-2]["event"]["recorded_at"])
+             <= instant(events[-1]["event"]["recorded_at"]) <= at
+             and instant(payload["recorded_at"]) <= at
+             and instant(request["valid_until"]) <= as_of and instant(permit["expires_at"]) <= as_of,
+             "request/claim/failure/expiry clocks differ")
+    # Authenticate the complete reviewed terminal interval. Later or omitted
+    # operations cannot borrow this narrower ended-process contract.
+    terminal = evidence["terminal_events"]
+    kinds = ["market_context_worker_stopped", "target_scoring_retry", "local_execution_profile",
+             "execution_retry", "forecast_worker_stopped", "manual_session_stopped"]
+    _require(type(terminal) is list and len(terminal) == len(kinds)
+             and canonical_sha256({"events": terminal}) == evidence["terminal_events_sha256"],
+             "complete terminal interval differs")
+    stamps = [_event(item, session=session, kind=kind) for item, kind in zip(terminal, kinds)]
+    ids = [item["id"] for item in terminal]
+    _require(ids == sorted(set(ids)) and stamps == sorted(stamps)
+             and row["id"] < ids[0] and at < stamps[0] <= stamps[-1] <= as_of,
+             "terminal interval chronology differs")
+    fatal, score_retry, profile, refused, drained, stopped = terminal
+    fatal_at, stopped_at = stamps[0], stamps[-1]
+    diagnostic = {"schema_version": "intraday-symbol-exception-v1", "chain_truncated": False,
+        "exception_chain": [{"type": "Timeout", "relation": "raised", "frames_truncated": False,
+            "frames": FAILED_TERMINAL_CLIENT_FINAL_GATE_FRAMES}]}
+    worker_error = {"worker": "market_context", "error_type": "Timeout",
+        "message": "Inspect private collection status", "diagnostics": diagnostic}
+    _require(fatal["symbol"] is None
+             and fatal["payload"] == {"error_type": "Timeout", "diagnostics": diagnostic}
+             and fatal["payload"]["diagnostics"]["chain_truncated"] is False
+             and fatal["payload"]["diagnostics"]["exception_chain"][0]["frames_truncated"] is False,
+             "not the reviewed fatal market-context timeout")
+    _require(drained["symbol"] is None
+             and drained["payload"] == {"error_type": "InterruptedError",
+                 "message": "Manual session stopped; acquisition recovery retained"},
+             "not the reviewed forecast drain interruption")
+    _require(stopped == evidence["stop_event"]
+             and canonical_sha256(stopped) == evidence["stop_event_sha256"] and stopped["symbol"] is None
+             and stopped["payload"] == {"pending_order_identity_preserved": True,
+                 "stop_reason": "worker_failure", "worker_errors": [worker_error]}
+             and stopped["payload"]["pending_order_identity_preserved"] is True,
+             "complete reviewed failed original terminal required")
+    _keys(score_retry["payload"], {"error_type", "forecast_id", "message"}, "scoring retry fields differ")
+    _require(type(score_retry["symbol"]) is str and bool(score_retry["symbol"])
+             and score_retry["payload"]["error_type"] == "ContractError"
+             and score_retry["payload"]["message"] == "History reference lies outside this feed's latched eligible day"
+             and type(score_retry["payload"]["forecast_id"]) is str
+             and len(score_retry["payload"]["forecast_id"]) == 64
+             and all(c in "0123456789abcdef" for c in score_retry["payload"]["forecast_id"]),
+             "not the reviewed scoring retry")
+    control_diagnostic = {"schema_version": "intraday-symbol-exception-v1", "chain_truncated": False,
+        "exception_chain": [{"type": "ContractError", "relation": "raised", "frames_truncated": False,
+            "frames": FAILED_TERMINAL_EXECUTION_CONTROL_FRAMES}]}
+    detail = refused["payload"]
+    _keys(detail, {"diagnostics", "error_type", "forecast_id", "message", "retry_after_seconds"},
+          "manual-control refusal fields differ")
+    _require(type(refused["symbol"]) is str and bool(refused["symbol"])
+             and detail["error_type"] == "ContractError" and detail["diagnostics"] == control_diagnostic
+             and detail["diagnostics"]["chain_truncated"] is False
+             and detail["diagnostics"]["exception_chain"][0]["frames_truncated"] is False
+             and detail["message"] == "Current manual Scout session authority required"
+             and type(detail["retry_after_seconds"]) in (int, float) and detail["retry_after_seconds"] == 3
+             and type(detail["forecast_id"]) is str and len(detail["forecast_id"]) == 64
+             and all(c in "0123456789abcdef" for c in detail["forecast_id"]),
+             "not the reviewed pre-capture manual-control refusal")
+    prof = profile["payload"]
+    _keys(prof, {"context_caches", "cpu_scope", "error_type", "forecast_id", "manual_session_id",
+        "observer_errors", "phases", "process_cpu_scope", "schema_version", "status", "symbol", "target_close", "worker"},
+        "terminal execution profile fields differ")
+    _require(profile["symbol"] == refused["symbol"] == prof["symbol"]
+             and prof["forecast_id"] == detail["forecast_id"] and prof["manual_session_id"] == session
+             and prof["schema_version"] == "intraday-local-execution-profile-v1"
+             and prof["status"] == "error" and prof["error_type"] == "ContractError"
+             and prof["context_caches"] == [] and prof["observer_errors"] == []
+             and prof["cpu_scope"] == "current_thread" and prof["process_cpu_scope"] == "all_process_threads"
+             and instant(prof["target_close"]) > stopped_at, "terminal execution profile differs")
+    _keys(prof["worker"], {"native_thread_id", "thread_name"}, "terminal execution worker differs")
+    _require(prof["worker"]["thread_name"] == "MainThread"
+             and type(prof["worker"]["native_thread_id"]) is int and prof["worker"]["native_thread_id"] > 0,
+             "terminal execution worker differs")
+    phases = prof["phases"]
+    expected_phases = [("snapshot_validation", "success"), ("chronology_check", "success"),
+                       ("initial_capture", "error"), ("total_step", "error")]
+    _require(type(phases) is list and len(phases) == len(expected_phases), "terminal execution phases differ")
+    for phase, (name, state) in zip(phases, expected_phases):
+        fields = {"phase", "process_cpu_seconds", "status", "thread_cpu_seconds", "wall_seconds"}
+        _keys(phase, fields | ({"error_type"} if state == "error" else set()), "terminal execution phase fields differ")
+        _require(phase["phase"] == name and phase["status"] == state
+                 and (state != "error" or phase["error_type"] == "ContractError")
+                 and all(type(phase[key]) in (int, float) and math.isfinite(phase[key]) and phase[key] >= 0
+                         for key in ("process_cpu_seconds", "thread_cpu_seconds", "wall_seconds")),
+                 "terminal execution phase differs")
+    _require(type(evidence["terminal_status_text"]) is str
+             and _sha(evidence["terminal_status_text"].encode("utf-8")) == evidence["terminal_status_sha256"],
+             "terminal status bytes changed")
+    status = json.loads(evidence["terminal_status_text"])
+    _keys(status, {"automatic_stop_at", "broker_orders_automatically_cancelled", "evidence_paths",
+        "heartbeat_at", "manual_start", "pc", "pid", "process_create_time", "schema_version",
+        "scout_admission", "session_id", "started_at", "status", "stop_reason", "wake_at",
+        "worker_errors", "worker_threads"}, "terminal status fields differ")
+    _require(status["status"] == "FAILED" and status["stop_reason"] == "worker_failure"
+             and status["worker_errors"] == [worker_error]
+             and status["manual_start"] is True and status["pc"] == "Scout"
+             and status["broker_orders_automatically_cancelled"] is False
+             and status["schema_version"] == "manual-scout-15m-session-v1"
+             and status["scout_admission"] == "broker-local" and status["session_id"] == session
+             and fatal_at <= instant(status["heartbeat_at"]) <= stopped_at
+             and instant(status["started_at"]) <= instant(request["issued_at"])
+             and instant(status["wake_at"]) <= instant(status["started_at"])
+             and instant(status["automatic_stop_at"]) > stopped_at,
+             "terminal FAILED status does not match reviewed failure")
+    threads = status["worker_threads"]
+    roles = {"forecast": "intraday-manual-forecast", "scoring": "intraday-manual-scoring",
+             "minute_data": "intraday-manual-minute-data", "market_context": "intraday-manual-market-context"}
+    _require(type(threads) is list and len(threads) == len(roles), "terminal worker identity differs")
+    for thread in threads:
+        _keys(thread, {"native_thread_id", "role", "thread_name"}, "terminal worker fields differ")
+        _require(thread["role"] in roles and thread["thread_name"] == roles[thread["role"]]
+                 and type(thread["native_thread_id"]) is int and thread["native_thread_id"] > 0,
+                 "terminal worker identity differs")
+    _require({thread["role"] for thread in threads} == set(roles)
+             and len({thread["native_thread_id"] for thread in threads}) == len(roles),
+             "terminal worker identities repeat")
+    ended = evidence["process_end"]
+    _keys(ended, {"session_id", "pid", "process_created_at_epoch", "verified_absent_at", "original_manifest_sha256"},
+          "original process-end attestation fields differ")
+    _require(ended["session_id"] == session and type(ended["pid"]) is int and ended["pid"] > 0
+             and type(ended["process_created_at_epoch"]) in (int, float)
+             and math.isfinite(ended["process_created_at_epoch"])
+             and 0 < ended["process_created_at_epoch"] < at.timestamp()
+             and stopped_at <= instant(ended["verified_absent_at"]) <= as_of
+             and ended["original_manifest_sha256"] == evidence["source"]["manifest_sha256"],
+             "original process is not proven ended for this source/session")
+    _require(status["pid"] == ended["pid"] and type(status["pid"]) is int
+             and status["process_create_time"] == ended["process_created_at_epoch"]
+             and type(status["process_create_time"]) in (int, float)
+             and ended["process_created_at_epoch"] <= instant(status["started_at"]).timestamp(),
+             "terminal status and ended process differ")
+    checkpoint = evidence["terminal_checkpoint"]
+    _keys(checkpoint, {"session_id", "observed_at", "query_only", "last_own_event_id",
+        "terminal_event_count", "terminal_events_sha256"}, "terminal checkpoint fields differ")
+    _require(checkpoint["session_id"] == session and checkpoint["query_only"] is True
+             and type(checkpoint["last_own_event_id"]) is int and checkpoint["last_own_event_id"] == stopped["id"]
+             and type(checkpoint["terminal_event_count"]) is int and checkpoint["terminal_event_count"] == len(terminal)
+             and checkpoint["terminal_events_sha256"] == evidence["terminal_events_sha256"]
+             and instant(ended["verified_absent_at"]) <= instant(checkpoint["observed_at"]) <= as_of,
+             "terminal checkpoint does not seal ended original session")
+    observed = evidence["runtime_observation"]
+    _keys(observed, {"at", "session_id", "process"}, "original runtime observation fields differ")
+    process = observed["process"]
+    _keys(process, {"verified", "pid", "created_at_epoch", "module", "binding", "entrypoint_kind",
+        "launcher_path", "launcher_sha256", "manifest_path", "manifest_sha256", "source_root",
+        "source_files_verified", "recipe_sha256"}, "original verified process fields differ")
+    _require(observed["session_id"] == session and at <= instant(observed["at"]) <= fatal_at
+             and process["verified"] is True and process["binding"] == "exact_birth"
+             and process["module"] == "ml.intraday.live_session"
+             and process["entrypoint_kind"] == "reviewed_isolated_live_launcher"
+             and process["pid"] == ended["pid"]
+             and process["created_at_epoch"] == ended["process_created_at_epoch"]
+             and process["launcher_sha256"] == FAILED_TERMINAL_CLIENT_FINAL_GATE_LAUNCHER
+             and process["recipe_sha256"] == manifest.get("recipe_sha256")             and process["manifest_sha256"] == evidence["source"]["manifest_sha256"]
+             and process["source_root"] == manifest.get("source_root")
+             and type(process["source_files_verified"]) is int
+             and process["source_files_verified"] == len(manifest["files"]),
+             "original loaded-source observation differs from ended process")
+
 def _validate_proof(evidence, record, *, journal_id, events, as_of, version=None):
     """Versions are separate contracts; never reinterpret historical diagnostics."""
     _require(type(evidence) is dict, "proof must be an object")
@@ -470,9 +732,12 @@ def _validate_proof(evidence, record, *, journal_id, events, as_of, version=None
         _require(evidence.get("version") == version, "receipt and proof versions differ")
     if evidence.get("version") == VERSION:
         return _proof(evidence, record, journal_id=journal_id, events=events, as_of=as_of)
-    _require(evidence.get("version") == HISTORICAL_CLIENT_FINAL_GATE_VERSION,
+    if evidence.get("version") == HISTORICAL_CLIENT_FINAL_GATE_VERSION:
+        return _historical_client_final_gate_proof(evidence, record,
+            journal_id=journal_id, events=events, as_of=as_of)
+    _require(evidence.get("version") == FAILED_TERMINAL_CLIENT_FINAL_GATE_VERSION,
              "unsupported proof version")
-    return _historical_client_final_gate_proof(evidence, record,
+    return _failed_terminal_client_final_gate_proof(evidence, record,
         journal_id=journal_id, events=events, as_of=as_of)
 
 
@@ -505,7 +770,7 @@ def load_clearance(books, journal, record, *, as_of):
         _keys(payload, {"version", "created_at", "review_reference", "evidence_sha256",
                        "original_record_sha256", "journal_id", "historical_execution", "commitment"},
               "receipt payload differs")
-        _require(canonical_sha256(payload) == envelope["sha256"] and payload["version"] in {VERSION, HISTORICAL_CLIENT_FINAL_GATE_VERSION}
+        _require(canonical_sha256(payload) == envelope["sha256"] and payload["version"] in {VERSION, HISTORICAL_CLIENT_FINAL_GATE_VERSION, FAILED_TERMINAL_CLIENT_FINAL_GATE_VERSION}
                  and payload["historical_execution"] == "UNKNOWN" and payload["commitment"] == COMMITMENT
                  and payload["journal_id"] == journal_id
                  and payload["original_record_sha256"] == canonical_sha256(record)
