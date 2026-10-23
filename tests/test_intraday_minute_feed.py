@@ -10,6 +10,7 @@ from ml.intraday.minute_feed import QuarterHourMinuteFeed
 from ml.intraday.observed_data import build_observed_dataset
 from ml.intraday.prediction import ContractError, STEP, instant
 from ml.intraday.store import ShadowStore
+from tests.test_intraday_verified_no_trade import attest
 
 
 class Clock:
@@ -42,12 +43,11 @@ def setup(tmp_path, monkeypatch, *, now="2026-10-14T17:16:00Z", start=None, beha
                 status = override.get("status", status)
                 rows = override.get("rows", rows if status == "success" else ())
                 retry = override.get("retry_after_seconds", retry)
-            result[symbol] = data.IntervalResponse(attempt_id+":"+symbol, symbol,
+            result[symbol] = attest(data.IntervalResponse(attempt_id+":"+symbol, symbol,
                 "databento:EQUS.MINI:ohlcv-1m", "EQUS.MINI", reference.isoformat(),
                 (reference+STEP).isoformat(), clock().isoformat(), clock().isoformat(), status,
                 rows=rows, coverage_open=reference.isoformat(), coverage_close=(reference+STEP).isoformat(),
-                provider_no_trade_evidence="explicit exact covered native omission" if status == "success" else None,
-                retry_after_seconds=retry).validate()
+                retry_after_seconds=retry).validate())
         return result
 
     monkeypatch.setattr(data, "fetch_databento_interval_attempts", fetch)

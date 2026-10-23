@@ -57,6 +57,7 @@ def isolate_minute_acquisition_in_execution_fixtures(monkeypatch):
     from ml.intraday import minute_feed
     class FixtureFeed:
         history_source = None
+        scoring_history_source = None
         def __init__(self, **kwargs):
             pass
         def run(self, **kwargs):
@@ -147,6 +148,7 @@ def test_manual_scout_wires_persisted_minute_feed_into_both_consumers_without_ne
         def __init__(self, **kwargs):
             self.kwargs = kwargs
             self.history_source = object()
+            self.scoring_history_source = object()
             feeds.append(self)
             assert isinstance(kwargs["provider"], minute_persistence.PersistedMinuteProvider)
             assert kwargs["provider"]._provider is native_provider
@@ -167,7 +169,8 @@ def test_manual_scout_wires_persisted_minute_feed_into_both_consumers_without_ne
             pass
 
     def consume(kind, **kwargs):
-        assert kwargs["history_source"] is feeds[0].history_source
+        expected = feeds[0].history_source if kind == "forecast" else feeds[0].scoring_history_source
+        assert kwargs["history_source"] is expected
         assert kwargs["provider"] is feeds[0].kwargs["provider"]
         assert kwargs["histories"] is feeds[0].kwargs["histories"]
         calls.append(kind)
@@ -300,11 +303,11 @@ def test_forecasting_start_and_overrun_do_not_trade_a_backlog(tmp_path, monkeypa
     assert missed["missed_count"] == 2
 
 
-def saved_pending_cycle(store,session,reference,*,retryable=True):
+def saved_pending_cycle(store,session,reference,*,retryable=True,pc="Atlas"):
     reference=instant(reference)
     identity=f"{session}:{reference.isoformat()}"
     begun=reference+STEP+timedelta(seconds=30)
-    store.begin_cycle(identity,{"pc":"Atlas","symbols":["AAPL"],"reference_at":reference.isoformat(),
+    store.begin_cycle(identity,{"pc":pc,"symbols":["AAPL"],"reference_at":reference.isoformat(),
         "mode":"live","experiment":session,"configuration_hash":"fixture","started_at":begun.isoformat(),
         "training_cutoff":begun.isoformat(),"status":"running"})
     store.update_cycle(identity,{"status":"partial_failure","completed_at":begun.isoformat(),
@@ -386,6 +389,96 @@ def test_new_quarter_first_then_bounded_old_recovery_survives_lost_cursor_and_ne
         assert db.execute("SELECT COUNT(*) FROM intraday_live_queue").fetchone()[0]==0
 
 
+@pytest.mark.parametrize("pc", ["Atlas", "Scout"])
+def test_sustained_overruns_share_turns_with_due_recovery_without_replaying_orders(tmp_path, monkeypatch, pc):
+    store = ShadowStore(tmp_path / "overrun.sqlite3")
+    first = saved_pending_cycle(store, "manual", "2026-10-12T16:45:00Z", pc=pc)
+    second = saved_pending_cycle(store, "manual", "2026-10-12T17:00:00Z", pc=pc)
+    saved_pending_cycle(store, "manual", "2026-10-12T16:30:00Z", retryable=False, pc=pc)
+    saved_pending_cycle(store, "older-human", "2026-10-12T17:30:00Z", pc=pc)
+    saved_pending_cycle(store, "manual", "2026-10-12T19:45:00Z",
+                        pc="Scout" if pc == "Atlas" else "Atlas")
+    queue = live_session.ExecutionQueue(store, "manual", pc=pc)
+    now = [instant("2026-10-12T17:31:00Z")]
+    calls, recovered = [], []
+
+    def run(inputs, **kwargs):
+        reference = kwargs["reference_at"]
+        calls.append({"at": now[0], **kwargs})
+        if kwargs["retry_symbols"] is None:
+            identity = "fresh:" + reference.isoformat()
+            store.begin_cycle(identity, {"pc": pc, "symbols": ["AAPL"], "reference_at": reference.isoformat(),
+                "mode": "live", "experiment": "manual", "configuration_hash": "fixture",
+                "started_at": now[0].isoformat(), "status": "running"})
+            # Genuine research may run longer than a quarter; do not shorten
+            # it, change workers, or substitute an older fitted model.
+            now[0] += timedelta(seconds=2218)
+            store.update_cycle(identity, {"status": "completed"})
+        else:
+            identity = first if reference == instant("2026-10-12T16:45:00Z") else second
+            assert kwargs["retry_symbols"] == ["AAPL"]
+            assert not kwargs["allow_execution"]
+            if identity == second:
+                value = forecast(mode="live", pc=pc, cycle_id=identity, reference_at=reference.isoformat(),
+                    issued_at=now[0].isoformat(), information_available_at=now[0].isoformat(),
+                    data_through=(reference + STEP).isoformat(), target_open=(reference + 2 * STEP).isoformat(),
+                    target_close=(reference + 3 * STEP).isoformat(), execution_blocked_reason="recovered_older_cycle")
+                issued = store.save_forecast(value)
+                recovered.append(issued)
+                kwargs["on_published"](issued)
+                store.update_cycle(identity, {"status": "completed", "failures": {}})
+            # The first retry remains unavailable. Updating its attempt time
+            # must let the other due cycle recover on the following turn.
+            now[0] += timedelta(seconds=5)
+        return {"cycle_id": identity}
+
+    runner = SimpleNamespace(store=store, config=SimpleNamespace(publication_offset_seconds=30), run_cycle=run)
+    monkeypatch.setattr(live_session, "eligible_reference", lambda reference: True)
+    live_session.forecasting_loop(runner, histories={}, provider=None, journal=None, queue=queue,
+        stopped=lambda: len(calls) == 5, clock=lambda: now[0], pause=lambda seconds: None,
+        history_source=lambda reference: object())
+
+    assert [call["retry_symbols"] for call in calls] == [None, ["AAPL"], None, ["AAPL"], None]
+    assert [calls[index]["reference_at"] for index in (1, 3)] == [
+        instant("2026-10-12T16:45:00Z"), instant("2026-10-12T17:00:00Z")]
+    for call in calls[::2]:
+        assert call["reference_at"] == live_session.latest_completed_reference(
+            call["at"], publication_offset_seconds=30)
+        assert call["allow_execution"]
+    assert [key for key, _, _ in live_session._pending_cycle_passes(store, "manual", now[0], pc=pc)] == [first]
+    assert store.forecast(second, "AAPL") == recovered[0]
+    assert len(store.forecasts(pc=pc)) == 1 and queue.due(now[0]) == []
+    with store.connect() as db:
+        assert db.execute("SELECT COUNT(*) FROM intraday_live_queue").fetchone()[0] == 0
+        assert db.execute("SELECT COUNT(*) FROM events WHERE kind='forecast_execution_blocked'").fetchone()[0] == 1
+
+
+@pytest.mark.parametrize("stop_after", [1, 2])
+def test_manual_stop_between_overrun_and_recovery_turns_does_not_start_more_work(tmp_path, monkeypatch, stop_after):
+    store = ShadowStore(tmp_path / "stop.sqlite3")
+    old = saved_pending_cycle(store, "manual", "2026-10-12T17:00:00Z", pc="Scout")
+    now = [instant("2026-10-12T17:31:00Z")]
+    calls, histories = [], []
+
+    def run(inputs, **kwargs):
+        calls.append(kwargs)
+        now[0] += timedelta(minutes=37)
+        return {"cycle_id": old} if kwargs["retry_symbols"] else None
+
+    runner = SimpleNamespace(store=store, config=SimpleNamespace(publication_offset_seconds=30), run_cycle=run)
+    monkeypatch.setattr(live_session, "eligible_reference", lambda reference: True)
+    live_session.forecasting_loop(runner, histories={}, provider=None, journal=None,
+        queue=SimpleNamespace(session_id="manual", pc="Scout", enqueue=lambda value: pytest.fail("No forecast")),
+        stopped=lambda: len(calls) == stop_after, clock=lambda: now[0], pause=lambda seconds: None,
+        history_source=lambda reference: histories.append(reference))
+
+    assert len(calls) == len(histories) == stop_after
+    assert calls[0]["retry_symbols"] is None
+    if stop_after == 2:
+        assert calls[1]["retry_symbols"] == ["AAPL"] and not calls[1]["allow_execution"]
+    assert [key for key, _, _ in live_session._pending_cycle_passes(store, "manual", now[0], pc="Scout")] == [old]
+
+
 def test_forecaster_restarts_same_pending_reference_without_lost_memory(tmp_path,monkeypatch):
     store=ShadowStore(tmp_path/"restart.sqlite3")
     saved_pending_cycle(store,"manual","2026-10-12T17:00:00Z")
@@ -462,8 +555,13 @@ def test_scoring_audits_legacy_synthetic_and_continues_after_unavailable_target(
     first_missing=store.observe(forecasts["AAPL"],as_of="2026-10-08T17:46:00Z")
     first_legacy=target("AAPL",synthetic=True)
     first_hash=store.record_candle(first_legacy)
-    previous_synthetic=store.observe(forecasts["MSFT"],as_of="2026-10-08T17:46:00Z",
-                                    candle=target("MSFT",synthetic=True))
+    # Seed a historical outcome using the legacy admission behavior. Production
+    # observe now rejects this proof; the scoring loop must audit saved evidence.
+    from ml.intraday import data
+    with monkeypatch.context() as old_writer:
+        old_writer.setattr(data, "synthetic_continuity_verified", lambda candle: True)
+        previous_synthetic=store.observe(forecasts["MSFT"],as_of="2026-10-08T17:46:00Z",
+                                        candle=target("MSFT",synthetic=True))
     preserved={symbol:store.revisions(forecasts[symbol]["forecast_id"]) for symbol in ("AAPL","MSFT")}
     original_candles=store.observed_candles()
     calls,passes=[],[]
@@ -488,7 +586,10 @@ def test_scoring_audits_legacy_synthetic_and_continues_after_unavailable_target(
         pause=lambda seconds:passes.append(seconds))
     assert calls==["AAPL","IONQ","AAPL"] and passes==[3,3]
     assert store.revisions(forecasts["AAPL"]["forecast_id"])==preserved["AAPL"]==[first_missing]
-    assert store.revisions(forecasts["MSFT"]["forecast_id"])==preserved["MSFT"]==[previous_synthetic]
+    revised = store.revisions(forecasts["MSFT"]["forecast_id"])
+    assert revised[:1] == preserved["MSFT"] == [previous_synthetic]
+    assert len(revised) == 2 and revised[-1]["status"] == "unscorable"
+    assert revised[-1]["invalidates_revision_id"] == previous_synthetic["revision_id"]
     scored=store.revisions(forecasts["IONQ"]["forecast_id"])
     assert len(scored)==1 and scored[0]["status"]=="scored" and scored[0]["target_not_down"] is True
     assert store.forecasts()==list(forecasts.values())
@@ -722,6 +823,160 @@ def test_scout_manual_start_preflight_and_history_never_use_atlas_owner(tmp_path
     assert (session_root/"status.json").read_bytes() == prior_bytes
 
 
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_market_context_failure_records_safe_os_cause_and_keeps_manual_control(tmp_path, monkeypatch, wrapped):
+    kwargs, calls, executors = scout_manual_fixture(tmp_path, monkeypatch)
+
+    class Collector:
+        def run(self, **unused):
+            try:
+                error = PermissionError(13, "https://provider.invalid/?token=PRIVATE_TOKEN", "PRIVATE_FILENAME")
+                error.winerror = 5
+                raise error
+            except PermissionError as exc:
+                if wrapped:
+                    raise RuntimeError("PRIVATE_WRAPPER") from exc
+                raise
+
+    monkeypatch.setattr(live_session, "prepare_market_collection", lambda *a, **k: Collector())
+    result = live_session.run_manual(**kwargs)
+    assert result["status"] == "FAILED"
+    assert "step" not in calls and "recover" not in calls
+    assert not executors[0].kwargs["manual_authority"]()
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert status["stop_reason"] == "worker_failure"
+    assert status["broker_orders_automatically_cancelled"] is False
+    failure = status["worker_errors"][0]
+    assert failure["worker"] == "market_context"
+    assert failure["error_type"] == ("RuntimeError" if wrapped else "PermissionError")
+    chain = failure["diagnostics"]["exception_chain"]
+    assert [entry["relation"] for entry in chain] == (["raised", "cause"] if wrapped else ["raised"])
+    assert chain[-1]["type"] == "PermissionError"
+    assert chain[-1]["errno"] == 13 and chain[-1]["winerror"] == 5
+    assert chain[-1]["frames"][-1]["function"] == "run"
+    store = ShadowStore(tmp_path / "intraday/shadow.sqlite3")
+    with store.connect() as db:
+        saved = json.loads(db.execute("SELECT payload FROM events WHERE kind='market_context_worker_stopped'").fetchone()[0])
+    assert saved["diagnostics"] == failure["diagnostics"]
+    session_root = tmp_path / "intraday/sessions" / result["session_id"].replace(":", "-")
+    serialized = json.dumps(saved) + json.dumps(status) + (session_root / "events.jsonl").read_text()
+    assert all(secret not in serialized for secret in ["PRIVATE_TOKEN", "PRIVATE_FILENAME", "PRIVATE_WRAPPER"])
+
+
+def test_market_context_queue_retry_is_own_session_evidence_not_worker_failure(tmp_path, monkeypatch):
+    kwargs, calls, _ = scout_manual_fixture(tmp_path, monkeypatch)
+    detail = {"reason": "queue_lock_contention", "error_type": "Timeout", "retry_after_seconds": 30.0}
+    class Collector:
+        def run(self, *, stopped, pause, on_retry, on_recovery=None):
+            assert not stopped()
+            on_retry(detail)
+            assert not stopped()
+    monkeypatch.setattr(live_session, "prepare_market_collection", lambda *a, **k: Collector())
+    result = live_session.run_manual(**kwargs)
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert result["status"] == "STOPPED" and status["stop_reason"] == "manual_stop"
+    assert status.get("worker_errors", []) == [] and "step" in calls
+    store = ShadowStore(tmp_path / "intraday/shadow.sqlite3")
+    with store.connect() as db:
+        rows = db.execute("SELECT cycle_id,payload FROM events WHERE kind='market_context_queue_retry'").fetchall()
+        failures = db.execute("SELECT count(*) FROM events WHERE kind='market_context_worker_stopped'").fetchone()[0]
+    assert rows == [(result["session_id"], json.dumps(detail, sort_keys=True, separators=(",", ":")))]
+    assert failures == 0
+
+
+@pytest.mark.parametrize("operation", ["execution", "recovery"])
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_scout_retry_records_real_sqlite_cause_without_changing_retry_or_forecast(
+        tmp_path, monkeypatch, operation, wrapped):
+    """Inject real private-database contention through both retry handlers."""
+    import sqlite3
+    from contextlib import closing
+
+    kwargs, _, executors = scout_manual_fixture(tmp_path, monkeypatch)
+    executor_type = sys.modules["ml.intraday.scout_local_execution"].ScoutLocalAccountExecutor
+    original_step, original_recover = executor_type.step, executor_type.recover
+    now = [instant("2026-10-08T17:17:00Z")]
+    started, attempts, supplied = now[0], [], []
+
+    def fail_locked_write():
+        private_diagnostic_value = "PRIVATE_DIAGNOSTIC_VALUE"
+        path = tmp_path / "independent-contention.sqlite3"
+        with closing(sqlite3.connect(path, timeout=0, isolation_level=None)) as writer:
+            writer.execute("PRAGMA journal_mode=WAL")
+            writer.execute("CREATE TABLE fixture(value TEXT)")
+            writer.execute("BEGIN IMMEDIATE")
+            with closing(sqlite3.connect(path, timeout=0, isolation_level=None)) as blocked:
+                try:
+                    blocked.execute("BEGIN IMMEDIATE")
+                except sqlite3.OperationalError as exc:
+                    if wrapped:
+                        raise RuntimeError("fixture operation failed") from exc
+                    raise
+            pytest.fail("Expected real SQLite contention")
+
+    def step(self, value):
+        attempts.append(("execution", (now[0] - started).total_seconds()))
+        supplied.append(json.loads(json.dumps(value)))
+        if operation == "execution" and len(supplied) == 1:
+            fail_locked_write()
+        return original_step(self, value)
+
+    def recover(self):
+        previous = [item for item in attempts if item[0] == "recovery"]
+        attempts.append(("recovery", (now[0] - started).total_seconds()))
+        if operation == "recovery" and not previous:
+            fail_locked_write()
+        return original_recover(self)
+
+    def sleep(seconds):
+        if (now[0] - started).total_seconds() >= 4:
+            raise KeyboardInterrupt()
+        now[0] += timedelta(seconds=seconds)
+
+    monkeypatch.setattr(executor_type, "step", step)
+    monkeypatch.setattr(executor_type, "recover", recover)
+    kwargs.update(clock=lambda: now[0], sleep=sleep)
+    result = live_session.run_manual(**kwargs)
+    assert result["status"] == "STOPPED" and len(executors) == 1
+    if operation == "execution":
+        assert attempts == [("execution", 0), ("execution", 3), ("recovery", 3)]
+        assert supplied[0] == supplied[1]
+    else:
+        assert attempts == [("execution", 0), ("recovery", 0), ("recovery", 3)]
+        assert len(supplied) == 1
+
+    store = ShadowStore(tmp_path / "intraday/shadow.sqlite3")
+    with store.connect() as db:
+        rows = db.execute("SELECT kind,symbol,payload FROM events WHERE kind IN "
+            "('execution_retry','order_recovery_retry')").fetchall()
+        assert len(rows) == 1
+        kind, symbol, raw = rows[0]
+        payload = json.loads(raw)
+        assert kind == ("execution_retry" if operation == "execution" else "order_recovery_retry")
+        assert symbol == ("DOCU" if operation == "execution" else None)
+        if operation == "execution":
+            assert payload["forecast_id"] == supplied[0]["forecast_id"]
+        assert payload["error_type"] == ("RuntimeError" if wrapped else "OperationalError")
+        assert payload["message"] == ("fixture operation failed" if wrapped else "database is locked")
+        assert payload["retry_after_seconds"] == 3
+        chain = payload["diagnostics"]["exception_chain"]
+        assert [entry["relation"] for entry in chain] == (["raised", "cause"] if wrapped else ["raised"])
+        assert chain[-1]["type"] == "OperationalError"
+        assert chain[-1]["sqlite_errorcode"] == sqlite3.SQLITE_BUSY
+        assert chain[-1]["sqlite_errorname"] == "SQLITE_BUSY"
+        assert chain[-1]["frames"][-1]["function"] == "fail_locked_write"
+        assert chain[-1]["frames"][-1]["file"] == "test_intraday_live_session.py"
+        assert chain[-1]["frames"][-1]["line"] > 0
+        assert not payload["diagnostics"]["chain_truncated"]
+        diagnostic_text = json.dumps(payload["diagnostics"])
+        assert str(tmp_path) not in diagnostic_text and "PRIVATE_DIAGNOSTIC_VALUE" not in diagnostic_text
+        wait = db.execute("SELECT next_attempt_at FROM intraday_live_retry WHERE scope='broker'").fetchone()[0]
+        assert instant(wait) == started + timedelta(seconds=3)
+        queued = db.execute("SELECT forecast_id,status FROM intraday_live_queue").fetchall()
+        assert queued == [(supplied[0]["forecast_id"], "no_purchasing_capacity")]
+    assert store.forecasts(pc="Scout") == [supplied[0]]
+
+
 # Historical receipt authentication, writer compatibility and expiry checks belong
 # to the retained remote API. The independent caller validates its executor's
 # local mode, exact manual session and literal success before history or workers.
@@ -783,6 +1038,51 @@ def test_scout_local_preflight_exception_stays_startup_failure_without_fallback(
     assert status["status"] == "FAILED"
     assert status["error_type"] == "ConnectionError"
     assert not executors[0].kwargs["manual_authority"]()
+
+
+@pytest.mark.parametrize("stage", ["broker_session", "broker_preflight"])
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_scout_startup_failure_retains_cause_without_diagnostic_secrets(tmp_path, monkeypatch, stage, wrapped):
+    kwargs, calls, executors = scout_manual_fixture(tmp_path, monkeypatch)
+    from app.services import schwab
+
+    def denied_operation():
+        try:
+            error = PermissionError(13, "PRIVATE_STARTUP_TOKEN", "PRIVATE_STARTUP_PATH")
+            error.winerror = 5
+            raise error
+        except PermissionError as exc:
+            if wrapped:
+                raise RuntimeError("PRIVATE_STARTUP_WRAPPER") from exc
+            raise
+
+    if stage == "broker_session":
+        monkeypatch.setattr(schwab, "SchwabSession", denied_operation)
+    else:
+        executor_type = sys.modules["ml.intraday.scout_local_execution"].ScoutLocalAccountExecutor
+        monkeypatch.setattr(executor_type, "preflight", lambda self: denied_operation())
+    with pytest.raises(RuntimeError if wrapped else PermissionError):
+        live_session.run_manual(**kwargs)
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert status["status"] == "FAILED" and status["stop_reason"] == "startup_failure"
+    assert status["startup_stage"] == stage
+    assert status["broker_orders_automatically_cancelled"] is False
+    assert calls == []
+    assert len(executors) == (0 if stage == "broker_session" else 1)
+    store = ShadowStore(tmp_path / "intraday/shadow.sqlite3")
+    with store.connect() as db:
+        rows = db.execute("SELECT payload FROM events WHERE kind='manual_startup_stopped'").fetchall()
+    assert len(rows) == 1
+    event = json.loads(rows[0][0])
+    assert event["startup_stage"] == stage
+    assert event["diagnostics"] == status["diagnostics"]
+    chain = status["diagnostics"]["exception_chain"]
+    assert [x["relation"] for x in chain] == (["raised", "cause"] if wrapped else ["raised"])
+    assert chain[-1]["type"] == "PermissionError"
+    assert chain[-1]["winerror"] == 5 and chain[-1]["errno"] == 13
+    assert chain[-1]["frames"][-1]["function"] == "denied_operation"
+    diagnostic_text = json.dumps(status["diagnostics"])
+    assert "PRIVATE_STARTUP" not in diagnostic_text and str(tmp_path) not in diagnostic_text
 
 
 @pytest.mark.parametrize("started,expected", [
@@ -904,6 +1204,7 @@ def test_scout_cutoff_drains_all_workers_and_keeps_original_deadline_after_midni
 
     class DrainingFeed:
         history_source = None
+        scoring_history_source = None
         def __init__(self, **kwargs):
             self.on_closed = kwargs["on_closed"]
         def run(self, **kwargs):
@@ -1070,6 +1371,7 @@ def test_ctrl_c_during_automatic_data_drain_still_joins_workers_and_records_manu
 
     class UnfinishedFeed:
         history_source = None
+        scoring_history_source = None
         def __init__(self, **kwargs):
             pass
         def run(self, **kwargs):

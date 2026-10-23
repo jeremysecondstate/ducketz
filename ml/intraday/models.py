@@ -40,6 +40,8 @@ from sklearn.tree import DecisionTreeClassifier
 from threadpoolctl import threadpool_limits
 
 from ml.intraday.prediction import ContractError, TARGET_VERSION, instant
+from .training_timing import (LEGACY, HISTORICAL_RESEARCH, timing_contract,
+                              timing_mode_from_metadata, validate_timing_mode)
 
 REGISTRY_VERSION = "intraday-independent-tabular-v2"
 RUNTIME_CONTRACT_VERSION = "intraday-frozen-estimator-pipeline-v1"
@@ -298,6 +300,11 @@ def _construct_frozen_step(description, constructor):
 def _frozen_pipeline(spec, estimator):
     contract = spec.runtime_contract
     required = {"version", "estimator_class", "preprocessing", "calibrator", "dependency_versions"}
+    if "market_feature_projection" in contract:
+        from .feature_support import PROJECTION_POLICY
+        required.add("market_feature_projection")
+        if contract["market_feature_projection"] != PROJECTION_POLICY:
+            raise ContractError("Frozen market feature projection requires local review")
     if (set(contract) != required or contract["version"] != RUNTIME_CONTRACT_VERSION
             or contract["estimator_class"] != _constructor_identity(estimator)
             or contract["dependency_versions"] != _versions(spec)
@@ -347,9 +354,23 @@ def freeze_model_spec(spec):
     return frozen
 
 
+def with_market_feature_projection(spec):
+    """Return an explicit local candidate; never mutate an installed recipe."""
+    from .feature_support import PROJECTION_POLICY
+    frozen = freeze_model_spec(spec)
+    contract = {**deepcopy(frozen.runtime_contract), "market_feature_projection": PROJECTION_POLICY}
+    return freeze_model_spec(replace(frozen, runtime_contract=contract))
+
+
 def purged_chronological_split(reference_at, target_close_at, *, fraction=0.2,
-                               label_available_at=None):
-    """No shuffle: prior label windows end before the held-out reference begins."""
+                               label_available_at=None, timing_mode=LEGACY):
+    """Purge overlapping label horizons; possession is a separate replay gate.
+
+    Research performed now may use older market observations acquired by the
+    actual fit cutoff (checked by the fitting entry point). It need not pretend
+    the PC possessed them at the historical calibration boundary.
+    """
+    validate_timing_mode(timing_mode)
     references = tuple(instant(x) for x in reference_at)
     targets = tuple(instant(x) for x in target_close_at)
     if len(references) != len(targets) or len(references) < 4 or not 0 < fraction < 1:
@@ -363,7 +384,7 @@ def purged_chronological_split(reference_at, target_close_at, *, fraction=0.2,
     if len(available) != len(targets) or any(end > observed for end, observed in zip(targets, available)):
         raise ContractError("Calibration label availability must follow each target close")
     train = np.array([i for i in range(split) if targets[i] <= references[split]
-                      and available[i] <= references[split]], dtype=int)
+                      and (timing_mode == HISTORICAL_RESEARCH or available[i] <= references[split])], dtype=int)
     calibration = np.arange(split, len(references))
     if not len(train):
         raise ContractError("No label windows remain after chronological overlap purge")
@@ -415,13 +436,19 @@ class ChronologicalSigmoid(ClassifierMixin, BaseEstimator):
 
 
 def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=None,
-                             label_available_at=None, training_cutoff=None):
+                             label_available_at=None, training_cutoff=None, feature_names=None,
+                             timing_mode=LEGACY):
     """Fit a new pipeline and, when requested, a disjoint probability calibrator.
 
     The base estimator's preprocessing fits only its own earlier partition.
     Neither the base nor sigmoid sees later validation or inference rows. A
     missing timestamp or one-class partition is a failure, with no fallback.
     """
+    validate_timing_mode(timing_mode)
+    if timing_mode != LEGACY and label_available_at is None:
+        raise ContractError("Versioned fitting requires observation availability and the actual fitting cutoff")
+    if feature_names is None and hasattr(X, "columns"):
+        feature_names = tuple(str(name) for name in X.columns)
     features, labels = np.asarray(X, dtype=float), np.asarray(y)
     if (features.ndim != 2 or not len(features) or not features.shape[1]
             or labels.shape != (len(features),) or not np.isin(labels, [0, 1]).all()
@@ -438,7 +465,8 @@ def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=N
     else:
         available = None
     calibrated = spec.probability_calibration == "sigmoid" or spec.family in {"ridge", "passive_aggressive"}
-    evidence = {"effective_parameters": _encode_parameters(_parameters(spec)), "calibration": None}
+    evidence = {"effective_parameters": _encode_parameters(_parameters(spec)), "calibration": None,
+                "training_timing_contract": timing_contract(timing_mode)}
     references = tuple(instant(v) for v in reference_at) if reference_at is not None else None
     targets = tuple(instant(v) for v in target_close_at) if target_close_at is not None else None
     for timestamps in (references, targets):
@@ -474,7 +502,7 @@ def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=N
                                                 for start, end in zip(references, targets)):
             raise ContractError("Training label windows must match the exact 45-minute target")
         train, calibration = purged_chronological_split(references, targets,
-            fraction=spec.calibration_fraction, label_available_at=available)
+            fraction=spec.calibration_fraction, label_available_at=available, timing_mode=timing_mode)
         evidence["calibration"] = {"method": "purged_chronological_sigmoid", "base_rows": len(train),
             "calibration_rows": len(calibration), "purged_rows": len(labels) - len(train) - len(calibration),
             "first_calibration_reference": references[calibration[0]].isoformat(),
@@ -485,6 +513,9 @@ def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=N
     else:
         base_rows = len(features)
     estimator = build_estimator(spec)
+    from .feature_support import attach_market_support
+    estimator = attach_market_support(estimator, feature_names,
+        projection=spec.runtime_contract.get("market_feature_projection") if spec.runtime_contract else None)
     if spec.family == "knn":
         requested = evidence["effective_parameters"]["n_neighbors"]
         effective = min(requested, base_rows)
@@ -497,6 +528,9 @@ def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=N
         evidence["calibration"]["score_interface"] = estimator.score_interface_
     else:
         estimator.fit(features, labels)
+    base = estimator.base if calibrated else estimator
+    if "market_support" in base.named_steps:
+        evidence["market_feature_support"] = base.named_steps["market_support"].evidence()
     return estimator, evidence
 
 
@@ -553,6 +587,7 @@ def fit_ensemble(X, y, inference_X, *, config=None, target_version=TARGET_VERSIO
     Artifacts, when requested, are written exclusively under a run-owned directory.
     """
     specs = configured_models(config)
+    timing_mode = timing_mode_from_metadata(dataset_metadata)
     if target_version != TARGET_VERSION:
         raise ContractError("Training labels must use the exact not-down target version")
     cutoff = instant(training_cutoff)
@@ -623,7 +658,8 @@ def fit_ensemble(X, y, inference_X, *, config=None, target_version=TARGET_VERSIO
                 warnings.simplefilter("always")
                 estimator, fitting_evidence = fit_calibrated_estimator(spec, features, labels,
                     reference_at=reference_at, target_close_at=target_close_at,
-                    label_available_at=available, training_cutoff=cutoff)
+                    label_available_at=available, training_cutoff=cutoff, feature_names=names,
+                    timing_mode=timing_mode)
                 metadata.update(fitting_evidence)
                 output["training_seconds"] = time.perf_counter() - start
                 output["training_completed_at"] = _now()

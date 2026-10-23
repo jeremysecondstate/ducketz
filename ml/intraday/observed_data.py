@@ -15,6 +15,7 @@ import pandas as pd
 
 from .data import Dataset, build_dataset, exact_target, utc, validate_candles
 from .prediction import ContractError, STEP
+from .training_timing import LEGACY
 
 
 FEATURE_VERSION = "intraday-observed-only-causal-features-v1"
@@ -30,6 +31,8 @@ def build_observed_dataset(
     cutoff,
     reference_at,
     lookback_days: float | None = None,
+    preparation_only: bool = False,
+    timing_mode=LEGACY,
 ) -> Dataset:
     """Build a distinct observed-only research dataset without changing originals.
 
@@ -68,6 +71,8 @@ def build_observed_dataset(
         reference_at=reference,
         lookback_days=lookback_days,
         synthetic_policy="exclude",
+        preparation_only=preparation_only,
+        timing_mode=timing_mode,
     )
 
     provenance = {

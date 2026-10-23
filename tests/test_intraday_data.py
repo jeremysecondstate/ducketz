@@ -18,6 +18,7 @@ from ml.intraday.data import (
     synthetic_continuity_verified,
 )
 from ml.intraday.prediction import ContractError, STEP, UnresolvedPolicy
+from tests.test_intraday_verified_no_trade import attest, sparse_rows
 
 
 def archive_partition(tmp_path, monkeypatch, *, frame=None, name="2026-05-11_to_2026-05-12", natives=None):
@@ -195,21 +196,22 @@ def candles(count=42, *, start="2026-05-11T13:30:00+00:00", minutes=False):
         price = 100.0 + (index % 7) / 10
         rows.append(dict(symbol="AAPL", opened_at=op, available_at=op + duration,
             availability_kind="actual", open=price, high=price+1, low=price-1,
-            close=price+0.1, volume=100+index, source_id="test:EQUS.MINI", source_dataset="EQUS.MINI",
+            close=price+0.1, volume=100+index, source_id="databento:EQUS.MINI:ohlcv-1m", source_dataset="EQUS.MINI",
             session_id="2026-05-11", session_open=first.isoformat(),
             session_close=(first + pd.Timedelta(hours=12)).isoformat(), synthetic=False,
             no_trade=False, evidence_json="{}"))
     return pd.DataFrame(rows)
 
 
-def response(attempt, *, status="success", rows=(), covered=True, proof="provider covered interval contains no trades",
+def response(attempt, *, status="success", rows=(), covered=True, proof="fixture_attested",
              start="2026-05-11T14:00:00+00:00", minutes=15, wait=0):
     op = pd.Timestamp(start)
     cl = op + pd.Timedelta(minutes=minutes)
-    return IntervalResponse(str(attempt), "AAPL", "test:EQUS.MINI", "EQUS.MINI", op.isoformat(), cl.isoformat(),
+    value = IntervalResponse(str(attempt), "AAPL", "databento:EQUS.MINI:ohlcv-1m", "EQUS.MINI", op.isoformat(), cl.isoformat(),
         (cl+pd.Timedelta(seconds=4*attempt+wait)).isoformat(),
         (cl+pd.Timedelta(seconds=4*attempt+1+wait)).isoformat(), status, tuple(rows),
         op.isoformat() if covered else None, cl.isoformat() if covered else None, proof)
+    return attest(value) if proof == "fixture_attested" else value
 
 
 def bounds():
@@ -305,7 +307,11 @@ def test_late_computation_does_not_move_cycle_reference():
 
 def test_synthetic_training_is_explicit_and_separately_counted():
     frame = candles()
-    frame.loc[30, "synthetic"] = True
+    opening = frame.opened_at.iloc[30]
+    rows = sparse_rows(opening, missing=(1,))
+    mixed = resolve_minute_candle([response(1, start=opening.isoformat(), rows=rows),
+        response(2, start=opening.isoformat(), rows=rows, wait=2)], session=bounds(), previous=None)["candle"]
+    frame = pd.concat([frame.drop(index=30), pd.DataFrame([mixed])], ignore_index=True).sort_values("opened_at", key=lambda s: pd.to_datetime(s, utc=True)).reset_index(drop=True)
     reference = frame.opened_at.iloc[32]
     cutoff = reference+STEP
     with pytest.raises(UnresolvedPolicy, match="Synthetic"):
@@ -333,16 +339,11 @@ def test_success_empty_without_coverage_or_proof_is_not_no_trade():
         assert result["candle"] is None
 
 
-def test_no_trade_uses_last_close_not_prior_ohlc_and_evidence():
+def test_empty_response_remains_unknown_despite_prior_close_and_advertised_coverage():
     prior = candles(2).iloc[-1].to_dict()
     result = resolve_interval([response(1), response(2, wait=2)], session=bounds(), previous=prior)
-    candle = result["candle"]
-    assert result["status"] == "synthetic_no_trade"
-    assert candle["open"] == candle["high"] == candle["low"] == candle["close"] == prior["close"]
-    assert candle["volume"] == 0
-    assert candle["prior_price_opened_at"] == prior["opened_at"].isoformat()
-    assert len(json.loads(candle["evidence_json"])) == 2
-    assert candle["availability_kind"] == "actual"
+    assert result["status"] == "missing" and result["reason"] == "unverified_source_no_trade"
+    assert result["candle"] is None and len(result["evidence"]) == 2
     assert resolve_interval([response(1), response(2, wait=2)], session=bounds(), previous=None)["status"] == "missing"
 
 
@@ -390,7 +391,7 @@ def test_recovery_journal_immutable_and_survives_interruption(tmp_path):
                               previous=candles(2).iloc[-1].to_dict(), sleep=sleeps.append,
                               slot=dict(symbol=first.symbol, source_id=first.source_id,
                                         interval_open=first.interval_open, interval_close=first.interval_close))
-    assert result["status"] == "synthetic_no_trade" and sleeps == [4.0]
+    assert result["status"] == "missing" and result["reason"] == "unverified_source_no_trade" and sleeps == [4.0]
     restored = AcquisitionJournal(tmp_path/"attempts.sqlite")
     assert len(restored.responses(symbol=first.symbol, source_id=first.source_id,
                                  interval_open=first.interval_open, interval_close=first.interval_close)) == 3
@@ -488,13 +489,13 @@ def test_constituent_omissions_need_exact_repeated_response_and_wait():
 
 
 def test_retry_after_and_failures_cannot_confirm_no_trade():
-    first = replace(response(1), retry_after_seconds=30)
-    too_soon = response(2, wait=2)
+    first = replace(response(1, rows=sparse_rows()), retry_after_seconds=30)
+    too_soon = response(2, rows=sparse_rows(), wait=2)
     prior = candles(2).iloc[-1].to_dict()
     assert resolve_minute_candle([first, too_soon], session=bounds(), previous=prior)["status"] == "retry"
-    enough_wait = response(3, wait=40)
-    assert resolve_minute_candle([first, enough_wait], session=bounds(), previous=prior)["status"] == "synthetic_no_trade"
-    failed = replace(enough_wait, status="temporary_error")
+    enough_wait = response(3, rows=sparse_rows(), wait=40)
+    assert resolve_minute_candle([first, enough_wait], session=bounds(), previous=prior)["status"] == "mixed_synthetic"
+    failed = replace(enough_wait, status="temporary_error", rows=())
     assert resolve_minute_candle([first, failed], session=bounds(), previous=prior)["status"] == "retry"
 
 
@@ -656,17 +657,19 @@ def test_journal_closes_connections_deterministically(tmp_path, monkeypatch):
 
 
 
-def _bounded_attempt(provider, *, symbol, opened_at, attempt_id, clock, status="success", wait=0, empty=False,
+def _bounded_attempt(provider, *, symbol, opened_at, attempt_id, clock, status="success", wait=0, empty=False, sparse=False,
                      stopped=lambda: False):
     op = pd.Timestamp(opened_at)
     at = pd.Timestamp(clock())
     native = candles(15, start=op.isoformat(), minutes=True)
+    if sparse:
+        native = native.drop(index=0)
     rows = () if empty else tuple(dict(opened_at=r.opened_at.isoformat(), open=r.open,
         high=r.high, low=r.low, close=r.close, volume=r.volume) for r in native.itertuples())
-    return IntervalResponse(attempt_id, symbol, f"databento:{provider.dataset}:ohlcv-1m", provider.dataset,
+    return attest(IntervalResponse(attempt_id, symbol, f"databento:{provider.dataset}:ohlcv-1m", provider.dataset,
         op.isoformat(), (op+STEP).isoformat(), at.isoformat(), at.isoformat(), status,
         rows if status == "success" else (), op.isoformat(), (op+STEP).isoformat(),
-        "covered provider omission" if status == "success" else None, wait)
+        None, wait))
 
 
 def test_bounded_retry_one_interval_does_not_block_another(tmp_path, monkeypatch):
@@ -748,14 +751,12 @@ def test_bounded_no_trade_confirmation_preserves_four_second_wait(tmp_path, monk
     assert result["retry_after_seconds"] == 3 and len(calls) == 1
     now[0] += pd.Timedelta(seconds=3)
     result = data.recover_databento_candle_step(provider,**kwargs)
-    assert result["status"] == "synthetic_no_trade" and len(calls) == 2
-    assert result["candle"]["open"] == result["candle"]["high"] == result["candle"]["low"] == result["candle"]["close"] == prior["close"]
-    assert result["candle"]["volume"] == 0
+    assert result["status"] == "missing" and result["reason"] == "unverified_source_no_trade" and len(calls) == 2
+    assert result["candle"] is None
 
 
-@pytest.mark.parametrize("resolver", [resolve_interval, resolve_minute_candle])
 @pytest.mark.parametrize("gap", ["prior_friday", "same_session_gap", "wrong_session", "declared_minute", "prior_synthetic_unverified"])
-def test_confirmed_empty_cannot_bridge_unverified_prior_price_gap(resolver, gap):
+def test_verified_sparse_cannot_bridge_unverified_prior_price_gap(gap):
     prior = candles(2).iloc[-1].to_dict()
     if gap == "prior_friday":
         prior.update(opened_at=pd.Timestamp("2026-05-08T22:45:00Z"),
@@ -770,32 +771,25 @@ def test_confirmed_empty_cannot_bridge_unverified_prior_price_gap(resolver, gap)
         prior.update(synthetic=True, no_trade=True, open=100.2, high=100.2, low=100.2,
                      close=100.2, volume=0, evidence_json="{}")
     original = dict(prior)
-    result = resolver([response(1), response(2, wait=2)], session=bounds(), previous=prior)
+    result = resolve_minute_candle([response(1, rows=sparse_rows()), response(2, rows=sparse_rows(), wait=2)], session=bounds(), previous=prior)
     assert result["status"] == "missing"
     assert result["reason"] == "unverified_prior_price_continuity"
     assert result["candle"] is None and prior == original
 
 
-@pytest.mark.parametrize("resolver", [resolve_interval, resolve_minute_candle])
-def test_confirmed_empty_retains_verified_adjacent_same_session_price_proof(resolver):
+def test_verified_sparse_retains_adjacent_same_session_price_proof():
     prior = candles(2).iloc[-1].to_dict()
-    result = resolver([response(1), response(2, wait=2)], session=bounds(), previous=prior)
+    result = resolve_minute_candle([response(1, rows=sparse_rows(missing=(0,))), response(2, rows=sparse_rows(missing=(0,)), wait=2)], session=bounds(), previous=prior)
     candle = result["candle"]
-    assert result["status"] == "synthetic_no_trade"
+    assert result["status"] == "mixed_synthetic"
     assert synthetic_continuity_verified(candle)
-    if resolver is resolve_interval:
-        proof = candle["synthetic_continuity"]
-    else:
-        evidence = json.loads(candle["evidence_json"])
-        assert len(evidence["constituents"]) == 15
-        for index, constituent in enumerate(evidence["constituents"]):
-            proof = constituent["synthetic_continuity"]
-            assert constituent["prior_price_close"] == prior["close"]
-            assert constituent["prior_price_interval_seconds"] == (900 if index == 0 else 60)
-            assert constituent["prior_price_session_id"] == bounds().session_id
-            assert pd.Timestamp(constituent["prior_price_opened_at"]) + pd.Timedelta(
-                seconds=constituent["prior_price_interval_seconds"]) == pd.Timestamp(constituent["opened_at"])
-        proof = evidence["constituents"][0]["synthetic_continuity"]
+    evidence = json.loads(candle["evidence_json"])
+    assert len(evidence["constituents"]) == 15
+    constituent = evidence["constituents"][0]
+    proof = constituent["synthetic_continuity"]
+    assert constituent["prior_price_close"] == prior["close"]
+    assert constituent["prior_price_interval_seconds"] == 900
+    assert constituent["prior_price_session_id"] == bounds().session_id
     assert proof["prior_opened_at"] == prior["opened_at"].isoformat()
     assert proof["prior_close"] == prior["close"]
     assert proof["prior_available_at"] == prior["available_at"].isoformat()
@@ -824,7 +818,7 @@ def test_observed_first_minute_does_not_need_prior_session_price():
 @pytest.mark.parametrize("damage", ["missing_proof", "nonadjacent", "wrong_session", "wrong_price", "missing_constituent"])
 def test_legacy_or_tampered_synthetic_proof_requires_audit(damage):
     prior = candles(2).iloc[-1].to_dict()
-    candle = resolve_minute_candle([response(1), response(2, wait=2)],
+    candle = resolve_minute_candle([response(1, rows=sparse_rows()), response(2, rows=sparse_rows(), wait=2)],
                                    session=bounds(), previous=prior)["candle"]
     evidence = json.loads(candle["evidence_json"])
     if damage == "missing_proof":
@@ -1017,7 +1011,7 @@ def test_bounded_confirmed_no_trade_missing_predecessor_remains_pending(tmp_path
     calls=[]
     def fetch(provider,**kwargs):
         calls.append(kwargs["opened_at"])
-        return _bounded_attempt(provider,**kwargs,empty=True)
+        return _bounded_attempt(provider,**kwargs,sparse=True)
     monkeypatch.setattr(data,"fetch_databento_interval_attempt",fetch)
     previous=None if prior is None else candles(1).iloc[0].to_dict()
     if previous is not None:
@@ -1040,7 +1034,7 @@ def test_later_prior_cannot_backdate_cached_response_or_bypass_exact_wait(tmp_pa
     calls=[]
     def fetch(provider,**kwargs):
         calls.append(kwargs["attempt_id"])
-        return _bounded_attempt(provider,**kwargs,empty=True)
+        return _bounded_attempt(provider,**kwargs,sparse=True)
     monkeypatch.setattr(data,"fetch_databento_interval_attempt",fetch)
     kwargs=dict(symbol="AAPL",opened_at="2026-05-11T14:00:00Z",journal=AcquisitionJournal(tmp_path/"late-prior.sqlite3"),
                 session=bounds(),previous=None,clock=lambda:now[0].isoformat())
@@ -1055,6 +1049,6 @@ def test_later_prior_cannot_backdate_cached_response_or_bypass_exact_wait(tmp_pa
     assert len(calls)==2
     now[0]+=pd.Timedelta(seconds=3)
     result=data.recover_databento_candle_step(provider,**kwargs)
-    assert result["status"]=="synthetic_no_trade" and len(calls)==3
+    assert result["status"]=="mixed_synthetic" and len(calls)==3
     assert pd.Timestamp(result["candle"]["available_at"])==now[0]
     assert result["candle"]["open"]==prior["close"]

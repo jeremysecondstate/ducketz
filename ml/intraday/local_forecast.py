@@ -3,25 +3,64 @@
 The classifier assumes a forecast payload and checks its immutable identity,
 local scope, manual-session time, ensemble and fixed-target eligibility. The
 saved reader validates the persisted forecast, cycle and frozen snapshot in one
-zero-wait read transaction. Neither helper grants execution authority or reads
+read transaction, with bounded fresh attempts for transient SQLite contention.
+Neither helper grants execution authority or reads
 another trader's state. Callers still enforce their own current manual controls,
 quote freshness, broker capacity and one-send order journal.
 """
 from __future__ import annotations
 
+from collections import OrderedDict
 from contextlib import closing
+from hashlib import sha256
 import json
 import os
 from pathlib import Path
 import sqlite3
 import stat
+from threading import Lock
+import time
 
+from ml.stock_direction_policy import stock_action
 from .prediction import ContractError, PACIFIC, TARGET_VERSION, digest, instant
 from .store import ShadowStore
 from .submission_time import submission_gate
 
 
 _FORECAST_COLUMNS = "id,pc,symbol,cycle_id,reference_at,issued_at,payload"
+_READ_RETRY_SECONDS = .25
+_READ_RETRY_PAUSE_SECONDS = .01
+_READ_MAX_ATTEMPTS = 8
+_SNAPSHOT_CACHE_LIMIT = 64
+_SNAPSHOT_VALIDATIONS = OrderedDict()
+_SNAPSHOT_VALIDATIONS_LOCK = Lock()
+
+
+def _validate_saved_snapshot(key, raw):
+    """Recheck exact bytes without repeatedly decoding a validated snapshot.
+
+    A witness records only the immutable ID and raw-byte fingerprint after the
+    original dictionary/canonical-hash validator succeeds. Every caller still
+    reads the current row and validates its forecast/session links separately.
+    """
+    if type(raw) is not str:
+        # json.loads detects encodings for bytes, but rejects some equivalent
+        # text (for example a UTF-8 BOM). Never reuse a binary witness for text.
+        ShadowStore._snapshot_value(key, raw)
+        return
+    witness = (key, sha256(raw.encode("utf-8")).digest())
+    with _SNAPSHOT_VALIDATIONS_LOCK:
+        if witness in _SNAPSHOT_VALIDATIONS:
+            _SNAPSHOT_VALIDATIONS.move_to_end(witness)
+            return
+    # No long validation or database work under the cache lock. Concurrent
+    # misses may validate twice; only successfully validated bytes are added.
+    ShadowStore._snapshot_value(key, raw)
+    with _SNAPSHOT_VALIDATIONS_LOCK:
+        _SNAPSHOT_VALIDATIONS[witness] = None
+        _SNAPSHOT_VALIDATIONS.move_to_end(witness)
+        while len(_SNAPSHOT_VALIDATIONS) > _SNAPSHOT_CACHE_LIMIT:
+            _SNAPSHOT_VALIDATIONS.popitem(last=False)
 
 
 def forecast_disposition(forecast, *, now, session_started_at, local_symbols):
@@ -39,6 +78,8 @@ def forecast_disposition(forecast, *, now, session_started_at, local_symbols):
         raise ContractError('Forecast issue lies in the future')
     if forecast['ensemble_status'] != 'full' or forecast['successful_count'] != forecast['configured_count']:
         return 'incomplete_ensemble'
+    if stock_action(forecast['probability_not_down']) == 'HOLD':
+        return 'probability_between_action_cutoffs'
     gate = submission_gate(as_of=now, eligible_session=instant(forecast['reference_at']).astimezone(PACIFIC).date())
     if gate.state != 'before_submission_cutoff':
         return gate.state
@@ -88,9 +129,9 @@ def _cycle(db, cycle_id):
     return value
 
 
-def _saved_forecast(path, forecast, *, session_id, session_started):
-    # mode=ro must not silently create an absent database. Zero timeout prevents
-    # a locked writer from delaying the final effect gate until evidence expires.
+def _saved_forecast_once(path, forecast, *, session_id, session_started):
+    # mode=ro cannot create absent evidence. Each attempt uses a fresh, zero-wait
+    # connection and one consistent transaction; failures close it before retry.
     with closing(sqlite3.connect(_safe_path(path).as_uri() + "?mode=ro",
                                  uri=True, timeout=0)) as db:
         db.execute("PRAGMA query_only=ON")
@@ -110,7 +151,7 @@ def _saved_forecast(path, forecast, *, session_id, session_started):
             "WHERE i.cycle_id=? AND i.symbol=?", (forecast["cycle_id"], forecast["symbol"])).fetchone()
         if snapshot is None or snapshot[0] != forecast["snapshot_hash"]:
             raise ContractError("Exact frozen forecast snapshot is missing")
-        ShadowStore._snapshot_value(*snapshot)
+        _validate_saved_snapshot(*snapshot)
 
         # julianday compares offsets correctly and limits returned payloads to
         # this or later references, rather than loading historical forecast books.
@@ -128,6 +169,62 @@ def _saved_forecast(path, forecast, *, session_id, session_started):
             if (source.get("pc") == "Scout" and source.get("mode") == "live"
                     and source.get("experiment") == session_id):
                 raise ContractError("Newer current-session forecast supersedes this intention")
+
+
+def _record_read_retry_failure(error, *, attempt_count, elapsed_seconds,
+                               sleep_count, sleep_requested_seconds, stop_code):
+    """Attach numeric observations only; callers protect the original failure.
+
+    Stop codes: 1 is the deadline before retry, 2 is the attempt limit, and
+    3 is the deadline after sleep. This is diagnostic evidence, not authority.
+    """
+    error.scout_saved_forecast_retry = dict(
+        version="saved-forecast-read-retry-v1", attempt_count=attempt_count,
+        maximum_attempts=_READ_MAX_ATTEMPTS, retry_budget_seconds=_READ_RETRY_SECONDS,
+        retry_pause_seconds=_READ_RETRY_PAUSE_SECONDS, elapsed_seconds=elapsed_seconds,
+        sleep_count=sleep_count, sleep_requested_seconds=sleep_requested_seconds,
+        stop_code=stop_code)
+
+
+def _saved_forecast(path, forecast, *, session_id, session_started):
+    # A new WAL reader can encounter SQLITE_BUSY_RECOVERY even without a stale
+    # or conflicting forecast. Retry only native contention, never failed
+    # evidence validation or I/O. Callers must recheck time/manual authority
+    # after this read, as they must after any potentially slow integrity check.
+    deadline = time.monotonic() + _READ_RETRY_SECONDS
+    sleep_count, sleep_requested_seconds = 0, 0.0
+    for attempt in range(_READ_MAX_ATTEMPTS):
+        try:
+            return _saved_forecast_once(path, forecast, session_id=session_id,
+                                        session_started=session_started)
+        except sqlite3.OperationalError as exc:
+            code = getattr(exc, "sqlite_errorcode", None)
+            remaining = deadline - time.monotonic()
+            if (type(code) is not int or code < 0 or code & 255 not in {sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED}
+                    or attempt + 1 == _READ_MAX_ATTEMPTS or remaining <= 0):
+                if type(code) is int and code >= 0 and code & 255 in {sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED}:
+                    try:
+                        _record_read_retry_failure(exc, attempt_count=attempt + 1,
+                            elapsed_seconds=_READ_RETRY_SECONDS - remaining,
+                            sleep_count=sleep_count, sleep_requested_seconds=sleep_requested_seconds,
+                            stop_code=2 if attempt + 1 == _READ_MAX_ATTEMPTS else 1)
+                    except BaseException:
+                        pass
+                raise
+            delay = min(_READ_RETRY_PAUSE_SECONDS, remaining)
+            time.sleep(delay)
+            sleep_count += 1
+            sleep_requested_seconds += delay
+            after_pause = time.monotonic()
+            if after_pause >= deadline:
+                try:
+                    _record_read_retry_failure(exc, attempt_count=attempt + 1,
+                        elapsed_seconds=after_pause - deadline + _READ_RETRY_SECONDS,
+                        sleep_count=sleep_count, sleep_requested_seconds=sleep_requested_seconds,
+                        stop_code=3)
+                except BaseException:
+                    pass
+                raise
 
 
 def saved_forecast(path, forecast, *, session_id, session_started):

@@ -30,6 +30,7 @@ import stat
 import uuid
 
 from .scout_protocol import Grant, Request, PARTICIPANT_ID, STREAM, canonical_sha256
+from .dataset_diagnostics import recovery_phase
 
 
 LEGACY_VERSION = "scout-intraday-local-journal-v1"
@@ -96,32 +97,33 @@ def _hash(value):
 
 def _safe_path(path):
     """Reject network and redirected paths before SQLite can create any files."""
-    raw = os.fspath(path)
-    if not isinstance(raw, str) or raw.startswith(("\\\\", "//")):
-        raise JournalError("Journal must use an absolute host-local path")
-    result = Path(raw)
-    if not result.is_absolute() or ".." in result.parts or result.name in {"", ".", ".."}:
-        raise JournalError("Journal must use an absolute host-local file path")
-    if os.name == "nt":
-        import ctypes
-        if ctypes.windll.kernel32.GetDriveTypeW(str(result.anchor)) != 3:
-            raise JournalError("Journal requires a fixed host-local drive")
-        # Alternate streams are not standalone files and bypass normal sidecars.
-        if any(":" in part for part in result.parts[1:]):
-            raise JournalError("Journal cannot use an alternate data stream")
-    candidates = [result, *result.parents]
-    candidates.extend(Path(str(result) + suffix) for suffix in ("-journal", "-wal", "-shm"))
-    for candidate in candidates:
-        try:
-            info = candidate.lstat()
-        except FileNotFoundError:
-            continue
-        if (stat.S_ISLNK(info.st_mode)
-                or getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)):
-            raise JournalError("Journal and its ancestors/sidecars cannot be symlinks or reparse points")
-        if candidate == result and (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1):
-            raise JournalError("Journal must be a standalone regular file")
-    return result
+    with recovery_phase('journal_safe_path'):
+        raw = os.fspath(path)
+        if not isinstance(raw, str) or raw.startswith(("\\\\", "//")):
+            raise JournalError("Journal must use an absolute host-local path")
+        result = Path(raw)
+        if not result.is_absolute() or ".." in result.parts or result.name in {"", ".", ".."}:
+            raise JournalError("Journal must use an absolute host-local file path")
+        if os.name == "nt":
+            import ctypes
+            if ctypes.windll.kernel32.GetDriveTypeW(str(result.anchor)) != 3:
+                raise JournalError("Journal requires a fixed host-local drive")
+            # Alternate streams are not standalone files and bypass normal sidecars.
+            if any(":" in part for part in result.parts[1:]):
+                raise JournalError("Journal cannot use an alternate data stream")
+        candidates = [result, *result.parents]
+        candidates.extend(Path(str(result) + suffix) for suffix in ("-journal", "-wal", "-shm"))
+        for candidate in candidates:
+            try:
+                info = candidate.lstat()
+            except FileNotFoundError:
+                continue
+            if (stat.S_ISLNK(info.st_mode)
+                    or getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)):
+                raise JournalError("Journal and its ancestors/sidecars cannot be symlinks or reparse points")
+            if candidate == result and (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1):
+                raise JournalError("Journal must be a standalone regular file")
+        return result
 
 
 def _event_record(record):
@@ -191,40 +193,45 @@ class ScoutJournal:
         db = None
         try:
             # mode=rw cannot silently recreate a file lost after construction.
-            db = sqlite3.connect(self.path.as_uri() + "?mode=rw", uri=True,
-                                 timeout=30, isolation_level=None)
-            db.execute("PRAGMA foreign_keys = ON")
-            db.execute("PRAGMA trusted_schema = OFF")
-            db.execute("PRAGMA synchronous = EXTRA")
-            if db.execute("PRAGMA synchronous").fetchone()[0] != 3:
-                raise JournalError("SQLite EXTRA durability is required")
-            if db.execute("PRAGMA journal_mode").fetchone()[0] != "delete":
-                raise JournalCorruptionError("Unexpected journal mode")
-            db.execute("BEGIN IMMEDIATE")
-            schema = list(db.execute("SELECT type, name, sql FROM sqlite_master WHERE sql IS NOT NULL"))
-            if not schema and initialize:
-                for statement in _SCHEMA.values():
-                    db.execute(statement)
-                control = {"schema_version": VERSION, "binding": self.binding,
-                           "journal_id": uuid.uuid4().hex, "last_sequence": 0, "last_sha256": None}
-                db.execute("INSERT INTO control VALUES (1, ?, ?)",
-                           (_encoded(control), canonical_sha256(control)))
-                self._initialize_lifecycle(db, control["journal_id"])
-            elif (migrate_legacy and {name: sql for kind, name, sql in schema if kind == "table"} == _SUBMISSION_SCHEMA
-                  and all(kind == "table" for kind, _, _ in schema)):
-                # Audit the complete old journal before adding anything. Its
-                # event/outbox bytes and one-shot claims remain unchanged.
-                control, _, _, _ = self._audit(db, legacy=True)
-                for statement in _LIFECYCLE_SCHEMA.values():
-                    db.execute(statement)
-                self._initialize_lifecycle(db, control["journal_id"])
-                control["schema_version"] = VERSION
-                db.execute("UPDATE control SET payload=?, sha256=? WHERE id=1",
-                           (_encoded(control), canonical_sha256(control)))
-            elif {name: sql for kind, name, sql in schema if kind == "table"} != _SCHEMA or any(kind != "table" for kind, _, _ in schema):
-                raise JournalCorruptionError("Unrecognized journal schema; refusing to modify it")
+            with recovery_phase('journal_connect', journal=self):
+                db = sqlite3.connect(self.path.as_uri() + "?mode=rw", uri=True,
+                                     timeout=30, isolation_level=None)
+            with recovery_phase('journal_connection_setup', journal=self):
+                db.execute("PRAGMA foreign_keys = ON")
+                db.execute("PRAGMA trusted_schema = OFF")
+                db.execute("PRAGMA synchronous = EXTRA")
+                if db.execute("PRAGMA synchronous").fetchone()[0] != 3:
+                    raise JournalError("SQLite EXTRA durability is required")
+                if db.execute("PRAGMA journal_mode").fetchone()[0] != "delete":
+                    raise JournalCorruptionError("Unexpected journal mode")
+            with recovery_phase('journal_begin_immediate', journal=self):
+                db.execute("BEGIN IMMEDIATE")
+            with recovery_phase('journal_schema_validation', journal=self):
+                schema = list(db.execute("SELECT type, name, sql FROM sqlite_master WHERE sql IS NOT NULL"))
+                if not schema and initialize:
+                    for statement in _SCHEMA.values():
+                        db.execute(statement)
+                    control = {"schema_version": VERSION, "binding": self.binding,
+                               "journal_id": uuid.uuid4().hex, "last_sequence": 0, "last_sha256": None}
+                    db.execute("INSERT INTO control VALUES (1, ?, ?)",
+                               (_encoded(control), canonical_sha256(control)))
+                    self._initialize_lifecycle(db, control["journal_id"])
+                elif (migrate_legacy and {name: sql for kind, name, sql in schema if kind == "table"} == _SUBMISSION_SCHEMA
+                      and all(kind == "table" for kind, _, _ in schema)):
+                    # Audit the complete old journal before adding anything. Its
+                    # event/outbox bytes and one-shot claims remain unchanged.
+                    control, _, _, _ = self._audit(db, legacy=True)
+                    for statement in _LIFECYCLE_SCHEMA.values():
+                        db.execute(statement)
+                    self._initialize_lifecycle(db, control["journal_id"])
+                    control["schema_version"] = VERSION
+                    db.execute("UPDATE control SET payload=?, sha256=? WHERE id=1",
+                               (_encoded(control), canonical_sha256(control)))
+                elif {name: sql for kind, name, sql in schema if kind == "table"} != _SCHEMA or any(kind != "table" for kind, _, _ in schema):
+                    raise JournalCorruptionError("Unrecognized journal schema; refusing to modify it")
             yield db
-            db.commit()
+            with recovery_phase('journal_commit', journal=self):
+                db.commit()
         except sqlite3.Error as exc:
             if db is not None and db.in_transaction:
                 db.rollback()
@@ -235,7 +242,8 @@ class ScoutJournal:
             raise
         finally:
             if db is not None:
-                db.close()
+                with recovery_phase('journal_close', journal=self):
+                    db.close()
 
     def _validate_record(self, record, *, event=False):
         keys = _RECORD_KEYS - {"send_token"} | {"send_token_sha256"} if event else _RECORD_KEYS
@@ -296,76 +304,77 @@ class ScoutJournal:
             raise JournalCorruptionError("Transition changed immutable record fields")
 
     def _audit(self, db, *, legacy=False, include_lifecycle=False):
-        try:
-            rows = list(db.execute("SELECT id, payload, sha256 FROM control"))
-            if len(rows) != 1 or rows[0][0] != 1:
-                raise JournalCorruptionError("Missing journal identity")
-            control = _checked_json(rows[0][1], rows[0][2])
-            if (set(control) != {"schema_version", "binding", "journal_id", "last_sequence", "last_sha256"}
-                    or control["schema_version"] != (LEGACY_VERSION if legacy else VERSION) or control["binding"] != self.binding
-                    or type(control["journal_id"]) is not str or not re.fullmatch(r"[a-f0-9]{32}", control["journal_id"])
-                    or self._journal_id is not None and control["journal_id"] != self._journal_id
-                    or type(control["last_sequence"]) is not int or control["last_sequence"] < 0):
-                raise JournalCorruptionError("Journal version, identity or binding differs")
-            replayed, events, prior, grants, reservations, tokens, receipts = {}, {}, None, {}, {}, set(), set()
-            for expected_sequence, (sequence, event_id, raw, digest) in enumerate(db.execute(
-                    "SELECT sequence, event_id, payload, sha256 FROM events ORDER BY sequence"), 1):
-                event = _checked_json(raw, digest)
-                if (set(event) != {"schema_version", "journal_id", "sequence", "event_id", "prior_sha256", "recorded_at", "kind", "request_id", "request_sha256", "record"}
-                        or sequence != expected_sequence or type(event["sequence"]) is not int
-                        or event["sequence"] != sequence
-                        or event["schema_version"] != OUTBOX_VERSION or event["journal_id"] != control["journal_id"]
-                        or event["event_id"] != event_id or event["prior_sha256"] != prior
-                        or type(event_id) is not str or not re.fullmatch(r"[a-f0-9]{32}", event_id)):
-                    raise JournalCorruptionError("Outbox chain differs")
-                recorded_at = datetime.fromisoformat(event["recorded_at"])
-                if recorded_at.tzinfo is None or recorded_at.utcoffset() is None:
-                    raise JournalCorruptionError("Outbox timestamp lacks a timezone")
-                record, rid = event["record"], event["request_id"]
-                self._validate_record(record, event=True)
-                if rid != record["request"]["request_id"] or event["request_sha256"] != record["request_sha256"]:
-                    raise JournalCorruptionError("Outbox request differs")
-                self._replay(replayed.get(rid), record, event["kind"])
-                if event["kind"] == "GRANTED":
-                    for identities, key in ((grants, "grant_id"), (reservations, "reservation_id")):
-                        identity = record["grant"][key]
-                        if identity in identities:
-                            raise JournalCorruptionError("Authority grant or reservation identity reused")
-                        identities[identity] = rid
-                if event["kind"] == "SENDING":
-                    if record["send_token_sha256"] in tokens:
-                        raise JournalCorruptionError("Send token reused")
-                    tokens.add(record["send_token_sha256"])
-                if event["kind"] == "ACCEPTED":
-                    if record["broker_order_id"] in receipts:
-                        raise JournalCorruptionError("Broker receipt identity reused")
-                    receipts.add(record["broker_order_id"])
-                replayed[rid], prior = record, digest
-                events[event_id] = {"event_id": event_id, "event_sha256": digest, "event": event}
-            if control["last_sequence"] != len(events) or control["last_sha256"] != prior:
-                raise JournalCorruptionError("Outbox history was lost or changed")
-            records = {}
-            for rid, raw, digest in db.execute("SELECT request_id, payload, sha256 FROM records"):
-                record = _checked_json(raw, digest)
-                self._validate_record(record)
-                if rid != record["request"]["request_id"] or _event_record(record) != replayed.get(rid):
-                    raise JournalCorruptionError("Current record differs from durable history")
-                records[rid] = record
-            if set(records) != set(replayed):
-                raise JournalCorruptionError("Current records are missing")
-            acked = set()
-            for event_id, digest in db.execute("SELECT event_id, event_sha256 FROM acknowledgements"):
-                if event_id not in events or events[event_id]["event_sha256"] != digest:
-                    raise JournalCorruptionError("Acknowledgement differs from immutable event")
-                acked.add(event_id)
-            lifecycle = self._audit_lifecycle(db, records) if not legacy else None
-            if include_lifecycle:
-                return control, records, events, acked, lifecycle
-            return control, records, events, acked
-        except JournalCorruptionError:
-            raise
-        except (ValueError, TypeError, KeyError, OverflowError, UnicodeError) as exc:
-            raise JournalCorruptionError("Journal audit failed") from exc
+        with recovery_phase('journal_full_audit', journal=self):
+            try:
+                rows = list(db.execute("SELECT id, payload, sha256 FROM control"))
+                if len(rows) != 1 or rows[0][0] != 1:
+                    raise JournalCorruptionError("Missing journal identity")
+                control = _checked_json(rows[0][1], rows[0][2])
+                if (set(control) != {"schema_version", "binding", "journal_id", "last_sequence", "last_sha256"}
+                        or control["schema_version"] != (LEGACY_VERSION if legacy else VERSION) or control["binding"] != self.binding
+                        or type(control["journal_id"]) is not str or not re.fullmatch(r"[a-f0-9]{32}", control["journal_id"])
+                        or self._journal_id is not None and control["journal_id"] != self._journal_id
+                        or type(control["last_sequence"]) is not int or control["last_sequence"] < 0):
+                    raise JournalCorruptionError("Journal version, identity or binding differs")
+                replayed, events, prior, grants, reservations, tokens, receipts = {}, {}, None, {}, {}, set(), set()
+                for expected_sequence, (sequence, event_id, raw, digest) in enumerate(db.execute(
+                        "SELECT sequence, event_id, payload, sha256 FROM events ORDER BY sequence"), 1):
+                    event = _checked_json(raw, digest)
+                    if (set(event) != {"schema_version", "journal_id", "sequence", "event_id", "prior_sha256", "recorded_at", "kind", "request_id", "request_sha256", "record"}
+                            or sequence != expected_sequence or type(event["sequence"]) is not int
+                            or event["sequence"] != sequence
+                            or event["schema_version"] != OUTBOX_VERSION or event["journal_id"] != control["journal_id"]
+                            or event["event_id"] != event_id or event["prior_sha256"] != prior
+                            or type(event_id) is not str or not re.fullmatch(r"[a-f0-9]{32}", event_id)):
+                        raise JournalCorruptionError("Outbox chain differs")
+                    recorded_at = datetime.fromisoformat(event["recorded_at"])
+                    if recorded_at.tzinfo is None or recorded_at.utcoffset() is None:
+                        raise JournalCorruptionError("Outbox timestamp lacks a timezone")
+                    record, rid = event["record"], event["request_id"]
+                    self._validate_record(record, event=True)
+                    if rid != record["request"]["request_id"] or event["request_sha256"] != record["request_sha256"]:
+                        raise JournalCorruptionError("Outbox request differs")
+                    self._replay(replayed.get(rid), record, event["kind"])
+                    if event["kind"] == "GRANTED":
+                        for identities, key in ((grants, "grant_id"), (reservations, "reservation_id")):
+                            identity = record["grant"][key]
+                            if identity in identities:
+                                raise JournalCorruptionError("Authority grant or reservation identity reused")
+                            identities[identity] = rid
+                    if event["kind"] == "SENDING":
+                        if record["send_token_sha256"] in tokens:
+                            raise JournalCorruptionError("Send token reused")
+                        tokens.add(record["send_token_sha256"])
+                    if event["kind"] == "ACCEPTED":
+                        if record["broker_order_id"] in receipts:
+                            raise JournalCorruptionError("Broker receipt identity reused")
+                        receipts.add(record["broker_order_id"])
+                    replayed[rid], prior = record, digest
+                    events[event_id] = {"event_id": event_id, "event_sha256": digest, "event": event}
+                if control["last_sequence"] != len(events) or control["last_sha256"] != prior:
+                    raise JournalCorruptionError("Outbox history was lost or changed")
+                records = {}
+                for rid, raw, digest in db.execute("SELECT request_id, payload, sha256 FROM records"):
+                    record = _checked_json(raw, digest)
+                    self._validate_record(record)
+                    if rid != record["request"]["request_id"] or _event_record(record) != replayed.get(rid):
+                        raise JournalCorruptionError("Current record differs from durable history")
+                    records[rid] = record
+                if set(records) != set(replayed):
+                    raise JournalCorruptionError("Current records are missing")
+                acked = set()
+                for event_id, digest in db.execute("SELECT event_id, event_sha256 FROM acknowledgements"):
+                    if event_id not in events or events[event_id]["event_sha256"] != digest:
+                        raise JournalCorruptionError("Acknowledgement differs from immutable event")
+                    acked.add(event_id)
+                lifecycle = self._audit_lifecycle(db, records) if not legacy else None
+                if include_lifecycle:
+                    return control, records, events, acked, lifecycle
+                return control, records, events, acked
+            except JournalCorruptionError:
+                raise
+            except (ValueError, TypeError, KeyError, OverflowError, UnicodeError) as exc:
+                raise JournalCorruptionError("Journal audit failed") from exc
 
     def _append(self, db, control, record, kind):
         self._validate_record(record)
@@ -705,9 +714,10 @@ class ScoutJournal:
 
     def records(self):
         """Exact private submissions, including unresolved unaccepted send claims."""
-        with self._transaction() as db:
-            _, records, _, _ = self._audit(db)
-            return tuple(deepcopy(record) for record in records.values())
+        with recovery_phase('journal_records', journal=self):
+            with self._transaction() as db:
+                _, records, _, _ = self._audit(db)
+                return tuple(deepcopy(record) for record in records.values())
 
     def order_state(self, request_id):
         with self._transaction() as db:

@@ -231,6 +231,121 @@ def test_calibration_requires_real_purged_partition_support(tmp_path):
         support(dataset, avail=[pd.Timestamp(dataset.manifest["training_cutoff"]) + STEP] * len(dataset.y))
 
 
+def support_inputs(rows=200):
+    references = pd.date_range("2026-05-01T13:30:00Z", periods=rows, freq="2h")
+    return dict(y=np.arange(rows) % 2, reference_at=references,
+        target_close_at=references + 3 * STEP, label_available_at=references + 3 * STEP,
+        cutoff=references[-1] + 4 * STEP)
+
+
+@pytest.mark.parametrize("rows,zeros,ones", [(114, 56, 58), (70, 29, 41)])
+def test_sparse_real_count_analogue_preserves_exact_support_rejection(rows, zeros, ones):
+    inputs = support_inputs(rows)
+    inputs["y"] = np.array([0] * zeros + [1] * ones)
+    with pytest.raises(recipes.ManualRecipeSupportError) as caught:
+        recipes._training_support(**inputs)
+    evidence = caught.value.diagnostics
+    assert evidence["reasons"] == ["training_rows_below_minimum"]
+    assert evidence["label_shape"] == [rows] and evidence["training_rows"] == rows
+    assert evidence["class_counts"] == {"0": zeros, "1": ones}
+    assert evidence["training_dates"] >= 5
+    assert evidence["partitions"]["calibration"]["rows"] < 32
+    assert evidence["requirements"]["minimum_rows"] == 160
+    assert evidence["requirements"]["minimum_calibration_rows"] == 32
+    assert evidence["reference_at_length"] == evidence["target_close_at_length"] == rows
+    assert evidence["label_available_at_length"] == rows
+    assert json.loads(str(caught.value).split("; support_diagnostics=", 1)[1]) == evidence
+    assert len(str(caught.value)) < 3000
+
+
+@pytest.mark.parametrize("changed,reason", [
+    ({"y": np.zeros((200, 1))}, "label_dimension_mismatch"),
+    ({"y": np.array(1)}, "label_dimension_mismatch"),
+    ({"y": [[0], [0, 1]]}, "invalid_label_array"),
+    ({"y": np.array([0, 1, 2, float("nan")] * 50)}, "nonbinary_labels"),
+    ({"reference_at": []}, "reference_at_length_mismatch"),
+    ({"target_close_at": []}, "target_close_at_length_mismatch"),
+    ({"label_available_at": []}, "label_available_at_length_mismatch"),
+    ({"reference_at": None}, "reference_at_not_array"),
+    ({"label_available_at": ["invalid"] * 200}, "label_available_at_invalid_timestamp"),
+    ({"cutoff": "invalid"}, "invalid_cutoff"),
+])
+def test_malformed_support_retains_specific_reason_without_secondary_error(changed, reason):
+    inputs = {**support_inputs(), **changed}
+    with pytest.raises(recipes.ManualRecipeSupportError) as caught:
+        recipes._training_support(**inputs)
+    evidence = caught.value.diagnostics
+    assert reason in evidence["reasons"]
+    assert json.loads(str(caught.value).split("; support_diagnostics=", 1)[1]) == evidence
+
+
+def test_support_reports_multiple_structural_failures_and_unchanged_success():
+    inputs = support_inputs()
+    expected = {"training_rows": 200, "training_dates": 17, "class_counts": {"0": 100, "1": 100},
+        "purged_rows": 0, "base": {"rows": 150, "class_counts": {"0": 75, "1": 75}},
+        "calibration": {"rows": 50, "class_counts": {"0": 25, "1": 25}}}
+    assert recipes._training_support(**inputs) == expected
+    inputs.update(y=np.full((70, 1), 2), reference_at=[], label_available_at=[])
+    with pytest.raises(recipes.ManualRecipeSupportError) as caught:
+        recipes._training_support(**inputs)
+    assert set(caught.value.diagnostics["reasons"]) == {
+        "label_dimension_mismatch", "training_rows_below_minimum", "nonbinary_labels",
+        "reference_at_length_mismatch", "target_close_at_length_mismatch", "label_available_at_length_mismatch"}
+    assert caught.value.diagnostics["partitions"] == {}
+
+
+def test_purged_partition_failure_records_both_partitions_and_never_weakens_gate(tmp_path):
+    *_, runtime = selected(tmp_path)
+    dataset = dataset_for(runtime)
+    labels = dataset.y.copy()
+    labels[int(len(labels) * .75):] = 1
+    with pytest.raises(recipes.ManualRecipeSupportError) as caught:
+        support(dataset, y=labels)
+    evidence = caught.value.diagnostics
+    assert evidence["reasons"] == ["calibration_class_count_below_minimum"]
+    assert evidence["partitions"]["calibration"]["class_counts"]["0"] == 0
+    assert evidence["partitions"]["base"]["class_counts"]["0"] >= 5
+    assert evidence["purged_rows"] > 0
+    assert evidence["requirements"]["minimum_each_class"] == 5
+    inputs = support_inputs()
+    inputs["label_available_at"] = [inputs["cutoff"]] * 200
+    with pytest.raises(recipes.ManualRecipeSupportError) as caught:
+        recipes._training_support(**inputs)
+    assert caught.value.diagnostics["reasons"] == ["invalid_chronological_split"]
+    assert caught.value.diagnostics["split_error"] == "No label windows remain after chronological overlap purge"
+
+
+def test_rejected_dataset_diagnostics_survive_runtime_before_input_freeze(tmp_path, monkeypatch):
+    value, _, _, config, runtime = selected(tmp_path)
+    frame = candles()
+    source = dataset_for(runtime, frame)
+    truncated = replace(source, X=source.X[:114], y=source.y[:114],
+        training_reference_at=source.reference_at[:114], target_close_at=source.target_close_at[:114],
+        label_available_at=source.label_available_at[:114])
+    monkeypatch.setattr(recipes, "build_observed_dataset", lambda *a, **kw: truncated)
+    monkeypatch.setattr(recipes, "fit_ensemble", lambda *a, **kw: pytest.fail("support rejection must precede fitting"))
+    reference = frame.opened_at.iloc[-1]
+    cutoff = reference + STEP + pd.Timedelta(seconds=3)
+    store = ShadowStore(tmp_path / "rejected.sqlite3")
+    runner = ShadowRunner(store=store, pc="Scout", symbols=("ABCL",), config=config,
+        clock=lambda: cutoff.to_pydatetime(), artifact_root=tmp_path / "models", **runtime)
+    result = runner.run_cycle({"ABCL": frame}, reference_at=reference, cutoff=cutoff)
+    error = result["failures"]["ABCL"]
+    assert error["type"] == "ManualRecipeSupportError"
+    evidence = json.loads(error["message"].split("; support_diagnostics=", 1)[1])
+    assert evidence["context"]["feature_shape"] == [114, len(FEATURE_NAMES)]
+    assert evidence["context"]["inference_shape"] == [1, len(FEATURE_NAMES)]
+    assert evidence["context"]["recipe_sha256"] == value["sha256"]
+    assert evidence["context"]["source_dataset"] == "EQUS.MINI"
+    assert evidence["context"]["source_history_sha256"] == recipes._sha(source.manifest.get("source_history", {}))
+    assert evidence["context"]["symbol"] == "ABCL"
+    assert evidence["context"]["lookback_days"] is None
+    assert evidence["context"]["synthetic_policy"] == "exclude"
+    assert store.inputs(result["cycle_id"], "ABCL") is None
+    from ml.intraday.runtime import recorded_symbol_failures
+    assert recorded_symbol_failures(store, result["cycle_id"])["ABCL"] == error
+
+
 def test_too_few_training_dates_has_no_default_model_fallback(tmp_path):
     *_, runtime = selected(tmp_path)
     with pytest.raises(ContractError, match="actual training dates"):
