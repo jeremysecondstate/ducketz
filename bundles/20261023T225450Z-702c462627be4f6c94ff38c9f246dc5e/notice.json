@@ -1,0 +1,71 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261023T224127Z-3c6d26e3455f4739900daadd70d67498",
+  "change_id": "20261023T224127Z-3c6d26e3455f4739900daadd70d67498",
+  "commit_sha": "1c17172999474d3bd881b3f075659d836ca5e695",
+  "details": [
+    "Actor Atlas; task Atlas 15-minute Trader Representative; shared intraday history read improvement applies independently to Atlas and Scout.",
+    "Transfer same-symbol historical attempt rows in one SQLite scalar result, preserving insertion order, exact request types, malformed-evidence failures, account scope and matched reservation validation.",
+    "Preserve probabilities, direction thresholds, target validity, order identities, manual controls and all private local bindings."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/horizon_ledger.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_native_snapshot_performance.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_attempt_history.py"
+    }
+  ],
+  "installation": "Atlas installed only the reviewed intraday-attempt method and two test/checker files; unrelated local source and concurrent dependency bytes preserved.",
+  "limitations": [
+    "Offline fixtures and controlled CPU experiment support a read-handoff candidate; original GOOG preparation delay cause and affected runtime recovery remain unproved.",
+    "Publication source excludes an unrelated existing local Gameplan-direction method; local installation preserves it by exact method replacement.",
+    "Runtime loading requires a future human-chosen manual session if the running process already imported the old implementation."
+  ],
+  "main_integration": "Separate; draft PR stacked on reviewed predecessor source baseline.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/376",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Prospective native intraday attempt-history read optimization. No trader start, restart, replay, order, provider call or automatic deployment.",
+  "runtime_loading": "Unproved; no trader start, restart, provider action, replay or order. Original latency recovery unproved.",
+  "scope": "shared",
+  "summary": "Batch intraday attempt history reads without changing durable order evidence",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T22:42:18.720685Z",
+      "output_sha256": "a6145aa498a45b582e574b93c7d7736cbee2e0f414b0cf35dfabbe32ecb26ae2",
+      "stage": "sealed_source",
+      "started_at_utc": "2026-10-23T22:41:27.275683Z",
+      "summary": [
+        "121 passed in 45.64s"
+      ]
+    },
+    {
+      "completed_at_utc": "2026-10-23T22:46:52.103828Z",
+      "output_sha256": "8193d5ae567d58298945490d7851fae236fa5efe17f3794b7a7b0f8923d0c824",
+      "stage": "isolated_candidate",
+      "started_at_utc": "2026-10-23T22:46:04.618039Z",
+      "summary": [
+        "121 passed in 42.47s"
+      ]
+    },
+    {
+      "completed_at_utc": "2026-10-23T22:52:55.651847Z",
+      "output_sha256": "ebb2588d249ae1012ccd7513e12e9b711948696e9e347577f45a8739c14a4492",
+      "stage": "installed_composition",
+      "started_at_utc": "2026-10-23T22:52:25.650976Z",
+      "summary": [
+        "121 passed in 25.09s"
+      ]
+    }
+  ],
+  "verified_remote_sha": "1c17172999474d3bd881b3f075659d836ca5e695"
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T22:54:50.143680Z",
+  "id": "20261023T225450Z-702c462627be4f6c94ff38c9f246dc5e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Batch intraday attempt history reads without changing durable order evidence"
+}
