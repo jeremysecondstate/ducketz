@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T15:09:58.882438Z",
+  "id": "20261023T150958Z-a24d436ea3f448e3a5fd984d9c8ee072",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Retain bounded final local-evidence freshness cause observations"
+}
