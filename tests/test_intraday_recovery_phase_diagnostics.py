@@ -16,7 +16,7 @@ from tests.test_intraday_store import forecast
 
 
 PHASES = {"group_total", "writer_lock", "forecast_read", "forecast_validate",
-          "sizing_read", "sizing_validate", "projection_append"}
+          "sizing_read", "sizing_validate", "writer_recheck", "projection_append"}
 
 
 def delayed_stages(store, intents, monkeypatch):
@@ -109,19 +109,20 @@ def test_phase_clocks_separate_writer_reads_validation_append_and_commit(tmp_pat
     assert len({row["event_identity"] for row in actual}) == 3
     assert timings.snapshot() == {
         "schema_version": "intraday-recovery-phase-timings-v1",
-        "phases": {"group_total": sample(1, 115.), "writer_lock": sample(1, 3.),
-                   # Protected header lookup includes cold semantic validation;
+        "phases": {"group_total": sample(1, 128.), "writer_lock": sample(1, 3.),
+                   # Protected read-snapshot lookup includes cold validation;
                    # forecast_validate is the subsequent local actor check.
                    "forecast_read": sample(1, 18.), "forecast_validate": sample(1, 0.),
                    "sizing_read": sample(1, 7.), "sizing_validate": sample(1, 17.),
-                   "projection_append": sample(1, 57.)},
+                   "writer_recheck": sample(1, 0.), "projection_append": sample(1, 57.)},
         "diagnostics_unavailable": False,
     }
     warm = module._RecoveryTimings()
     assert intents.record_recovery_group(original["forecast_id"], actor="Atlas",
         observations=items, timings=warm) == expected
     phases = warm.snapshot()["phases"]
-    assert phases["group_total"] == sample(1, 73.)
+    # The extra read connection costs 2 entry + 11 exit fixture-clock seconds.
+    assert phases["group_total"] == sample(1, 86.)
     assert all(phases[name] == sample(1, 0.) for name in
                ("forecast_read", "forecast_validate", "sizing_read", "sizing_validate"))
 
@@ -142,7 +143,7 @@ def test_many_groups_aggregate_fixed_phase_keys_and_return_detached_snapshots(tm
 
     saved = timings.snapshot()
     assert set(saved["phases"]) == PHASES
-    assert saved["phases"]["group_total"] == sample(32, 77. + 31 * 35., 77.)
+    assert saved["phases"]["group_total"] == sample(32, 90. + 31 * 48., 90.)
     assert saved["phases"]["projection_append"] == sample(32, 32 * 19., 19.)
     assert all(value["count"] == 32 for value in saved["phases"].values())
     assert not saved["diagnostics_unavailable"]
@@ -297,6 +298,6 @@ def test_executor_shares_one_aggregate_across_groups_without_changing_attempt_or
     assert trace.recovery_timings is not None
     phases = trace.snapshot()["recovery_phase_timings"]["phases"]
     assert set(phases) == PHASES
-    assert phases["group_total"] == sample(2, 89., 54.)
+    assert phases["group_total"] == sample(2, 115., 67.)
     assert phases["projection_append"] == sample(2, 57., 38.)
     assert all(value["count"] == 2 for value in phases.values())

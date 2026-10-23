@@ -77,7 +77,7 @@ class _RecoveryTimings:
     """
     _STAGES = frozenset({"group_total", "writer_lock", "forecast_read",
                          "forecast_validate", "sizing_read", "sizing_validate",
-                         "projection_append"})
+                         "writer_recheck", "projection_append"})
 
     def __init__(self):
         self.phases = {}
@@ -396,25 +396,36 @@ class IntentionStore:
         if not observations:
             return []
         measure = timings.measure if isinstance(timings, _RecoveryTimings) else lambda stage: nullcontext()
-        # Match chronology's cache-lock -> connection ordering. The revision
-        # helper and sizing markers observe the same pinned write snapshot.
+        def originals(db, measured):
+            with measured("forecast_read"):
+                headers = self.store._revision_forecast_headers(db, ["f.id=?"], [forecast_id])
+            with measured("forecast_validate"):
+                if not headers:
+                    raise ContractError("Native 15m order lacks original persisted intention")
+                forecast = headers[0]
+                if forecast["pc"] != actor:
+                    raise ContractError("Recovery forecast belongs to another actor")
+            intention_row, intention, generation = self._revision_sizing(db, forecast_id, measured)
+            if intention is None:
+                raise ContractError("Native 15m order lacks original persisted intention")
+            return forecast, intention_row, intention, generation
+
+        # Cold semantic validation reads large scientific originals. Keep that
+        # work in a read snapshot so collectors/scorers can keep writing. The
+        # write transaction still rechecks every protected revision/identity;
+        # a concurrent change invalidates the caches and takes full validation.
+        # Match chronology's cache-lock -> connection ordering throughout.
         with measure("group_total"), self.store._execution_forecast_lock:
+            with self.store.connect() as db:
+                db.execute("PRAGMA query_only=ON")
+                db.execute("BEGIN")
+                originals(db, measure)
             with self.store.connect() as db:
                 with measure("writer_lock"):
                     db.execute("BEGIN IMMEDIATE")
-                # Includes protected marker/header lookup AND full semantic
-                # validation on cold/changed forecasts. It is not pure SQL I/O.
-                with measure("forecast_read"):
-                    headers = self.store._revision_forecast_headers(db, ["f.id=?"], [forecast_id])
-                with measure("forecast_validate"):
-                    if not headers:
-                        raise ContractError("Native 15m order lacks original persisted intention")
-                    forecast = headers[0]
-                    if forecast["pc"] != actor:
-                        raise ContractError("Recovery forecast belongs to another actor")
-                intention_row, intention, generation = self._revision_sizing(db, forecast_id, measure)
-                if intention is None:
-                    raise ContractError("Native 15m order lacks original persisted intention")
+                with measure("writer_recheck"):
+                    forecast, intention_row, intention, generation = originals(
+                        db, lambda stage: nullcontext())
                 results = []
                 with measure("projection_append"):
                     for item in observations:
