@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T04:32:32.874428Z",
+  "id": "20261023T043232Z-08f1107a83d349ca966754fc2cb7d2da",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas preserved current directions despite retired estimates; provenance regressions corrected and installed"
+}

@@ -1,0 +1,63 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261023T042923Z-761d3afd602f46369e18b54d4b994354",
+  "change_id": "20261023T042923Z-761d3afd602f46369e18b54d4b994354",
+  "commit_sha": "b222e3e11fbe3982021e9f90a6c55b240c2fbc14",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/gameplan_execution_policy.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_direction_only_joint_plan.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_late_forecast_validation.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/direction-only-provenance-tests.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/direction-only-provenance-tests.patch"
+    }
+  ],
+  "limitations": [
+    "Retains Scout PR177 source d938d647c026e812956abce1c590eda4bb836638 and Completion-Record 20261016T061608Z-b9c226dde4514f059e17f96eac1a07d5.",
+    "Supersedes PR348 and record20261023T042519Z-0cfa832e1fe1455a89f7bee608a27bf0 solely to remove line-ending churn; original source and evidence retained.",
+    "Installed composition175passed with40existing warnings; local application modules already have intended behavior and remain unchanged.",
+    "The optional handoff test and readiness component are absent from main; the reviewed portable test patch is for existing installations."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/349"
+  ],
+  "main_sha": "622c0bc2f2b8b2f89c0656aec109f9227f41cd1b",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No provider/broker request, production fitting, trader start/restart, manual-stop or scheduler change; nightly production remains independent.",
+  "scope": "shared",
+  "summary": "Atlas preserved current directions despite retired estimates; provenance regressions corrected and installed",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T04:29:43.754044Z",
+      "output_sha256": "ae132edf71f66222fd7cb9f23a8470645f21246c814e4e6682b0d590d7b8cde1",
+      "result": "121 passed; one Windows symlink-privilege skip;40 existing dependency warnings;zero import/network violations",
+      "stage": "sealed",
+      "started_at_utc": "2026-10-23T04:29:23.525186Z"
+    },
+    {
+      "completed_at_utc": "2026-10-23T04:30:29.394375Z",
+      "output_sha256": "a42007bd80237fa394af47ae5774819fb7e0dc6d68eec2f82d1bc051c161df5c",
+      "result": "121 passed; one Windows symlink-privilege skip;40 existing dependency warnings;zero import/network violations",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-23T04:30:09.235838Z"
+    }
+  ]
+}
