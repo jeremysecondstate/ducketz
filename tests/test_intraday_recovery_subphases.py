@@ -27,7 +27,7 @@ def test_many_original_journals_keep_all_subphases_and_existing_phase_slots(env,
     original_inventory = books.path.read_bytes()
     broker_reads = len(env.broker.reads)
     loader_calls = []
-    for name in ("load_initial_gate_clearance", "load_pretransport_clearance", "load_clearance"):
+    for name in ("load_initial_gate_clearance", "load_pretransport_clearance", "load_clearance", "load_client_gate_clearance"):
         def load(*args, _name=name, **kwargs):
             loader_calls.append(_name)
             return None
@@ -70,17 +70,17 @@ def test_many_original_journals_keep_all_subphases_and_existing_phase_slots(env,
     assert books.path.read_bytes() == original_inventory and books.sessions() == original_sessions
     assert len(env.broker.reads) == broker_reads + 1
     assert len(env.broker.posts) == 1 and env.broker.deletes == []
-    assert loader_calls == ["load_initial_gate_clearance", "load_pretransport_clearance", "load_clearance"]
+    assert loader_calls == ["load_initial_gate_clearance", "load_pretransport_clearance", "load_clearance", "load_client_gate_clearance"]
     serialized = json.dumps(profile)
     assert str(env.root) not in serialized and env.executor.account_fingerprint not in serialized
     assert all(key not in serialized for key in ("send_token", "broker_order_id", "request_id", "payload"))
 
 
-@pytest.mark.parametrize("winner", [0, 1, 2, None])
+@pytest.mark.parametrize("winner", [0, 1, 2, 3, None])
 def test_clearance_shortcircuit_retains_original_loader_and_clock_count(env, monkeypatch, winner):
     calls, clock_reads = [], []
     answer = {"original": "fixture-proof"}
-    names = ("load_initial_gate_clearance", "load_pretransport_clearance", "load_clearance")
+    names = ("load_initial_gate_clearance", "load_pretransport_clearance", "load_clearance", "load_client_gate_clearance")
     def clock():
         clock_reads.append(True)
         return env.state.now
@@ -94,11 +94,11 @@ def test_clearance_shortcircuit_retains_original_loader_and_clock_count(env, mon
         monkeypatch.setattr(execution, name, load)
     with diagnostics.capture_dataset_build() as profile:
         actual = env.executor._commitment_clearance(env.executor.journal, {"fixture": "original"})
-    expected_count = 3 if winner is None else winner + 1
+    expected_count = 4 if winner is None else winner + 1
     assert actual is (None if winner is None else answer)
     assert calls == list(range(expected_count)) and len(clock_reads) == expected_count
     assert list(groups(profile)) == [
-        "clearance_initial_gate", "clearance_pretransport", "clearance_commitment"][:expected_count]
+        "clearance_initial_gate", "clearance_pretransport", "clearance_commitment"][:min(expected_count, 3)]
     assert env.broker.posts == [] and env.broker.reads == [] and env.broker.deletes == []
 
 

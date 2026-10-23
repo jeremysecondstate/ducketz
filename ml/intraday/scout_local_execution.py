@@ -30,6 +30,8 @@ from .commitment_clearance import load_clearance
 from .pretransport_clearance import load_clearance as load_pretransport_clearance
 from .initial_gate_clearance import (load_clearance as load_initial_gate_clearance,
                                      create_clearance as create_initial_gate_clearance)
+from .client_gate_clearance import (load_clearance as load_client_gate_clearance,
+                                    create_clearance as create_client_gate_clearance)
 from .exact_status import TERMINAL, retry_delay
 from .intentions import IntentionStore
 from .prediction import ContractError, digest, encoded, instant
@@ -191,7 +193,10 @@ class ScoutLocalAccountExecutor:
         if clearance:
             return clearance
         with recovery_phase('clearance_commitment', journal=journal):
-            return load_clearance(self.books, journal, record, as_of=self.clock())
+            clearance = load_clearance(self.books, journal, record, as_of=self.clock())
+            if clearance:
+                return clearance
+            return load_client_gate_clearance(self.books, journal, record, as_of=self.clock())
 
     def _recover_record(self, journal, record):
         with recovery_phase('journal_record_recovery', journal=journal):
@@ -638,6 +643,18 @@ class ScoutLocalAccountExecutor:
                     # Preserve the actual submission failure if proof storage
                     # fails. An absent/invalid proof keeps the original block.
                     clearance_failure = exception_details(persistence_error)
+            if (adapter is None and record['state'] == 'UNKNOWN'
+                    and type(exc) is sqlite3.OperationalError
+                    and type(getattr(exc, 'sqlite_errorcode', None)) is int
+                    and exc.sqlite_errorcode >= 0
+                    and exc.sqlite_errorcode & 255 in {sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED}
+                    and client.final_gate_failure is not None):
+                try:
+                    clearance = create_client_gate_clearance(self.books, self.journal, record,
+                        executor=self, client=client, gate=local_authorization, send=send,
+                        error=exc, as_of=self.clock())
+                except Exception as persistence_error:
+                    clearance_failure = exception_details(persistence_error)
             return self._record(forecast, 'submission_recovery_required', capacity=capacity,
                 order=self._order(self.journal, record),
                 evidence={'request_id': request.request_id, 'local_state': record['state'],
@@ -646,3 +663,10 @@ class ScoutLocalAccountExecutor:
                           **({'clearance_persistence_failure': clearance_failure} if clearance_failure is not None else {}),
                           'submission_failure': getattr(exc, 'scout_submission_failure',
                               dict(stage='outside_claimed_submit', original=exception_details(exc)))})
+
+# Retain the installed local closure implementations. Arbitrary client callbacks
+# and wrappers cannot qualify for a no-transport receipt using exception text.
+_LOCAL_AUTHORIZATION_CODE = next(code for code in ScoutLocalAccountExecutor._step.__code__.co_consts
+                                 if getattr(code, 'co_name', None) == 'local_authorization')
+_LOCAL_SEND_CODE = next(code for code in ScoutLocalAccountExecutor._step.__code__.co_consts
+                        if getattr(code, 'co_name', None) == 'send')
