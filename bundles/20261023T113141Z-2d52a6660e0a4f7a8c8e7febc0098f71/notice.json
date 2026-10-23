@@ -1,0 +1,63 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261023T112448Z-e155742c82184eaebd88a0f67c2cf81d",
+  "change_id": "20261023T112448Z-e155742c82184eaebd88a0f67c2cf81d",
+  "commit_sha": "f23907d7817e5376c85b6ba3f96f21457022bca1",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/scoring_storage.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_scoring_storage.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_scoring_storage_main.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_scoring_storage_main.py"
+    }
+  ],
+  "limitations": [
+    "PR353 is open. Main integration, peer installation and loaded runtime versions remain separate facts.",
+    "Installed API source a0a5135079797e0d379988a717a458282d78a2b2 retains Completion-Record 20261023T112221Z-889b1c2819f54401ad5e6cd74d1f76ab and passed 109 offline tests.",
+    "The original error did not record its exact SQL statement or competing writer."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/353",
+    "https://github.com/jeremysecondstate/ducketz/commit/a0a5135079797e0d379988a717a458282d78a2b2"
+  ],
+  "main_sha": "e78286ef1948f87fbc59f35f4295074b152d4a9e",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Retry only exact scoring storage contention operations with original observation inputs. Model policy, independent state and manual controls remain unchanged. Atlas installed only reviewed scoring hunks. Preparation and manual start remain independent of source publication and peer acceptance.",
+  "scope": "shared",
+  "summary": "Atlas scoring contention repair published; main projection ready for review",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T11:25:06.002077Z",
+      "output_sha256": "c4f777c905426781c59cb4fb201cdbabf7c3ca13e2f46c7c3f7ddcffdfe8ba7b",
+      "result": "140 offline tests passed with network denied and exact candidate imports verified",
+      "stage": "sealed",
+      "started_at_utc": "2026-10-23T11:24:48.754784Z"
+    },
+    {
+      "completed_at_utc": "2026-10-23T11:27:08.999932Z",
+      "output_sha256": "5839b5563908dd4ed419a59a6013c0f0aee0520bf095d5b5c2386c63e9f9ab07",
+      "result": "140 offline tests passed with network denied and exact candidate imports verified",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-23T11:26:51.550973Z"
+    }
+  ]
+}

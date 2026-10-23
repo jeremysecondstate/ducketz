@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T11:31:41.070490Z",
+  "id": "20261023T113141Z-2d52a6660e0a4f7a8c8e7febc0098f71",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas scoring contention repair published; main projection ready for review"
+}
