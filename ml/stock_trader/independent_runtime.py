@@ -18,7 +18,7 @@ import pandas as pd
 from app.services.schwab import SchwabSession
 from app.services.schwab_stock_orders import build_schwab_stock_order_payload
 from datafetching.runtime_lock import exclusive_runtime_lock
-from ml.account_gameplan.authority import matches_current_lease_expiry, SubmissionNotStarted
+from ml.account_gameplan.authority import matches_current_lease_expiry, matches_current_snapshot_expiry, SubmissionNotStarted
 from ml.stock_trader.contracts import PredictionSignal, QuoteState, StockTraderPolicy, canonical_sha256, utc
 from ml.stock_trader.engine import _direct_no_trade
 from ml.stock_trader.gameplan import _entry_deadline, read_gameplan_stock_activation_intent
@@ -706,6 +706,17 @@ def run_independent_stock_trader_once(
                 execution_capacity = account_context.available_capacity()
                 metadata["account_execution_capacity"] = {"snapshot_id": snapshot_id, **execution_capacity}
             except (OSError, ValueError, RuntimeError) as exc:
+                if (sizing_policy == GAMEPLAN_SIZING_POLICY
+                        and matches_current_snapshot_expiry(exc, snapshot_id, portfolio.observed_at)):
+                    # Context construction/capacity reads may outlive an
+                    # initially fresh snapshot. No order intention exists here.
+                    # Re-enter the ordinary session capture with original
+                    # forecasts, controls, deadlines and reservations intact.
+                    metadata["pre_order_account_snapshot_refresh"] = {
+                        "schema_version": "gameplan-pre-order-account-snapshot-refresh-v1",
+                        "reason": "VALIDATED_ACCOUNT_SNAPSHOT_ELAPSED",
+                        "snapshot_id": snapshot_id, "observed_at": portfolio.observed_at}
+                    return finish("BROKER_STATE_REFRESH_REQUIRED")
                 return finish("ACCOUNT_RESERVATION_AUTHORITY_UNAVAILABLE", error=f"{type(exc).__name__}: {exc}")
         # Manual Gameplan holdings persist across forecast boundaries. Only a
         # new bearish instruction sells from that horizon's inventory.

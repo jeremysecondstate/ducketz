@@ -117,6 +117,34 @@ def matches_current_lease_expiry(exc, lease):
 
 
 @dataclass(frozen=True)
+class _CurrentSnapshotExpiry:
+    """Exact validated account observation rejected after its positive age bound."""
+
+    snapshot_id: str
+    observed_at: str
+
+
+def matches_current_snapshot_expiry(exc, snapshot_id, observed_at):
+    saved = getattr(exc, "current_snapshot_expiry", None)
+    if not (isinstance(exc, AuthorityError) and str(exc) == "ACCOUNT_SNAPSHOT_STALE_OR_FUTURE"
+            and isinstance(saved, _CurrentSnapshotExpiry) and saved.snapshot_id == snapshot_id):
+        return False
+    try:
+        return saved.observed_at == _time(observed_at).isoformat()
+    except (TypeError, ValueError):
+        return False
+
+
+def _require_current_account_snapshot(snapshot_id, observed, now):
+    age = (now-observed).total_seconds()
+    if not 0 <= age <= 60:
+        error = AuthorityError("ACCOUNT_SNAPSHOT_STALE_OR_FUTURE")
+        if age > 60:
+            error.current_snapshot_expiry = _CurrentSnapshotExpiry(snapshot_id, observed.isoformat())
+        raise error
+
+
+@dataclass(frozen=True)
 class BrokerReservation:
     broker_order_id: str
     symbol: str
@@ -490,10 +518,9 @@ class AccountAuthority:
         row = db.execute("SELECT * FROM snapshots ORDER BY observed DESC LIMIT 1").fetchone()
         if not row or (snapshot_id is not None and row["id"] != snapshot_id):
             raise AuthorityError("LATEST_ACCOUNT_SNAPSHOT_REQUIRED")
-        if not 0 <= (now-_time(row["observed"])).total_seconds() <= 60:
-            raise AuthorityError("ACCOUNT_SNAPSHOT_STALE_OR_FUTURE")
         payload = json.loads(row["payload"])
         self._plan(payload["generation"],payload["action_date"],payload["source_fingerprints"],now)
+        _require_current_account_snapshot(row["id"], _time(row["observed"]), now)
         return payload
 
     def publish_snapshot(self, token: str, snapshot: AccountSnapshot):
@@ -508,7 +535,7 @@ class AccountAuthority:
                 raise AuthorityError("COMPLETE_COHERENT_ACCOUNT_SNAPSHOT_REQUIRED")
             _hash(snapshot.evidence_fingerprint)
             observed = _time(snapshot.observed_at)
-            if not 0 <= (now-observed).total_seconds() <= 60:
+            if observed > now:
                 raise AuthorityError("ACCOUNT_SNAPSHOT_STALE_OR_FUTURE")
             payload.update(observed_at=observed.isoformat(),source_fingerprints=sources)
             for name in ("account_equity","cash_available","cash_budget","gross_exposure","gross_budget"):
@@ -561,6 +588,7 @@ class AccountAuthority:
             if previous:
                 if previous["payload"] != _json(payload):
                     raise AuthorityError("SNAPSHOT_ID_REUSED_WITH_DIFFERENT_EVIDENCE")
+                _require_current_account_snapshot(snapshot.snapshot_id, observed, now)
                 return
             latest = db.execute("SELECT observed FROM snapshots ORDER BY observed DESC LIMIT 1").fetchone()
             if latest and observed <= _time(latest[0]):
@@ -571,6 +599,9 @@ class AccountAuthority:
             plan = db.execute("SELECT * FROM plan_revisions WHERE generation=?", (snapshot.generation,)).fetchone()
             if plan and (plan["action_date"]!=snapshot.action_date or plan["sources"]!=_json(sources)):
                 raise AuthorityError("GENERATION_SOURCE_BINDING_IS_IMMUTABLE")
+            # Validate identities, budgets, fills and revision ancestry before
+            # identifying an otherwise valid observation as merely elapsed.
+            _require_current_account_snapshot(snapshot.snapshot_id, observed, now)
             db.execute("INSERT OR IGNORE INTO plan_revisions VALUES(?,?,?)",
                        (snapshot.generation,snapshot.action_date,_json(sources)))
             db.execute("INSERT OR IGNORE INTO plans VALUES(?,?,?)", (snapshot.action_date,snapshot.generation,_json(sources)))

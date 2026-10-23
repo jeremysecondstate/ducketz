@@ -58,6 +58,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--basetemp', type=Path)
     parser.add_argument('--focused', action='store_true')
+    parser.add_argument('--context-only', action='store_true')
     args = parser.parse_args()
     candidate = Path(__file__).resolve().parents[1]
     originals = _isolate(candidate)
@@ -70,8 +71,10 @@ def main():
     sys.addaudithook(offline_boundary)
     _assert_imports(candidate, originals)
     import pytest
-    suites = ['tests/test_gameplan_initial_state_refresh.py', 'tests/test_gameplan_pre_reservation_refresh.py']
-    if not args.focused:
+    suites = ['tests/test_gameplan_pre_context_refresh.py']
+    if not args.context_only:
+        suites += ['tests/test_gameplan_initial_state_refresh.py', 'tests/test_gameplan_pre_reservation_refresh.py']
+    if not args.focused and not args.context_only:
         suites += ['tests/test_gameplan_batch_refresh.py', 'tests/test_account_gameplan_execution.py',
                    'tests/test_account_gameplan_authority.py', 'tests/test_gameplan_order_snapshot_coherence.py',
                    'tests/test_independent_stock_runtime.py',
