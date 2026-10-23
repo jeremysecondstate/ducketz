@@ -1,0 +1,47 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261023T111915Z-a4fa643410ab436791e52b8976db34a1",
+  "change_id": "20261023T111915Z-a4fa643410ab436791e52b8976db34a1",
+  "commit_sha": "670b0e0008f858b953145bada03542d4d0e7cba0",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/670b0e0008f858b953145bada03542d4d0e7cba0",
+  "files": [
+    "ml/intraday/dataset_diagnostics.py",
+    "ml/intraday/scout_journal.py",
+    "ml/intraday/scout_session_books.py",
+    "ml/intraday/scout_local_execution.py",
+    "tests/test_intraday_scout_journal.py",
+    "tests/test_intraday_recovery_diagnostics.py",
+    "tests/test_intraday_recovery_subphases.py"
+  ],
+  "limitations": [
+    "Seven owned files and all869source/dependency fingerprints matched; test counts overlap between stages.",
+    "Stacked draft PR354 targets prior draftPR345 exact source; main integration has not been performed.",
+    "Additive timing evidence does not establish live latency recovery or resolve historical uncertain orders. No account state, ledgers, raw data, fitted models or private evidence are included."
+  ],
+  "parent_commit": "0a4daa68ef5cd159abbfc9396d7ade2d4a70713b",
+  "parent_pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/345",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/354",
+  "remote_sha": "670b0e0008f858b953145bada03542d4d0e7cba0",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Locally installed Python instrumentation requires a human-controlled manual trader restart to load. Local installation and affected runtime evidence remain separate stages; manual controls and the original journal/order identities remain intact.",
+  "scope": "Shared diagnostic source for Atlas and Scout; each PC retains its own local scientific recipe and symbols",
+  "summary": "Bounded original-journal recovery diagnostics distinguish validation, SQLite, audit, status and clearance latency",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T11:23:25.963345Z",
+      "kind": "sealed source offline checks",
+      "modules": 31,
+      "output_sha256": "e5bcc4f5fdac4a7671b56985422875a2c5fec3a2f057f695ff67d48ca48a54bd",
+      "result": "1284 passed in 247.01s (0:04:07)",
+      "started_at_utc": "2026-10-23T11:19:16.479228Z"
+    },
+    {
+      "completed_at_utc": "2026-10-23T11:31:41.509419Z",
+      "kind": "isolated publication offline checks",
+      "modules": 31,
+      "output_sha256": "e448c983fd5696c029280932c5218ddfaf166dcb47af198fbd0e45ecd98d6972",
+      "result": "1284 passed in 261.65s (0:04:21)",
+      "started_at_utc": "2026-10-23T11:27:17.480643Z"
+    }
+  ]
+}

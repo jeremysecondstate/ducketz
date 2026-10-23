@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T11:34:59.541308Z",
+  "id": "20261023T113459Z-6717566a7eb1446bbce0a9a81a871e53",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Bounded original-journal recovery diagnostics distinguish validation, SQLite, audit, status and clearance latency"
+}
