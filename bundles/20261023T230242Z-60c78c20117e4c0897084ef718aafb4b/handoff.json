@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T23:02:42.789084Z",
+  "id": "20261023T230242Z-60c78c20117e4c0897084ef718aafb4b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Validate full original sizing and projection forecasts before reserving the execution writer"
+}

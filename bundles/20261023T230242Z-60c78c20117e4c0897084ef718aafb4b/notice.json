@@ -1,0 +1,48 @@
+{
+  "author": "Atlas",
+  "change_id": "20261023T225155Z-76f9388b8a1b4c3bb68eef5a64483d2b",
+  "commit_sha": "7243d10543b0860855d2b121d42b5400f3deee99",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/intentions.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_ordinary_projection_preflight.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_ordinary_projection_preflight.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_read_preflight.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_forecast_reuse.py"
+    }
+  ],
+  "limitations": [
+    "Every ordinary sizing and projection call still validates its complete original. Missing, changed or uncertain protected proof conservatively uses the original full writer validation.",
+    "Offline writer-occupancy evidence does not attribute all historical latency or prove affected live recovery. Original unresolved incident evidence and order identities remain retained.",
+    "Main integration, peer installation, runtime loading and affected live exercise are separate facts; exact main prerequisite composition is not inferred from this own-branch publication."
+  ],
+  "pr": "https://github.com/jeremysecondstate/ducketz/pull/377",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Five exact published files are installed and the actual installed offline checker passed. A future Jeremy-controlled ordinary manual Atlas fifteen-minute start or restart loads this repair. Preserve every manual stop; no observer start, restart, replay or order.",
+  "scope": "Shared correctness and offline fixtures apply to Atlas and Scout while preserving local symbols, model recipes, independent execution state and manual controls.",
+  "summary": "Validate full original sizing and projection forecasts before reserving the execution writer",
+  "tests": [
+    "Sealed exact source: 214 passed in 34.04s; 2026-10-23T22:51:55.870026Z through 2026-10-23T22:52:34.885816Z; output SHA-256 dfce8afda84b96344de418d0fb4147b1924f2c615c97cb211219f73c76482daa.",
+    "Managed isolated publisher: 214 passed in 57.94s; 2026-10-23T22:57:48.495918Z through 2026-10-23T22:58:51.164146Z; output SHA-256 021aae01d19ce698666366e8e74c8f959c268c7e2ee3aff2c10a16e1b8644634.",
+    "Installed application graph: 214 passed in 58.28s; 2026-10-23T23:00:22.609476+00:00 through 2026-10-23T23:01:23.766118+00:00; actual import closure 112 files; output SHA-256 1389aa6088e1818e3f6b5c20887fab88082f4d2a30d978fb0d65d15368bbd271.",
+    "Final candidate has 49 new regression cases; exact-parent negative controls reproduce both ordinary writer-occupancy failures. Two inherited fixture assumptions were reproduced on the exact raw predecessor graph and repaired without weakening cold or warm validation assertions."
+  ]
+}
