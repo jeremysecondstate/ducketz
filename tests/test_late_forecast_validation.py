@@ -70,7 +70,13 @@ def test_late_native_export_and_package_reload_preserve_provenance(saved):
     assert {r['frozen_at'] for r in package['forecasts']} == {'2026-09-09T16:00:00+00:00'}
     assert {p: digest(p) for p in before} == before
     kwargs = {k: package[k] for k in ['owner_id','run_id','source_revision','action_date','frozen_symbols',
-        'created_at','source_hashes','forecasts','price_path']}
+        'created_at','source_hashes','forecasts']}
+    if 'price_path' in package:
+        kwargs['price_path'] = package['price_path']
+    else:
+        assert package['gameplan_recipe_version'] == 'direction-live-quote-v1'
+        assert package['execution_quantity_basis'] == 'live_broker_capacity'
+        assert 'price_path_sha256' not in package['source_hashes']
     with pytest.raises(ValueError, match='future information'):
         build_owner_package(**kwargs)
     kwargs['late_publication_at'] = package['late_publication_at']
