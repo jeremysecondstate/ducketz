@@ -1,0 +1,41 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261023T223121Z-de0ff2f54c4d48feba8426840d27fd97",
+  "change_id": "20261023T223121Z-de0ff2f54c4d48feba8426840d27fd97",
+  "files": [
+    "ml/intraday/store.py",
+    "ml/intraday/forecast_header_cache.py",
+    "ml/intraday/account_execution.py",
+    "tests/test_intraday_durable_forecast_headers.py",
+    "tests/check_isolated_intraday_durable_forecast_headers.py"
+  ],
+  "limitations": [
+    "Common main is not integrated: reviewed predecessor source base is absent from main and direct replacement would remove existing main functions. Scoped dependency composition must preserve original CompletionRecords and both reviewed behaviors.",
+    "Historical preparation elapsed time lacks complete internal attribution; this repair and offline cache proof do not establish live execution recovery.",
+    "Only shared code/tests are published. Each PC retains its original models, local recipes, symbols, scientific originals, execution state and optional local cache/key."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/374",
+  "remote_sha": "430da246c693053f9ad98c5ee813a2b34a7ea917",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas installed exact reviewed source and completed own eleven-symbol optional cache preparation plus separate cold-process proof with zero previously warmed original payload reads. A future ordinary Jeremy manual start loads changed source; no trader start, restart, stop or order was performed. Missing cache continues original full reading. Peer local review/installation is separate and not an operating condition.",
+  "scope": "shared",
+  "source_commit_sha": "430da246c693053f9ad98c5ee813a2b34a7ea917",
+  "summary": "Atlas validated forecast-header cache published and installed",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T22:34:36.993339Z",
+      "description": "176 network-denied cases passed on exact sealed source and managed isolated candidate; cold restart, protected revisions/index identity, cache/source corruption, optional failure fallback and account/store controls",
+      "output_sha256": "24f5c021db81f27babb4aa87659f03d4aac18bdbe05b85ac992a3ccc4acd0b5f"
+    },
+    {
+      "completed_at_utc": "2026-10-23T22:37:27.789605+00:00",
+      "description": "176 cases passed on installed Atlas source, with exact owned bytes, unowned source and local bindings retained",
+      "output_sha256": "4dfbf9183b261f3c55d669cdf3b629a1007fe16695374d1bb541eefe77e29ba3"
+    },
+    {
+      "completed_at_utc": "2026-10-23T22:56:32.623217+00:00",
+      "description": "176 cases passed on installed composition at 22:56 after later reviewed Gameplan and ledger repairs; exact 108 imports, five owned source files, six bindings and 23 original evidence files preserved",
+      "output_sha256": "d76515e891f2d26c75d502d6f8fcf112332477becb90e5abe53132d71d7ff86c"
+    }
+  ]
+}

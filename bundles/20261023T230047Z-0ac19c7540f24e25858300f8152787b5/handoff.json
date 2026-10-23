@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T23:00:47.290976Z",
+  "id": "20261023T230047Z-0ac19c7540f24e25858300f8152787b5",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas validated forecast-header cache published and installed"
+}
