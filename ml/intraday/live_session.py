@@ -650,7 +650,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             try:
                 scoring_loop(store,histories=histories,provider=provider,journal=journal,session_id=session_id,
                              stopped=should_stop,clock=clock,pause=pause,pc=pc,
-                             history_source=minute_feed.history_source)
+                             history_source=minute_feed.scoring_history_source)
             except InterruptedError:
                 pass
             except BaseException as exc:

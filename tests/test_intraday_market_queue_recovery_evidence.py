@@ -197,6 +197,7 @@ def test_recovery_event_is_persisted_only_in_scout_own_session(tmp_path, monkeyp
     kwargs, calls, executors = scout_manual_fixture(tmp_path, monkeypatch)
     class FixtureFeed:
         history_source = None
+        scoring_history_source = None
         def __init__(self, **kwargs):
             pass
         def run(self, **kwargs):

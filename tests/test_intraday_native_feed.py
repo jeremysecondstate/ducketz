@@ -204,6 +204,7 @@ def test_manual_start_uses_latched_symbol_recipe_for_history_and_feed(tmp_path, 
     monkeypatch.setattr(live_model_recipe, "native_interval_symbols_for_runtime", scope)
     class Feed:
         history_source = None
+        scoring_history_source = None
         def __init__(self, **kwargs):
             feeds.append(kwargs)
         def run(self, **kwargs):
