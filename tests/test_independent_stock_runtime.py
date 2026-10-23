@@ -623,11 +623,11 @@ def test_window_closing_before_first_broker_read_preserves_exact_observation(env
 
 def test_signal_deadline_at_normal_close_remains_expired_read_failure(environment, monkeypatch):
     env = environment
-    env.now = pd.Timestamp("2026-10-19T13:24:59.900000Z")
-    env.signals = {key: replace(signal, actionable_until="2026-10-19T13:25:00Z")
+    env.now = pd.Timestamp("2026-09-08T13:24:59.900000Z")
+    env.signals = {key: replace(signal, actionable_until="2026-09-08T13:25:00Z")
                    for key, signal in _fixed_signals().items()}
     def load(*args, **kwargs):
-        env.now = pd.Timestamp("2026-10-19T13:25:00.363700Z")
+        env.now = pd.Timestamp("2026-09-08T13:25:00.363700Z")
         return env.signals, ()
     monkeypatch.setattr(runtime, "load_current_independent_gameplan_signals", load)
     result, sleeps = _retry_run(env)
@@ -640,13 +640,13 @@ def test_signal_deadline_at_normal_close_remains_expired_read_failure(environmen
 
 
 @pytest.mark.parametrize("signal_deadline, expired", [
-    ("2026-10-20T00:05:00Z", False),
-    ("2026-10-20T00:00:00Z", True),
+    ("2026-09-09T00:05:00Z", False),
+    ("2026-09-09T00:00:00Z", True),
 ])
 def test_final_calendar_close_distinguishes_actual_signal_expiry(environment, monkeypatch, signal_deadline, expired):
     env = environment
-    env.now = pd.Timestamp("2026-10-19T23:59:59.900000Z")
-    observed = pd.Timestamp("2026-10-20T00:00:00.363700Z")
+    env.now = pd.Timestamp("2026-09-08T23:59:59.900000Z")
+    observed = pd.Timestamp("2026-09-09T00:00:00.363700Z")
     env.signals = {key: replace(signal, actionable_until=signal_deadline)
                    for key, signal in _fixed_signals().items()}
     def load(*args, **kwargs):
@@ -674,8 +674,8 @@ def test_final_calendar_close_distinguishes_actual_signal_expiry(environment, mo
 
 def test_close_during_broker_retry_keeps_unrecovered_read_failure(environment, monkeypatch):
     env = environment
-    env.now = pd.Timestamp("2026-10-19T13:24:59Z")
-    env.signals = {key: replace(signal, actionable_until="2026-10-20T00:00:00Z")
+    env.now = pd.Timestamp("2026-09-08T13:24:59Z")
+    env.signals = {key: replace(signal, actionable_until="2026-09-09T00:00:00Z")
                    for key, signal in _fixed_signals().items()}
     attempts = []
     def failed(*args, **kwargs):
