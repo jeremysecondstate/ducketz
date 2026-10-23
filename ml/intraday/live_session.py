@@ -18,6 +18,7 @@ from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant
 from .runtime import ResearchConfig, ShadowRunner, LiveHistories, SourceIntervalEmpty, local_symbols, recorded_symbol_failures, with_local_data_policy
 from .store import ShadowStore, utcnow
 from .candle_collection import collection_loop, market_close_at
+from .scoring_storage import retry_scoring_storage, record_scoring_worker_failure
 
 VERSION = "manual-local-15m-session-v2"
 
@@ -227,16 +228,23 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
     """
     from .data import completed_15m_observation, synthetic_continuity_verified
     audited = set()
+    interrupted = lambda: stopped() or (close_at is not None and instant(clock()) >= instant(close_at))
+    def storage(operation, action):
+        return retry_scoring_storage(action, store=store, session_id=session_id,
+            operation=operation, stopped=interrupted, pause=pause)
+    def observe(operation, forecast, **evidence):
+        observed_at = clock()
+        return storage(operation, lambda: store.observe(forecast, as_of=observed_at, **evidence))
     def drain_retained_targets():
-        interrupted = lambda: stopped() or (close_at is not None and instant(clock()) >= instant(close_at))
         if interrupted():
             return
-        ready = store.retained_session_scoring_targets(pc=actor, session_id=session_id,
-            as_of=clock(), stopped=interrupted)
+        as_of = clock()
+        ready = storage("retained_targets", lambda: list(store.retained_session_scoring_targets(
+            pc=actor, session_id=session_id, as_of=as_of, stopped=interrupted)))
         for forecast, observed in ready:
             if interrupted():
                 return
-            store.observe(forecast, as_of=clock(), candle=observed)
+            observe("observe_retained_target", forecast, candle=observed)
     while not stopped():
         if close_at is not None and instant(clock()) >= instant(close_at):
             return
@@ -244,20 +252,22 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
         if stopped() or (close_at is not None and instant(clock()) >= instant(close_at)):
             return
         observed_candidates = {}
-        for candle in store.observed_candles():
+        for candle in storage("observed_candles", lambda: list(store.observed_candles())):
             if not synthetic_continuity_verified(candle):
                 key=digest(candle)
                 if key not in audited:
-                    store.event(session_id,"unverified_synthetic_outcome_requires_audit",
-                                {"candle_hash":key,"immutable_original_retained":True},symbol=candle["symbol"])
+                    storage("audit_synthetic_outcome", lambda: store.event(
+                        session_id,"unverified_synthetic_outcome_requires_audit",
+                        {"candle_hash":key,"immutable_original_retained":True},symbol=candle["symbol"]))
                     audited.add(key)
                 continue
             if not completed_15m_observation(candle) or instant(candle["available_at"]) > instant(clock()):
                 continue
             observed_candidates.setdefault((candle["symbol"],instant(candle["opened_at"])), []).append(candle)
-        for forecast in store.scoring_forecasts(pc=actor, observed_candidates=observed_candidates,
-                as_of=clock(), stopped=lambda: stopped() or
-                (close_at is not None and instant(clock()) >= instant(close_at))):
+        as_of = clock()
+        forecasts = storage("scoring_forecasts", lambda: list(store.scoring_forecasts(
+            pc=actor, observed_candidates=observed_candidates, as_of=as_of, stopped=interrupted)))
+        for forecast in forecasts:
             if stopped():
                 return
             if close_at is not None and instant(clock()) >= instant(close_at):
@@ -267,14 +277,14 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                 return
             if forecast["mode"] != "live" or instant(forecast["target_close"]) > instant(clock()):
                 continue
-            revisions = store.revisions(forecast["forecast_id"])
+            revisions = storage("outcome_revisions", lambda: list(store.revisions(forecast["forecast_id"])))
             candidates = observed_candidates.get((forecast["symbol"],instant(forecast["target_open"])), [])
             observed = next((row for row in reversed(candidates)
                 if row.get("population_contract") == forecast.get("population_contract")
                 and all(not forecast.get(field) or row.get(field) == forecast[field]
                        for field in ("source_dataset", "source_id"))), None)
             if observed is not None and instant(observed["available_at"]) <= instant(clock()):
-                store.observe(forecast,as_of=clock(),candle=observed)
+                observe("observe_saved_target", forecast, candle=observed)
                 continue
             if revisions and revisions[-1]["status"] in {"scored", "synthetic", "unscorable"}:
                 continue
@@ -301,19 +311,23 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                     raise ContractError("Exact target interval unavailable after acquisition")
                 match = match.sort_values("available_at")
                 from .runtime import _jsonable
-                store.observe(forecast,as_of=clock(),candle=_jsonable(match.iloc[-1].to_dict()))
+                observed = _jsonable(match.iloc[-1].to_dict())
             except SourceIntervalEmpty as exc:
-                store.event(session_id,"target_source_empty",{"forecast_id":forecast["forecast_id"],
-                    "evidence":exc.evidence,"no_market_wide_no_trade_claim":True},symbol=symbol)
-                store.observe(forecast,as_of=clock(),
+                storage("source_empty_event", lambda: store.event(
+                    session_id,"target_source_empty",{"forecast_id":forecast["forecast_id"],
+                    "evidence":exc.evidence,"no_market_wide_no_trade_claim":True},symbol=symbol))
+                observe("observe_source_empty", forecast,
                     unavailable_reason="covered_source_empty; no observed outcome price or market-wide no-trade proof")
             except InterruptedError:
                 if stopped() or (close_at is not None and instant(clock()) >= instant(close_at)):
                     return
                 raise
             except Exception as exc:
-                store.event(session_id,"target_scoring_retry",{"forecast_id":forecast["forecast_id"],
-                    "error_type":type(exc).__name__,"message":str(exc)},symbol=symbol)
+                storage("scoring_retry_event", lambda: store.event(
+                    session_id,"target_scoring_retry",{"forecast_id":forecast["forecast_id"],
+                    "error_type":type(exc).__name__,"message":str(exc)},symbol=symbol))
+            else:
+                observe("observe_acquired_target", forecast, candle=observed)
             finally:
                 drain_retained_targets()
         pause(3)
@@ -487,9 +501,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             except BaseException as exc:
                 if isinstance(exc, InterruptedError) and (stopped.is_set() or instant(clock()) >= close_at):
                     return
-                store.event(session_id,"scoring_worker_stopped",{"error_type":type(exc).__name__,"message":str(exc)})
-                worker_errors.append({"worker":"scoring","error_type":type(exc).__name__,"message":str(exc)})
-                stopped.set()
+                record_scoring_worker_failure(exc, store=store, session_id=session_id,
+                    worker_errors=worker_errors, stopped=stopped)
         scorer = threading.Thread(target=score_work,name="intraday-manual-scoring",daemon=True)
         def collection_completed(result):
             if stopped.is_set():
