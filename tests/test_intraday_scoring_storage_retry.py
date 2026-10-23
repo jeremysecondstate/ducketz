@@ -396,3 +396,97 @@ def test_scoring_retains_concurrent_newer_outcome_without_reacquisition(
     with pytest.raises(ContractError, match="backdated"):
         original_observe(original, as_of=NOW, candle=target)
     assert store.revisions(original["forecast_id"]) == committed
+
+
+@pytest.mark.parametrize("wrapped", [False, True])
+@pytest.mark.parametrize("event_contended", [False, True])
+def test_acquisition_journal_read_failure_retains_original_diagnostics_without_reacquisition(
+        tmp_path, monkeypatch, wrapped, event_contended):
+    from ml.intraday import data
+
+    store, original, _, frozen = saved_fixture(tmp_path, save_candle=False)
+    journal = data.AcquisitionJournal(tmp_path / "acquisition.sqlite3")
+    acquisition_holder = sqlite3.connect(journal.path, timeout=0)
+    event_holder = sqlite3.connect(store.path, timeout=0)
+    connect, original_event = sqlite3.connect, store.event
+    calls, event_attempts, pauses = [], [], []
+    wrapper_message = "private-token=fixture-acquisition-secret"
+
+    def fast_connect(*args, **kwargs):
+        kwargs["timeout"] = 0
+        return connect(*args, **kwargs)
+
+    class Incoming:
+        def __init__(self, **kwargs):
+            assert kwargs["bounded"] is True
+        def bind_cycle(self, identity):
+            assert identity == "score:" + original["forecast_id"]
+        def get(self, symbol):
+            calls.append(symbol)
+            try:
+                journal.responses(symbol=symbol, source_id="databento:FIXTURE:ohlcv-1m",
+                    interval_open=original["target_open"], interval_close=original["target_close"])
+            except sqlite3.OperationalError as exc:
+                if wrapped:
+                    raise ContractError(wrapper_message) from exc
+                raise
+            pytest.fail("Private exclusive writer must prevent the acquisition journal read")
+
+    def event(session, kind, payload, **kwargs):
+        if kind == "target_scoring_retry":
+            event_attempts.append(payload)
+            if event_contended and len(event_attempts) == 1:
+                event_holder.execute("BEGIN IMMEDIATE")
+        return original_event(session, kind, payload, **kwargs)
+
+    def pause(seconds):
+        assert event_contended and seconds == 1 and not pauses
+        pauses.append(seconds)
+        event_holder.rollback()
+
+    monkeypatch.setattr(data.sqlite3, "connect", fast_connect)
+    monkeypatch.setattr(live_session, "LiveHistories", Incoming)
+    monkeypatch.setattr(store, "event", event)
+    try:
+        acquisition_holder.execute("BEGIN EXCLUSIVE")
+        run_one_pass(store, monkeypatch=monkeypatch, histories={"AAPL": object()}, pause=pause)
+    finally:
+        acquisition_holder.rollback()
+        acquisition_holder.close()
+        event_holder.rollback()
+        event_holder.close()
+
+    assert calls == ["AAPL"] and list(store.revisions(original["forecast_id"])) == []
+    assert pauses == ([1] if event_contended else [])
+    assert len(event_attempts) == (2 if event_contended else 1)
+    with store.connect() as db:
+        assert db.execute("SELECT id,payload FROM forecasts").fetchall() == frozen
+        events = db.execute("SELECT cycle_id,symbol,payload FROM events WHERE kind='target_scoring_retry'").fetchall()
+        retried = db.execute("SELECT payload FROM events WHERE kind='scoring_storage_retry_completed'").fetchall()
+    assert len(events) == 1 and events[0][:2] == ("unrelated-manual-session", "AAPL")
+    payload = json.loads(events[0][2])
+    assert payload["forecast_id"] == original["forecast_id"]
+    assert payload["error_type"] == ("ContractError" if wrapped else "OperationalError")
+    assert payload["message"] == (wrapper_message if wrapped else "database is locked")
+    diagnostics = payload["diagnostics"]
+    assert all(attempt["diagnostics"] == diagnostics for attempt in event_attempts)
+    assert len(diagnostics["exception_chain"]) == (2 if wrapped else 1)
+    assert diagnostics["exception_chain"][0]["error_type"] == payload["error_type"]
+    root = diagnostics["root_cause"]
+    assert root["sqlite_errorcode"] == sqlite3.SQLITE_BUSY and root["sqlite_errorname"] == "SQLITE_BUSY"
+    assert any(frame["file"] == "data.py" and frame["function"] == "responses" for frame in root["frames"])
+    assert all(len(item["frames"]) <= 8 for item in diagnostics["exception_chain"])
+    assert diagnostics["exception_chain_truncated"] is False
+    assert all(value not in json.dumps(diagnostics) for value in (str(tmp_path), "private-token", "fixture-acquisition-secret"))
+    assert len(retried) == int(event_contended)
+    if event_contended:
+        # The event writer has its own first chain entry. Python also retains
+        # the original acquisition failure as the writer error's context.
+        recovery = json.loads(retried[0][0])
+        assert recovery["operation"] == "scoring_retry_event" and recovery["retry_count"] == 1
+        writer_failure = recovery["last_failure"]["exception_chain"][0]
+        assert writer_failure["sqlite_errorcode"] == sqlite3.SQLITE_BUSY
+        assert any(frame["file"] == "store.py" and frame["function"] == "event" for frame in writer_failure["frames"])
+        assert not any(frame["file"] == "data.py" for frame in writer_failure["frames"])
+        assert recovery["last_failure"]["exception_chain"][1:] == diagnostics["exception_chain"]
+        assert recovery["last_failure"]["root_cause"] == root
