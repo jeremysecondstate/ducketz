@@ -1,0 +1,39 @@
+{
+  "artifact_commit_sha": "04a12220577e330e9a65285acd55d1df017f75a3",
+  "artifact_completion_id": "20261023T141030Z-atlas-stats-4h-outcomes-7af1ec3d",
+  "author": "Atlas",
+  "branch": "main",
+  "change_id": "20261023T141030Z-atlas-stats-4h-outcomes-7af1ec3d",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/04a12220577e330e9a65285acd55d1df017f75a3",
+  "files": [
+    "artifacts/pc-original/20261023T141030Z-atlas-stats-4h-outcomes-7af1ec3d/artifact-manifest.json",
+    "artifacts/pc-original/20261023T141030Z-atlas-stats-4h-outcomes-7af1ec3d/gameplan-stats/20261023T141030Z-atlas-stats-4h-outcomes-7af1ec3d/original-outcome-supplement.json"
+  ],
+  "limitations": [
+    "Derived scientific outcomes for ten original AtlasOct22 forecasts only; no raw inputs, fitted models, accounts, ledgers or bindings.",
+    "Frozen combined Gameplan and completed-session Stats preserved; supplemental output retains original labels and ancestry.",
+    "CurrentOct22 original gaps:10Atlas,46Scout; historicalOct21 gaps:13Atlas,60Scout. Peer receipt and supplemental display adoption are unproved."
+  ],
+  "remote_sha": "04a12220577e330e9a65285acd55d1df017f75a3",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scientific output only; no source/model/runtime deployment, trader start/restart, order or operating prerequisite.",
+  "scope": "symbol-specific",
+  "summary": "Atlas Stats: ten newly mature original4h stock outcomes published",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T14:10:30.676352+00:00",
+      "description": "Exact portable scientific fields, Brier, chronology, ancestry, privacy review and private-value scan:140checks passed",
+      "output_sha256": "9c73fc02336a6b723097fdc4d4964e52bcb658be1164ab4dfa4104eb7ed787e4"
+    },
+    {
+      "completed_at_utc": "2026-10-23T14:10:29.845604+00:00",
+      "description": "Native cumulative8checks passed; all8299prior evaluated and12prior directional evaluations preserved",
+      "output_sha256": "f769fe4e3701dfb9d47c7f1781d9aadb1240d22cbf14699fa00586e92512c0fb"
+    },
+    {
+      "completed_at_utc": "2026-10-23T14:12:50.380275+00:00",
+      "description": "Exact committed bytes, namespace and remote readback:11checks passed",
+      "output_sha256": "69ccc1a1d6206431f5cbf615228d0658bb967f96bc5ff7c8cc2e23ee2ca01d13"
+    }
+  ]
+}
