@@ -1,0 +1,47 @@
+{
+  "applicability": "Shared correctness applies independently on Atlas and Scout; preserve each PC symbols, saved model recipes, independent state and manual controls.",
+  "author": "Atlas",
+  "behavior": "Record the original collection worker error and latch failure before best-effort diagnostic persistence. Diagnostic storage failure emits bounded safe evidence and cannot hide the original worker failure. Preserve expected manual InterruptedError and normal completion behavior.",
+  "branch": "codex/atlas/20261023T141214Z-4dccac190804469986c25adb36d934ed",
+  "change_id": "20261023T141214Z-4dccac190804469986c25adb36d934ed",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/35304167ed59b6886c6242efb13db8f85b4dc6b7",
+  "files": [
+    "ml/intraday/live_session.py",
+    "tests/test_intraday_final_scoring.py"
+  ],
+  "limitations": [
+    "Exact active handler fault is reproduced and corrected offline; original historical collection SQL, lock holder and occurrence of this additional fault remain unproved.",
+    "Draft PR is stacked on the reviewed predecessor. Running-process loading and affected live exercise remain unproved."
+  ],
+  "local_installation": "Same exact reviewed collection-only import and handler change projected onto the existing installed scoring API. Both composed installed suites passed with complete exact source binding. Main integration and peer installation remain separate facts.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/361",
+  "remote_sha": "35304167ed59b6886c6242efb13db8f85b4dc6b7",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "A future ordinary Jeremy manual start loads the correction. Retain current sessions and manual stops. No automatic start, restart, hotpatch, provider, broker, order or replay action was performed.",
+  "scope": "shared",
+  "source_commit_sha": "35304167ed59b6886c6242efb13db8f85b4dc6b7",
+  "stacked_on_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/358",
+  "summary": "Preserve original collection worker failure when diagnostic storage fails",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T14:12:21.477059Z",
+      "description": "Sealed source: 83 passed in 4.68s; network and subprocess actions denied",
+      "output_sha256": "bbfd0bd9ba9fac43a86eaf7bf57e45438ced6155bf7003a07e04ff6d68a5d7d7"
+    },
+    {
+      "completed_at_utc": "2026-10-23T14:17:12.372991Z",
+      "description": "Isolated publication candidate: 83 passed in 4.57s; network and subprocess actions denied",
+      "output_sha256": "5443521ab0fd43e8fa5a793408404eb20e820e0a6655365baa3bcb1b4894a093"
+    },
+    {
+      "completed_at_utc": "2026-10-23T14:21:25.175178+00:00",
+      "description": "Composed installed collection graph: 107 passed in 10.47s; every actual import prebound and source unchanged",
+      "output_sha256": "0ae888ad4d41dd97b826795d8ebe34bd8ea9c744e7c9ec656b4ded38b5f8f266"
+    },
+    {
+      "completed_at_utc": "2026-10-23T14:22:18.968165+00:00",
+      "description": "Composed installed scoring graph: 109 passed in 9.28s; every actual import prebound and source unchanged",
+      "output_sha256": "4aad7e27e7b662ebbc6dff4ad6dcfed9aac7fad59b77fa3c18fa2d72541d9c9c"
+    }
+  ]
+}

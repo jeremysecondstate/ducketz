@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T14:24:26.326758Z",
+  "id": "20261023T142426Z-e8f7d7e2c0024bc08d4f995ef0ea33c6",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Preserve original collection worker failure when diagnostic storage fails"
+}
