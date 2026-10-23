@@ -11,13 +11,14 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
+from dataclasses import dataclass
 import re
 import sqlite3
 from typing import Protocol
 
 from .prediction import ContractError
 from .scout_journal import JournalStateError, ScoutJournal
-from .scout_protocol import Grant, ProtocolError, Request
+from .scout_protocol import Grant, ProtocolError, Request, canonical_sha256
 
 
 class ClientGateError(ValueError):
@@ -139,6 +140,23 @@ def exception_details(error: BaseException) -> dict:
     return dict(chain=chain, chain_truncated=current is not None)
 
 
+@dataclass(frozen=True)
+class ClientFinalGateFailure:
+    """A completed post-claim failure before this client's sender was entered.
+
+    This witness does not establish that an arbitrary gate was free of effects.
+    Only the independent local executor can qualify its exact trusted callback.
+    """
+
+    client: object
+    request_sha256: str
+    grant_sha256: str
+    sending_record_sha256: str
+    final_gate: object
+    send: object
+    error: BaseException
+
+
 class AuthorityTransport(Protocol):
     """Future authenticated adapter; responses alone cannot prove authenticity."""
 
@@ -182,6 +200,7 @@ class ScoutClient:
         self.symbols = frozenset(symbols)
         self.authority_epoch = authority_epoch
         self.clock = clock
+        self.final_gate_failure = None
 
     def _bound(self, request: Request) -> None:
         if (
@@ -249,6 +268,7 @@ class ScoutClient:
         The sender must submit the bound symbol/side/price and granted quantity.
         This callback contract is not a production implementation of those gates.
         """
+        self.final_gate_failure = None
         record = self.journal.get(request_id)
         if record is None or record["state"] != "GRANTED":
             raise JournalStateError("Only an unclaimed durable grant can be sent")
@@ -270,6 +290,16 @@ class ScoutClient:
             stage = "record_acceptance"
             return self.journal.outcome(request_id, token, order_id)
         except Exception as original:
+            if stage == "final_gate":
+                try:
+                    # No additional journal IO or gate invocation. Retain the
+                    # exact callback/error identities; generic gates stay opaque.
+                    self.final_gate_failure = ClientFinalGateFailure(self,
+                        request.sha256, grant.sha256,
+                        canonical_sha256(dict(record, state="SENDING", send_token=token)),
+                        final_gate, send, original)
+                except BaseException:
+                    pass  # An optional witness must preserve the original error.
             # Even a callback which failed before sending might have opaque
             # side effects. Preserve ambiguity; never arm another submission.
             # Journal outcome(None) preserves an already accepted exact ID.

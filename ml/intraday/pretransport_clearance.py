@@ -135,6 +135,36 @@ CLOSED_WINDOW_FRAMES = [
     )
 ]
 
+# Separate frozen historical profile. It cannot manufacture a synchronous
+# client witness, clear a live original session, or broaden legacy VERSION.
+HISTORICAL_CLIENT_FINAL_GATE_VERSION = "scout-reviewed-client-final-gate-history-v1"
+HISTORICAL_CLIENT_FINAL_GATE_LAUNCHER = "1d544928f99cacef1af6cb3adc194121e73122b9a646b633b861d0f072db5b47"
+HISTORICAL_CLIENT_FINAL_GATE_MANIFEST = "88af48af7ce1b3b2bc1e50951ba627bebd046e0801f672a97fcf2b1250665bf7"
+HISTORICAL_CLIENT_FINAL_GATE_SOURCE = {
+    "ml/intraday/scout_client.py": "99afce435afd32ef27d148d0c46872ac4b1d9a5f6f4044ec567abf0db5bb4025",
+    "ml/intraday/scout_broker.py": "82b4ae2625ed5b112427861a147a428c9a98b0dfff15ef1001b320cecd14101d",
+    "ml/intraday/scout_local_execution.py": "62b221ccaf536b1bf3e7d9379783ea5a4c0b905c77a590fee1e64d3852275e96",
+    "ml/intraday/scout_journal.py": "a9da4c9b5735bf9f446f0449be451c3a4c82cb5674802fef5151728053c6cead",
+    "ml/intraday/local_forecast.py": "38191f6f3f08cf8dca66fd8b90c6659d4806d22caa8a4dc09d631876d1dffe33",
+    "ml/intraday/live_session.py": "29235e868957a1ad037a1a6254f4a8e999ba94e94101a85f04c979d25bf95712",
+    "app/services/schwab.py": "41a3cf8b3e5e412083b864afbdafb7056b44a9390051aaca087c4e271a704951",
+    "app/services/schwab_stock_orders.py": "9989209f1431b02cb43943cb8923d9463bfabd20cb8af6808445d3fb22104261",
+    "app/services/schwab_order_fields.py": "74ce11f6bad9e88601f6681cd19d62161659d0d1beecff4e36518ccd63421321",
+    "ml/stock_trader/session.py": "b7af001f9dc4bed9677cf66cd881e637b1f4d5c8a536dd3bb934b17d59019784",
+    "ml/intraday/initial_gate_clearance.py": "2ff22f507cf98c88f055c5a7a149488616b43f8bbc053dab5794282225e2f503",
+    "ml/intraday/pretransport_clearance.py": "a1c23dfb00f0d68ee91c2cfbbd72b2dd85a22f23d1122f63d81c4a2fa1ca3c61"
+}
+HISTORICAL_CLIENT_FINAL_GATE_FRAMES = [
+    {"file": file, "function": function, "line": line} for file, function, line in (
+        ("scout_client.py", "submit", 184),
+        ("scout_client.py", "_gate", 155),
+        ("scout_local_execution.py", "local_authorization", 565),
+        ("local_forecast.py", "_saved_forecast", 182),
+        ("local_forecast.py", "_saved_forecast_once", 139),
+    )
+]
+
+
 def _require(condition, message):
     if not condition:
         raise ContractError("Pretransport clearance: " + message)
@@ -203,6 +233,27 @@ def _source(value, error_type, frames):
         contents = value["files"][name]
         _require(type(contents) is str and _sha(contents.encode("utf-8")) == digest
                  and manifest["files"].get(name) == digest, "unsupported or changed original source: " + name)
+    return manifest
+
+
+def _historical_client_final_gate_source(value):
+    """Accept only the full reviewed original source and exact manifest bytes."""
+    _keys(value, {"manifest_text", "manifest_sha256", "files"}, "source proof fields differ")
+    _require(type(value["manifest_text"]) is str, "manifest bytes missing")
+    raw = value["manifest_text"].encode("utf-8")
+    _require(value["manifest_sha256"] == HISTORICAL_CLIENT_FINAL_GATE_MANIFEST
+             and _sha(raw) == HISTORICAL_CLIENT_FINAL_GATE_MANIFEST,
+             "not the reviewed historical client final-gate manifest")
+    manifest = json.loads(raw)
+    _require(manifest.get("schema") == "scout-isolated-live-runtime-v1"
+             and type(manifest.get("files")) is dict, "unsupported original manifest")
+    _keys(value["files"], HISTORICAL_CLIENT_FINAL_GATE_SOURCE,
+          "complete reviewed historical client final-gate dependencies required")
+    for name, digest in HISTORICAL_CLIENT_FINAL_GATE_SOURCE.items():
+        contents = value["files"][name]
+        _require(type(contents) is str and _sha(contents.encode("utf-8")) == digest
+                 and manifest["files"].get(name) == digest,
+                 "unsupported or changed original source: " + name)
     return manifest
 
 
@@ -326,6 +377,105 @@ def _proof(evidence, record, *, journal_id, events, as_of):
              "original loaded-source observation differs from ended process")
 
 
+def _historical_client_final_gate_proof(evidence, record, *, journal_id, events, as_of):
+    _keys(evidence, {"version", "original_record", "original_record_sha256", "journal_id", "journal_events",
+        "execution_event", "execution_event_sha256", "stop_event", "stop_event_sha256", "process_end", "source",
+        "runtime_observation"},
+        "proof fields differ")
+    _require(evidence["version"] == HISTORICAL_CLIENT_FINAL_GATE_VERSION and evidence["original_record"] == record
+             and evidence["original_record_sha256"] == canonical_sha256(record)
+             and evidence["journal_id"] == journal_id and evidence["journal_events"] == events,
+             "original record or single-claim history differs")
+    error_type = evidence["execution_event"]["payload"]["evidence"]["error_type"]
+    request, permit = record["request"], record["grant"]
+    session, rid = request["session_id"], request["request_id"]
+    row = evidence["execution_event"]
+    at = _event(row, session=session, kind="execution_step")
+    _require(canonical_sha256(row) == evidence["execution_event_sha256"], "execution event changed")
+    payload = row["payload"]
+    _require(row["symbol"] == request["symbol"] and payload.get("symbol") == request["symbol"]
+             and payload.get("forecast_id") == request["forecast_id"]
+             and payload.get("kind") == "execution_disposition"
+             and payload.get("disposition") == "submission_recovery_required"
+             and payload.get("submission_status") == "UNKNOWN"
+             and payload.get("submitted_quantity") is None and payload.get("broker_order_id") is None,
+             "execution disposition does not bind original UNKNOWN")
+    detail = payload["evidence"]
+    _keys(detail, {"mode", "error_type", "local_state", "request_id", "retry_after_seconds", "submission_failure"},
+          "execution diagnostic fields differ")
+    _require(detail["mode"] == "scout-local-broker-account" and detail["request_id"] == rid
+             and detail["local_state"] == "UNKNOWN" and detail["error_type"] == error_type,
+             "diagnostic request differs")
+    failure = detail["submission_failure"]
+    _keys(failure, {"stage", "original"}, "submission diagnostics incomplete")
+    _require(failure["stage"] == "final_gate", "failure was not the reviewed client final gate")
+    original = failure["original"]
+    _keys(original, {"chain", "chain_truncated"}, "exception-chain fields differ")
+    _require(original["chain_truncated"] is False and type(original["chain"]) is list
+             and len(original["chain"]) == 1, "complete single exception required")
+    error = original["chain"][0]
+    manifest = _historical_client_final_gate_source(evidence["source"])
+    _keys(error, {"type", "message", "sqlite_errorcode", "frames"}, "exception fields differ")
+    _require(error_type == error["type"] == "OperationalError"
+             and error["message"] == "database is locked"
+             and type(error["sqlite_errorcode"]) is int and error["sqlite_errorcode"] == 261
+             and error["frames"] == HISTORICAL_CLIENT_FINAL_GATE_FRAMES,
+             "not the reviewed historical client final-gate SQLite failure")
+    _require(instant(request["issued_at"]) <= instant(events[-2]["event"]["recorded_at"])
+             <= instant(events[-1]["event"]["recorded_at"]) <= at
+             and instant(payload["recorded_at"]) <= at
+             and instant(request["valid_until"]) <= as_of and instant(permit["expires_at"]) <= as_of,
+             "request/claim/failure/expiry clocks differ")
+    stopped = evidence["stop_event"]
+    stopped_at = _event(stopped, session=session, kind="manual_session_stopped")
+    _require(canonical_sha256(stopped) == evidence["stop_event_sha256"] and stopped["symbol"] is None
+             and stopped["id"] > row["id"] and at <= stopped_at <= as_of
+             and stopped["payload"] == {"pending_order_identity_preserved": True,
+                 "stop_reason": "manual_stop", "worker_errors": []}, "complete clean original stop required")
+    ended = evidence["process_end"]
+    _keys(ended, {"session_id", "pid", "process_created_at_epoch", "verified_absent_at", "original_manifest_sha256"},
+          "original process-end attestation fields differ")
+    _require(ended["session_id"] == session and type(ended["pid"]) is int and ended["pid"] > 0
+             and type(ended["process_created_at_epoch"]) in (int, float)
+             and math.isfinite(ended["process_created_at_epoch"])
+             and 0 < ended["process_created_at_epoch"] < at.timestamp()
+             and stopped_at <= instant(ended["verified_absent_at"]) <= as_of
+             and ended["original_manifest_sha256"] == evidence["source"]["manifest_sha256"],
+             "original process is not proven ended for this source/session")
+    observed = evidence["runtime_observation"]
+    _keys(observed, {"at", "session_id", "process"}, "original runtime observation fields differ")
+    process = observed["process"]
+    _keys(process, {"verified", "pid", "created_at_epoch", "module", "binding", "entrypoint_kind",
+        "launcher_path", "launcher_sha256", "manifest_path", "manifest_sha256", "source_root",
+        "source_files_verified", "recipe_sha256"}, "original verified process fields differ")
+    _require(observed["session_id"] == session and at <= instant(observed["at"]) <= stopped_at
+             and process["verified"] is True and process["binding"] == "exact_birth"
+             and process["module"] == "ml.intraday.live_session"
+             and process["entrypoint_kind"] == "reviewed_isolated_live_launcher"
+             and process["pid"] == ended["pid"]
+             and process["created_at_epoch"] == ended["process_created_at_epoch"]
+             and process["launcher_sha256"] == HISTORICAL_CLIENT_FINAL_GATE_LAUNCHER
+             and process["recipe_sha256"] == manifest.get("recipe_sha256")             and process["manifest_sha256"] == evidence["source"]["manifest_sha256"]
+             and process["source_root"] == manifest.get("source_root")
+             and type(process["source_files_verified"]) is int
+             and process["source_files_verified"] == len(manifest["files"]),
+             "original loaded-source observation differs from ended process")
+
+
+
+def _validate_proof(evidence, record, *, journal_id, events, as_of, version=None):
+    """Versions are separate contracts; never reinterpret historical diagnostics."""
+    _require(type(evidence) is dict, "proof must be an object")
+    if version is not None:
+        _require(evidence.get("version") == version, "receipt and proof versions differ")
+    if evidence.get("version") == VERSION:
+        return _proof(evidence, record, journal_id=journal_id, events=events, as_of=as_of)
+    _require(evidence.get("version") == HISTORICAL_CLIENT_FINAL_GATE_VERSION,
+             "unsupported proof version")
+    return _historical_client_final_gate_proof(evidence, record,
+        journal_id=journal_id, events=events, as_of=as_of)
+
+
 def _path(books, record):
     return _safe_path(Path(books.root) / "pretransport-clearances" /
                       (canonical_sha256({"request_id": record["request"]["request_id"]}) + ".json"))
@@ -355,7 +505,7 @@ def load_clearance(books, journal, record, *, as_of):
         _keys(payload, {"version", "created_at", "review_reference", "evidence_sha256",
                        "original_record_sha256", "journal_id", "historical_execution", "commitment"},
               "receipt payload differs")
-        _require(canonical_sha256(payload) == envelope["sha256"] and payload["version"] == VERSION
+        _require(canonical_sha256(payload) == envelope["sha256"] and payload["version"] in {VERSION, HISTORICAL_CLIENT_FINAL_GATE_VERSION}
                  and payload["historical_execution"] == "UNKNOWN" and payload["commitment"] == COMMITMENT
                  and payload["journal_id"] == journal_id
                  and payload["original_record_sha256"] == canonical_sha256(record)
@@ -368,7 +518,8 @@ def load_clearance(books, journal, record, *, as_of):
                  "invalid evidence digest")
         raw = _read(path.parent / (digest + ".proof.json"))
         _require(_sha(raw) == digest, "proof bytes changed")
-        _proof(json.loads(raw), record, journal_id=journal_id, events=events, as_of=created)
+        _validate_proof(json.loads(raw), record, journal_id=journal_id, events=events, as_of=created,
+                        version=payload["version"])
         return dict(path=str(path), sha256=envelope["sha256"], created_at=payload["created_at"],
                     historical_execution="UNKNOWN", commitment=COMMITMENT)
     except (OSError, ValueError, TypeError, KeyError, RecursionError, sqlite3.Error) as exc:
@@ -386,20 +537,20 @@ def create_clearance(books, journal, request_id, *, evidence_path, repository, r
     record = evidence["original_record"]
     _require(record["request"]["request_id"] == request_id, "requested attempt differs")
     journal_id, events = _audit(books, journal, record)
-    _proof(evidence, record, journal_id=journal_id, events=events, as_of=now)
+    _validate_proof(evidence, record, journal_id=journal_id, events=events, as_of=now)
     for name, contents in evidence["source"]["files"].items():
         _require(_sha(_read(Path(repository) / name)) == _sha(contents.encode("utf-8")), "reviewed original source changed: " + name)
     path = _path(books, record)
     with books.locked():
         books.inspect()
         journal_id, events = _audit(books, journal, record)
-        _proof(evidence, record, journal_id=journal_id, events=events, as_of=now)
+        _validate_proof(evidence, record, journal_id=journal_id, events=events, as_of=now)
         if path.exists():
             return load_clearance(books, journal, record, as_of=now)
         path.parent.mkdir(exist_ok=True)
         digest = _sha(raw)
         _write_once(path.parent / (digest + ".proof.json"), raw)
-        payload = dict(version=VERSION, created_at=now.isoformat(), review_reference=review_reference,
+        payload = dict(version=evidence["version"], created_at=now.isoformat(), review_reference=review_reference,
             evidence_sha256=digest, original_record_sha256=canonical_sha256(record), journal_id=journal_id,
             historical_execution="UNKNOWN", commitment=COMMITMENT)
         envelope = dict(payload=payload, sha256=canonical_sha256(payload))
