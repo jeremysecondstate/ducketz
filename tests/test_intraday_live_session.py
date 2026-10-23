@@ -57,6 +57,7 @@ def isolate_minute_acquisition_in_execution_fixtures(monkeypatch):
     from ml.intraday import minute_feed
     class FixtureFeed:
         history_source = None
+        scoring_history_source = None
         def __init__(self, **kwargs):
             pass
         def run(self, **kwargs):
@@ -147,6 +148,7 @@ def test_manual_scout_wires_persisted_minute_feed_into_both_consumers_without_ne
         def __init__(self, **kwargs):
             self.kwargs = kwargs
             self.history_source = object()
+            self.scoring_history_source = object()
             feeds.append(self)
             assert isinstance(kwargs["provider"], minute_persistence.PersistedMinuteProvider)
             assert kwargs["provider"]._provider is native_provider
@@ -167,7 +169,8 @@ def test_manual_scout_wires_persisted_minute_feed_into_both_consumers_without_ne
             pass
 
     def consume(kind, **kwargs):
-        assert kwargs["history_source"] is feeds[0].history_source
+        expected = feeds[0].history_source if kind == "forecast" else feeds[0].scoring_history_source
+        assert kwargs["history_source"] is expected
         assert kwargs["provider"] is feeds[0].kwargs["provider"]
         assert kwargs["histories"] is feeds[0].kwargs["histories"]
         calls.append(kind)
@@ -1201,6 +1204,7 @@ def test_scout_cutoff_drains_all_workers_and_keeps_original_deadline_after_midni
 
     class DrainingFeed:
         history_source = None
+        scoring_history_source = None
         def __init__(self, **kwargs):
             self.on_closed = kwargs["on_closed"]
         def run(self, **kwargs):
@@ -1367,6 +1371,7 @@ def test_ctrl_c_during_automatic_data_drain_still_joins_workers_and_records_manu
 
     class UnfinishedFeed:
         history_source = None
+        scoring_history_source = None
         def __init__(self, **kwargs):
             pass
         def run(self, **kwargs):

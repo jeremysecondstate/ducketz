@@ -23,14 +23,17 @@ VERSION = "closed-quarter-minute-feed-v1"
 
 
 class _HistorySource:
-    def __init__(self, feed, reference):
+    def __init__(self, feed, reference, *, genuine_only=False):
         self.feed, self.reference = feed, instant(reference)
+        self.genuine_only = genuine_only
 
     def bind_cycle(self, cycle_id):
         # Acquisition records belong to the independent data feed, not a model.
         pass
 
     def get(self, symbol):
+        if self.genuine_only:
+            return self.feed.history_at(symbol, self.reference, genuine_only=True)
         return self.feed.history_at(symbol, self.reference)
 
 
@@ -661,11 +664,14 @@ class QuarterHourMinuteFeed:
     def history_source(self, reference):
         return _HistorySource(self, reference)
 
+    def scoring_history_source(self, reference):
+        return _HistorySource(self, reference, genuine_only=True)
+
     def history_snapshot(self):
         with self._lock:
             return dict(self.histories)
 
-    def history_at(self, symbol, reference):
+    def history_at(self, symbol, reference, *, genuine_only=False):
         reference = instant(reference)
         if symbol not in self.symbols:
             raise ContractError("History requested for a symbol outside this independent feed")
@@ -706,12 +712,17 @@ class QuarterHourMinuteFeed:
                 return self.histories[symbol]
             if result["status"] == "resolved_no_usable_15m":
                 if self.reference_fill_policy is not None and result.get("reason") == "source_empty_interval":
-                    from .forward_fill import make_reference
-                    history = self.histories.get(symbol)
-                    if history is None:
-                        raise ContractError("Forward-filled reference has no genuine source history")
-                    candle = make_reference(history.frame, self._attempts(symbol, reference), session=self._session(reference))
-                    self._record_reference_fill(symbol, reference, candle)
+                    # Scoring needs genuine targets, while the first missing
+                    # target still registers its durable real-data recheck.
+                    if not genuine_only or (reference, symbol) not in self.reference_fills:
+                        from .forward_fill import make_reference
+                        history = self.histories.get(symbol)
+                        if history is None:
+                            raise ContractError("Forward-filled reference has no genuine source history")
+                        candle = make_reference(history.frame, self._attempts(symbol, reference), session=self._session(reference))
+                        self._record_reference_fill(symbol, reference, candle)
+                    if genuine_only:
+                        raise ContractError("Exact target interval unavailable after acquisition")
                     # A projection belongs to this model request, never the source
                     # ledger or shared history. Future real bars retain priority.
                     frame = history.frame.loc[~history.frame.opened_at.eq(pd.Timestamp(reference))].copy()
