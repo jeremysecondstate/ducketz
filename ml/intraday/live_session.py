@@ -17,7 +17,7 @@ from datafetching.runtime_lock import exclusive_runtime_lock
 from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant
 from .runtime import ResearchConfig, ShadowRunner, LiveHistories, SourceIntervalEmpty, local_symbols, recorded_symbol_failures, with_local_data_policy
 from .store import ShadowStore, utcnow
-from .candle_collection import collection_loop, market_close_at
+from .candle_collection import collection_loop, market_close_at, _storage_failure_evidence
 
 VERSION = "manual-local-15m-session-v2"
 
@@ -510,9 +510,15 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             except BaseException as exc:
                 if isinstance(exc, InterruptedError) and stopped.is_set():
                     return
-                store.event(session_id,"collection_worker_stopped",{"error_type":type(exc).__name__,"message":str(exc)})
-                worker_errors.append({"worker":"collection","error_type":type(exc).__name__,"message":str(exc)})
+                diagnostics = _storage_failure_evidence(exc)
+                failure = {"error_type":type(exc).__name__,"message":str(exc),"diagnostics":diagnostics}
+                worker_errors.append({"worker":"collection",**failure})
                 stopped.set()
+                try:
+                    store.event(session_id,"collection_worker_stopped",failure)
+                except Exception as diagnostic_exc:
+                    print(encoded({"event":"collection_worker_stopped", "diagnostics":diagnostics,
+                        "diagnostic_failure":_storage_failure_evidence(diagnostic_exc)}),flush=True)
         collector = threading.Thread(target=collect_work,name="intraday-manual-candles",daemon=True)
         if market_collector is not None:
             input_worker.start()
