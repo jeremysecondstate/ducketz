@@ -18,7 +18,7 @@ from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant
 from .runtime import ResearchConfig, ShadowRunner, LiveHistories, SourceIntervalEmpty, local_symbols, recorded_symbol_failures, with_local_data_policy
 from .store import ShadowStore, utcnow
 from .candle_collection import collection_loop, market_close_at
-from .scoring_storage import retry_scoring_storage, record_scoring_worker_failure
+from .scoring_storage import retry_scoring_storage, record_scoring_worker_failure, scoring_failure_evidence
 
 VERSION = "manual-local-15m-session-v2"
 
@@ -328,7 +328,8 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
             except Exception as exc:
                 storage("scoring_retry_event", lambda: store.event(
                     session_id,"target_scoring_retry",{"forecast_id":forecast["forecast_id"],
-                    "error_type":type(exc).__name__,"message":str(exc)},symbol=symbol))
+                    "error_type":type(exc).__name__,"message":str(exc),
+                    "diagnostics":scoring_failure_evidence(exc)},symbol=symbol))
             else:
                 observe("observe_acquired_target", forecast, candle=observed)
             finally:
