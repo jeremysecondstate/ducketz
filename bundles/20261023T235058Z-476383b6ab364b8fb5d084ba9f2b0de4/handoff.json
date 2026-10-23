@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T23:50:58.763372Z",
+  "id": "20261023T235058Z-476383b6ab364b8fb5d084ba9f2b0de4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Retain successful own intraday lease acquisition timings"
+}

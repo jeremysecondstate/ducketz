@@ -1,0 +1,41 @@
+{
+  "author": "Atlas",
+  "change_id": "20261023T234452Z-b5b01ba4ddd14730885a39fbd294c996",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/account_gameplan/authority.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_successful_lease_diagnostics.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_successful_lease_diagnostics.py"
+    }
+  ],
+  "limitations": [
+    "Diagnostic retention repaired; original acquisition delay cause remains unknown.",
+    "Previously running process loading and affected live recovery remain unproved.",
+    "Main integration and peer installation are separate facts."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/380",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Prospective bounded identifier-free diagnostics. Local reviewed hunks installed while preserving unrelated changes. Human controls manual starts; no start, restart, provider request, order or operating gate.",
+  "scope": "shared",
+  "source_sha": "d045abc047248aea2b9d5263fd92589195a6958e",
+  "summary": "Retain successful own intraday lease acquisition timings",
+  "tests": [
+    "115 passed on sealed source;115 passed on independently reviewed isolated publication candidate;115 passed on exact installed composition bound to116source/test paths.",
+    "Controlled temporary-ledger fixtures cover phase attribution, original receipt preservation, fence/expiry rules, marker isolation, unavailable clocks and own-operation diagnostic emission."
+  ]
+}
