@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T15:28:00.662960Z",
+  "id": "20261023T152800Z-09b4cf7dedd7452a913fd187f9e09b3e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Retain native causes in target acquisition retry diagnostics"
+}

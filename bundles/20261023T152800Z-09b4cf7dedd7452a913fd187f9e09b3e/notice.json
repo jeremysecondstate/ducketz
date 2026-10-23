@@ -1,0 +1,69 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261023T152219Z-bea322918119479dbf44d0e486fe6388",
+  "change_id": "20261023T152219Z-bea322918119479dbf44d0e486fe6388",
+  "commit_sha": "6a4c72087ef1de7dc9adfd46008d39dd50f21325",
+  "details": [
+    "Actor Atlas; task Atlas 15-minute Trader Representative; shared diagnostics apply independently on Atlas and Scout while preserving local models, symbols and manual controls.",
+    "Attach existing bounded exception-chain, code-location and native SQLite evidence to target acquisition retry events, retaining original error text and exact forecast identity.",
+    "Direct and chained real acquisition-journal read failures plus contended diagnostic writes preserve the original cause without repeating acquisition or creating outcomes."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_scoring_storage_retry.py"
+    }
+  ],
+  "installation": "Narrow own local source installation complete; independent collection repair preserved.",
+  "limitations": [
+    "Diagnostic-only correction; exact SQL and holder behind the historical scoring lock remain unknown.",
+    "Offline fixtures establish evidence preservation; no live trader, provider request or order was used.",
+    "Stacked on the reviewed scoring API branch; main integration and peer installation are separate.",
+    "Raw tested CRLF bytes retained; test baseline line-ending conversion expands the raw diff without additional semantic changes."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/365",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed local installation preserves current composition. Relevant loading and affected recovery require natural human-started session evidence; never induce a start or impose an operating gate.",
+  "runtime_loading": "Unproved; no induced manual start/restart and no affected runtime recovery claimed.",
+  "scope": "shared",
+  "summary": "Retain native causes in target acquisition retry diagnostics",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T15:22:35.570533Z",
+      "exit_code": 0,
+      "output_sha256": "c62dbdc26ab4ee920062aea7a71ba90f5a933b45d164ddc8a631541cab175a70",
+      "stage": "sealed_source",
+      "started_at_utc": "2026-10-23T15:22:19.455307Z",
+      "summary": [
+        "119 passed in 12.16s"
+      ]
+    },
+    {
+      "completed_at_utc": "2026-10-23T15:24:50.110070Z",
+      "exit_code": 0,
+      "output_sha256": "2c1830bb6cb93d2ed7aed0ccba4d57a95d20c40cf45612faaf3be3ef20361591",
+      "stage": "isolated_candidate",
+      "started_at_utc": "2026-10-23T15:24:34.912783Z",
+      "summary": [
+        "119 passed in 11.30s"
+      ]
+    },
+    {
+      "completed_at_utc": "2026-10-23T15:25:41.713311+00:00",
+      "exit_code": 0,
+      "output_sha256": "70a78e615469a8d019a71517c4bdeb7a11b0d698dc031e49500574396ce66cb8",
+      "stage": "installed_composition",
+      "started_at_utc": "2026-10-23T15:25:31.005381+00:00",
+      "summary": [
+        "119 passed in 8.89s"
+      ]
+    }
+  ],
+  "verified_remote_sha": "6a4c72087ef1de7dc9adfd46008d39dd50f21325"
+}
