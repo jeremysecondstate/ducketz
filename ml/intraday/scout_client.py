@@ -15,6 +15,7 @@ import re
 import sqlite3
 from typing import Protocol
 
+from .prediction import ContractError
 from .scout_journal import JournalStateError, ScoutJournal
 from .scout_protocol import Grant, ProtocolError, Request
 
@@ -60,6 +61,33 @@ def _saved_forecast_retry_details(error):
     return dict(value)
 
 
+def _local_evidence_freshness_details(error):
+    """Allow only consistent bounded numbers from a rejected local gate."""
+    if not isinstance(error, ContractError):
+        return None
+    value = getattr(error, "scout_local_evidence_freshness", None)
+    fields = {"version", "account_age_seconds", "quote_age_seconds",
+              "maximum_age_seconds", "gate_since_request_seconds", "failed_inputs"}
+    if (type(value) is not dict or set(value) != fields
+            or type(value["version"]) is not str
+            or value["version"] != "scout-local-evidence-freshness-v1"):
+        return None
+    maximum = value["maximum_age_seconds"]
+    failed = value["failed_inputs"]
+    if (type(maximum) is not int or not 1 <= maximum <= 300
+            or type(failed) is not int or failed not in {1, 2, 3}):
+        return None
+    for name in ("account_age_seconds", "quote_age_seconds", "gate_since_request_seconds"):
+        number = value[name]
+        if type(number) not in {int, float} or not -86400 <= number <= 86400:
+            return None
+    expected = (int(not 0 <= value["account_age_seconds"] <= maximum)
+                + 2 * int(not 0 <= value["quote_age_seconds"] <= maximum))
+    if failed != expected:
+        return None
+    return dict(value)
+
+
 def exception_details(error: BaseException) -> dict:
     """Bounded diagnostic context without broker URLs, credentials or locals.
 
@@ -99,6 +127,12 @@ def exception_details(error: BaseException) -> dict:
             retry = None
         if retry is not None:
             item["saved_forecast_retry"] = retry
+        try:
+            freshness = _local_evidence_freshness_details(current)
+        except BaseException:
+            freshness = None
+        if freshness is not None:
+            item["local_evidence_freshness"] = freshness
         chain.append(item)
         current = current.__cause__ if current.__cause__ is not None else (
             None if current.__suppress_context__ else current.__context__)

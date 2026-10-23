@@ -56,6 +56,24 @@ class _CancellationForecastIneligible(ContractError):
         self.disposition = disposition
 
 
+def _record_local_evidence_freshness_failure(error, *, current, account_at, quote_at,
+                                           request_issued_at, maximum_age_seconds):
+    """Numeric failed-gate evidence only; never a new execution permission.
+
+    Offsets retain the exact gate clock relative to the immutable request. The
+    observed instants can then be recovered from the ages without persisting
+    account values, quote prices, native IDs or arbitrary exception strings.
+    """
+    account_age = (current - instant(account_at)).total_seconds()
+    quote_age = (current - instant(quote_at)).total_seconds()
+    error.scout_local_evidence_freshness = dict(
+        version='scout-local-evidence-freshness-v1', account_age_seconds=account_age,
+        quote_age_seconds=quote_age, maximum_age_seconds=maximum_age_seconds,
+        gate_since_request_seconds=(current - instant(request_issued_at)).total_seconds(),
+        failed_inputs=(int(not 0 <= account_age <= maximum_age_seconds)
+                       + 2 * int(not 0 <= quote_age <= maximum_age_seconds)))
+
+
 class ScoutLocalAccountExecutor:
     def __init__(self, *, repository, profile, datastore, store, broker, local_symbols,
                  session_started_at, session_id, clock, manual_authority, stopped,
@@ -550,12 +568,14 @@ class ScoutLocalAccountExecutor:
         permit = Grant('local-permit:' + forecast['forecast_id'], request.request_id, request.sha256,
             self.account_fingerprint, self.session_id, 1, capacity.adjusted_quantity,
             'local-order:' + forecast['forecast_id'], now, request.valid_until)
-        self.journal.prepare(request)
-        self.journal.grant(permit)
+        with dataset_phase("permit_prepare"):
+            self.journal.prepare(request)
+            self.journal.grant(permit)
         authorization = dict(mode=MODE, request=request.payload(), permit=permit.payload(), capacity=capacity.payload(),
             snapshot_identity=portfolio.broker_identity_fingerprint, snapshot_sha256=portfolio.source_fingerprint,
             observed_at=portfolio.observed_at, manual_session_id=self.session_id)
-        saved = self.books.save_receipt(kind='local-account-permit', request_id=request.request_id, payload=authorization)
+        with dataset_phase("permit_persist"):
+            saved = self.books.save_receipt(kind='local-account-permit', request_id=request.request_id, payload=authorization)
 
         def local_authorization(req, granted):
             self._controls()
@@ -577,7 +597,15 @@ class ScoutLocalAccountExecutor:
             current = instant(self.clock())
             if any(not 0 <= (current - instant(at)).total_seconds() <= self.maximum_evidence_age_seconds
                    for at in (portfolio.observed_at, quote.freshness_observed_at)):
-                raise ContractError('Current local quote/account evidence expired')
+                error = ContractError('Current local quote/account evidence expired')
+                try:
+                    _record_local_evidence_freshness_failure(error, current=current,
+                        account_at=portfolio.observed_at, quote_at=quote.freshness_observed_at,
+                        request_issued_at=request.issued_at,
+                        maximum_age_seconds=self.maximum_evidence_age_seconds)
+                except BaseException:
+                    pass  # Optional diagnostics must preserve the original gate rejection.
+                raise error
             if forecast_disposition(forecast, now=current, session_started_at=self.session_started_at,
                     local_symbols=self.symbols) != 'eligible_for_account_checks':
                 raise ContractError('Local forecast eligibility expired')
