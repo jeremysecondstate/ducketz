@@ -6,6 +6,7 @@ import pytest
 from test_intraday_account_execution import env, native, account, advance
 from test_intraday_recovery_latency import terminal_orders
 from test_intraday_unknown_commitment_containment import uncertain
+from ml.intraday.forecast_header_cache import DurableForecastHeaders
 from ml.intraday.prediction import ContractError, digest, encoded
 from ml.stock_direction_policy import stock_direction_for_policy
 
@@ -22,6 +23,13 @@ def decoding_spy(env, monkeypatch):
 
 def test_repeated_recovery_validates_each_exact_original_once_then_reuses_header(env, monkeypatch):
     originals = terminal_orders(env, 2)
+    # The setup's real execution traversal can warm the optional durable cache.
+    # This fixture deliberately proves a full cold validation followed by warm
+    # zero-decode reuse, so remove only its own temporary cache and key first.
+    durable = DurableForecastHeaders(env.store.path)
+    for path in (durable.path, durable.key_path):
+        assert path.parent == env.store.path.parent and path != env.store.path
+        path.unlink(missing_ok=True)
     env.store._forecast_header_cache.clear()
     env.store._execution_forecast_cache.clear()
     decoded = decoding_spy(env, monkeypatch)
