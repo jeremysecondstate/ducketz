@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T15:29:45.852120Z",
+  "id": "20261023T152945Z-0bbdf870d1d7456fab4cf6bc47ca3dff",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Gameplan recaptures valid elapsed initial state before claiming an order intention"
+}

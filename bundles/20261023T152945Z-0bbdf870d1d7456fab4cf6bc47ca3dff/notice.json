@@ -1,0 +1,48 @@
+{
+  "author": "Atlas",
+  "change_id": "20261023T152115Z-3f90cd486bc04e33a9cf9d15cf246c03",
+  "commit_sha": "adc2a31f16ab73af67584c7bcb4ea23d10b0a367",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/account_gameplan/authority.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_gameplan_pre_reservation_refresh.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/account_gameplan/execution.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/check_isolated_gameplan_initial_state_refresh.py"
+    }
+  ],
+  "limitations": [
+    "Offline synthetic tests establish recapture and no-send semantics, not loading or affected live recovery in an existing manual process.",
+    "The exact historical slow operation remains unknown; persistent latency may still prevent a safe send.",
+    "Draft PR is stacked on the reviewed predecessor. Main integration and peer installation remain separate."
+  ],
+  "pr": "https://github.com/jeremysecondstate/ducketz/pull/364",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Five exact published files installed locally with original hashes and unrelated source preserved. This does not load code into an existing process. A future ordinary manual start can load the repair; do not start or restart a trader for verification. Preserve every manual stop and actual order identity.",
+  "scope": "Shared correctness repair applicable to both PCs; retain local symbols, model recipes, independent execution state and manual controls.",
+  "summary": "Gameplan recaptures valid elapsed initial state before claiming an order intention",
+  "tests": [
+    "Sealed exact raw-base source:288passed with zero exclusions from2026-10-23T15:21:15.394839Z through2026-10-23T15:22:04.255211Z.",
+    "Managed isolated publication graph:288passed with zero exclusions from2026-10-23T15:23:17.500802Z through2026-10-23T15:24:03.690247Z.",
+    "Installed application graph:288passed with zero exclusions from2026-10-23T15:27:25.221417+00:00 through2026-10-23T15:28:23.679747+00:00.",
+    "Three targeted liveness regressions fail against original source; two original intraday recovery diagnostic cases retain the AuthorityError contract."
+  ]
+}
