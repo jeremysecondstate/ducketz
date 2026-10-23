@@ -143,3 +143,40 @@ def test_final_pass_handles_writer_committing_during_observe_validation(tmp_path
     assert result == {"session_id": SID, "scored": 0, "synthetic": 0,
                       "unavailable": 0, "newer_observation_retained": 1}
     assert store.revisions(original["forecast_id"]) == committed
+
+@pytest.mark.parametrize("issue_offset_seconds, expected_scored", [(-1, 1), (0, 1), (1, 0)])
+def test_final_scoring_observes_only_forecasts_issued_by_its_cutoff(
+        tmp_path, issue_offset_seconds, expected_scored):
+    """A late-produced forecast cannot acquire an outcome before it existed."""
+    from ml.intraday.prediction import instant
+    from tests.test_intraday_store import forecast
+    close = instant("2026-10-15T00:00:00Z")
+    as_of = close + timedelta(seconds=5)
+    reference = close - timedelta(minutes=45)
+    session = "manual-final-issue-cutoff-fixture"
+    source = "databento:EQUS.MINI:ohlcv-1m"
+    store = ShadowStore(tmp_path / "final-issue-cutoff.sqlite3")
+    store.begin_cycle("own-cycle", {"pc": "Atlas", "mode": "live", "experiment": session,
+        "symbols": ["AAPL"], "reference_at": reference.isoformat(),
+        "configuration_hash": "fixture", "started_at": reference.isoformat()})
+    original = store.save_forecast(forecast(pc="Atlas", symbol="AAPL", cycle_id="own-cycle", mode="live",
+        reference_at=reference.isoformat(), data_through=(reference + timedelta(minutes=15)).isoformat(),
+        issued_at=(as_of + timedelta(seconds=issue_offset_seconds)).isoformat(),
+        information_available_at=(reference + timedelta(minutes=15, seconds=10)).isoformat(),
+        target_open=(close - timedelta(minutes=15)).isoformat(), target_close=close.isoformat(),
+        source_id=source, source_dataset="EQUS.MINI"))
+    store.record_candle({"symbol": "AAPL", "opened_at": (close - timedelta(minutes=15)).isoformat(),
+        "available_at": (close + timedelta(seconds=4)).isoformat(), "source_id": source,
+        "source_dataset": "EQUS.MINI", "availability_kind": "actual", "synthetic": False,
+        "no_trade": False, "open": 100., "high": 101., "low": 99., "close": 100.5,
+        "volume": 100., "evidence_json": "{}", "interval_seconds": 900})
+    assert store.revisions(original["forecast_id"]) == []
+
+    result = live_session.score_saved_session_outcomes(store, session_id=session, actor="Atlas",
+        symbols=("AAPL",), as_of=as_of)
+
+    assert result == {"session_id": session, "scored": expected_scored, "synthetic": 0, "unavailable": 0}
+    revisions = store.revisions(original["forecast_id"])
+    assert len(revisions) == expected_scored
+    assert all(instant(value["observed_at"]) >= instant(original["issued_at"]) for value in revisions)
+    assert store.forecast("own-cycle", "AAPL") == original

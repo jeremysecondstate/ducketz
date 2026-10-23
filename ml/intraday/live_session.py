@@ -343,6 +343,7 @@ def score_saved_session_outcomes(store, *, session_id, actor, symbols, as_of, st
                 return result
             forecast = store.forecast(cycle_id, symbol)
             if (forecast is None or forecast["pc"] != actor or forecast["mode"] != "live"
+                    or instant(forecast["issued_at"]) > now
                     or instant(forecast["target_close"]) > now):
                 continue
             if symbol not in loaded_symbols:
