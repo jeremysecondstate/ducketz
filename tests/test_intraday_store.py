@@ -61,7 +61,8 @@ def test_synthetic_outcome_is_separate_and_failure_is_not_forecast(tmp_path):
     store = ShadowStore(tmp_path / "shadow.sqlite3")
     f = store.save_forecast(forecast())
     c = candle(high="100",low="100",volume=0,synthetic=True,no_trade=True,evidence_json='{"covered":true,"empty_responses":2}')
-    assert store.observe(f,as_of="2026-10-08T17:46:00Z",candle=c)["status"] == "synthetic"
+    with pytest.raises(ContractError, match="verified source absence"):
+        store.observe(f,as_of="2026-10-08T17:46:00Z",candle=c)
     with pytest.raises(ContractError,match="Failed cycle"):
         store.save_forecast(forecast(cycle_id="failure",successful_count=0,models=[dict(name="a",status="failed"),dict(name="b",status="failed")]))
     with pytest.raises(ContractError,match="Incomplete"):

@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import argparse
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 import json
 import math
 from pathlib import Path
+import re
+import sqlite3
 import time
 import uuid
 
@@ -119,6 +122,49 @@ def recorded_symbol_failures(store, cycle_id):
         rows=db.execute("SELECT symbol,payload FROM events WHERE cycle_id=? AND kind='symbol_failure' ORDER BY id",
                         (cycle_id,)).fetchall()
     return {symbol:json.loads(payload) for symbol,payload in rows}
+
+
+def _symbol_exception_diagnostics(exc):
+    """Bounded causal locations, never locals, source lines or nested messages."""
+    chain, seen = [], set()
+    current, relation = exc, "raised"
+    while current is not None and id(current) not in seen and len(chain) < 6:
+        seen.add(id(current))
+        frames, count = deque(maxlen=8), 0
+        trace = current.__traceback__
+        while trace is not None:
+            code = trace.tb_frame.f_code
+            basename = code.co_filename.replace("\\", "/").rsplit("/", 1)[-1]
+            frames.append({"file": re.sub(r"[^A-Za-z0-9_.-]", "_", basename)[:96],
+                           "function": re.sub(r"[^A-Za-z0-9_<>.]", "_", code.co_name)[:96],
+                           "line": trace.tb_lineno})
+            count += 1
+            trace = trace.tb_next
+        item = {"type": re.sub(r"[^A-Za-z0-9_]", "_", type(current).__name__)[:96],
+                "relation": relation, "frames": list(frames), "frames_truncated": count > len(frames)}
+        if isinstance(current, OSError):
+            # Numeric OS categories distinguish sharing contention from denied
+            # permissions without exposing filenames or authenticated messages.
+            for name in ("errno", "winerror"):
+                code = getattr(current, name, None)
+                if type(code) is int and 0 <= code <= 0x7fffffff:
+                    item[name] = code
+        if isinstance(current, sqlite3.Error):
+            code = getattr(current, "sqlite_errorcode", None)
+            name = getattr(current, "sqlite_errorname", None)
+            if type(code) is int and 0 <= code <= 0x7fffffff:
+                item["sqlite_errorcode"] = code
+            if isinstance(name, str) and re.fullmatch(r"SQLITE_[A-Z0-9_]{1,64}", name):
+                item["sqlite_errorname"] = name
+        chain.append(item)
+        if current.__cause__ is not None:
+            current, relation = current.__cause__, "cause"
+        elif not current.__suppress_context__:
+            current, relation = current.__context__, "context"
+        else:
+            current = None
+    return {"schema_version": "intraday-symbol-exception-v1", "exception_chain": chain,
+            "chain_truncated": current is not None}
 
 
 def _dataset_scope(value):
@@ -265,7 +311,8 @@ class ShadowRunner:
                     results[symbol] = future.result()
                 except Exception as exc:
                     from .data import AcquisitionPending
-                    error = {"type":type(exc).__name__,"message":str(exc),"recorded_at":instant(self.clock()).isoformat()}
+                    error = {"type":type(exc).__name__,"message":str(exc),"recorded_at":instant(self.clock()).isoformat(),
+                             "diagnostics":_symbol_exception_diagnostics(exc)}
                     if isinstance(exc, AcquisitionPending):
                         error.update(retryable=True, reason=exc.reason,
                                      retry_after_seconds=exc.retry_after_seconds,
@@ -365,9 +412,20 @@ class ShadowRunner:
             frame=_frame(history)
             available=pd.to_datetime(frame.available_at,utc=True)
             used=frame.loc[available.le(pd.Timestamp(cutoff)) & pd.to_datetime(frame.opened_at,utc=True).le(pd.Timestamp(reference))]
-            snapshot["candles"]=json.loads(used.to_json(orient="records",date_format="iso"))
+            if dataset.manifest.get("reference_fill_policy"):
+                # Carry proofs bind microsecond receipt clocks and exact prices;
+                # pandas' default JSON precision would invalidate that lineage.
+                from .forward_fill import _clean
+                snapshot["candles"] = _clean(used.to_dict(orient="records"))
+            else:
+                snapshot["candles"]=json.loads(used.to_json(orient="records",date_format="iso"))
             frozen=self.store.freeze_inputs(cycle_id,symbol,snapshot)
         snapshot_hash,snapshot=frozen
+        if (snapshot.get("manifest", {}).get("preparation_only")
+                or snapshot.get("inference", {}).get("preparation_only")
+                or snapshot.get("manifest", {}).get("executable_forecast") is False
+                or snapshot.get("inference", {}).get("executable_forecast") is False):
+            raise ContractError("Non-trading preparation snapshots cannot publish forecasts")
         # Immutable inputs and their actual manifest take precedence on retry,
         # including snapshots created before dataset scope was recorded.
         fallback_scope = (supervised_policy["dataset_scope_by_symbol"][symbol] if supervised_policy is not None
@@ -426,6 +484,12 @@ class ShadowRunner:
                  "synthetic_policy":dataset_scope["synthetic_policy"],"dataset_scope":dataset_scope,
                  "features":dict(zip(snapshot["feature_names"],snapshot["inference_X"][0])),
                  "regime_measurements":regime_measurements(snapshot)}
+        if inf.get("native_interval_contract"):
+            payload.update({key:inf[key] for key in
+                ("feature_version", "feature_policy", "label_provenance", "native_interval_contract")})
+        if inf.get("reference_fill_policy"):
+            payload["reference_fill_policy"] = inf["reference_fill_policy"]
+            payload["reference_price_basis"] = inf.get("reference_price_basis", "genuine_observation")
         reference_rows=[row for row in snapshot.get("candles", [])
                         if instant(row["opened_at"]) == reference]
         if reference_rows:
@@ -435,6 +499,15 @@ class ShadowRunner:
                 **{field:candle.get(field) for field in (
                     "observed_constituents", "synthetic_constituents", "synthetic",
                     "no_trade", "source_id", "availability_kind")}}
+            if isinstance(candle.get("forward_fill_contract"), str):
+                from .forward_fill import verified_reference
+                if not verified_reference(candle):
+                    raise ContractError("Frozen forward-filled reference provenance is invalid")
+                payload["reference_provenance"].update(
+                    forward_fill_contract=candle["forward_fill_contract"],
+                    price_basis="forward_filled_last_genuine_close",
+                    evidence=json.loads(candle["evidence_json"]),
+                    availability_basis_meaning="Actual receipt of source-empty response; prices are carried, not newly observed")
         persistence_start=time.perf_counter()
         forecast=self.store.save_forecast(payload,intent=intent)
         self.store.event(cycle_id,"forecast_persisted",{"forecast_id":forecast["forecast_id"],
@@ -456,6 +529,7 @@ class ShadowRunner:
 
     def score_available(self,histories,*,as_of,mode=None):
         from .data import completed_15m_observation, synthetic_continuity_verified
+        from .native_interval import candle_matches_forecast
         results=[]
         for forecast in self.store.forecasts(pc=self.pc):
             if mode is not None and forecast["mode"]!=mode:
@@ -467,6 +541,8 @@ class ShadowRunner:
                 # A retrospective experiment cannot overwrite later recorded
                 # evidence or expose that future outcome at its earlier cutoff.
                 continue
+            if revisions and revisions[-1]["status"] == "synthetic":
+                self.store.invalidate_unverified_outcome(forecast["forecast_id"], as_of=as_of)
             history=histories.get(forecast["symbol"])
             candle=None
             if history is not None:
@@ -486,6 +562,7 @@ class ShadowRunner:
                 match=frame.loc[(pd.to_datetime(frame.opened_at,utc=True)==pd.Timestamp(forecast["target_open"])) &
                                 (pd.to_datetime(frame.available_at,utc=True)<=pd.Timestamp(instant(as_of)))]
                 match=match.loc[[completed_15m_observation(row, from_frame=True) and synthetic_continuity_verified(row)
+                                and candle_matches_forecast(row, forecast)
                                 for row in match.to_dict("records")]]
                 if len(match):
                     match=match.sort_values("available_at")
@@ -541,7 +618,8 @@ class LiveHistories:
                 addition=pd.DataFrame(saved)
                 for column in ("opened_at","available_at"):
                     addition[column]=pd.to_datetime(addition[column],utc=True)
-                merged=pd.concat([_frame(history),addition],ignore_index=True).sort_values("available_at").drop_duplicates("opened_at",keep="last").sort_values("opened_at").reset_index(drop=True)
+                from .native_interval import merge_native_history_frames
+                merged=merge_native_history_frames(_frame(history),addition)
                 merged.attrs["intraday_history"]=history.manifest
                 histories[symbol]=History(merged,history.manifest)
 
@@ -607,7 +685,8 @@ class LiveHistories:
         addition=pd.DataFrame([candle])
         for column in ("opened_at","available_at"):
             addition[column]=pd.to_datetime(addition[column],utc=True)
-        merged=pd.concat([frame,addition],ignore_index=True).sort_values("available_at").drop_duplicates("opened_at",keep="last").sort_values("opened_at").reset_index(drop=True)
+        from .native_interval import merge_native_history_frames
+        merged=merge_native_history_frames(frame,addition)
         merged.attrs["intraday_history"]=history.manifest
         updated=History(merged,{**history.manifest,"current_reference_availability":"actual","source_dataset":self.provider.dataset})
         self.histories[symbol]=updated

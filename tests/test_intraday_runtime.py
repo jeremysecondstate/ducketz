@@ -3,6 +3,7 @@ from dataclasses import asdict, replace
 from pathlib import Path
 from types import SimpleNamespace
 import sys
+import sqlite3
 import threading
 import json
 
@@ -13,6 +14,7 @@ import pytest
 from ml.intraday.prediction import ContractError
 from ml.intraday.runtime import ResearchConfig, ShadowRunner
 from ml.intraday.store import ShadowStore
+from tests.test_intraday_verified_no_trade import attest, sparse_rows
 
 REF = datetime(2026,10,8,17,tzinfo=timezone.utc)
 
@@ -109,7 +111,7 @@ def test_manual_stop_skips_queued_symbol_work_with_explicit_failures(tmp_path):
 
 
 def test_live_history_restore_excludes_unverified_synthetic_without_mutating_originals(tmp_path):
-    from ml.intraday.data import History, IntervalResponse, SessionBounds, resolve_interval
+    from ml.intraday.data import History, IntervalResponse, SessionBounds, resolve_minute_candle
     from ml.intraday.prediction import STEP, digest
     from ml.intraday.runtime import LiveHistories
     store = ShadowStore(tmp_path/"synthetic-audit.sqlite3")
@@ -130,11 +132,11 @@ def test_live_history_restore_excludes_unverified_synthetic_without_mutating_ori
     saved_observed = row(REF)
     def attempt(index):
         op=REF+STEP
-        return IntervalResponse(str(index),"AAPL",source,"EQUS.MINI",op.isoformat(),(op+STEP).isoformat(),
+        return attest(IntervalResponse(str(index),"AAPL",source,"EQUS.MINI",op.isoformat(),(op+STEP).isoformat(),
             (op+STEP+timedelta(seconds=5*index)).isoformat(),
-            (op+STEP+timedelta(seconds=5*index+1)).isoformat(),"success",(),op.isoformat(),
-            (op+STEP).isoformat(),"successful covered provider omission")
-    valid_synthetic = resolve_interval([attempt(1),attempt(2)],session=session,
+            (op+STEP+timedelta(seconds=5*index+1)).isoformat(),"success",sparse_rows(op),op.isoformat(),
+            (op+STEP).isoformat()))
+    valid_synthetic = resolve_minute_candle([attempt(1),attempt(2)],session=session,
                                       previous=saved_observed)["candle"]
     old_hash=store.record_candle(saved_old)
     store.record_candle(saved_observed)
@@ -159,7 +161,7 @@ def test_live_history_restore_excludes_unverified_synthetic_without_mutating_ori
     evidence=json.loads(audits[0][1])
     assert evidence["history_rows_excluded"]==1 and evidence["immutable_originals_retained"] is True
     assert evidence["saved_candle_hashes"]==[old_hash]
-    assert old_hash==digest(next(c for c in persisted_before if c["synthetic"] and "synthetic_continuity" not in c))
+    assert old_hash==digest(next(c for c in persisted_before if c["synthetic"] and c["evidence_json"]=='{"legacy_confirmations":2}'))
 
 
 def test_live_publication_consumer_failure_preserves_forecast_and_retries_without_refitting(tmp_path):
@@ -221,6 +223,120 @@ def test_model_failures_are_durable_without_fake_forecast_or_stale_fallback(tmp_
     assert resumed["total_cycle_seconds"]>=result["total_cycle_seconds"]
     assert resumed["latest_attempt"]["reused_symbols"]==["AAPL"]
     assert resumed["latest_attempt"]["retrained_symbols"]==["IONQ"]
+
+
+def test_symbol_failure_preserves_real_sqlite_busy_snapshot_cause_before_freezing(tmp_path):
+    cache = tmp_path / "private-context-cache.sqlite3"
+    with sqlite3.connect(cache) as db:
+        db.execute("PRAGMA journal_mode=WAL")
+        db.execute("CREATE TABLE fixture (value INTEGER)")
+        db.execute("INSERT INTO fixture VALUES (0)")
+
+    def stale_snapshot_builder(*args, **kwargs):
+        first = sqlite3.connect(cache, timeout=0)
+        second = sqlite3.connect(cache, timeout=0)
+        try:
+            first.execute("BEGIN")
+            first.execute("SELECT value FROM fixture").fetchall()
+            second.execute("UPDATE fixture SET value=1")
+            second.commit()
+            try:
+                first.execute("UPDATE fixture SET value=2")
+            except sqlite3.OperationalError as exc:
+                assert exc.sqlite_errorcode == 517
+                raise RuntimeError("dataset preparation failed") from exc
+        finally:
+            first.close()
+            second.close()
+
+    r = ShadowRunner(store=ShadowStore(tmp_path / "shadow.sqlite3"), pc="Scout", symbols=("DBX",),
+        config=ResearchConfig(models=("fixture",)), dataset_builder=stale_snapshot_builder,
+        trainer=lambda *a, **k: pytest.fail("Rejected dataset cannot train"),
+        clock=lambda: REF + timedelta(minutes=16))
+    result = r.run_cycle({"DBX": history("DBX")}, reference_at=REF, mode="live")
+    failure = result["failures"]["DBX"]
+    assert failure["type"] == "RuntimeError" and failure["message"] == "dataset preparation failed"
+    assert "retryable" not in failure and result["pending_recovery_symbols"] == []
+    chain = failure["diagnostics"]["exception_chain"]
+    assert [(entry["type"], entry["relation"]) for entry in chain] == [
+        ("RuntimeError", "raised"), ("OperationalError", "cause")]
+    assert chain[1]["sqlite_errorcode"] == 517
+    assert chain[1]["sqlite_errorname"] == "SQLITE_BUSY_SNAPSHOT"
+    assert chain[1]["frames"][-1]["function"] == "stale_snapshot_builder"
+    assert chain[1]["frames"][-1]["file"] == "test_intraday_runtime.py"
+    assert chain[1]["frames"][-1]["line"] > 0
+    assert not failure["diagnostics"]["chain_truncated"]
+    assert str(tmp_path) not in json.dumps(failure["diagnostics"])
+    assert r.store.inputs(result["cycle_id"], "DBX") is None and not result["forecasts"]
+    with r.store.connect() as db:
+        event = json.loads(db.execute("SELECT payload FROM events WHERE kind='symbol_failure'").fetchone()[0])
+        cycle = json.loads(db.execute("SELECT payload FROM cycles WHERE id=?", (result["cycle_id"],)).fetchone()[0])
+        assert event == failure == cycle["failures"]["DBX"]
+        assert db.execute("SELECT count(*) FROM snapshots").fetchone()[0] == 0
+        assert db.execute("SELECT count(*) FROM events WHERE kind='training_started'").fetchone()[0] == 0
+        assert db.execute("SELECT count(*) FROM forecasts").fetchone()[0] == 0
+
+
+def test_symbol_exception_details_are_bounded_and_omit_private_paths_messages_and_locals():
+    from ml.intraday.runtime import _symbol_exception_diagnostics
+    namespace = {}
+    exec(compile("def recurse(n):\n private_local = 'PRIVATE_LOCAL_VALUE'\n if n: return recurse(n-1)\n raise ValueError('PRIVATE_NESTED_MESSAGE')\n",
+                 "C:/PRIVATE_DIRECTORY/private-module.py", "exec"), namespace)
+    try:
+        namespace["recurse"](20)
+    except ValueError as original:
+        current = original
+        for _ in range(8):
+            wrapper = RuntimeError("PRIVATE_WRAPPER_MESSAGE")
+            wrapper.__traceback__ = original.__traceback__
+            wrapper.__cause__ = current
+            current = wrapper
+        details = _symbol_exception_diagnostics(current)
+    assert details["chain_truncated"] and len(details["exception_chain"]) == 6
+    assert all(len(item["frames"]) == 8 and item["frames_truncated"] for item in details["exception_chain"])
+    assert all(frame["file"] == "private-module.py" for item in details["exception_chain"] for frame in item["frames"])
+    serialized = json.dumps(details)
+    assert all(secret not in serialized for secret in ["PRIVATE_DIRECTORY", "PRIVATE_LOCAL_VALUE",
+                                                      "PRIVATE_NESTED_MESSAGE", "PRIVATE_WRAPPER_MESSAGE"])
+    cyclic = RuntimeError("not recorded")
+    cyclic.__context__ = cyclic
+    assert _symbol_exception_diagnostics(cyclic)["chain_truncated"]
+    assert len(_symbol_exception_diagnostics(cyclic)["exception_chain"]) == 1
+    cyclic.__suppress_context__ = True
+    assert not _symbol_exception_diagnostics(cyclic)["chain_truncated"]
+
+
+@pytest.mark.parametrize("code,expected", [(5, 5), (32, 32), (33, 33), (-1, None),
+                                          (2 ** 31, None), (True, None), ("secret", None)])
+def test_os_diagnostics_record_only_bounded_numeric_codes(code, expected):
+    from ml.intraday.runtime import _symbol_exception_diagnostics
+    error = PermissionError(13, "https://provider.invalid/?token=PRIVATE_TOKEN", "PRIVATE_FILENAME")
+    error.winerror = code
+    item = _symbol_exception_diagnostics(error)["exception_chain"][0]
+    assert item["errno"] == 13
+    assert item.get("winerror") == expected
+    assert all(value not in json.dumps(item) for value in ["PRIVATE_TOKEN", "PRIVATE_FILENAME", "secret"])
+
+
+def test_symbol_failure_diagnostics_preserve_acquisition_retry_contract(tmp_path):
+    from ml.intraday.data import AcquisitionPending
+    def pending(*args, **kwargs):
+        raise AcquisitionPending("unavailable_coverage", 4)
+    r = ShadowRunner(store=ShadowStore(tmp_path / "shadow.sqlite3"), pc="Scout", symbols=("DBX",),
+        config=ResearchConfig(models=("fixture",)), dataset_builder=pending,
+        trainer=lambda *a, **k: pytest.fail("Pending acquisition cannot train"),
+        clock=lambda: REF + timedelta(minutes=16))
+    result = r.run_cycle({"DBX": history("DBX")}, reference_at=REF, mode="live")
+    failure = result["failures"]["DBX"]
+    assert failure["type"] == "AcquisitionPending" and failure["reason"] == "unavailable_coverage"
+    assert failure["message"] == str(AcquisitionPending("unavailable_coverage", 4))
+    assert failure["retryable"] is True and failure["retry_after_seconds"] == 4
+    assert failure["retry_at"] == (REF + timedelta(minutes=16, seconds=4)).isoformat()
+    assert result["pending_recovery_symbols"] == ["DBX"]
+    assert failure["diagnostics"]["exception_chain"][0]["type"] == "AcquisitionPending"
+    assert r.store.inputs(result["cycle_id"], "DBX") is None and not result["forecasts"]
+    with r.store.connect() as db:
+        assert json.loads(db.execute("SELECT payload FROM events WHERE kind='symbol_failure'").fetchone()[0]) == failure
 
 
 def test_three_pending_symbols_resume_full_models_without_reissuing_ready_forecast(tmp_path):
@@ -298,7 +414,7 @@ def test_live_history_refreshes_late_prior_or_acquires_exact_predecessor_once_pe
     provider=SimpleNamespace(dataset="EQUS.MINI")
     def fetch(provider,**kwargs):
         reads.append(pd.Timestamp(kwargs["opened_at"]))
-        return _bounded_attempt(provider,**kwargs,empty=pd.Timestamp(kwargs["opened_at"])==reference)
+        return _bounded_attempt(provider,**kwargs,sparse=pd.Timestamp(kwargs["opened_at"])==reference)
     monkeypatch.setattr(data,"fetch_databento_interval_attempt",fetch)
     live=runtime.LiveHistories(histories={"AAPL":data.History(frame,{"source_dataset":"EQUS.MINI"})},
         provider=provider,store=store,journal=journal,reference_at=reference,clock=lambda:now[0],bounded=True)
@@ -581,17 +697,26 @@ def install_live_policy(tmp_path, symbol, *, feature_names=("x",), synthetic_pol
 
 
 def population_history(symbol):
+    from ml.intraday import data
     rows = []
     for days_ago in (1, 0):
         start = REF - timedelta(days=days_ago, hours=10)
         for index in range(42):
             op = start + timedelta(minutes=15 * index)
             price = 100 + index % 7 / 10
+            if index == 30:
+                session = data.SessionBounds(str(start.date()), start.isoformat(), (start+timedelta(hours=12)).isoformat())
+                attempts = [attest(data.IntervalResponse(str(n), symbol, "databento:EQUS.MINI:ohlcv-1m", "EQUS.MINI",
+                    op.isoformat(), (op+data.STEP).isoformat(), (op+data.STEP+timedelta(seconds=5*n)).isoformat(),
+                    (op+data.STEP+timedelta(seconds=5*n+1)).isoformat(), "success", sparse_rows(op, missing=(1,)),
+                    op.isoformat(), (op+data.STEP).isoformat())) for n in (1, 2)]
+                rows.append(data.resolve_minute_candle(attempts, session=session, previous=None)["candle"])
+                continue
             rows.append(dict(symbol=symbol, opened_at=op, available_at=op + timedelta(minutes=15),
                 availability_kind="actual", open=price, high=price + 1, low=price - 1,
-                close=price + .1, volume=100 + index, source_id="fixture:EQUS.MINI", source_dataset="EQUS.MINI",
+                close=price + .1, volume=100 + index, source_id="databento:EQUS.MINI:ohlcv-1m", source_dataset="EQUS.MINI",
                 session_id=str(start.date()), session_open=start.isoformat(),
-                session_close=(start + timedelta(hours=12)).isoformat(), synthetic=index == 30, no_trade=False))
+                session_close=(start + timedelta(hours=12)).isoformat(), synthetic=False, no_trade=False))
     return pd.DataFrame(rows)
 
 
@@ -616,6 +741,8 @@ def test_live_policy_scope_drives_actual_population_and_next_cycle_adopts_new_sc
     assert selected["model_selection"]["active_policy_sha256"] == policy_id
     assert selected["dataset_manifest"]["synthetic_labels_excluded"] > 0
     assert defaults["dataset_manifest"]["synthetic_labels_included"] > 0
+    assert selected["dataset_manifest"]["unverified_synthetic_rows_excluded"] == 0
+    assert defaults["dataset_manifest"]["unverified_synthetic_rows_excluded"] == 0
     assert fits["AAPL"][0] < fits["IONQ"][0]
     expected = build_dataset(histories["AAPL"], reference_at=REF, cutoff=REF + timedelta(minutes=16),
                              synthetic_policy="exclude", lookback_days=1)

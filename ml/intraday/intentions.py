@@ -8,6 +8,7 @@ import json
 from dataclasses import asdict
 
 from .prediction import ContractError, digest, encoded, identity, instant, quantity
+from .direction_metadata import recorded_action, recorded_direction
 
 VERSION = "intraday-independent-intentions-v1"
 
@@ -46,28 +47,65 @@ class IntentionStore:
                                           (forecast_id,)).fetchone())
 
     def processed_at_or_after(self, forecast):
-        """Valid sized intentions fence chronology even when no order was possible."""
+        """Saved sized intentions fence chronology even when no order was possible.
+
+        Read only this scope's possible fencing originals, rather than decoding
+        every historical model payload. As with the store's scoped readers,
+        integrity validation applies to selected originals, not unrelated rows.
+        """
+        reference = instant(forecast["reference_at"])
         with self.store.connect() as db:
-            ids = {row[0] for row in db.execute("SELECT forecast_id FROM intraday_intentions")}
-        return [f["forecast_id"] for f in self.store.forecasts(pc=forecast["pc"])
-                if f["forecast_id"] in ids and f["forecast_id"] != forecast["forecast_id"]
-                and f["symbol"] == forecast["symbol"] and f["mode"] == "live"
-                and instant(f["reference_at"]) >= instant(forecast["reference_at"])]
+            # SQLite compares offsets correctly. The one-second margin keeps
+            # this a conservative prefilter despite julianday's finite precision;
+            # exact Python instants below decide the inclusive chronology fence.
+            rows = db.execute(
+                "SELECT f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,f.payload "
+                "FROM forecasts f JOIN intraday_intentions i ON i.forecast_id=f.id "
+                "WHERE f.pc=? AND f.symbol=? "
+                "AND julianday(f.reference_at)>=julianday(?)-1.0/86400 "
+                "ORDER BY f.rowid",
+                (forecast["pc"], forecast["symbol"], forecast["reference_at"]))
+            result = []
+            for row in rows:
+                f = self.store._forecast_value(row)
+                if (f["forecast_id"] != forecast["forecast_id"] and f["mode"] == "live"
+                        and instant(f["reference_at"]) >= reference):
+                    result.append(f["forecast_id"])
+        return result
+
+    def _original_action(self, db, forecast):
+        row = db.execute("SELECT id,payload FROM intents WHERE forecast_id=? ORDER BY rowid LIMIT 1",
+                         (forecast["forecast_id"],)).fetchone()
+        original = json.loads(row[1]) if row else None
+        if original is None or digest(original) != row[0]:
+            raise ContractError("Original forecast intention is missing or changed")
+        side = recorded_action(forecast, legacy_side=original.get("side"))
+        if side != original.get("side"):
+            raise ContractError("Original intention differs from frozen stock direction")
+        return side
 
     def save_sizing(self, forecast, result):
         value = result.payload()
         if value["forecast_id"] != forecast["forecast_id"] or value["symbol"] != forecast["symbol"]:
             raise ContractError("Sizing belongs to another forecast")
-        side = "BUY" if float(forecast["probability_not_down"]) >= .5 else "SELL"
+        previous = self.get(forecast["forecast_id"])
+        with self.store.connect() as db:
+            side = previous["side"] if previous else self._original_action(db, forecast)
         if value["side"] != side or instant(value["calculated_at"]) < instant(forecast["issued_at"]):
             raise ContractError("Sizing direction or availability differs from forecast")
+        metadata = recorded_direction(forecast)
+        if metadata and any(field in value and value[field] != item for field, item in metadata.items()):
+            raise ContractError("Sizing stock direction metadata differs from forecast")
         if value["status"] != "sized":
             return self.record(forecast, event_key="unavailable:" + result.result_id,
                 recorded_at=value["calculated_at"], disposition=value["reason"],
                 evidence={"sizing": value}, kind="sizing_unavailable")
+        if side == "HOLD":
+            raise ContractError("Neutral forecast cannot create a sized trade")
         desired = quantity(value["desired_quantity"])
         payload = {"version": VERSION, "forecast_id": forecast["forecast_id"], "symbol": forecast["symbol"],
-                   "side": side, "desired_quantity": desired, "sizing_id": result.result_id, "sizing": value}
+                   "side": side, "desired_quantity": desired, "sizing_id": result.result_id, "sizing": value,
+                   **metadata}
         key = digest(payload)
         with self.store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -84,7 +122,7 @@ class IntentionStore:
         return payload
 
     def record(self, forecast, *, event_key, recorded_at, disposition, evidence, kind,
-               capacity=None, order=None):
+               capacity=None, order=None, require_original_intention=False):
         """Append one idempotent projection; execution counts require exact evidence.
 
         ``order`` is a native ledger ReservationState with complete identified
@@ -100,12 +138,14 @@ class IntentionStore:
             self._forecast(db, forecast)
             intention = self._value(db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
                                                (forecast["forecast_id"],)).fetchone())
+            if require_original_intention and intention is None:
+                raise ContractError("Local order lacks its original immutable intention")
             desired = intention["desired_quantity"] if intention else None
-            side = "BUY" if float(forecast["probability_not_down"]) >= .5 else "SELL"
+            side = intention["side"] if intention else self._original_action(db, forecast)
             value = dict(version=VERSION, forecast_id=forecast["forecast_id"], symbol=forecast["symbol"],
                 side=side, kind=kind, desired_quantity=desired, adjusted_quantity=None,
                 disposition=disposition, evidence=evidence, submission_status="not_submitted",
-                submitted_quantity=0, filled_quantity=0, realized_pnl=None)
+                submitted_quantity=0, filled_quantity=0, realized_pnl=None, **recorded_direction(forecast))
             if capacity is not None:
                 cap = capacity.payload()
                 if desired is None or (cap["symbol"], cap["side"], cap["desired_quantity"]) != (forecast["symbol"], side, desired):

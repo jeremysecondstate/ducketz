@@ -13,6 +13,7 @@ from pathlib import Path
 import sqlite3
 
 from .prediction import ContractError, STEP, TARGET_VERSION, digest, encoded, instant, number
+from .direction_metadata import FIELDS as DIRECTION_FIELDS, recorded_direction, stamp_new_direction
 
 
 def utcnow():
@@ -147,6 +148,15 @@ class ShadowStore:
             row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE cycle_id=? AND symbol=?", (cycle_id, symbol)).fetchone()
         return self._forecast_value(row) if row else None
 
+    def forecast_by_id(self, forecast_id, *, pc=None):
+        """Validate one immutable forecast without loading unrelated history."""
+        with self.connect() as db:
+            row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE id=?", (forecast_id,)).fetchone()
+        value = self._forecast_value(row) if row else None
+        # Validate indexed identity before scope filtering, so a changed pc
+        # column cannot disguise corruption as an ordinary missing forecast.
+        return value if value is not None and (pc is None or value["pc"] == pc) else None
+
     def forecasts(self, *, pc=None):
         with self.connect() as db:
             rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts" + (" WHERE pc=?" if pc else "") + " ORDER BY rowid", (pc,) if pc else ()).fetchall()
@@ -191,26 +201,43 @@ class ShadowStore:
         value["classification"] = "not-down" if expected >= Decimal("0.50") else "down"
         value["execution_eligibility"] = ("manual_live_checks_required" if value["mode"] == "live"
                                           else "unresolved_shadow_only")
-        value.pop("forecast_id", None)
-        key = digest(value)
-        value["forecast_id"] = key
-        intent_value = self._intent(key, value, intent)
+        supplied_id = value.pop("forecast_id", None)
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             old = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE cycle_id=? AND symbol=?", (value["cycle_id"], value["symbol"])).fetchone()
             previous = self._forecast_value(old) if old else None
-            if previous is not None and previous != value:
-                raise ContractError("Issued forecast is immutable")
-            if old:
+            if previous is not None:
+                # Inherit only omitted store-derived fields. Never stamp an old
+                # forecast or reinterpret its action with the loaded policy.
+                for field in DIRECTION_FIELDS:
+                    if field not in value and field in previous:
+                        value[field] = previous[field]
+                key = digest(value)
+                value["forecast_id"] = key
+                if previous != value or supplied_id not in (None, key):
+                    raise ContractError("Issued forecast is immutable")
+                if intent:
+                    original = db.execute("SELECT id,payload FROM intents WHERE forecast_id=? ORDER BY rowid LIMIT 1", (key,)).fetchone()
+                    saved_intent = json.loads(original[1]) if original else None
+                    if (saved_intent is None or digest(saved_intent) != original[0]
+                            or any(field not in saved_intent or saved_intent[field] != item for field, item in intent.items())):
+                        raise ContractError("Original forecast intention is immutable")
                 return previous
+            value = stamp_new_direction(value)
+            key = digest(value)
+            value["forecast_id"] = key
+            intent_value = self._intent(key, value, intent)
             db.execute("INSERT INTO forecasts VALUES(?,?,?,?,?,?,?)", (key, value["pc"], value["symbol"], value["cycle_id"], value["reference_at"], value["issued_at"], encoded(value)))
             db.execute("INSERT INTO intents VALUES(?,?,?,?)", (digest(intent_value), key, value["issued_at"], encoded(intent_value)))
         return value
 
     @staticmethod
     def _intent(key, forecast, supplied):
-        side = "BUY" if float(forecast["probability_not_down"]) >= .5 else "SELL"
+        side = forecast["stock_action"]
         value = dict(supplied or {})
+        metadata = recorded_direction(forecast)
+        if any(field in value and value[field] != item for field, item in metadata.items()):
+            raise ContractError("Intent stock direction metadata differs from forecast")
         if value.get("side", side) != side:
             raise ContractError("Intent direction disagrees with the forecast")
         desired, adjusted = value.get("desired_quantity"), value.get("adjusted_quantity")
@@ -224,7 +251,11 @@ class ShadowStore:
             disposition = value.get("disposition")
             if not disposition:
                 raise ContractError("Explicit execution disposition required")
-        return {**value, "forecast_id": key, "side": side, "desired_quantity": desired,
+        if side == "HOLD":
+            if desired not in (None, 0):
+                raise ContractError("Neutral forecast cannot create a trade intention")
+            disposition = "probability_between_action_cutoffs"
+        return {**value, **metadata, "forecast_id": key, "side": side, "desired_quantity": desired,
                 "adjusted_quantity": adjusted, "disposition": disposition, "submission_status": "not_submitted_shadow",
                 "submitted_quantity": 0, "filled_quantity": 0, "realized_pnl": None}
 
@@ -274,6 +305,12 @@ class ShadowStore:
         if unavailable_reason:
             status = "unscorable"
         if candle is not None:
+            from .data import synthetic_continuity_verified
+            if not synthetic_continuity_verified(candle):
+                raise ContractError("Synthetic outcome lacks verified source absence and price continuity")
+            from .native_interval import candle_matches_forecast
+            if not candle_matches_forecast(candle, forecast):
+                raise ContractError("Outcome observation contract differs from the immutable forecast")
             if (candle["symbol"] != forecast["symbol"] or instant(candle["opened_at"]) != instant(forecast["target_open"]) or instant(candle["available_at"]) > now):
                 raise ContractError("Outcome must use the exact available target")
             if forecast.get("source_dataset") and candle.get("source_dataset")!=forecast["source_dataset"]:
@@ -285,7 +322,8 @@ class ShadowStore:
             candle_id = self.record_candle(candle)
             label = number(candle["close"], positive=True) >= number(forecast["reference_open"], positive=True)
             price = str(candle["close"])
-            status = "synthetic" if candle.get("synthetic") else "scored"
+            derived_reference = isinstance(forecast.get("reference_provenance", {}).get("forward_fill_contract"), str)
+            status = "synthetic" if candle.get("synthetic") or derived_reference else "scored"
         market_return = None if price is None else str(number(price) / number(forecast["reference_open"]) - 1)
         evidence = {"forecast_id": key, "status": status, "target_not_down": label,
                     "reference_to_target_return": market_return,
@@ -299,7 +337,7 @@ class ShadowStore:
             previous = self._outcome_value(prior) if prior else None
             if previous and instant(previous["observed_at"])>now:
                 raise ContractError("Outcome evidence cannot be backdated before an existing observation")
-            if previous and candle is None and previous["status"] in {"scored", "synthetic"}:
+            if previous and candle is None and previous["status"] in {"scored", "synthetic", "unscorable"}:
                 return previous
             old = db.execute("SELECT id,forecast_id,observed_at,payload FROM outcomes WHERE id=?", (revision_id,)).fetchone()
             if old:
@@ -308,6 +346,125 @@ class ShadowStore:
             db.execute("INSERT INTO outcomes VALUES(?,?,?,?)", (revision_id, key, now.isoformat(), encoded(result)))
         return result
 
+    def invalidate_unverified_outcome(self, forecast_id, *, as_of):
+        """Append a precise audit revision; never rewrite prices or forecasts.
+
+        Legacy synthetic outcomes could be stored with only a generic omission
+        statement. They cannot become observed targets under a newer contract.
+        Retain the original outcome and candle, marking the latest assessment
+        unscorable only when their saved provenance demonstrably fails.
+        """
+        from .data import synthetic_continuity_verified
+        now = instant(as_of)
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT id,forecast_id,observed_at,payload FROM outcomes "
+                "WHERE forecast_id=? ORDER BY rowid DESC LIMIT 1", (forecast_id,)).fetchone()
+            if row is None:
+                return None
+            previous = self._outcome_value(row)
+            if (previous["status"] not in {"scored", "synthetic"}
+                    or instant(previous["observed_at"]) > now or not previous.get("candle_id")):
+                return None
+            saved = db.execute("SELECT payload FROM candles WHERE id=?", (previous["candle_id"],)).fetchone()
+            if saved is None:
+                raise ContractError("Saved outcome target candle is missing")
+            candle = json.loads(saved[0])
+            if digest(candle) != previous["candle_id"]:
+                raise ContractError("Saved outcome candle evidence hash changed")
+            if synthetic_continuity_verified(candle):
+                return None
+            evidence = {"forecast_id": forecast_id, "status": "unscorable", "target_not_down": None,
+                "reference_to_target_return": None,
+                "return_basis": "reference_open_to_exact_target_close_not_trade_pnl",
+                "target_close_price": None, "candle_id": None,
+                "unavailable_reason": "legacy_synthetic_target_without_verified_source_no_trade_proof",
+                "availability_basis": None, "invalidates_revision_id": previous["revision_id"],
+                "rejected_candle_id": previous["candle_id"],
+                "audit_contract": "verified_source_no_trade_outcome_audit_v1"}
+            revision_id = digest(evidence)
+            result = {**evidence, "observed_at": now.isoformat(), "revision_id": revision_id}
+            db.execute("INSERT OR IGNORE INTO outcomes VALUES(?,?,?,?)",
+                (revision_id, forecast_id, now.isoformat(), encoded(result)))
+            return result
+
     def revisions(self, forecast_id):
         with self.connect() as db:
             return [self._outcome_value(row) for row in db.execute("SELECT id,forecast_id,observed_at,payload FROM outcomes WHERE forecast_id=? ORDER BY rowid", (forecast_id,))]
+
+
+class ScoringForecastReader:
+    """Keep bounded, verified routing projections for one scoring worker.
+
+    Forecast model evidence can be megabytes per row. Polls reread the small
+    indexed identities in original row order, not every model payload. New or
+    changed identities are fully validated before projection. The cache retains
+    immutable serialized projections only; originals are reloaded and validated
+    again immediately before a scoring mutation. This is not an all-history
+    payload-corruption audit on every poll.
+    """
+
+    MAX_ENTRIES = 4096
+    MAX_BYTES = 16 * 1024 * 1024
+    _FIELDS = ("forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at",
+               "mode", "target_open", "target_close", "reference_open", "source_dataset",
+               "source_id", "feature_version", "native_interval_contract")
+
+    def __init__(self, store, *, pc):
+        if pc not in {"Atlas", "Scout"}:
+            raise ContractError("Explicit scoring participant required")
+        self.store, self.pc = store, pc
+        self._cache = {}
+        self._cache_bytes = 0
+
+    @classmethod
+    def _projection(cls, forecast):
+        value = {key: forecast[key] for key in cls._FIELDS if key in forecast}
+        # These are the only nested fields read by interval matching and outcome
+        # classification. Never retain the model's full dataset manifest.
+        for name, field in (("dataset_manifest", "native_interval_contract"),
+                            ("reference_provenance", "forward_fill_contract")):
+            if name in forecast:
+                nested = forecast[name]
+                value[name] = ({field: nested[field]} if field in nested else {}) if isinstance(nested, dict) else nested
+        return encoded(value)
+
+    def _discard(self, identity):
+        old = self._cache.pop(identity, None)
+        if old is not None:
+            self._cache_bytes -= old[2]
+
+    def __iter__(self):
+        with self.store.connect() as db:
+            rows = db.execute("SELECT rowid,id,pc,symbol,cycle_id,reference_at,issued_at "
+                              "FROM forecasts WHERE pc=? ORDER BY rowid", (self.pc,)).fetchall()
+        present = {row[1] for row in rows}
+        for identity in self._cache.keys() - present:
+            self._discard(identity)
+        for row in rows:
+            identity = row[1]
+            cached = self._cache.get(identity)
+            if cached is None or cached[0] != row:
+                self._discard(identity)
+                original = self.store.forecast_by_id(identity, pc=self.pc)
+                if original is None or any(original.get(field) != indexed for field, indexed in
+                        zip(("forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at"), row[1:])):
+                    raise ContractError("Scoring forecast identity changed during selection")
+                projection = self._projection(original)
+                del original
+                size = len(projection.encode("utf-8"))
+                if len(self._cache) < self.MAX_ENTRIES and self._cache_bytes + size <= self.MAX_BYTES:
+                    self._cache[identity] = (row, projection, size)
+                    self._cache_bytes += size
+            else:
+                projection = cached[1]
+            # A consumer cannot mutate the cached projection or retain a large
+            # original through a projection's nested dictionaries.
+            yield json.loads(projection)
+
+    def original(self, projection):
+        """Validate the complete original and its routing before every write."""
+        original = self.store.forecast_by_id(projection["forecast_id"], pc=self.pc)
+        if original is None or self._projection(original) != encoded(projection):
+            raise ContractError("Scoring forecast changed before outcome mutation")
+        return original
