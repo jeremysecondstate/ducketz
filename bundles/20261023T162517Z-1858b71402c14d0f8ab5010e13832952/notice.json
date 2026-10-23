@@ -1,0 +1,43 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261023T161622Z-dcb80342cd404ce1b53e553af2b95671",
+  "change_id": "20261023T161622Z-dcb80342cd404ce1b53e553af2b95671",
+  "commit_sha": "c3c943b38729b7c2661ce37cd35721fbfedf230b",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/c3c943b38729b7c2661ce37cd35721fbfedf230b",
+  "files": [
+    "ml/intraday/live_session.py",
+    "ml/intraday/market_collection.py",
+    "tests/test_intraday_market_collection_failure_diagnostics.py"
+  ],
+  "limitations": [
+    "Exactly three owned files and all 875 source/dependency fingerprints match the immutable reviewed record. Validation counts overlap.",
+    "Bounded optional fatal collection observations preserve original exception identity and existing lock, retry, queue, loop and manual-control behavior. Historical contention ownership and unavailable cause evidence remain unproven.",
+    "Source publication, main integration, peer adoption, installation, loading and affected behavior remain separately recorded. Private recipes, accounts, ledgers, data, models and operating evidence are excluded."
+  ],
+  "parent_commit": "d6e4f06ee7882ad7e99bdae68c3852a68ade7d75",
+  "parent_pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/367",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/368",
+  "remote_sha": "c3c943b38729b7c2661ce37cd35721fbfedf230b",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Startup-imported diagnostic modules require a human-controlled manual reload after reviewed local adoption. Source publication preserves each traders manual controls and scientific recipe; affected behavior needs separate observation.",
+  "scope": "Shared correctness diagnostics; each PC retains its own scientific recipe, symbols and private operating bindings",
+  "summary": "Retain bounded market-context fatal lock diagnostics",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T16:17:01.740179Z",
+      "kind": "sealed source offline checks",
+      "modules": 14,
+      "output_sha256": "34bec35fb4c2df7506ed069544da32192b191ef00886f5b38b4ca5e5d7c064ab",
+      "result": "387 passed in 36.44s",
+      "started_at_utc": "2026-10-23T16:16:23.377892Z"
+    },
+    {
+      "completed_at_utc": "2026-10-23T16:20:01.661535Z",
+      "kind": "isolated publication offline checks",
+      "modules": 14,
+      "output_sha256": "a6397e92379ddc6c562317f48150627f3871fb234d3d1934a4069eaebc82d25a",
+      "result": "387 passed in 37.91s",
+      "started_at_utc": "2026-10-23T16:19:21.451952Z"
+    }
+  ]
+}
