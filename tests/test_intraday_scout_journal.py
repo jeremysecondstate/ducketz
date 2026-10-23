@@ -258,7 +258,8 @@ def test_abrupt_process_death_at_transaction_boundaries(tmp_path, action, before
     candidate = Path(__file__).resolve().parents[1]
     modules = {"ml": "ml/__init__.py", "ml.intraday": "ml/intraday/__init__.py",
                "ml.intraday.scout_journal": "ml/intraday/scout_journal.py",
-               "ml.intraday.scout_protocol": "ml/intraday/scout_protocol.py"}
+               "ml.intraday.scout_protocol": "ml/intraday/scout_protocol.py",
+               "ml.intraday.dataset_diagnostics": "ml/intraday/dataset_diagnostics.py"}
     fingerprints = {name: {"relative_path": relative,
                            "sha256": hashlib.sha256((candidate / relative).read_bytes()).hexdigest()}
                     for name, relative in modules.items()}

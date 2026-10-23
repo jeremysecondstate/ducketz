@@ -17,6 +17,7 @@ import uuid
 
 from datafetching.runtime_lock import exclusive_runtime_lock
 from .scout_journal import ScoutJournal, JournalError, _safe_path
+from .dataset_diagnostics import recovery_phase
 from .scout_protocol import PARTICIPANT_ID, STREAM, canonical_sha256
 
 VERSION = 'scout-session-books-v1'
@@ -36,43 +37,44 @@ class ScoutBooks:
                     participant_id=PARTICIPANT_ID, stream=STREAM, sessions={})
 
     def _read(self):
-        _safe_path(self.path)
-        if not self.path.exists():
-            journals = self.root / 'journals'
-            if journals.exists() and any(journals.iterdir()):
-                raise JournalError('Journal inventory missing; preserve existing books for repair')
-            return self._empty()
-        try:
-            envelope = json.loads(self.path.read_text(encoding='utf-8'))
-            if (set(envelope) != {'inventory', 'sha256'}
-                    or canonical_sha256(envelope['inventory']) != envelope['sha256']):
-                raise ValueError('inventory digest differs')
-            value = envelope['inventory']
-            expected = self._empty()
-            if (set(value) != set(expected) or type(value['sessions']) is not dict
-                    or any(value[k] != expected[k] for k in expected if k != 'sessions')):
-                raise ValueError('inventory identity differs')
-            paths = set()
-            for session, item in value['sessions'].items():
-                if (type(session) is not str or not session
-                        or set(item) != {'filename', 'binding', 'journal_id'}
-                        or type(item['journal_id']) is not str
-                        or re.fullmatch(r'[a-f0-9]{32}', item['journal_id']) is None
-                        or item['filename'] != canonical_sha256({'session_id': session}) + '.sqlite3'
-                        or item['binding'] != self._binding(session)):
-                    raise ValueError('session binding differs')
-                journal_path = _safe_path(self.root / 'journals' / item['filename'])
-                if not journal_path.is_file():
-                    raise ValueError('registered journal is missing')
-                paths.add(item['filename'])
-            journals = self.root / 'journals'
-            actual = {p.name for p in journals.iterdir()} if journals.exists() else set()
-            allowed = paths | {name + '-journal' for name in paths}
-            if not paths <= actual or actual - allowed:
-                raise ValueError('unregistered journal requires explicit repair')
-            return value
-        except (KeyError, TypeError, ValueError, OSError) as exc:
-            raise JournalError('Scout journal inventory failed validation: ' + str(exc)) from exc
+        with recovery_phase('inventory_validation'):
+            _safe_path(self.path)
+            if not self.path.exists():
+                journals = self.root / 'journals'
+                if journals.exists() and any(journals.iterdir()):
+                    raise JournalError('Journal inventory missing; preserve existing books for repair')
+                return self._empty()
+            try:
+                envelope = json.loads(self.path.read_text(encoding='utf-8'))
+                if (set(envelope) != {'inventory', 'sha256'}
+                        or canonical_sha256(envelope['inventory']) != envelope['sha256']):
+                    raise ValueError('inventory digest differs')
+                value = envelope['inventory']
+                expected = self._empty()
+                if (set(value) != set(expected) or type(value['sessions']) is not dict
+                        or any(value[k] != expected[k] for k in expected if k != 'sessions')):
+                    raise ValueError('inventory identity differs')
+                paths = set()
+                for session, item in value['sessions'].items():
+                    if (type(session) is not str or not session
+                            or set(item) != {'filename', 'binding', 'journal_id'}
+                            or type(item['journal_id']) is not str
+                            or re.fullmatch(r'[a-f0-9]{32}', item['journal_id']) is None
+                            or item['filename'] != canonical_sha256({'session_id': session}) + '.sqlite3'
+                            or item['binding'] != self._binding(session)):
+                        raise ValueError('session binding differs')
+                    journal_path = _safe_path(self.root / 'journals' / item['filename'])
+                    if not journal_path.is_file():
+                        raise ValueError('registered journal is missing')
+                    paths.add(item['filename'])
+                journals = self.root / 'journals'
+                actual = {p.name for p in journals.iterdir()} if journals.exists() else set()
+                allowed = paths | {name + '-journal' for name in paths}
+                if not paths <= actual or actual - allowed:
+                    raise ValueError('unregistered journal requires explicit repair')
+                return value
+            except (KeyError, TypeError, ValueError, OSError) as exc:
+                raise JournalError('Scout journal inventory failed validation: ' + str(exc)) from exc
 
     def _binding(self, session):
         return dict(account_fingerprint=self.account_fingerprint, session_id=session,
@@ -131,8 +133,9 @@ class ScoutBooks:
         return self._open_item(item)
 
     def _open_item(self, item):
-        return ScoutJournal(self.root / 'journals' / item['filename'], binding=item['binding'],
-                            create=False, expected_journal_id=item['journal_id'])
+        with recovery_phase('journal_constructor', journal_id=item['journal_id']):
+            return ScoutJournal(self.root / 'journals' / item['filename'], binding=item['binding'],
+                                create=False, expected_journal_id=item['journal_id'])
 
     def sessions(self):
         return tuple(self._read()['sessions'])

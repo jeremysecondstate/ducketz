@@ -3,10 +3,12 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import datetime
 from threading import Barrier
+import json
+import sqlite3
 
 import pytest
 
-from ml.intraday.scout_client import ClientGateError, ScoutClient
+from ml.intraday.scout_client import ClientGateError, ScoutClient, exception_details
 from ml.intraday.scout_journal import JournalError, JournalStateError, ScoutJournal
 from ml.intraday.scout_protocol import Grant, ProtocolError, Request
 
@@ -327,3 +329,84 @@ def test_independent_submit_uses_local_permit_without_authority_transport(tmp_pa
     with ScoutJournal(tmp_path / "journal.db", binding=binding()) as journal:
         assert journal.get(req.request_id)["broker_order_id"] == "123"
         assert journal.get(req.request_id)["state"] == "ACCEPTED"
+
+
+def test_original_send_exception_survives_failed_uncertainty_write_without_repost(tmp_path, monkeypatch):
+    calls = []
+    original = TimeoutError("opaque transport error with Bearer private-fixture-value")
+    with ScoutJournal(tmp_path / "journal.db", binding=binding()) as journal:
+        adapter = client(journal)
+        adapter.admit(request())
+        def failed_outcome(*args):
+            raise sqlite3.OperationalError("database is locked")
+        monkeypatch.setattr(journal, "outcome", failed_outcome)
+        def send(*args):
+            calls.append("possible acceptance")
+            raise original
+        with pytest.raises(TimeoutError) as caught:
+            adapter.submit("request:1", send=send, final_gate=lambda *_: True)
+        assert caught.value is original
+        failure = original.scout_submission_failure
+        assert failure["stage"] == "send"
+        assert failure["original"]["chain"][0]["type"] == "TimeoutError"
+        assert failure["original"]["chain"][0]["frames"][-1]["function"] == "send"
+        secondary = failure["uncertainty_persistence_error"]["chain"][0]
+        assert secondary["type"] == "OperationalError" and secondary["message"] == "database is locked"
+        assert "private-fixture-value" not in json.dumps(failure)
+        assert journal.get("request:1")["state"] == "SENDING"
+        with pytest.raises(JournalStateError):
+            adapter.submit("request:1", send=send, final_gate=lambda *_: True)
+        assert calls == ["possible acceptance"]
+
+
+@pytest.mark.parametrize("uncertainty_fails", [False, True])
+def test_failed_acceptance_write_retains_exact_returned_id_and_one_send(tmp_path, monkeypatch, uncertainty_fails):
+    calls, outcomes = [], []
+    original = sqlite3.OperationalError("disk I/O error")
+    with ScoutJournal(tmp_path / "journal.db", binding=binding()) as journal:
+        adapter = client(journal)
+        adapter.admit(request())
+        outcome = journal.outcome
+        def fail_acceptance(request_id, token, order_id):
+            outcomes.append(order_id)
+            if order_id is not None:
+                raise original
+            if uncertainty_fails:
+                raise sqlite3.OperationalError("database is locked")
+            return outcome(request_id, token, order_id)
+        monkeypatch.setattr(journal, "outcome", fail_acceptance)
+        def send(*args):
+            calls.append("123")
+            return "123"
+        with pytest.raises(sqlite3.OperationalError) as caught:
+            adapter.submit("request:1", send=send, final_gate=lambda *_: True)
+        assert caught.value is original
+        failure = original.scout_submission_failure
+        assert failure["stage"] == "record_acceptance" and failure["returned_broker_order_id"] == "123"
+        assert ("uncertainty_persistence_error" in failure) == uncertainty_fails
+        assert outcomes == ["123", None]
+        assert journal.get("request:1")["state"] == ("SENDING" if uncertainty_fails else "UNKNOWN")
+        with pytest.raises(JournalStateError):
+            adapter.submit("request:1", send=send, final_gate=lambda *_: True)
+        assert calls == ["123"]
+
+
+def test_diagnostic_chain_preserves_cause_and_bounds_private_messages():
+    try:
+        raise sqlite3.OperationalError("database is locked")
+    except sqlite3.Error as cause:
+        try:
+            raise ValueError("https://broker/accounts/private-account?token=private-token") from cause
+        except ValueError as original:
+            details = exception_details(original)
+    assert [item["type"] for item in details["chain"]] == ["ValueError", "OperationalError"]
+    assert details["chain"][1]["message"] == "database is locked"
+    assert "private-account" not in json.dumps(details) and "private-token" not in json.dumps(details)
+    previous = sqlite3.OperationalError("database is locked")
+    for _ in range(8):
+        error = RuntimeError("private " * 1000)
+        error.__cause__ = previous
+        previous = error
+    bounded = exception_details(previous)
+    assert len(bounded["chain"]) == 4 and bounded["chain_truncated"] is True
+    assert len(json.dumps(bounded)) < 2000

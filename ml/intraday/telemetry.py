@@ -21,6 +21,7 @@ import sqlite3
 import tempfile
 
 from .prediction import ContractError, STEP, TARGET_VERSION
+from .direction_metadata import FIELDS as DIRECTION_FIELDS, recorded_direction
 
 PACKET_SCHEMA = "intraday-monitoring-v1"
 RECEIPT_SCHEMA = "intraday-monitoring-receipt-v1"
@@ -43,6 +44,7 @@ _FORECAST_OPTIONAL = {
     "preprocessing_seconds", "training_seconds", "inference_seconds", "symbol_seconds_before_persistence",
     "training_started_at", "training_completed_at", "synthetic_policy", "issue_after_target",
     "source_dataset", "source_id",
+    *DIRECTION_FIELDS,
 }
 _SOURCE_IDENTITIES = {dataset: f"databento:{dataset}:ohlcv-1m" for dataset in ("EQUS.MINI", "XNAS.ITCH")}
 _MODEL_REQUIRED = {"name", "status", "probability_not_down", "version"}
@@ -150,6 +152,7 @@ def _operational_fields(value, produced):
 
 def _validate_forecast(forecast, *, pc, produced):
     _keys(forecast, _FORECAST_REQUIRED, _FORECAST_OPTIONAL)
+    recorded_direction(forecast)
     if "source_dataset" in forecast or "source_id" in forecast:
         dataset = forecast.get("source_dataset")
         if (not isinstance(dataset, str) or dataset not in _SOURCE_IDENTITIES

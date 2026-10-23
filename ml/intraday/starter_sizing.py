@@ -12,6 +12,7 @@ from decimal import Decimal, ROUND_HALF_EVEN, localcontext
 import math
 from typing import Mapping
 
+from ml.stock_direction_policy import stock_action
 from .prediction import ContractError, digest, encoded, identity, instant, number
 from .technical_sizing import (
     AvailableInput, IndicatorSpec, ScoreRecipe, ScoreTerm, SymbolReference,
@@ -82,9 +83,15 @@ def independent_reference(forecast, *, account_equity, quote, calculated_at, max
     forecast_id = original.pop("forecast_id", None)
     if forecast_id != digest(original):
         raise ContractError("Independent reference requires an original immutable forecast")
+    probability = number(forecast["probability_not_down"])
+    if probability > 1:
+        raise ContractError("Forecast probability must be in [0,1]")
+    side = stock_action(probability)
     at = instant(calculated_at)
     if not isinstance(maximum_quote_age_seconds, (int, float)) or isinstance(maximum_quote_age_seconds, bool) or not math.isfinite(maximum_quote_age_seconds) or maximum_quote_age_seconds <= 0:
         raise ContractError("An explicit positive quote freshness setting is required")
+    if side == "HOLD":
+        return None, "probability_between_action_cutoffs"
     if account_equity is None:
         return None, "account_equity_unavailable"
     if quote is None:
@@ -108,10 +115,6 @@ def independent_reference(forecast, *, account_equity, quote, calculated_at, max
     bid, ask = number(quote.bid), number(quote.ask)
     if bid <= 0 or ask < bid:
         return None, "valid_bid_ask_unavailable"
-    probability = number(forecast["probability_not_down"])
-    if probability > 1:
-        raise ContractError("Forecast probability must be in [0,1]")
-    side = "BUY" if probability >= Decimal(".5") else "SELL"
     price = ask if side == "BUY" else bid
     with localcontext() as arithmetic:
         arithmetic.prec = 34
@@ -140,8 +143,11 @@ def size_forecast(forecast, *, forecast_snapshot, account_equity: AvailableInput
     """
     policy = starter_policy(str(forecast["symbol"]))
     snapshot_hash = forecast["snapshot_hash"]
-    if digest(forecast_snapshot) != snapshot_hash:
-        raise ContractError("Original forecast snapshot hash changed")
+    # The indicator entry validates the same complete snapshot before use.
+    # Preserve malformed-input rejection before extracting its candle argument.
+    if not isinstance(forecast_snapshot, Mapping) or "candles" not in forecast_snapshot:
+        if digest(forecast_snapshot) != snapshot_hash:
+            raise ContractError("Original forecast snapshot hash changed")
     indicators = indicator_snapshot(forecast_snapshot["candles"], symbol=policy.symbol,
         reference_at=forecast["reference_at"], data_cutoff=forecast["training_cutoff"],
         indicator_specs=policy.indicators, window_policy=policy.window,

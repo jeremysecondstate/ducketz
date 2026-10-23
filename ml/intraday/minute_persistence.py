@@ -186,7 +186,8 @@ def _writer_lock(datastore):
 
 
 def persist_native_minutes(results, selected, *, datastore, pc, symbols, spec, dataset,
-                           start, end, requested_at, observed_at, allow_catchup=False):
+                           start, end, requested_at, observed_at, allow_catchup=False,
+                           source_omission_contract=None):
     """Archive an actual exact-range response, then upsert only observed minutes.
 
     This function makes no provider call and is also usable for authorized
@@ -205,7 +206,11 @@ def persist_native_minutes(results, selected, *, datastore, pc, symbols, spec, d
         "requested_at": requested.isoformat(), "observed_at": observed.isoformat(),
         "range_policy": "explicit_catchup_up_to_one_day" if allow_catchup else "single_completed_quarter"}
     directory = _archive(results, selected, datastore=datastore, request=request)
+    response_bytes = (directory / "response.json").read_bytes()
+    archived = json.loads(response_bytes)
+    raw_by_symbol = {item["symbol"]: item["raw"] for item in archived["symbols"]}
     status = {"version": VERSION, "response_receipt": str(directory / "response.json"),
+        "response_receipt_sha256": hashlib.sha256(response_bytes).hexdigest(),
         "persistence_receipt": str(directory / "persistence.json"), "pc": pc,
         "start": op.isoformat(), "end": cl.isoformat(), "status": "failed", "symbols": {}, "error": None}
     try:
@@ -230,6 +235,18 @@ def persist_native_minutes(results, selected, *, datastore, pc, symbols, spec, d
                     "expected_minutes": expected_minutes, "missing_minutes": expected_minutes - len(bars),
                     "raw_path": None, "normalized_path": None, "status": "persisting"}
                 evidence = status["symbols"][symbol]
+                # A successful complete parse and retained raw bytes are
+                # distinct from advertised dataset availability. Empty frames
+                # do not establish symbol resolution and remain unknown.
+                from .no_trade import CONTRACT
+                raw_evidence = raw_by_symbol[symbol]
+                if (source_omission_contract == CONTRACT and raw_evidence is not None
+                        and len(bars) > 0 and raw_evidence["rows"] == len(bars)):
+                    evidence["source_response"] = {"contract": CONTRACT, "complete": True,
+                        "symbol_resolution": "returned_native_raw_symbol", "raw_rows": len(raw),
+                        "parsed_rows": len(bars), "raw_sha256": raw_evidence["sha256"],
+                        "raw_file": raw_evidence["file"],
+                        "requested_at": requested.isoformat(), "received_at": observed.isoformat()}
                 if raw is not None and not raw.empty:
                     target = store.save_raw_frame(source="databento", category="bars", symbol=symbol,
                         endpoint=f"{request_key}_raw", frame=raw, timeframe=spec.frequency, metadata=metadata)
@@ -285,9 +302,16 @@ class PersistedMinuteProvider:
         results, selected = self._provider.fetch_native_bars_range(symbols, spec,
             start=start, end=end, available_range=available_range)
         try:
+            from app.services.databento_market_data import DatabentoMarketDataProvider
+            from .no_trade import CONTRACT
+            # Only the reviewed adapter's unmodified full-range decode earns
+            # this scope contract; arbitrary provider delegates keep working
+            # but cannot turn absence into zero-trade evidence.
+            source_contract = (CONTRACT if type(self._provider) is DatabentoMarketDataProvider
+                and "fetch_native_bars_range" not in vars(self._provider) else None)
             self._last_receipt = persist_native_minutes(results, selected, datastore=self._datastore,
                 pc=self._pc, symbols=symbols, spec=spec, dataset=self.dataset, start=start, end=end,
-                requested_at=requested, observed_at=self._clock())
+                requested_at=requested, observed_at=self._clock(), source_omission_contract=source_contract)
         except Exception as exc:
             self._last_receipt = getattr(exc, "minute_persistence_receipt", None)
             raise

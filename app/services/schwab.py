@@ -683,11 +683,23 @@ class SchwabSession:
         context: SchwabOrderSubmissionContext,
         *,
         before_post: Callable[[], None] | None = None,
+        on_before_post_failure: Callable[[Exception], None] | None = None,
     ) -> str | None:
         if not isinstance(context, SchwabOrderSubmissionContext):
             raise TypeError("A Schwab order-submission context is required.")
         if before_post is not None:
-            before_post()
+            try:
+                before_post()
+            except Exception as error:
+                # This observation belongs to the native transport boundary:
+                # the sole POST below has not been entered. Never observe a
+                # transport/response exception as a failed pre-send callback.
+                if on_before_post_failure is not None:
+                    try:
+                        on_before_post_failure(error)
+                    except Exception:
+                        pass  # Proof failure must preserve the original gate error.
+                raise
         response = requests.post(
             f"{TRADER_BASE_URL}/accounts/{context.account_hash}/orders",
             headers={

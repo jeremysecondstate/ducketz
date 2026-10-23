@@ -238,8 +238,21 @@ def test_review_distinguishes_synthetic_missing_and_unscorable_outcomes(tmp_path
         available_at="2026-10-13T17:45:04+00:00", open="100", high="101", low="99",
         close="100", volume=100, source_id="source", availability_kind="actual", synthetic=False)
     store.observe(forecasts[0], as_of="2026-10-13T17:46:00Z", candle=candle)
-    store.observe(forecasts[1], as_of="2026-10-13T17:46:00Z", candle={**candle, "synthetic": True,
-        "evidence_json": '{"kind":"fixture_source_empty_minute"}'})
+    # The review must still count retained legacy synthetic outcomes. New
+    # ingestion correctly rejects this old unverified fixture, so seed the
+    # historical row directly instead of weakening current provenance checks.
+    from ml.intraday.prediction import digest, encoded, ContractError
+    synthetic = {**candle, "synthetic": True,
+                 "evidence_json": '{"kind":"fixture_source_empty_minute"}'}
+    with pytest.raises(ContractError, match="Synthetic outcome lacks"):
+        store.observe(forecasts[1], as_of="2026-10-13T17:46:00Z", candle=synthetic)
+    evidence = dict(forecast_id=forecasts[1]["forecast_id"], status="synthetic",
+                    target_not_down=True, target_close_price="100", candle_id=store.record_candle(synthetic))
+    revision = digest(evidence)
+    saved = {**evidence, "revision_id": revision, "observed_at": "2026-10-13T17:46:00+00:00"}
+    with store.connect() as db:
+        db.execute("INSERT INTO outcomes VALUES(?,?,?,?)",
+                   (revision, forecasts[1]["forecast_id"], saved["observed_at"], encoded(saved)))
     store.observe(forecasts[2], as_of="2026-10-13T17:46:00Z")
     store.observe(forecasts[3], as_of="2026-10-13T17:46:00Z", unavailable_reason="fixture invalid target")
     # The fifth forecast has no saved outcome. A later observed correction cannot
