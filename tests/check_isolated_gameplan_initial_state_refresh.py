@@ -57,7 +57,6 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--basetemp', type=Path)
     parser.add_argument('--focused', action='store_true')
-    parser.add_argument('--include-baseline-fixtures', action='store_true')
     args = parser.parse_args()
     candidate = Path(__file__).resolve().parents[1]
     originals = _isolate(candidate)
@@ -83,19 +82,6 @@ def main():
     basetemp.parent.mkdir(parents=True, exist_ok=True)
     arguments = ['-q', '-p', 'no:cacheprovider', *[str(candidate / p) for p in suites],
                  '--basetemp', str(basetemp)]
-    if not args.focused and not args.include_baseline_fixtures:
-        # These four exact cases also fail at the unchanged reviewed source
-        # before capture: October clocks use September forecast/source fixtures.
-        # The dedicated current Gameplan expiry case above still executes the
-        # real BROKER_READ_EXECUTION_WINDOW_CLOSED guard without any send.
-        prefix = 'tests/test_independent_stock_runtime.py::'
-        excluded = [prefix+'test_signal_deadline_at_normal_close_remains_expired_read_failure',
-            prefix+'test_final_calendar_close_distinguishes_actual_signal_expiry[2026-10-20T00:05:00Z-False]',
-            prefix+'test_final_calendar_close_distinguishes_actual_signal_expiry[2026-10-20T00:00:00Z-True]',
-            prefix+'test_close_during_broker_retry_keeps_unrecovered_read_failure']
-        for case in excluded:
-            arguments += ['--deselect', case]
-        print('GAMEPLAN_INITIAL_REFRESH_BASELINE_FIXTURES_EXCLUDED=' + json.dumps(excluded))
     result = pytest.main(arguments)
     _assert_imports(candidate, originals)
     closure = {}
