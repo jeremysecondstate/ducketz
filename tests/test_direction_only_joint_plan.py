@@ -166,12 +166,23 @@ def test_current_owner_reader_rejects_malformed_or_tampered_packages(tmp_path, m
         load_owner_package(tmp_path, path, expected_sha256=value["package_sha256"])
 
 
-@pytest.mark.parametrize("mutation", ["quantity", "projected", "ledger", "policy", "action"])
+@pytest.mark.parametrize("mutation", ["quantity", "ledger", "policy", "action"])
 def test_current_plan_validation_rejects_legacy_execution_caps_and_wrong_directions(mutation):
     value = compose()
     if mutation == "quantity": value["forecasts"][0]["direction_based_trade_quantity"] = 1
-    elif mutation == "projected": value["forecasts"][0]["projected_trade_budget"] = 1
     elif mutation == "ledger": value["ledger"]["events"] = [{"quantity": 1}]
     elif mutation == "policy": value["direction_up_threshold"] = .55
     else: value["forecasts"][0]["direction_based_action"] = "HOLD"
     with pytest.raises(ValueError): validate_direction_only_plan(value)
+
+
+def test_retired_projection_does_not_block_or_change_current_direction():
+    value = compose()
+    value["forecasts"][0]["projected_trade_budget"] = 1
+    before = deepcopy(value)
+    validate_direction_only_plan(value)
+    assert value == before
+    rows, _ = direction_only_rows(pd.DataFrame(value["forecasts"]), action_date=DAY)
+    assert "projected_trade_budget" not in rows
+    for field in ("calibrated_probability", "direction", "direction_based_action", "direction_based_trade_quantity"):
+        assert rows.iloc[0][field] == before["forecasts"][0][field]

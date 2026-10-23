@@ -128,6 +128,5 @@ def validate_direction_only_plan(plan: Mapping) -> None:
                 or row.get("direction") != derived["direction"]
                 or row.get("direction_based_action") != derived["direction_based_action"]
                 or row.get("direction_based_reason") != derived["direction_based_reason"]
-                or row.get("direction_based_trade_quantity") != (0 if derived["direction_based_action"] == "HOLD" else None)
-                or any(key.startswith(("projected_", "trade_", "scheduled_trade_", "planning_")) for key in row)):
+                or row.get("direction_based_trade_quantity") != (0 if derived["direction_based_action"] == "HOLD" else None)):
             raise ValueError("Current directional instruction differs from its saved probability")
