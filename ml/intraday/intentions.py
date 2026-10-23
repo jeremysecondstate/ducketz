@@ -172,7 +172,7 @@ class IntentionStore:
     def _revision_sizing(self, db, forecast_id, measure):
         """Read a coherent row marker; validate cold/changed original bytes.
 
-        Called under the store forecast-cache lock and pinned write transaction.
+        Called under the store forecast-cache lock and a pinned transaction.
         No cache key uses timestamps, row length, or another original's identity.
         """
         with measure("sizing_read"):
@@ -383,11 +383,12 @@ class IntentionStore:
     def record_recovery_group(self, forecast_id, *, actor, observations, timings=None):
         """Project every native attempt for one original in a pinned transaction.
 
-        Cold/changed originals retain full semantic validation. Warm originals
-        reuse only scalar facts after exact revision schema, epoch and indexed
-        identity checks in this transaction. Every attempt still validates its
-        projection identity, evidence and chronology. The transaction covers
-        one forecast, rather than the entire own history.
+        Cold/changed originals first retain full semantic validation in a read
+        transaction, without reserving SQLite's writer. The final write
+        transaction repeats the same revision schema, epoch and indexed identity
+        checks; changed originals still take full validation. Only safe scalar
+        caches cross that boundary. Every attempt validates its projection
+        identity, evidence and chronology before an atomic group append.
         """
         identity(forecast_id)
         if actor not in {"Atlas", "Scout"}:
@@ -396,9 +397,24 @@ class IntentionStore:
         if not observations:
             return []
         measure = timings.measure if isinstance(timings, _RecoveryTimings) else lambda stage: nullcontext()
-        # Match chronology's cache-lock -> connection ordering. The revision
-        # helper and sizing markers observe the same pinned write snapshot.
+        # Match chronology's cache-lock -> connection ordering. Cold payload
+        # reads/decoding need no reserved writer. Close that snapshot before the
+        # final writer repeats every protected identity check and appends.
+        # Timed read/validation phases include both passes; group_total includes
+        # both connection exits, while writer_lock measures acquisition only.
         with measure("group_total"), self.store._execution_forecast_lock:
+            with self.store.connect() as db:
+                db.execute("BEGIN")
+                with measure("forecast_read"):
+                    headers = self.store._revision_forecast_headers(db, ["f.id=?"], [forecast_id])
+                with measure("forecast_validate"):
+                    if not headers:
+                        raise ContractError("Native 15m order lacks original persisted intention")
+                    if headers[0]["pc"] != actor:
+                        raise ContractError("Recovery forecast belongs to another actor")
+                _, intention, _ = self._revision_sizing(db, forecast_id, measure)
+                if intention is None:
+                    raise ContractError("Native 15m order lacks original persisted intention")
             with self.store.connect() as db:
                 with measure("writer_lock"):
                     db.execute("BEGIN IMMEDIATE")
