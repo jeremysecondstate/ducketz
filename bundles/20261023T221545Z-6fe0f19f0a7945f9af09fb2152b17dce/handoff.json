@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T22:15:45.160755Z",
+  "id": "20261023T221545Z-6fe0f19f0a7945f9af09fb2152b17dce",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Distinguish recovery read delays from cold validation and thread CPU work"
+}

@@ -1,0 +1,73 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261023T220324Z-e176c7d3d8d14c6bb0c8a93d60ac3032",
+  "change_id": "20261023T220324Z-e176c7d3d8d14c6bb0c8a93d60ac3032",
+  "commit_sha": "553f47903b7759047ae6c3f3dccec90e6f73e11e",
+  "details": [
+    "Actor Atlas; task Atlas 15-minute Trader Representative; shared bounded diagnostics apply independently to Atlas and Scout, preserving local model policy, symbols and manual controls.",
+    "Retain fixed-key recovery read subphase timings, thread CPU versus elapsed samples, cache counts and original row character or BLOB-byte counts without additional SQL, payload encoding or validation changes.",
+    "Keep the existing seven aggregate timing phases and preserve exact original forecast, sizing, projection, order and exception behavior."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/intentions.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_phase_diagnostics.py"
+    }
+  ],
+  "installation": "Atlas installed only the three reviewed source/test files and preserved local dependency bytes.",
+  "limitations": [
+    "Prospective diagnostics address missing attribution for measured recovery delays; underlying historical SQL holder, storage or CPU cause and affected runtime recovery remain unproved.",
+    "Offline synthetic own-ledger fixtures and network-denied imports only; no provider, broker, trader start, restart or order.",
+    "Stacked on the reviewed published recovery-read preflight source; main integration and peer installation remain separate."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/373",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install only the three reviewed files after preserving local dependency bytes and passing the local offline composition checks. Runtime loading requires separate natural own-session evidence; never start or restart a trader for validation.",
+  "runtime_loading": "Unproved; no trader start, restart or order by the observer. Underlying latency recovery and historical affected-operation recovery remain unproved.",
+  "scope": "shared",
+  "summary": "Distinguish recovery read delays from cold validation and thread CPU work",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T22:05:10.087549Z",
+      "exit_code": 0,
+      "output_sha256": "444965a134c10339b745fd44b36cbb21db764db5888b1a4d279978c18f611d36",
+      "stage": "sealed_source",
+      "started_at_utc": "2026-10-23T22:03:24.692076Z",
+      "summary": [
+        "341 passed in 100.38s (0:01:40)"
+      ]
+    },
+    {
+      "completed_at_utc": "2026-10-23T22:10:38.216267Z",
+      "exit_code": 0,
+      "output_sha256": "9e7ef539a083b3633af3f2a298aea262f2ac6cc4cdbe917b819b7447fdbe79dc",
+      "stage": "isolated_candidate",
+      "started_at_utc": "2026-10-23T22:08:52.965489Z",
+      "summary": [
+        "341 passed in 99.97s (0:01:39)"
+      ]
+    },
+    {
+      "completed_at_utc": "2026-10-23T22:15:09.585649Z",
+      "exit_code": 0,
+      "output_sha256": "4760bcd594f4af9d6bd5464d000461dc031eaf71630c0248e41a2e0135d57bdb",
+      "stage": "installed_composition",
+      "started_at_utc": "2026-10-23T22:13:29.850874Z",
+      "summary": [
+        "341 passed in 94.18s (0:01:34)"
+      ]
+    }
+  ],
+  "verified_remote_sha": "553f47903b7759047ae6c3f3dccec90e6f73e11e"
+}
