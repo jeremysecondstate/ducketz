@@ -1,0 +1,44 @@
+{
+  "author": "Atlas",
+  "change_id": "20261023T115656Z-62798f7d067c44e982c73333cff5d632",
+  "commit_sha": "9493ecde750dc5b250c08b780b5a496a65bb3ea7",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/session_reporting.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_gameplan_selftrade_status.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_gameplan_selftrade_status.py"
+    }
+  ],
+  "limitations": [
+    "Two exact quantity-recipe fixtures fail unchanged before affected handling at the reviewed base and remain explicitly deselected with an opt-in reproduction flag.",
+    "The additional installed CLI assertion failure is preserved; current permanent Gameplan default and manual-wait contract pass nine separate cases.",
+    "Source is stacked on the reviewed Gameplan predecessor PR321; no main merge or peer installation claimed.",
+    "Existing session/dependency overlays and original histories were preserved. Installed source does not prove a running process loaded or exercised it."
+  ],
+  "pr": "https://github.com/jeremysecondstate/ducketz/pull/356",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Four exact files installed on Atlas. A future ordinary Jeremy manual Gameplan launch loads the correction. No trader start, restart, hotpatch, cancellation, broker/provider call, order or cross-trader operating condition.",
+  "scope": "Shared Gameplan health/reporting correctness; Atlas and Scout retain local symbols, model policy and independent execution state.",
+  "summary": "Normal observed Gameplan self-trade deferrals remain visible without false failed-cycle counts",
+  "tests": [
+    "194passed/2explicit old-fixture exclusions on sealed source 2026-10-23T11:56:56.640855Z through 2026-10-23T11:58:22.419300Z.",
+    "194passed/2same exclusions in isolated candidate 2026-10-23T11:59:02.587999Z through 2026-10-23T12:00:41.147469Z.",
+    "Installed Atlas graph:193passed/2same exclusions;1older CLI-default assertion expects retired implicit sizing. All35new repair regressions passed.",
+    "Nine separate installed current-policy CLI contract cases passed with synthetic workers. Network denied; source/test fingerprints recorded."
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T12:08:58.033195Z",
+  "id": "20261023T120858Z-344083fc39ab48cbbd63508e48499ef6",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Normal observed Gameplan self-trade deferrals remain visible without false failed-cycle counts"
+}
