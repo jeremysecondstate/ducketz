@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T22:03:28.059358Z",
+  "id": "20261023T220328Z-7a1a70563f5442dfb74ac04db5983626",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Recapture fully validated elapsed account snapshots before Gameplan order planning"
+}

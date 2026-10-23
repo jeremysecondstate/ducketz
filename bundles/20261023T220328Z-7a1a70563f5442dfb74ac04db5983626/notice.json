@@ -1,0 +1,44 @@
+{
+  "author": "Atlas",
+  "change_id": "20261023T215300Z-f3b6a0c39b254369ac5549fc7fbe675e",
+  "commit_sha": "3a40f7c5f62a2a692bfaf5a7bf84695fc59c4ad9",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/account_gameplan/authority.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_gameplan_pre_context_refresh.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/check_isolated_gameplan_initial_state_refresh.py"
+    }
+  ],
+  "limitations": [
+    "Exact slow internal operation in historical evidence remains unrecorded; persistent latency may still prevent a safe send.",
+    "Main integration, peer installation, runtime loading and affected live recovery remain separate facts.",
+    "Authority source line endings normalize within the owned file; committed raw dependency bytes are bound and tested."
+  ],
+  "pr": "https://github.com/jeremysecondstate/ducketz/pull/372",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Four exact published files installed locally with before-hash checks and backups. A future ordinary Jeremy manual Gameplan start loads the repair. No observer-induced start, restart or order; keep every manual stop.",
+  "scope": "Shared correctness repair for both PCs; retain local symbols, model recipes, independent execution state and manual controls.",
+  "summary": "Recapture fully validated elapsed account snapshots before Gameplan order planning",
+  "tests": [
+    "Sealed final source: 309 passed in 64.79s (0:01:04); 2026-10-23T21:53:01.180108Z through 2026-10-23T21:54:14.813110Z.",
+    "Managed isolated publication graph: 309 passed in 57.63s; 2026-10-23T21:58:02.058662Z through 2026-10-23T21:59:06.560335Z.",
+    "Installed application graph:309 passed in74.64seconds; complete actual import closure retained.",
+    "Fresh installed adjacent scoring/status139 passed in23.68seconds and capture63 passed in36.15seconds. Collection107 retained on unchanged exact import closure.",
+    "Three exact-parent negative controls reproduce the snapshot-expiry failure;21 new positive/negative cases cover original forecasts, empty-ledger session cadence, manual stops, deadlines and hard-error preservation."
+  ]
+}
