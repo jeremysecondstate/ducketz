@@ -78,7 +78,8 @@ def main():
         raise RuntimeError("Scoring-storage helper imported outside the candidate")
     import pytest
 
-    targets = ["tests/test_intraday_scoring_storage_retry.py"]
+    targets = ["tests/test_intraday_scoring_storage_retry.py",
+               "tests/test_intraday_session_status_publication.py"]
     if not args.focused:
         targets += ["tests/test_intraday_live_session.py", "tests/test_intraday_store.py",
                     "tests/test_intraday_scoring_selection.py", "tests/test_intraday_retained_target_priority.py",

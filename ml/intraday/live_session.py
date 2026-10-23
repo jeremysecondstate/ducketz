@@ -386,6 +386,19 @@ def score_saved_session_outcomes(store, *, session_id, actor, symbols, as_of, st
     return result
 
 
+def _replace_session_status(temporary, status_path):
+    """Allow a brief Windows reader to release the same serialized status file."""
+    for attempt in range(4):
+        try:
+            os.replace(temporary, status_path)
+            return
+        except PermissionError as exc:
+            if (os.name != "nt" or getattr(exc, "winerror", None) not in (5, 32)
+                    or attempt == 3):
+                raise
+            time.sleep(0.02 * (attempt + 1))
+
+
 def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcnow, sleep=time.sleep):
     from .account_execution import IntradayAccountExecutor, execution_failure_evidence
     from .local_execution import load_local_binding
@@ -420,7 +433,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                      market_close_at=close_at.isoformat(),final_collection_complete=final_collection_complete.is_set(),**extra)
         temporary = status_path.with_name(status_path.name + "." + uuid.uuid4().hex + ".tmp")
         temporary.write_text(encoded(value),encoding="utf-8")
-        os.replace(temporary,status_path)
+        _replace_session_status(temporary, status_path)
     def manual_authority():
         try:
             value = json.loads(status_path.read_text(encoding="utf-8"))
