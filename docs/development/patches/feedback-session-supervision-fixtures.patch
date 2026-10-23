@@ -1,0 +1,64 @@
+--- a/tests/test_overnight_supervision.py
++++ b/tests/test_overnight_supervision.py
+@@ -765,9 +765,19 @@
+             start_at="loop_b_directional_generation")
+ 
+ 
++def _reviewed_feedback(root, monkeypatch):
++    from test_nightly_stats_segments import _feedback
++
++    now = pd.Timestamp("2026-09-10T04:05:00Z")
++    monkeypatch.setattr(
++        "ml.overnight_runtime.utc_timestamp",
++        lambda value=None: utc_timestamp(value) if value is not None else now,
++    )
++    return _feedback(root, now=now.isoformat())
++
++
+ def test_stats_first_training_pins_feedback_and_omits_post_training_stats(tmp_path, monkeypatch):
+-    feedback = tmp_path / "reviewed-proposal.json"
+-    feedback.write_text('{"reviewed": true}')
++    feedback = _reviewed_feedback(tmp_path, monkeypatch)
+     calls = []
+     monkeypatch.setattr("ml.overnight_runtime._pin_stock_gameplan", _synthetic_gameplan_pin)
+     monkeypatch.setattr("ml.overnight_runtime._run_stage", lambda command, **kwargs: calls.append(command) or 0)
+@@ -787,8 +797,7 @@
+     from test_account_gameplan_config import write_config
+     write_config(tmp_path)
+     original_config = (tmp_path / CONFIG).read_bytes()
+-    feedback = tmp_path / "reviewed-proposal.json"
+-    feedback.write_text('{"reviewed": true}')
++    feedback = _reviewed_feedback(tmp_path, monkeypatch)
+     calls = []
+     monkeypatch.setattr("ml.overnight_runtime._pin_stock_gameplan", _synthetic_gameplan_pin)
+     monkeypatch.setattr("ml.overnight_runtime._run_stage", lambda command, **kwargs: calls.append(command) or 0)
+@@ -810,8 +819,7 @@
+ 
+ def test_stats_first_retry_does_not_adopt_a_new_legacy_account_binding(tmp_path, monkeypatch):
+     from test_account_gameplan_config import write_config
+-    feedback = tmp_path / "reviewed-proposal.json"
+-    feedback.write_text('{"reviewed": true}')
++    feedback = _reviewed_feedback(tmp_path, monkeypatch)
+     monkeypatch.setattr("ml.overnight_runtime._pin_stock_gameplan", _synthetic_gameplan_pin)
+     monkeypatch.setattr("ml.overnight_runtime._run_stage", lambda command, **kwargs:
+                         7 if command[3] == "ml.gameplan_trade_planning" else 0)
+@@ -831,8 +839,7 @@
+ 
+ 
+ def test_stats_first_resume_preserves_order_date_and_feedback_bytes(tmp_path, monkeypatch):
+-    feedback = tmp_path / "reviewed-proposal.json"
+-    feedback.write_text('{"reviewed": true}')
++    feedback = _reviewed_feedback(tmp_path, monkeypatch)
+     monkeypatch.setattr("ml.overnight_runtime._run_stage", lambda *a, **kw: 7)
+     with pytest.raises(RuntimeError):
+         run(tmp_path, stock_only=True, independent_stock_horizons=True, stats_first=True,
+@@ -854,8 +861,7 @@
+ 
+ 
+ def test_feedback_mutation_between_stages_stops_publication(tmp_path, monkeypatch):
+-    feedback = tmp_path / "reviewed-proposal.json"
+-    feedback.write_text('{"reviewed": true}')
++    feedback = _reviewed_feedback(tmp_path, monkeypatch)
+     calls = []
+     def mutate(command, **kwargs):
+         calls.append(command[3])
