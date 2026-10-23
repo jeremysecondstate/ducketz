@@ -1,0 +1,68 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261023T182335Z-e470fdd850714328be1ccc73400a51eb",
+  "change_id": "20261023T182335Z-e470fdd850714328be1ccc73400a51eb",
+  "commit_sha": "50e6eec6de149fca4653032f6119f9826a45e197",
+  "details": [
+    "Actor Atlas; task Atlas 15-minute Trader Representative; shared diagnostic correction applies independently to Atlas and Scout while preserving each local model, symbols and manual controls.",
+    "Keep the original rejected capture request time, evaluated guard clock, measured age and unchanged maximum age in detached bounded failure evidence.",
+    "Preserve the existing inclusive capture freshness guard, successful trace schema, account decisions and original submission identities; no additional clock or provider calls."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_capture_freshness_diagnostics.py"
+    }
+  ],
+  "installation": "Atlas installed only the two reviewed source/test files; existing local dependencies and manual controls preserved.",
+  "limitations": [
+    "Diagnostic correction does not establish the historical stale capture cause or original-operation recovery.",
+    "Offline synthetic own-ledger fixtures only; no live broker, provider, process start or order.",
+    "Stacked on reviewed published acquisition diagnostics; main integration and peer installation remain separate."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/371",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Only the two reviewed files are eligible for local installation; local composition requires separate offline checks. Loading requires a future human-chosen manual session; never start or restart a trader for validation.",
+  "runtime_loading": "Unproved; no trader start/restart or actual affected operation recovery claimed.",
+  "scope": "shared",
+  "summary": "Retain exact rejected account capture freshness clocks",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T18:23:57.443777Z",
+      "exit_code": 0,
+      "output_sha256": "4c93f8c48a60babf0878e5ba1d3cfb737833cb8e397312924ad531e6ebb95d48",
+      "stage": "sealed_source",
+      "started_at_utc": "2026-10-23T18:23:35.841364Z",
+      "summary": [
+        "63 passed in 19.65s"
+      ]
+    },
+    {
+      "completed_at_utc": "2026-10-23T18:25:11.496515Z",
+      "exit_code": 0,
+      "output_sha256": "a043c917a611ad3c3c1055a617fbdd5c3bb27b36cf39a74e111bbfa6e9380dee",
+      "stage": "isolated_candidate",
+      "started_at_utc": "2026-10-23T18:24:50.617503Z",
+      "summary": [
+        "63 passed in 19.12s"
+      ]
+    },
+    {
+      "completed_at_utc": "2026-10-23T18:26:29.910937Z",
+      "exit_code": 0,
+      "output_sha256": "a4fb9ee72c00de8183826fa580805e2242ad33cf836edae1806205cbb5896072",
+      "stage": "installed_composition",
+      "started_at_utc": "2026-10-23T18:26:08.100416Z",
+      "summary": [
+        "63 passed in 19.81s"
+      ]
+    }
+  ],
+  "verified_remote_sha": "50e6eec6de149fca4653032f6119f9826a45e197"
+}
