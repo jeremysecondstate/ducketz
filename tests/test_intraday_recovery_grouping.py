@@ -72,7 +72,15 @@ def spy_original_reads(store, intents, monkeypatch):
     @contextmanager
     def traced_connect():
         with connect() as db:
-            yield Connection(db)
+            wrapper = Connection(db)
+            identities = store._connection_source_identities
+            # Forward only the real handle's existing identity, including None.
+            # A tracing proxy must not turn a certain source into a cache miss.
+            identities[id(wrapper)] = identities.get(id(db))
+            try:
+                yield wrapper
+            finally:
+                identities.pop(id(wrapper), None)
 
     def traced_hash(raw=b""):
         if raw == forecast_raw:

@@ -360,8 +360,21 @@ class ShadowStore:
         except OSError:
             durable_identity = None
             cache_source_certain = False
-        durable_headers = (durable.load_many(durable_identity, [(*row[:6], row[6]) for row in rows])
-            if cache_source_certain else {})
+        # Snapshot exact scalar proofs for this locked source inventory. Later
+        # misses may evict bounded cache entries while this inventory is still
+        # being returned; they cannot invalidate these already checked proofs.
+        warm_headers, missing_signatures = {}, []
+        for row in rows:
+            signature = tuple(row)
+            previous = self._execution_forecast_cache.get(row[0])
+            if previous is not None and previous[0] == signature:
+                warm_headers[signature] = previous[1]
+            else:
+                missing_signatures.append(signature)
+        # Durable reads attest cold/changed originals only. Warm proofs already
+        # retain the same physical/schema/epoch/revision checks above and below.
+        durable_headers = (durable.load_many(durable_identity, missing_signatures)
+            if cache_source_certain and missing_signatures else {})
         for row in rows:
             if stopped():
                 return []
@@ -369,9 +382,9 @@ class ShadowStore:
             if type(revision) is not int or not 0 <= revision <= generation:
                 raise ContractError("Execution forecast row revision is invalid")
             signature = (*row[:6], revision)
-            previous = self._execution_forecast_cache.get(row[0])
-            if previous is not None and previous[0] == signature:
-                projection = dict(previous[1])
+            previous = warm_headers.get(signature)
+            if previous is not None:
+                projection = dict(previous)
                 if read_timings is not None:
                     read_timings.count("forecast_cache_hits")
             else:
