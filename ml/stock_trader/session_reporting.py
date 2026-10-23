@@ -8,9 +8,13 @@ from ml.stock_trader.contracts import utc
 
 def _activity_message(report: Mapping[str, object]) -> tuple[str, str]:
     status = str(report.get("status") or "")
+    normal_self_trade_deferral = status in {
+        "SELF_TRADE_CONFLICT_DEFERRED", "ORDERS_SUBMITTED_WITH_SELF_TRADE_CONFLICT",
+    }
     if (report.get("error") or report.get("stopped_after_error")
             or report.get("session_consecutive_failures")
-            or any(word in status for word in ("UNAVAILABLE", "FAILED", "ERROR", "REVIEW_REQUIRED", "CONFLICT"))
+            or any(word in status for word in ("UNAVAILABLE", "FAILED", "ERROR", "REVIEW_REQUIRED"))
+            or ("CONFLICT" in status and not normal_self_trade_deferral)
             or status.startswith("SUBMISSION_STOPPED")):
         return "ATTENTION", "Cycle or session requires attention; see status and error."
     if status == "ENTRY_CANCELLATION_AWAITING_RECONCILIATION":
@@ -19,6 +23,11 @@ def _activity_message(report: Mapping[str, object]) -> tuple[str, str]:
         return "INACTIVE", "Trader is inactive; no new orders are requested."
     if report.get("execution_requested") is False or status.startswith("DRY_RUN"):
         return "DRY RUN", "Execution is disabled for this cycle."
+    if normal_self_trade_deferral:
+        deferred = "Opposing same-price orders defer affected intentions until normal reconciliation clears the conflict."
+        if report.get("orders_submitted_this_cycle", 0):
+            return "ORDERS SUBMITTED", "Orders submitted; fills are not confirmed. " + deferred
+        return "DEFERRED", deferred
     if report.get("orders_submitted_this_cycle", 0):
         return "ORDERS SUBMITTED", "Orders submitted; fills are not confirmed."
     if status == "NO_ORDERS_SUBMITTED_RETRY_EXHAUSTED":
