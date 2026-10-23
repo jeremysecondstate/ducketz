@@ -6,7 +6,7 @@ cycle summaries may advance; every transition also has an append-only event.
 from __future__ import annotations
 
 from collections import OrderedDict
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
 from decimal import Decimal
 import hashlib
@@ -312,21 +312,25 @@ class ShadowStore:
             db.execute("BEGIN")
             return self._revision_forecast_headers(db, clauses, parameters)
 
-    def _revision_forecast_headers(self, db, clauses, parameters, stopped=lambda: False):
+    def _revision_forecast_headers(self, db, clauses, parameters, stopped=lambda: False, read_timings=None):
         """Reuse exact headers inside the caller's locked read transaction."""
         headers = []
-        generation, epoch = self._execution_forecast_generation(db)
-        stat = self.path.stat()
-        identity = (stat.st_dev, stat.st_ino, db.execute("PRAGMA schema_version").fetchone()[0], epoch)
+        detail = read_timings.detail if read_timings is not None else lambda stage: nullcontext()
+        with detail("forecast_revision_metadata"):
+            generation, epoch = self._execution_forecast_generation(db)
+        with detail("forecast_physical_identity"):
+            stat = self.path.stat()
+            identity = (stat.st_dev, stat.st_ino, db.execute("PRAGMA schema_version").fetchone()[0], epoch)
         if identity != self._execution_forecast_identity:
             self._execution_forecast_cache.clear()
             self._execution_forecast_highwater = 0
             self._execution_forecast_identity = identity
         if generation < self._execution_forecast_highwater:
             raise ContractError("Execution forecast generation regressed")
-        rows = db.execute("SELECT f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,r.generation "
-            "FROM forecasts f LEFT JOIN execution_forecast_revisions r ON r.forecast_id=f.id WHERE " +
-            " AND ".join(clauses) + " ORDER BY f.rowid", parameters).fetchall()
+        with detail("forecast_index_read"):
+            rows = db.execute("SELECT f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,r.generation "
+                "FROM forecasts f LEFT JOIN execution_forecast_revisions r ON r.forecast_id=f.id WHERE " +
+                " AND ".join(clauses) + " ORDER BY f.rowid", parameters).fetchall()
         for row in rows:
             if stopped():
                 return []
@@ -337,10 +341,18 @@ class ShadowStore:
             previous = self._execution_forecast_cache.get(row[0])
             if previous is not None and previous[0] == signature:
                 projection = dict(previous[1])
+                if read_timings is not None:
+                    read_timings.count("forecast_cache_hits")
             else:
-                original = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
-                                      "FROM forecasts WHERE id=?", (row[0],)).fetchone()
-                projection, _ = self._forecast_projection(original)
+                if read_timings is not None:
+                    read_timings.count("forecast_cache_misses")
+                with detail("forecast_payload_read"):
+                    original = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                                          "FROM forecasts WHERE id=?", (row[0],)).fetchone()
+                if read_timings is not None and original is not None:
+                    read_timings.payload("forecast_", original[6])
+                with detail("forecast_payload_validate"):
+                    projection, _ = self._forecast_projection(original)
                 if all(item is None or isinstance(item, str) for item in projection.values()):
                     self._execution_forecast_cache[row[0]] = (signature, tuple(projection.items()))
                     if len(self._execution_forecast_cache) > 4096:
