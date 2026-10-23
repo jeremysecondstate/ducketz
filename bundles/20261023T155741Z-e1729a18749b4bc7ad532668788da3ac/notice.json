@@ -1,0 +1,85 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261023T155337Z-607e1b6b655a4c9bb52b0032b7056836",
+  "change_id": "20261023T155337Z-607e1b6b655a4c9bb52b0032b7056836",
+  "commit_sha": "306aa6c92861e2fd04fee2d2ea0b2b3e913b696e",
+  "details": [
+    "Actor Atlas; task atlas-trader-representative; shared status-publication correctness applies independently on Atlas and Scout while preserving local symbols, model recipes and manual controls.",
+    "Retry only transient Windows access-denied and sharing-violation replacement of the same already serialized temporary status file, at most four attempts with bounded total backoff of 120 milliseconds.",
+    "Keep prior status and pending bytes on permanent failure; propagate unrelated errors and manual interrupts without repeating model, collection, scoring or execution work.",
+    "Offline regressions include real Windows held-reader replacement, bounded permanent failures, unchanged manual-state payloads and original exception propagation."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_session_status_publication.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_scoring_storage_retry.py"
+    }
+  ],
+  "installation": "Local richer composition installation is a separate narrow application of the reviewed status helper and callsite; portable whole-file replacement is unsuitable there.",
+  "limitations": [
+    "The Windows sharing failure was reproduced offline and the supported replacement correction was exercised only with local synthetic fixtures.",
+    "This correction does not establish a cause or recovery for the original scoring database-lock incident, an unavailable historical opportunity or a running trader.",
+    "The source checkpoint uses the exact reviewed predecessor with its original raw bytes. Main integration, local composition installation, peer installation, runtime loading and affected live exercise remain separate facts.",
+    "The portable live-session file is not a whole-file drop-in for an installation containing newer local correctness repairs; apply and test only the reviewed status helper and callsite in that composition."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/366",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Use the exact reviewed status helper and callsite to compose with newer installed repairs, then verify the resulting local graph. Do not replace a richer live-session file with this portable predecessor-based whole file. A future ordinary Jeremy manual start loads the local change; never start, restart, trade, replay an order or change a manual stop to obtain evidence.",
+  "runtime_loading": "Unproved; source publication does not start a trader or prove affected production recovery.",
+  "scope": "shared",
+  "summary": "Retry transient Windows session status replacement without repeating work",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T15:53:55.098015Z",
+      "exit_code": 0,
+      "output_sha256": "5dc57b5ddbbfc76970a8c06fdad61490b1c6351363c0593878cdbb8186e73714",
+      "stage": "sealed_source",
+      "started_at_utc": "2026-10-23T15:53:37.773017Z",
+      "summary": [
+        "139 passed in 14.03s"
+      ]
+    },
+    {
+      "completed_at_utc": "2026-10-23T15:54:02.961214Z",
+      "exit_code": 0,
+      "output_sha256": "9e10bcef415a3ccc3194325cbaca7653305652d7e3039ddbfe807f11cf8129f5",
+      "stage": "sealed_source",
+      "started_at_utc": "2026-10-23T15:53:55.353067Z",
+      "summary": [
+        "81 passed in 4.77s"
+      ]
+    },
+    {
+      "completed_at_utc": "2026-10-23T15:56:14.191955Z",
+      "exit_code": 0,
+      "output_sha256": "a05a3df9830202788372aeb01800f391380949986618bd2cd1fc555053623be4",
+      "stage": "isolated_candidate",
+      "started_at_utc": "2026-10-23T15:55:58.832944Z",
+      "summary": [
+        "139 passed in 11.55s"
+      ]
+    },
+    {
+      "completed_at_utc": "2026-10-23T15:56:22.317604Z",
+      "exit_code": 0,
+      "output_sha256": "f91a87083f9524f8e69c3a0bc3c4b143c3813458e26fe932941f3c5c7c072582",
+      "stage": "isolated_candidate",
+      "started_at_utc": "2026-10-23T15:56:14.502889Z",
+      "summary": [
+        "81 passed in 5.10s"
+      ]
+    }
+  ],
+  "verified_remote_sha": "306aa6c92861e2fd04fee2d2ea0b2b3e913b696e"
+}

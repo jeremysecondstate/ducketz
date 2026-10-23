@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T15:57:41.618902Z",
+  "id": "20261023T155741Z-e1729a18749b4bc7ad532668788da3ac",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Retry transient Windows session status replacement without repeating work"
+}
