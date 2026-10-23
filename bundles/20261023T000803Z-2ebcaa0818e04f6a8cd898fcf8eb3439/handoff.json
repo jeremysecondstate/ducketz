@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T00:08:03.839976Z",
+  "id": "20261023T000803Z-2ebcaa0818e04f6a8cd898fcf8eb3439",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Genuine target scoring avoids repeated derived-reference reconstruction; durable real-data rechecks preserved"
+}

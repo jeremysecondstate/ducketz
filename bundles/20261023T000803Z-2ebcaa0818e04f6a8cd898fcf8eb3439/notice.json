@@ -1,0 +1,47 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261022T235908Z-e060c89deee045938385d0f2d735c7ab",
+  "change_id": "20261022T235908Z-e060c89deee045938385d0f2d735c7ab",
+  "commit_sha": "0a4daa68ef5cd159abbfc9396d7ade2d4a70713b",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/0a4daa68ef5cd159abbfc9396d7ade2d4a70713b",
+  "files": [
+    "ml/intraday/minute_feed.py",
+    "ml/intraday/live_session.py",
+    "tests/test_intraday_live_session.py",
+    "tests/test_intraday_native_feed.py",
+    "tests/test_intraday_market_queue_recovery_evidence.py",
+    "tests/test_intraday_genuine_scoring_feed.py"
+  ],
+  "limitations": [
+    "Test counts overlap between verification stages. All six owned files and 867 fingerprints matched sealed bytes.",
+    "Stacked draft PR #345 targets prior draft PR #339 exact source; main integration has not been performed.",
+    "First unprimed missing target retains one validated full legacy receipt registration. Missing genuine input remains unavailable.",
+    "Offline checks do not establish loaded behavior, full-cycle live latency recovery, recovered historical target gaps or uncertain-order outcomes."
+  ],
+  "parent_commit": "3c0f4cfd920bda83c5efab8435d46c643725a741",
+  "parent_pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/339",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/345",
+  "remote_sha": "0a4daa68ef5cd159abbfc9396d7ade2d4a70713b",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Python function changes require a human-controlled manual trader reload after local installation. Installation and loaded runtime evidence are separate from this source publication. No trader controls were changed.",
+  "scope": "shared correctness for Atlas and Scout; each PC retains its own local scientific recipe and symbols",
+  "summary": "Genuine target scoring avoids repeated derived-reference reconstruction; durable real-data rechecks preserved",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T00:00:32.345125Z",
+      "kind": "sealed source offline checks",
+      "modules": 22,
+      "output_sha256": "691410259a3f00e05338ddd01c68b62d696502f53d1db3ae2f90a8d2d5a531dc",
+      "result": "612 passed in 81.47s",
+      "started_at_utc": "2026-10-22T23:59:09.418492Z"
+    },
+    {
+      "completed_at_utc": "2026-10-23T00:05:16.097328Z",
+      "kind": "isolated publication offline checks",
+      "modules": 22,
+      "output_sha256": "f32d39f970c8862b056f10c8cafeba0fbebcce4a00110b5373df1e104557d3b1",
+      "result": "612 passed in 79.84s",
+      "started_at_utc": "2026-10-23T00:03:54.808696Z"
+    }
+  ]
+}
