@@ -25,7 +25,7 @@ from ml.stock_trader.horizon_ledger import ReservationState
 from ml.stock_trader.state import capture_portfolio_state, validated_symbols
 
 from .capacity import clip_to_capacity
-from .dataset_diagnostics import capture_dataset_build, dataset_phase
+from .dataset_diagnostics import capture_dataset_build, dataset_phase, recovery_phase
 from .commitment_clearance import load_clearance
 from .pretransport_clearance import load_clearance as load_pretransport_clearance
 from .initial_gate_clearance import (load_clearance as load_initial_gate_clearance,
@@ -164,23 +164,32 @@ class ScoutLocalAccountExecutor:
     def _commitment_clearance(self, journal, record):
         # Each proof retains the original UNKNOWN and permanent send fence.
         # Pre-transport proof is separate from broker-history DAY expiration.
-        return (load_initial_gate_clearance(self.books, journal, record, as_of=self.clock())
-                or load_pretransport_clearance(self.books, journal, record, as_of=self.clock())
-                or load_clearance(self.books, journal, record, as_of=self.clock()))
+        with recovery_phase('clearance_initial_gate', journal=journal):
+            clearance = load_initial_gate_clearance(self.books, journal, record, as_of=self.clock())
+        if clearance:
+            return clearance
+        with recovery_phase('clearance_pretransport', journal=journal):
+            clearance = load_pretransport_clearance(self.books, journal, record, as_of=self.clock())
+        if clearance:
+            return clearance
+        with recovery_phase('clearance_commitment', journal=journal):
+            return load_clearance(self.books, journal, record, as_of=self.clock())
 
     def _recover_record(self, journal, record):
-        rid = record['request']['request_id']
-        if record['state'] in {'PREPARED', 'GRANTED'}:
-            # A prior interrupted pre-send attempt is proven never claimed.
-            journal.revoke_unsent(rid, 'local-recovery-before-send')
-        elif record['state'] == 'SENDING':
-            journal.outcome(rid, record['send_token'], None)
-        elif record['state'] == 'ACCEPTED':
-            prior = journal.order_state(rid)['evidence']
-            if prior is None or prior['status'] not in TERMINAL:
-                evidence = self._adapter(journal, record).status(rid)
-                journal.observe_order(rid, evidence, as_of=self.clock())
-        return journal.get(rid)
+        with recovery_phase('journal_record_recovery', journal=journal):
+            rid = record['request']['request_id']
+            if record['state'] in {'PREPARED', 'GRANTED'}:
+                # A prior interrupted pre-send attempt is proven never claimed.
+                journal.revoke_unsent(rid, 'local-recovery-before-send')
+            elif record['state'] == 'SENDING':
+                journal.outcome(rid, record['send_token'], None)
+            elif record['state'] == 'ACCEPTED':
+                prior = journal.order_state(rid)['evidence']
+                if prior is None or prior['status'] not in TERMINAL:
+                    with recovery_phase('broker_status', journal=journal):
+                        evidence = self._adapter(journal, record).status(rid)
+                    journal.observe_order(rid, evidence, as_of=self.clock())
+            return journal.get(rid)
 
     def _project(self, journal, record, forecast, disposition):
         order = self._order(journal, record)
