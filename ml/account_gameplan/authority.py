@@ -100,6 +100,23 @@ class Lease:
 
 
 @dataclass(frozen=True)
+class _CurrentLeaseExpiry:
+    """Private proof from the same transaction that rejected this exact token."""
+
+    lease: Lease = field(repr=False)
+
+
+def matches_current_lease_expiry(exc, lease):
+    saved = getattr(exc, "current_lease_expiry", None)
+    return (isinstance(exc, AuthorityError) and str(exc) == "CURRENT_FENCED_LEASE_REQUIRED"
+            and isinstance(saved, _CurrentLeaseExpiry) and isinstance(lease, Lease)
+            and secrets.compare_digest(saved.lease.token, lease.token)
+            and saved.lease.epoch == lease.epoch
+            and saved.lease.holder_id == lease.holder_id
+            and saved.lease.expires_at == lease.expires_at)
+
+
+@dataclass(frozen=True)
 class BrokerReservation:
     broker_order_id: str
     symbol: str
@@ -375,8 +392,13 @@ class AccountAuthority:
     def _lease(self, db, token):
         now = self._now(db)
         row = db.execute("SELECT * FROM lease WHERE singleton=1").fetchone()
-        if not row or not secrets.compare_digest(row["token"], str(token)) or now >= _time(row["expires"]):
+        if not row or not secrets.compare_digest(row["token"], str(token)):
             raise AuthorityError("CURRENT_FENCED_LEASE_REQUIRED")
+        if now >= _time(row["expires"]):
+            exc = AuthorityError("CURRENT_FENCED_LEASE_REQUIRED")
+            exc.current_lease_expiry = _CurrentLeaseExpiry(Lease(
+                row["token"], row["epoch"], row["holder"], row["expires"]))
+            raise exc
         return now, row
 
     @staticmethod
