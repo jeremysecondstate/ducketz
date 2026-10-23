@@ -1,0 +1,45 @@
+{
+  "author": "Atlas",
+  "change_id": "20261023T230914Z-ee1fb17c0a6d44769ace0bec6c4e3fec",
+  "commit_sha": "a47d87569ff901ebd9c69421ef433874a23c3f4a",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/account_gameplan/execution.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_gameplan_pre_context_lease_refresh.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/check_isolated_gameplan_initial_state_refresh.py"
+    }
+  ],
+  "limitations": [
+    "Offline fake-broker fixtures establish supported expiry-only recapture and error rejection. Source checks make no production broker/provider/order call, trader control or live replay; separate real nightly market-data recovery remains independent.",
+    "Live22:41 original failure omitted individual lease token and expiry phase evidence. Offline reconstruction establishes a supported context-expiry gap, not the original sole delay cause or expired-versus-fenced attribution.",
+    "Exact raw base55f19b9 dependencies are the publication graph. Installed successor horizon-ledger PR376 is a separately reviewed dependency to be included in fresh installed composition checks, never silently claimed covered by base tests.",
+    "Publication, exact local installation, running-process loading and affected live recovery remain separate facts. Existing same-PID ordinary activity does not establish loading.",
+    "Canonical main composition remains separate from source branch availability and exact local installation; preserve other writers and reviewed predecessor dependencies."
+  ],
+  "pr": "https://github.com/jeremysecondstate/ducketz/pull/378",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Four exact published source/test files installed with originals preserved. Actual installed365checks passed. Runtime loading and affected live recovery remain unproved; a future Jeremy-controlled ordinary manual Gameplan start loads the fix. Canonical main requires explicit predecessor dependency composition; this does not hold up nightly production or independent traders.",
+  "scope": "Shared correctness for both PCs; preserve local symbols, model recipes, independent execution state and manual controls.",
+  "summary": "Gameplan recaptures an exact elapsed pre-order context lease without creating an intention",
+  "tests": [
+    "Sealed365PASS; 2026-10-23T23:09:15.204887Z through 2026-10-23T23:11:15.653515Z; outputSHA256 44d45ef98a0dd32939ed81fe14a558b47beb850ae32db949866131b78aef72be",
+    "Isolated publisher365PASS; 2026-10-23T23:11:25.969504Z through 2026-10-23T23:12:56.828142Z; outputSHA256 23f53eea825baffe747587c9c25b0ac654435b009a8ad396c7328158e8f78abc",
+    "365 passed in 65.56s (0:01:05); installed actual112imports and113before/after source/watchlist hashes; 2026-10-23T23:14:50.730277+00:00 through 2026-10-23T23:15:59.955053+00:00",
+    "Two original-source negative controls fail as expected;25newcases preserve typed/fenced/invalid boundaries, original forecasts, exact-once fresh capture, manual stop and deadlines. Offline checkers deny network and subprocess."
+  ]
+}

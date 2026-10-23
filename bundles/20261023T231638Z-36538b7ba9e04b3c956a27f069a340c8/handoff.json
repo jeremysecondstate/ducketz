@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T23:16:38.109218Z",
+  "id": "20261023T231638Z-36538b7ba9e04b3c956a27f069a340c8",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Gameplan recaptures an exact elapsed pre-order context lease without creating an intention"
+}
