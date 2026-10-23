@@ -134,12 +134,27 @@ class ShadowStore:
     @contextmanager
     def connect(self):
         """Commit/rollback deterministically, then close even on interruption."""
-        db = sqlite3.connect(self.path, timeout=30)
         try:
+            before = self.path.stat()
+        except OSError:
+            before = None
+        db = sqlite3.connect(self.path, timeout=30)
+        identities = getattr(self, "_connection_source_identities", None)
+        if identities is None:
+            identities = self._connection_source_identities = {}
+        identities[id(db)] = None
+        try:
+            try:
+                opened = self.path.stat()
+                if before is not None and (before.st_dev, before.st_ino) == (opened.st_dev, opened.st_ino):
+                    identities[id(db)] = (opened.st_dev, opened.st_ino)
+            except OSError:
+                pass
             db.execute("PRAGMA foreign_keys=ON")
             with db:
                 yield db
         finally:
+            identities.pop(id(db), None)
             db.close()
 
     @staticmethod
@@ -291,7 +306,7 @@ class ShadowStore:
                 cache.popitem(last=False)
         return dict(projection), value
 
-    def execution_forecast_headers(self, *, pc, symbol, forecast_ids=None):
+    def execution_forecast_headers(self, *, pc, symbol, forecast_ids=None, cache_io_budget_seconds=.25):
         """Revalidate changed originals and reuse unchanged scalar headers.
 
         Exact trigger definitions and monotonic row revisions are checked in the
@@ -310,17 +325,26 @@ class ShadowStore:
         # appear to roll back the forecast generation.
         with self._execution_forecast_lock, self.connect() as db:
             db.execute("BEGIN")
-            return self._revision_forecast_headers(db, clauses, parameters)
+            return self._revision_forecast_headers(db, clauses, parameters, cache_io_budget_seconds=cache_io_budget_seconds)
 
-    def _revision_forecast_headers(self, db, clauses, parameters, stopped=lambda: False, read_timings=None):
+    def _revision_forecast_headers(self, db, clauses, parameters, stopped=lambda: False, read_timings=None, cache_io_budget_seconds=.25):
         """Reuse exact headers inside the caller's locked read transaction."""
         headers = []
         detail = read_timings.detail if read_timings is not None else lambda stage: nullcontext()
         with detail("forecast_revision_metadata"):
             generation, epoch = self._execution_forecast_generation(db)
         with detail("forecast_physical_identity"):
-            stat = self.path.stat()
-            identity = (stat.st_dev, stat.st_ino, db.execute("PRAGMA schema_version").fetchone()[0], epoch)
+            try:
+                stat = self.path.stat()
+                current_physical = (stat.st_dev, stat.st_ino)
+            except OSError:
+                current_physical = None
+            opened = getattr(self, "_connection_source_identities", {}).get(id(db))
+            cache_source_certain = opened is not None and opened == current_physical
+            physical = opened if opened is not None else (None, id(db))
+            identity = (*physical, db.execute("PRAGMA schema_version").fetchone()[0], epoch)
+        from .forecast_header_cache import DurableForecastHeaders
+        durable = DurableForecastHeaders(self.path, budget_seconds=cache_io_budget_seconds)
         if identity != self._execution_forecast_identity:
             self._execution_forecast_cache.clear()
             self._execution_forecast_highwater = 0
@@ -331,6 +355,13 @@ class ShadowStore:
             rows = db.execute("SELECT f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,r.generation "
                 "FROM forecasts f LEFT JOIN execution_forecast_revisions r ON r.forecast_id=f.id WHERE " +
                 " AND ".join(clauses) + " ORDER BY f.rowid", parameters).fetchall()
+        try:
+            durable_identity = (str(self.path.resolve()), *identity)
+        except OSError:
+            durable_identity = None
+            cache_source_certain = False
+        durable_headers = (durable.load_many(durable_identity, [(*row[:6], row[6]) for row in rows])
+            if cache_source_certain else {})
         for row in rows:
             if stopped():
                 return []
@@ -346,13 +377,25 @@ class ShadowStore:
             else:
                 if read_timings is not None:
                     read_timings.count("forecast_cache_misses")
-                with detail("forecast_payload_read"):
-                    original = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
-                                          "FROM forecasts WHERE id=?", (row[0],)).fetchone()
-                if read_timings is not None and original is not None:
-                    read_timings.payload("forecast_", original[6])
-                with detail("forecast_payload_validate"):
-                    projection, _ = self._forecast_projection(original)
+                projection = durable_headers.get(signature)
+                if projection is None:
+                    with detail("forecast_payload_read"):
+                        original = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                                              "FROM forecasts WHERE id=?", (row[0],)).fetchone()
+                    if read_timings is not None and original is not None:
+                        read_timings.payload("forecast_", original[6])
+                    with detail("forecast_payload_validate"):
+                        projection, _ = self._forecast_projection(original)
+                    # Separate optional cache writes never escalate the source
+                    # transaction or change original scientific evidence.
+                    if cache_source_certain:
+                        try:
+                            current_stat = self.path.stat()
+                        except OSError:
+                            pass
+                        else:
+                            if opened == (current_stat.st_dev, current_stat.st_ino):
+                                durable.save(durable_identity, signature, projection)
                 if all(item is None or isinstance(item, str) for item in projection.values()):
                     self._execution_forecast_cache[row[0]] = (signature, tuple(projection.items()))
                     if len(self._execution_forecast_cache) > 4096:
