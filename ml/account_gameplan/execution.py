@@ -195,7 +195,9 @@ class AccountExecutionContext:
         assert_coordinator(current,GAMEPLAN_SIZING_POLICY)
         if current is None or current.fingerprint!=self.config.fingerprint:
             raise AuthorityError("ACCOUNT_EXECUTION_CONFIG_CHANGED")
-        plan, _ = account_execution_plan(self.root,action_date=self.plan.report["action_date"])
+        plan, loaded_config = account_execution_plan(self.root,action_date=self.plan.report["action_date"])
+        if loaded_config.fingerprint != self.config.fingerprint:
+            raise AuthorityError("ACCOUNT_EXECUTION_CONFIG_CHANGED")
         if plan.path!=self.plan.path or plan.manifest_sha256!=self.plan.manifest_sha256:
             raise AuthorityError("PINNED_ACCOUNT_EXECUTION_PLAN_CHANGED")
         self.lease = self.authority.renew_lease(self.lease.token)

@@ -18,7 +18,7 @@ import pandas as pd
 from app.services.schwab import SchwabSession
 from app.services.schwab_stock_orders import build_schwab_stock_order_payload
 from datafetching.runtime_lock import exclusive_runtime_lock
-from ml.account_gameplan.authority import SubmissionNotStarted
+from ml.account_gameplan.authority import matches_current_lease_expiry, SubmissionNotStarted
 from ml.stock_trader.contracts import PredictionSignal, QuoteState, StockTraderPolicy, canonical_sha256, utc
 from ml.stock_trader.engine import _direct_no_trade
 from ml.stock_trader.gameplan import _entry_deadline, read_gameplan_stock_activation_intent
@@ -957,6 +957,10 @@ class _SubmissionStopped(RuntimeError):
     pass
 
 
+class _InitialBrokerStateExpired(_SubmissionStopped):
+    """Proven no-intent elapsed state needs a complete ordinary recapture."""
+
+
 def _cancel_expired_entries(root, broker, ledger, state, portfolio, stable_identity, clock, *, late_opening_date=None, gameplan_entries=False, account_config=None):
     requested = 0
     allocations = {a.allocation_id: a for a in state.allocations}
@@ -1010,6 +1014,7 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
     for decision in decisions:
         if decision.quantity <= 0:
             continue
+        initial_evidence_valid = False
         # Planning/publication and successful batches can outlive the captured
         # account/quote observation. Recapture before reserving a stale first
         # intention; after real progress retain the existing early refresh lead.
@@ -1024,6 +1029,7 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                 # Malformed data retains the existing final-gate failure.
                 ages = None
             if ages is not None:
+                initial_evidence_valid = all(age >= 0 for age in ages)
                 refresh_age = max(0., ledger.maximum_evidence_age_seconds - (
                     DEFAULT_BROKER_STATE_EXECUTION_LEAD_SECONDS if submitted else 0.))
                 if all(age >= 0 for age in ages) and max(ages) >= refresh_age:
@@ -1033,11 +1039,27 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
         try:
             context = broker.prepare_order_submission()
 
+            def safety_reason():
+                return _submission_safety_reason(
+                    root, decision, as_of=utc(clock()), planned_window=window,
+                    allow_open_queue=False, allow_premarket_queue=False, execution_lead_seconds=5,
+                    activation_reader=read_gameplan_stock_activation_intent,
+                    allow_target_session_transition=decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY,
+                )
+
             def final_gate():
                 if account_context is not None:
                     try:
                         account_context.assert_current()
                     except (OSError, ValueError, RuntimeError) as exc:
+                        if (decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY
+                                and event is None and reservation is None and account_reservation is None
+                                and initial_evidence_valid
+                                and matches_current_lease_expiry(exc, account_context.lease)):
+                            reason = safety_reason()
+                            if reason:
+                                raise _SubmissionStopped(reason) from exc
+                            raise _InitialBrokerStateExpired("INITIAL_ACCOUNT_LEASE_ELAPSED") from exc
                         raise _SubmissionStopped("ACCOUNT_EXECUTION_BINDING_UNAVAILABLE: " + str(exc)) from exc
                 if decision.prediction.get("position_purpose") != "EXIT":
                     try:
@@ -1075,23 +1097,29 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                     account_scope_sha256=stable_identity)
                 broker.verify_read_snapshot(decision.portfolio["broker_identity_fingerprint"])
                 age = (utc(clock()) - utc(decision.portfolio["observed_at"])).total_seconds()
-                if not 0 <= age <= ledger.maximum_evidence_age_seconds:
+                expired_state = None
+                if age > ledger.maximum_evidence_age_seconds:
+                    expired_state = "BROKER_PORTFOLIO_TOO_OLD_FOR_SUBMISSION"
+                elif not 0 <= age:
                     raise _SubmissionStopped("BROKER_PORTFOLIO_TOO_OLD_FOR_SUBMISSION")
                 if decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY:
                     quote_at = QuoteState(**decision.quote).freshness_observed_at
                     if not quote_at:
                         raise _SubmissionStopped("CURRENT_QUOTE_TIME_UNAVAILABLE")
                     quote_age = (utc(clock()) - utc(quote_at)).total_seconds()
-                    if not 0 <= quote_age <= ledger.maximum_evidence_age_seconds:
+                    if quote_age > ledger.maximum_evidence_age_seconds:
+                        expired_state = expired_state or "CURRENT_QUOTE_TOO_OLD_FOR_SUBMISSION"
+                    elif not 0 <= quote_age:
                         raise _SubmissionStopped("CURRENT_QUOTE_TOO_OLD_FOR_SUBMISSION")
-                reason = _submission_safety_reason(
-                    root, decision, as_of=utc(clock()), planned_window=window,
-                    allow_open_queue=False, allow_premarket_queue=False, execution_lead_seconds=5,
-                    activation_reader=read_gameplan_stock_activation_intent,
-                    allow_target_session_transition=decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY,
-                )
+                reason = safety_reason()
                 if reason:
                     raise _SubmissionStopped(reason)
+                if expired_state:
+                    if (decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY
+                            and initial_evidence_valid
+                            and event is None and reservation is None and account_reservation is None):
+                        raise _InitialBrokerStateExpired(expired_state)
+                    raise _SubmissionStopped(expired_state)
 
             final_gate()
             event = reserve_execution_intent(root, decision, submitted_at=utc(clock()), decision_publication=publication)
@@ -1145,6 +1173,10 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                 account_reservation = account_context.reserve(decision, reservation)
             final_gate()
         except Exception as exc:
+            if (isinstance(exc, _InitialBrokerStateExpired)
+                    and event is None and reservation is None and account_reservation is None):
+                return finish("BROKER_STATE_REFRESH_REQUIRED", decisions=decisions, submitted=submitted,
+                              duplicates=duplicates, publication=publication)
             if account_reservation is not None:
                 try:
                     account_context.abandon(account_reservation)

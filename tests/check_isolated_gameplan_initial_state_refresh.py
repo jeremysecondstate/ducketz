@@ -49,7 +49,8 @@ def _assert_imports(candidate, originals):
             if (name.split('.')[0] in {'ml', 'app', 'datafetching', 'tests'} or name.startswith('test_')
                     or name == 'conftest') and not source.is_relative_to(candidate):
                 raise RuntimeError('Application or fixture import escaped this candidate: ' + str(source))
-            if '.venv' not in source.parts and any(source.is_relative_to(root) for root in originals):
+            if ('.venv' not in source.parts and not source.is_relative_to(candidate)
+                    and any(source.is_relative_to(root) for root in originals)):
                 raise RuntimeError('Application source escaped this candidate: ' + str(source))
 
 
@@ -69,7 +70,7 @@ def main():
     sys.addaudithook(offline_boundary)
     _assert_imports(candidate, originals)
     import pytest
-    suites = ['tests/test_gameplan_initial_state_refresh.py']
+    suites = ['tests/test_gameplan_initial_state_refresh.py', 'tests/test_gameplan_pre_reservation_refresh.py']
     if not args.focused:
         suites += ['tests/test_gameplan_batch_refresh.py', 'tests/test_account_gameplan_execution.py',
                    'tests/test_account_gameplan_authority.py', 'tests/test_gameplan_order_snapshot_coherence.py',
