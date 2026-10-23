@@ -693,8 +693,9 @@ def run_independent_stock_trader_once(
         account_context = None
         execution_capacity = None
         if execute and account_config is not None:
-            from ml.account_gameplan.execution import account_execution_context
+            from ml.account_gameplan.execution import account_execution_context, matches_initial_context_lease_expiry
             from ml.stock_trader.gameplan_execution import account_execution_plan
+            account_plan = None
             try:
                 account_plan, current_config = account_execution_plan(root,
                     action_date=timestamp.tz_convert("America/Los_Angeles").date().isoformat())
@@ -706,6 +707,19 @@ def run_independent_stock_trader_once(
                 execution_capacity = account_context.available_capacity()
                 metadata["account_execution_capacity"] = {"snapshot_id": snapshot_id, **execution_capacity}
             except (OSError, ValueError, RuntimeError) as exc:
+                if (sizing_policy == GAMEPLAN_SIZING_POLICY
+                        and ((account_context is not None
+                              and matches_current_lease_expiry(exc, account_context.lease))
+                             or matches_initial_context_lease_expiry(exc, config=account_config,
+                                 plan=account_plan, snapshot_id=snapshot_id))):
+                    # No intention has been created. Only this exact context's
+                    # elapsed lease requests an ordinary complete recapture;
+                    # a fenced or missing token remains an authority failure.
+                    metadata["pre_order_account_lease_refresh"] = {
+                        "schema_version": "gameplan-pre-order-account-lease-refresh-v1",
+                        "reason": "VALIDATED_EXACT_CONTEXT_LEASE_ELAPSED",
+                        "snapshot_id": snapshot_id}
+                    return finish("BROKER_STATE_REFRESH_REQUIRED")
                 elapsed_order = next((item for item in evidence
                     if matches_current_order_evidence_expiry(exc, item)), None)
                 if sizing_policy == GAMEPLAN_SIZING_POLICY and elapsed_order is not None:
