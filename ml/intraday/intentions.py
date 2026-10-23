@@ -219,6 +219,11 @@ class IntentionStore:
                         signature, value["side"], value["desired_quantity"], sizing["calculated_at"])
                     if len(self._recovery_row_cache) > _RECOVERY_SIZING_CACHE_LIMIT:
                         self._recovery_row_cache.popitem(last=False)
+                    # Release the fully validated research tree in this read
+                    # preflight, before the final transaction reserves a writer.
+                    # Both passes need only these same protected scalar facts.
+                    value = {"side": value["side"], "desired_quantity": value["desired_quantity"],
+                             "sizing": {"calculated_at": sizing["calculated_at"]}}
         return (indexed[0], indexed[1], None), value, generation
 
     def _forecast(self, db, forecast):
