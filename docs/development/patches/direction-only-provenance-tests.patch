@@ -1,0 +1,23 @@
+--- a/tests/test_direction_only_joint_handoff.py
++++ b/tests/test_direction_only_joint_handoff.py
+@@ -213,10 +213,16 @@
+         readiness._verify_local_contribution(current.root, state, receipt, plan)
+ 
+ 
+-def test_legacy_local_contribution_still_binds_its_actual_price_path(saved, monkeypatch):
+-    state, receipt, plan, metadata, _ = contribution(saved, monkeypatch)
++def test_current_contribution_from_legacy_sources_ignores_retired_price_file(saved, monkeypatch):
++    state, receipt, plan, metadata, frame = contribution(saved, monkeypatch)
++    assert plan["gameplan_recipe_version"] == "direction-live-quote-v1"
+     assert readiness._verify_local_contribution(saved.root, state, receipt, plan)[0] == metadata
+     path = saved.trade / "planning-price-path.json"
+     path.write_bytes(path.read_bytes() + b" ")
+-    with pytest.raises(ValueError, match="frozen native source"):
+-        readiness._verify_local_contribution(saved.root, state, receipt, plan)
++    actual_stats, actual_frame = readiness._verify_local_contribution(saved.root, state, receipt, plan)
++    assert actual_stats == metadata
++    pd.testing.assert_frame_equal(actual_frame, frame)
++    path.unlink()
++    actual_stats, actual_frame = readiness._verify_local_contribution(saved.root, state, receipt, plan)
++    assert actual_stats == metadata
++    pd.testing.assert_frame_equal(actual_frame, frame)
