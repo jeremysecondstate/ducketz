@@ -1,0 +1,43 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261023T125601Z-3c3f50c5407843bc90f2c53f6c606ac6",
+  "change_id": "20261023T125601Z-3c3f50c5407843bc90f2c53f6c606ac6",
+  "commit_sha": "7cd3054b3614602c60effe12748858c153ee056c",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/7cd3054b3614602c60effe12748858c153ee056c",
+  "files": [
+    "ml/intraday/local_forecast.py",
+    "ml/intraday/scout_client.py",
+    "tests/test_intraday_saved_forecast_retry_diagnostics.py"
+  ],
+  "limitations": [
+    "Three owned source/test files and all870source/dependency fingerprints match the reviewed immutable record; validation counts overlap between stages.",
+    "The draft PR is stacked on its exact prior source parent; this run has not integrated the change into main.",
+    "Diagnostics do not change retry limits, establish historical attempt counts or guarantee runtime recovery. Private operating evidence, account state, ledgers, raw data and fitted models are excluded."
+  ],
+  "parent_commit": "670b0e0008f858b953145bada03542d4d0e7cba0",
+  "parent_pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/354",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/357",
+  "remote_sha": "7cd3054b3614602c60effe12748858c153ee056c",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Startup-loaded Python modules need a human-controlled manual reload after reviewed local installation. Publication, installation, loaded source and affected runtime behavior remain separately recorded; no trader controls are changed.",
+  "scope": "Shared correctness source; each PC retains its scientific recipe, symbols and private operating bindings",
+  "summary": "Retain bounded saved-forecast native-contention stopping evidence",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T13:00:14.687353Z",
+      "kind": "sealed source offline checks",
+      "modules": 36,
+      "output_sha256": "3593738f186c9c80ad194ee02b44ab0a1b6bbfe64fe790efed4be7b078b819ba",
+      "result": "1488 passed in 250.04s (0:04:10)",
+      "started_at_utc": "2026-10-23T12:56:02.796900Z"
+    },
+    {
+      "completed_at_utc": "2026-10-23T13:15:33.566420Z",
+      "kind": "isolated publication offline checks",
+      "modules": 36,
+      "output_sha256": "581d00e82b0a5eb7197ee1288eb6b35020f9432b62c3fcd688d7ae4fe8010bfd",
+      "result": "1488 passed in 247.59s (0:04:07)",
+      "started_at_utc": "2026-10-23T13:11:23.949631Z"
+    }
+  ]
+}

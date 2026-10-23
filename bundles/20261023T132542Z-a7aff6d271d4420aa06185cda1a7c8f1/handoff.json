@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T13:25:42.796983Z",
+  "id": "20261023T132542Z-a7aff6d271d4420aa06185cda1a7c8f1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Retain bounded saved-forecast native-contention stopping evidence"
+}
