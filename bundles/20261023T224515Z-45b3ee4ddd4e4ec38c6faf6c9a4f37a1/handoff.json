@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T22:45:15.333716Z",
+  "id": "20261023T224515Z-45b3ee4ddd4e4ec38c6faf6c9a4f37a1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Recapture validated elapsed exact own order observations before Gameplan planning"
+}

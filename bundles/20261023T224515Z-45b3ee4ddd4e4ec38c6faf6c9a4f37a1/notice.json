@@ -1,0 +1,45 @@
+{
+  "author": "Atlas",
+  "change_id": "20261023T223242Z-d9cce3c0f57242a3985bae9aedbd6b1f",
+  "commit_sha": "55f19b90515224590e2b12b0ca8b86ba914d57e2",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/account_gameplan/authority.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_gameplan_order_evidence_refresh.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/check_isolated_gameplan_initial_state_refresh.py"
+    }
+  ],
+  "limitations": [
+    "Offline fake-broker fixtures establish the intended refresh and rejection behavior; no production broker or provider calls, trader controls or live order replay.",
+    "The historical slow internal operation was not recorded. This correction does not prove the sole latency cause or live affected recovery.",
+    "Runtime loading and affected live exercise remain unproved until Jeremy chooses a future ordinary manual start or restart.",
+    "Current canonical main lacks the reviewed predecessor graph. Own-branch publication and local installation are separate from explicit reviewed main composition; no blind replay of different protected dependencies.",
+    "Original live receipt omits the individual rejected observation; valid-age expiry is reproduced offline, while the original stale-versus-invalid detail remains unproved."
+  ],
+  "pr": "https://github.com/jeremysecondstate/ducketz/pull/375",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Four exact published source/test files installed locally with original backups. A future ordinary Jeremy manual Gameplan start loads the repair. Source main integration and affected runtime recovery remain separate; no trader control or order was performed.",
+  "scope": "Shared correctness for both PCs; retain local symbols, recipes, independent execution state and manual controls.",
+  "summary": "Recapture validated elapsed exact own order observations before Gameplan planning",
+  "tests": [
+    "340 passed in 93.14s (0:01:33); 2026-10-23T22:36:25.089888Z through 2026-10-23T22:38:08.372423Z",
+    "340 passed in 105.99s (0:01:45); 2026-10-23T22:39:12.747989Z through 2026-10-23T22:41:08.038037Z",
+    "Final installed Gameplan340cases and final installed cache176cases passed; exact actual import closures and unchanged source hashes retained.",
+    "Exact-parent affected-behavior fixture fails as expected;52focused cases pass. Offline checkers deny network and subprocess actions."
+  ]
+}
