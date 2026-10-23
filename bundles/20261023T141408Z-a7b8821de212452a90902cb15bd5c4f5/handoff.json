@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T14:14:08.581901Z",
+  "id": "20261023T141408Z-a7b8821de212452a90902cb15bd5c4f5",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "All Gameplan boundary refresh regressions now run without baseline exclusions"
+}

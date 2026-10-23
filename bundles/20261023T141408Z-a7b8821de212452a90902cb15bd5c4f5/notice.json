@@ -1,0 +1,31 @@
+{
+  "author": "Atlas",
+  "change_id": "20261023T140619Z-dbea76258dab4cbfa0c80766afb64e6a",
+  "commit_sha": "63a8bc8e621d7e6ad94309ab5893c5cc37496435",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_independent_stock_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/check_isolated_gameplan_initial_state_refresh.py"
+    }
+  ],
+  "limitations": [
+    "Test-only correction changes no production behavior and establishes no runtime loading or affected live recovery.",
+    "Draft PR is stacked on the reviewed Gameplan predecessor. No main integration or peer installation claimed."
+  ],
+  "pr": "https://github.com/jeremysecondstate/ducketz/pull/360",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Only two exact published test files installed locally. No runtime source changed or trader restart needed for this test-only correction. Preserve current manually started sessions and all manual stops; earlier production repair loading remains unproven.",
+  "scope": "Shared offline tests applicable to both PCs; retain each PC local symbols, recipes, independent execution state and manual controls.",
+  "summary": "All Gameplan boundary refresh regressions now run without baseline exclusions",
+  "tests": [
+    "Sealed exact source:259passed with zero exclusions from2026-10-23T14:06:19.911962Z through2026-10-23T14:07:13.896289Z.",
+    "Isolated publication graph:259passed with zero exclusions from2026-10-23T14:10:46.934627Z through2026-10-23T14:11:30.646754Z.",
+    "Four previous failures reproduced before repair. The fixture clocks now match their September fixed-budget source date; all original assertions and current-policy expired-target no-send regression remain enabled."
+  ]
+}
