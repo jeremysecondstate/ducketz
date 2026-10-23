@@ -1,0 +1,42 @@
+{
+  "applicability": "Shared correctness applies independently on both PCs; preserve each PC symbols, saved model recipes and manual controls.",
+  "author": "Atlas",
+  "behavior": "Cold cacheable sizing returns the existing warm-path scalar facts only after unchanged full original semantic validation and protected revision checks. Preserve original scientific fields and payloads, irregular shapes, atomic rollback and exact unknown-order commitments.",
+  "branch": "codex/atlas/20261023T132136Z-5785da9569ba4730b2b53a2065bf5345",
+  "change_id": "20261023T132136Z-5785da9569ba4730b2b53a2065bf5345",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/4a6f4d12a124a017dac21edf100328a780747fc8",
+  "files": [
+    "ml/intraday/intentions.py",
+    "tests/test_intraday_recovery_read_preflight.py"
+  ],
+  "limitations": [
+    "Reference lifetime and writer-occupancy mechanism established offline. Original historical long-phase cause and affected loaded runtime recovery remain unproven.",
+    "Draft PR remains stacked on the reviewed predecessor; no main merge or peer installation inferred."
+  ],
+  "local_installation": "Two exact reviewed files installed and complete composed offline graph passed. Main integration and peer installation are separate facts.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/358",
+  "remote_sha": "4a6f4d12a124a017dac21edf100328a780747fc8",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "A future ordinary Jeremy manual start loads the repair. Preserve all manual stops and current sessions; no automatic start, restart, hotpatch, order or replay. No broker/provider calls were made.",
+  "scope": "shared",
+  "source_commit_sha": "4a6f4d12a124a017dac21edf100328a780747fc8",
+  "stacked_on_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/352",
+  "summary": "Release fully validated cold sizing research trees before recovery reserves a SQLite writer",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T13:22:43.153952Z",
+      "description": "Sealed source: 327 passed in 62.79s (0:01:02); network and subprocess actions denied",
+      "output_sha256": "6072664f813e5cb1dd1ca2987c01ecb534e9f8f659dc22a64c0a77c0262c205a"
+    },
+    {
+      "completed_at_utc": "2026-10-23T13:27:58.725054Z",
+      "description": "Isolated publication candidate: 327 passed in 73.45s (0:01:13); network and subprocess actions denied",
+      "output_sha256": "33d04280213ea10bc086bac850a6470e1c7aa815661ce3b0910cb0016957cf69"
+    },
+    {
+      "completed_at_utc": "2026-10-23T13:32:37.881891+00:00",
+      "description": "Composed installed graph: 327 passed in 50.55s; exact imported source unchanged before and after",
+      "output_sha256": "840884fb07047750b02bd49ffe0656dbb87fafe5375a5cb82246d35bccfe5d11"
+    }
+  ]
+}
