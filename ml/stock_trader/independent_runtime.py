@@ -1010,17 +1010,22 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
     for decision in decisions:
         if decision.quantity <= 0:
             continue
-        # A large successful batch can outlive its one current account/quote
-        # observation. Yield only after real progress and before reserving this
-        # intention; the managed session will capture and replan its remainder.
+        # Planning/publication and successful batches can outlive the captured
+        # account/quote observation. Recapture before reserving a stale first
+        # intention; after real progress retain the existing early refresh lead.
         # The actual pre-POST freshness and identity checks stay unchanged.
-        if submitted and decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY:
-            quote_at = QuoteState(**decision.quote).freshness_observed_at
-            if quote_at:
+        if decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY:
+            try:
+                quote_at = QuoteState(**decision.quote).freshness_observed_at
                 now = utc(clock())
-                ages = [(now - utc(decision.portfolio["observed_at"])).total_seconds(),
-                        (now - utc(quote_at)).total_seconds()]
-                refresh_age = max(0., ledger.maximum_evidence_age_seconds - DEFAULT_BROKER_STATE_EXECUTION_LEAD_SECONDS)
+                ages = ([(now - utc(decision.portfolio["observed_at"])).total_seconds(),
+                         (now - utc(quote_at)).total_seconds()] if quote_at else None)
+            except (KeyError, TypeError, ValueError):
+                # Malformed data retains the existing final-gate failure.
+                ages = None
+            if ages is not None:
+                refresh_age = max(0., ledger.maximum_evidence_age_seconds - (
+                    DEFAULT_BROKER_STATE_EXECUTION_LEAD_SECONDS if submitted else 0.))
                 if all(age >= 0 for age in ages) and max(ages) >= refresh_age:
                     return finish("BROKER_STATE_REFRESH_REQUIRED", decisions=decisions, submitted=submitted,
                                   duplicates=duplicates, publication=publication)
