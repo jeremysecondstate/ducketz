@@ -356,7 +356,7 @@ def run_independent_stock_trader_once(
             status = ("WORKING_ORDER_EVIDENCE_UNAVAILABLE" if unavailable else
                       "ORDERS_SUBMITTED_WITH_SELF_TRADE_CONFLICT" if submitted else "SELF_TRADE_CONFLICT_DEFERRED")
             error = ("Complete current working-order identities are unavailable; deferred intentions remain unsubmitted."
-                     if unavailable else "Opposing same-price orders defer affected intentions until normal reconciliation clears the conflict.")
+                     if unavailable else None)
         if abandoned_catchup and error is None and status == "NO_ORDERS_SUBMITTED":
             status = "NO_ORDERS_SUBMITTED_RETRY_EXHAUSTED"
         output = publication or publish_decision_run(
