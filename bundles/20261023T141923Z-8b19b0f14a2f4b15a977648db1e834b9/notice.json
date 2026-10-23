@@ -1,0 +1,39 @@
+{
+  "artifact_commit_sha": "78165f455feb86817cc881279210bddeb297ee28",
+  "artifact_completion_id": "20261023T141805Z-atlas-stats-early-outcomes-735d387a",
+  "author": "Atlas",
+  "branch": "main",
+  "change_id": "20261023T141805Z-atlas-stats-early-outcomes-735d387a",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/78165f455feb86817cc881279210bddeb297ee28",
+  "files": [
+    "artifacts/pc-original/20261023T141805Z-atlas-stats-early-outcomes-735d387a/artifact-manifest.json",
+    "artifacts/pc-original/20261023T141805Z-atlas-stats-early-outcomes-735d387a/gameplan-stats/20261023T141805Z-atlas-stats-early-outcomes-735d387a/original-outcome-supplement.json"
+  ],
+  "limitations": [
+    "Derived scientific outcomes for forty original AtlasOct23 forecasts only; no raw inputs, fitted models, accounts, ledgers or bindings.",
+    "Frozen combined Gameplan and completed-session Stats preserved; supplemental output retains original labels and ancestry.",
+    "Four AtlasOct23original targets lack eligible endpoints: CROX1h04/05/06,TWST1h05. OriginalOct22 andOct21 gaps retained. Peer receipt and supplemental display adoption are unproved."
+  ],
+  "remote_sha": "78165f455feb86817cc881279210bddeb297ee28",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scientific output only; no source/model/runtime deployment, trader start/restart, order or operating prerequisite.",
+  "scope": "symbol-specific",
+  "summary": "Atlas Stats: forty originalOct23 early stock outcomes published",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T14:18:05.427080+00:00",
+      "description": "Exact portable scientific fields, Brier, chronology, ancestry, privacy review and private-value scan:530checks passed",
+      "output_sha256": "fd10941dd99b4d136a7f574c4eca887ab6842765ddd0b8c9599ccfe1977f3033"
+    },
+    {
+      "completed_at_utc": "2026-10-23T14:17:33.960667+00:00",
+      "description": "Native cumulative8checks passed; all8309prior evaluated and12prior directional evaluations preserved",
+      "output_sha256": "aaaaa1da4f19f4dabe7702566f7d1cec9f7d29b81fffada5163f171ff1e2da96"
+    },
+    {
+      "completed_at_utc": "2026-10-23T14:19:22.387777+00:00",
+      "description": "Exact committed bytes, namespace and remote readback:11checks passed",
+      "output_sha256": "a939159faea8df1f6444593c8fb46a65a02925ce014e5c8cddeab77cbfb7b1be"
+    }
+  ]
+}
