@@ -3,6 +3,7 @@ from contextlib import contextmanager
 import json
 import socket
 import sqlite3
+import weakref
 
 import pytest
 
@@ -260,3 +261,70 @@ def test_failed_final_writer_exit_rolls_back_and_does_not_publish_sizing_waterma
     assert projection_rows(store) == before
     group(intents, original, observation(order))
     assert intents._recovery_row_highwater > 0
+
+
+@pytest.mark.parametrize("invalid_projection", [False, True])
+def test_full_cold_sizing_trees_release_before_reserving_final_writer(tmp_path, monkeypatch, invalid_projection):
+    store, original, intents, order = cold(tmp_path)
+    with store.connect() as db:
+        originals = {name: db.execute("SELECT * FROM " + name).fetchall()
+                     for name in ("forecasts", "intraday_intentions")}
+        db.execute("CREATE TABLE independent_writer(stage TEXT NOT NULL)")
+    connect, validate = store.connect, intents._value
+    decoded, references, released, writer_entries = [], [], [], []
+
+    class OriginalTree(dict):
+        pass
+
+    def release_tree(name):
+        # A real second writer can commit while the validated tree is being
+        # discarded. This fails if its lifetime crosses BEGIN IMMEDIATE.
+        other = sqlite3.connect(store.path, timeout=0)
+        try:
+            other.execute("BEGIN IMMEDIATE")
+            other.execute("INSERT INTO independent_writer VALUES(?)", (name,))
+            other.commit()
+            released.append((name, "committed"))
+        except sqlite3.OperationalError as exc:
+            released.append((name, str(exc)))
+        finally:
+            other.close()
+
+    def validated_tree(row):
+        value = validate(row)
+        decoded.append(row[0])
+        # Wrap only after the unmodified full original validator succeeds.
+        # Root and nested sizing references must both end before the writer.
+        value = OriginalTree(value)
+        value["sizing"] = OriginalTree(value["sizing"])
+        for name, tree in (("original", value), ("sizing", value["sizing"])):
+            references.append(weakref.ref(tree))
+            weakref.finalize(tree, release_tree, name)
+        return value
+
+    @contextmanager
+    def observed_connect():
+        writer_entries.append(True)
+        if len(writer_entries) == 2:
+            assert len(references) == 2 and all(ref() is None for ref in references)
+            assert sorted(released) == [("original", "committed"), ("sizing", "committed")]
+        with connect() as db:
+            yield db
+
+    monkeypatch.setattr(intents, "_value", validated_tree)
+    monkeypatch.setattr(store, "connect", observed_connect)
+    item = observation(order, evidence={}) if invalid_projection else observation(order)
+    if invalid_projection:
+        with pytest.raises(ContractError, match="explicit evidence"):
+            group(intents, original, item)
+        assert intents._recovery_row_highwater == 0
+    else:
+        result = group(intents, original, item)
+        assert result[0]["desired_quantity"] == 4
+        assert result[0]["submitted_quantity"] == result[0]["filled_quantity"] == 0
+    assert decoded == [original["forecast_id"]]
+    monkeypatch.setattr(intents, "_value", validate)
+    monkeypatch.setattr(store, "connect", connect)
+    with store.connect() as db:
+        assert {name: db.execute("SELECT * FROM " + name).fetchall() for name in originals} == originals
+    assert intents.get(original["forecast_id"])["sizing"]["research"]["models"][0]["history"] == list(range(100))
