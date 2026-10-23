@@ -632,6 +632,77 @@ def collector_from_config(config, datastore, pc, **kwargs):
         configuration_sha256=config["configuration_sha256"], **kwargs)
 
 
+def collection_failure_diagnostics(collector, error):
+    """Bounded observations only; never retry, acquire a lock or replace error.
+
+    The worker's ordinary traceback omits exception-class and lock identity.
+    A duplicated native Timeout class can therefore resemble a handled queue
+    timeout. These facts distinguish that mechanism without exposing paths or
+    claiming a provider failure or the cause of an earlier incident.
+    """
+    detail = dict(schema_version="intraday-market-collection-failure-v1",
+        collector_phase="unavailable", exception_module="other", exception_name="other",
+        handler_timeout_matches_error=None, handler_timeout_matches_native_api=None,
+        error_matches_native_api_timeout=None, error_is_builtin_timeout=None,
+        queue_lock_path_matches=None, collector_run_code_sha256=None,
+        collector_step_code_sha256=None, trace_truncated=False, observer_error=False)
+    try:
+        cls = type(error)
+        if cls.__module__ in {"filelock._error", "filelock._api", "builtins"}:
+            detail["exception_module"] = cls.__module__
+        if cls.__name__ in {"Timeout", "TimeoutError"}:
+            detail["exception_name"] = cls.__name__
+        detail["handler_timeout_matches_error"] = isinstance(error, Timeout)
+        detail["error_is_builtin_timeout"] = isinstance(error, TimeoutError)
+    except BaseException:
+        detail["observer_error"] = True
+    try:
+        lock = collector.lock
+        native = getattr(lock._poll_until_acquired, "__func__", None)
+        native_timeout = native.__globals__.get("Timeout") if native is not None else None
+        if isinstance(native_timeout, type) and issubclass(native_timeout, BaseException):
+            detail["handler_timeout_matches_native_api"] = Timeout is native_timeout
+            detail["error_matches_native_api_timeout"] = isinstance(error, native_timeout)
+    except BaseException:
+        detail["observer_error"] = True
+    try:
+        import os
+        left, right = getattr(error, "lock_file", None), collector.lock.lock_file
+        if type(left) is str and type(right) is str:
+            if (len(left) > 32768 or len(right) > 32768 or "\x00" in left or "\x00" in right):
+                raise ValueError("Invalid diagnostic lock path")
+            # Lexical only: never resolve a remote path or inspect its target.
+            normalize = lambda value: os.path.normcase(os.path.normpath(os.path.abspath(value)))
+            detail["queue_lock_path_matches"] = normalize(left) == normalize(right)
+    except BaseException:
+        detail["observer_error"] = True
+    try:
+        import marshal
+        methods = {}
+        for name in ("run", "collect", "enqueue", "step", "_collect"):
+            method = getattr(collector, name, None)
+            code = getattr(method, "__code__", None)
+            if code is not None:
+                methods[code] = name
+                if name in {"run", "step"}:
+                    detail["collector_" + name + "_code_sha256"] = hashlib.sha256(marshal.dumps(code)).hexdigest()
+        trace, count = error.__traceback__, 0
+        while trace is not None and count < 24:
+            name = methods.get(trace.tb_frame.f_code)
+            if name is not None:
+                detail["collector_phase"] = name
+                following = trace.tb_next
+                if (name in {"enqueue", "step", "_collect"} and following is not None
+                        and Path(following.tb_frame.f_code.co_filename).name == "_api.py"
+                        and following.tb_frame.f_code.co_name == "__enter__"):
+                    detail["collector_phase"] = name.lstrip("_") + "_queue_lock_acquire"
+            trace, count = trace.tb_next, count + 1
+        detail["trace_truncated"] = trace is not None
+    except BaseException:
+        detail["observer_error"] = True
+    return detail
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--datastore", type=Path, required=True)
