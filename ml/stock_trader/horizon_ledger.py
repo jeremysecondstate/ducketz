@@ -556,11 +556,26 @@ class HorizonLedger:
         """
         with self._transaction() as db:
             output=[]
-            for row in db.execute("SELECT r.id,r.request FROM reservations r JOIN allocations a ON a.id=r.allocation WHERE a.account=? AND a.symbol=? ORDER BY r.rowid",
-                                  (self.account_fingerprint,_name(symbol).upper())):
-                request=json.loads(row["request"])
+            # Transfer history once instead of releasing the GIL for each
+            # SQLite row while current execution evidence ages. Preserve raw
+            # BLOBs too: json.loads accepts encoded JSON bytes in old rows.
+            rows = self._read_rows(db, """SELECT
+                CASE WHEN typeof(r.id)='blob' THEN hex(r.id) ELSE r.id END AS id,
+                typeof(r.id) AS id_storage,
+                CASE WHEN typeof(r.request)='blob' THEN hex(r.request) ELSE r.request END AS request,
+                typeof(r.request) AS request_storage
+                FROM reservations r JOIN allocations a ON a.id=r.allocation
+                WHERE a.account=? AND a.symbol=? ORDER BY r.rowid""",
+                ("id", "id_storage", "request", "request_storage"),
+                (self.account_fingerprint,_name(symbol).upper()))
+            for key, id_storage, raw, request_storage in rows:
+                if id_storage == "blob":
+                    key = bytes.fromhex(key)
+                if request_storage == "blob":
+                    raw = bytes.fromhex(raw)
+                request=json.loads(raw)
                 if request.get("stream") in {"atlas-15m", "scout-15m"} and request.get("forecast")==_name(forecast_id):
-                    output.append(self._reservation(db,row["id"]))
+                    output.append(self._reservation(db,key))
             return tuple(output)
 
     @staticmethod
