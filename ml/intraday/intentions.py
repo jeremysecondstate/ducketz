@@ -9,6 +9,7 @@ from contextlib import contextmanager, nullcontext
 import hashlib
 import json
 import math
+import sqlite3
 import time
 from dataclasses import asdict
 
@@ -331,6 +332,56 @@ class IntentionStore:
         if row is None or self.store._forecast_value(row) != forecast:
             raise ContractError("Intention requires the original saved forecast")
 
+    def _ordinary_forecast_marker(self, db, forecast_id):
+        """Optional call-local proof that a fully validated row is unchanged.
+
+        Marker uncertainty never replaces the original full validator with a
+        new prerequisite. Both the opened handle and current pathname must
+        name the same physical database; revisions alone do not establish that.
+        """
+        try:
+            generation, epoch = self.store._execution_forecast_generation(db)
+            opened = getattr(self.store, "_connection_source_identities", {}).get(id(db))
+            stat = self.store.path.stat()
+            if opened is None or opened != (stat.st_dev, stat.st_ino):
+                return None
+            indexed = db.execute("SELECT f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,r.generation "
+                "FROM forecasts f LEFT JOIN execution_forecast_revisions r ON r.forecast_id=f.id "
+                "WHERE f.id=?", (forecast_id,)).fetchone()
+            if (indexed is None or type(indexed[6]) is not int
+                    or not 0 <= indexed[6] <= generation):
+                return None
+            return (opened, db.execute("PRAGMA schema_version").fetchone()[0],
+                    epoch, generation, tuple(indexed))
+        except (ContractError, sqlite3.Error, OSError):
+            return None
+
+    def _ordinary_forecast_preflight(self, forecast):
+        """Close a complete original-validation read before taking a writer.
+
+        The caller holds the store lock through its final write transaction.
+        The independent tree is local to that operation, never a store cache.
+        """
+        with self.store.connect() as db:
+            db.execute("BEGIN")
+            marker = self._ordinary_forecast_marker(db, forecast["forecast_id"])
+            row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                             "FROM forecasts WHERE id=?", (forecast["forecast_id"],)).fetchone()
+            if row is None:
+                raise ContractError("Intention requires the original saved forecast")
+            original = self.store._forecast_value(row)
+            if original != forecast:
+                raise ContractError("Intention requires the original saved forecast")
+        return marker, original
+
+    def _ordinary_forecast_recheck(self, db, forecast, marker, original):
+        # Both branches retain full caller equality, including nested/extra
+        # fields. Optional markers only avoid decoding the same original again.
+        if marker is None or marker != self._ordinary_forecast_marker(db, forecast["forecast_id"]):
+            self._forecast(db, forecast)
+        elif original != forecast:
+            raise ContractError("Intention requires the original saved forecast")
+
     @staticmethod
     def _value(row):
         if row is None:
@@ -412,15 +463,18 @@ class IntentionStore:
         payload = {"version": VERSION, "forecast_id": forecast["forecast_id"], "symbol": forecast["symbol"],
                    "side": side, "desired_quantity": desired, "sizing_id": result.result_id, "sizing": value}
         key = digest(payload)
-        with self.store.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            self._forecast(db, forecast)
-            old = self._value(db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
-                                        (forecast["forecast_id"],)).fetchone())
-            if old is not None and old != payload:
-                raise ContractError("Original desired quantity and sizing evidence are immutable")
-            db.execute("INSERT OR IGNORE INTO intraday_intentions VALUES(?,?,?)",
-                       (forecast["forecast_id"], key, encoded(payload)))
+        with self.store._execution_forecast_lock:
+            marker, original = self._ordinary_forecast_preflight(forecast)
+            with self.store.connect() as db:
+                db.execute("BEGIN IMMEDIATE")
+                self._ordinary_forecast_recheck(db, forecast, marker, original)
+                del original  # Release the full tree before reading sizing research.
+                old = self._value(db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
+                                            (forecast["forecast_id"],)).fetchone())
+                if old is not None and old != payload:
+                    raise ContractError("Original desired quantity and sizing evidence are immutable")
+                db.execute("INSERT OR IGNORE INTO intraday_intentions VALUES(?,?,?)",
+                           (forecast["forecast_id"], key, encoded(payload)))
         # Recovery can repeat this after a crash between the two transactions.
         self.record(forecast, event_key="sized:" + result.result_id, recorded_at=value["calculated_at"],
                     disposition="awaiting_capacity", evidence={"sizing_id": result.result_id}, kind="sized")
@@ -442,12 +496,16 @@ class IntentionStore:
         at = instant(recorded_at)
         if at < instant(forecast["issued_at"]) or not isinstance(evidence, dict) or not evidence:
             raise ContractError("Intention event needs available explicit evidence")
-        # Share recovery's cache-lock -> connection ordering and pinned marker
-        # snapshot. Full caller equality cannot be certified by scalar headers.
+        # Decode/hash the complete original without reserving SQLite's writer.
+        # This independently decoded tree belongs only to this call, and full
+        # caller equality (including nested/extra fields) is checked again in
+        # the final writer. Scalar headers cannot certify caller equivalence.
         with self.store._execution_forecast_lock:
+            marker, original = self._ordinary_forecast_preflight(forecast)
             with self.store.connect() as db:
                 db.execute("BEGIN IMMEDIATE")
-                self._forecast(db, forecast)
+                self._ordinary_forecast_recheck(db, forecast, marker, original)
+                del original  # Do not overlap forecast and sizing research trees.
                 row, intention, generation = self._revision_sizing(
                     db, forecast["forecast_id"], lambda stage: nullcontext())
                 result = self._append_validated(db, forecast, row, intention,

@@ -92,7 +92,15 @@ def test_competing_writer_commits_during_cold_original_reads_and_validation(tmp_
     @contextmanager
     def traced():
         with connect() as db:
-            yield Connection(db)
+            wrapper = Connection(db)
+            identities = store._connection_source_identities
+            # Preserve only the real underlying connection's opened identity.
+            # This tracing proxy must not turn a certain source into a miss.
+            identities[id(wrapper)] = identities.get(id(db))
+            try:
+                yield wrapper
+            finally:
+                identities.pop(id(wrapper), None)
 
     monkeypatch.setattr(store, "connect", traced)
     for owner, name, stage in ((store, "_forecast_projection", "forecast_validate"),
