@@ -1,0 +1,43 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261023T164219Z-638f623ff4b54df6810067d393b54fd2",
+  "change_id": "20261023T164219Z-638f623ff4b54df6810067d393b54fd2",
+  "commit_sha": "9c658637860d621452c50084117ce720ced41f73",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/9c658637860d621452c50084117ce720ced41f73",
+  "files": [
+    "ml/intraday/pretransport_clearance.py",
+    "tests/test_intraday_failed_terminal_client_gate_history.py"
+  ],
+  "limitations": [
+    "Exactly two owned files and all 876 source/dependency fingerprints match the immutable reviewed record. Validation counts overlap.",
+    "The new version requires authentic drained-terminal evidence, matching original source and client-gate trace, an ended original process and full journal integrity. All legacy proof contracts remain unchanged.",
+    "Original UNKNOWN history and consumed send tokens are preserved. Source publication creates no operating clearance, rewrites no historical journal and replays no original request. Distinct future requests retain ordinary controls.",
+    "Source publication, main integration, peer adoption, installation, loading and affected behavior remain separate facts. Original private failure evidence, account state, recipes, ledgers, data and models are excluded."
+  ],
+  "parent_commit": "c3c943b38729b7c2661ce37cd35721fbfedf230b",
+  "parent_pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/368",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/369",
+  "remote_sha": "9c658637860d621452c50084117ce720ced41f73",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The new reader must load before separately reviewed postmortem adoption. Source publication preserves manual trader controls, original request fences and each PCs scientific recipe; affected behavior needs separate evidence.",
+  "scope": "Shared correctness source; each PC retains its scientific recipe and private operating bindings",
+  "summary": "Add strict failed-terminal client-gate history proof",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T16:46:26.708462Z",
+      "kind": "sealed source offline checks",
+      "modules": 14,
+      "output_sha256": "62946c8386a7d1b21e636b1c9c04892e4315de79cfbc2444190b3680b6160f97",
+      "result": "1263 passed in 243.57s (0:04:03)",
+      "started_at_utc": "2026-10-23T16:42:20.962607Z"
+    },
+    {
+      "completed_at_utc": "2026-10-23T16:51:56.709294Z",
+      "kind": "isolated publication offline checks",
+      "modules": 14,
+      "output_sha256": "802b0b6c9ff7a6596f2d3dce8756a318744d98bd539a55ec9aa1d2219f1fa53a",
+      "result": "1263 passed in 281.56s (0:04:41)",
+      "started_at_utc": "2026-10-23T16:47:12.898053Z"
+    }
+  ]
+}
