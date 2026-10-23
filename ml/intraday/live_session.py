@@ -234,7 +234,10 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
             operation=operation, stopped=interrupted, pause=pause)
     def observe(operation, forecast, **evidence):
         observed_at = clock()
-        return storage(operation, lambda: store.observe(forecast, as_of=observed_at, **evidence))
+        # Another outcome writer may commit newer evidence during contention.
+        # Keep the captured observation time and retain that validated revision.
+        return storage(operation, lambda: store.observe(
+            forecast, as_of=observed_at, skip_newer=True, **evidence))
     def drain_retained_targets():
         if interrupted():
             return

@@ -321,3 +321,78 @@ def test_failure_evidence_bounds_chains_and_frames_without_private_values():
     spoofed = native_error()
     spoofed.sqlite_errorname = "private-untrusted-name"
     assert "sqlite_errorcode" not in scoring_failure_evidence(spoofed)["root_cause"]
+
+@pytest.mark.parametrize("acquisition", ["saved", "acquired", "source_empty"])
+@pytest.mark.parametrize("contended", [False, True])
+def test_scoring_retains_concurrent_newer_outcome_without_reacquisition(
+        tmp_path, monkeypatch, capsys, acquisition, contended):
+    store, original, target, frozen = saved_fixture(tmp_path, save_candle=acquisition == "saved")
+    holder = sqlite3.connect(store.path, timeout=0)
+    original_observe = store.observe
+    calls, attempts, committed, pauses = [], [], [], []
+    newer_target = dict(target, close="99", available_at="2026-10-08T17:59:00Z")
+
+    class Incoming:
+        def __init__(self, **kwargs):
+            assert acquisition != "saved", "Persisted target must not request acquisition"
+        def bind_cycle(self, identity):
+            assert identity == "score:" + original["forecast_id"]
+        def get(self, symbol):
+            calls.append(symbol)
+            if acquisition == "source_empty":
+                raise live_session.SourceIntervalEmpty({"receipt_id": "fixture-source-empty"})
+            return target_history(target)
+
+    def commit_newer():
+        assert not committed
+        committed.append(original_observe(original, as_of="2026-10-08T18:00:01Z", candle=newer_target))
+
+    def observe(forecast, **kwargs):
+        attempts.append(dict(kwargs))
+        if len(attempts) == 1:
+            if contended:
+                holder.execute("BEGIN IMMEDIATE")
+            else:
+                # The original scorer already had this race even without a
+                # contention retry: a valid newer revision can win after as_of.
+                commit_newer()
+        return original_observe(forecast, **kwargs)
+
+    def pause(seconds):
+        assert contended and seconds == 1 and not pauses
+        pauses.append(seconds)
+        holder.rollback()
+        # A separate writer releases contention and commits a corrected exact
+        # target before the scoring caller retries its captured older as_of.
+        commit_newer()
+
+    monkeypatch.setattr(live_session, "LiveHistories", Incoming)
+    monkeypatch.setattr(store, "observe", observe)
+    try:
+        run_one_pass(store, monkeypatch=monkeypatch, pause=pause,
+            session_id=SESSION, histories={"AAPL": object()})
+    finally:
+        holder.rollback()
+        holder.close()
+
+    assert calls == ([] if acquisition == "saved" else ["AAPL"])
+    assert pauses == ([1] if contended else [])
+    assert attempts[0]["as_of"] == NOW
+    if contended:
+        assert attempts[1]["as_of"] == NOW
+        assert '"sqlite_errorname":"SQLITE_BUSY"' in capsys.readouterr().out
+    if acquisition == "source_empty":
+        assert "unavailable_reason" in attempts[0]
+    else:
+        assert attempts[0]["candle"] == target
+    assert len(committed) == 1 and committed[0]["status"] == "scored"
+    assert committed[0]["target_not_down"] is False
+    assert store.revisions(original["forecast_id"]) == committed
+    with store.connect() as db:
+        assert db.execute("SELECT id,payload FROM forecasts").fetchall() == frozen
+        assert db.execute("SELECT count(*) FROM outcomes").fetchone()[0] == 1
+    # Only the live scoring caller opts in. Other callers retain the original
+    # strict no-backdating contract, even if the candle was already recorded.
+    with pytest.raises(ContractError, match="backdated"):
+        original_observe(original, as_of=NOW, candle=target)
+    assert store.revisions(original["forecast_id"]) == committed
