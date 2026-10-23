@@ -1,0 +1,58 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-23T00:10:21.803092Z",
+  "completion_id": "20261023T000925Z-atlas-stats-outcomes-7064dd1a",
+  "details": [
+    "Actor Atlas; task Atlas Trader Representative; completed native cumulative Stats supplement for eleven original saved Oct21 D+2 forecasts.",
+    "Original probabilities, target definitions, saved directions, recorded policy identities and observed endpoint hashes are preserved.",
+    "Retains original combined Gameplan, frozen completed-session Stats, previous cumulative receipt and published ten-outcome supplement ancestry.",
+    "Peer applicability: scientific outcomes for Atlas symbols may be read independently; no peer model tuning or execution-state installation.",
+    "Private raw receipts, account state, fitted models, local bindings, task memory and historical publications remain local and unchanged.",
+    "Fresh original-target and native cumulative checks passed; exact portable fields, Brier values, chronology, ancestry and local private-value scan passed.",
+    "No source change, model fitting, runtime loading, trader control, order placement or deployment results from this derived output export."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261023T000925Z-atlas-stats-outcomes-7064dd1a/gameplan-stats/20261023T000925Z-atlas-stats-outcomes-7064dd1a/original-outcome-supplement.json",
+      "expected_sha256": "6ba0b76620d165bab79f86a8430958f732c1d835f39b4ca1c38ca625e25ea039",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261023T000925Z-atlas-stats-outcomes-7064dd1a/original-outcome-supplement.json",
+      "published_sha256": "6ba0b76620d165bab79f86a8430958f732c1d835f39b4ca1c38ca625e25ea039",
+      "published_size": 14515,
+      "sha256": "6ba0b76620d165bab79f86a8430958f732c1d835f39b4ca1c38ca625e25ea039",
+      "size": 14515,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "6ba0b76620d165bab79f86a8430958f732c1d835f39b4ca1c38ca625e25ea039",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261023T000925Z-atlas-stats-outcomes-7064dd1a/original-outcome-supplement.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "human-authorized-development",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "symbol-specific",
+  "source_head": "90704d21801f60426493bd6cc650a7fac38d4f61",
+  "summary": "Atlas Trader Representative: publish eleven original D+2 stock outcomes",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "COST",
+    "CROX",
+    "GOOG",
+    "IONQ",
+    "MU",
+    "NVDA",
+    "PATH",
+    "SNDK",
+    "TWST"
+  ]
+}
