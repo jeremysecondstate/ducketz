@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from collections.abc import Mapping
-from dataclasses import asdict
+from dataclasses import asdict, dataclass, field
 from decimal import Decimal, ROUND_CEILING
 import os
 from pathlib import Path
@@ -16,7 +16,8 @@ import uuid
 
 from ml.account_gameplan.authority import (
     AccountAuthority, AccountSnapshot, AuthorityBinding, AuthorityError,
-    BrokerReservation, Fill, OPEN, OrderEvidence, ReservationRequest, _money, _name, _symbol,
+    BrokerReservation, Fill, Lease, OPEN, OrderEvidence, ReservationRequest,
+    matches_current_lease_expiry, _money, _name, _symbol,
 )
 from ml.account_gameplan.config import assert_coordinator, load_account_config, verify_cutover
 from ml.stock_trader.contracts import utc
@@ -25,6 +26,27 @@ from ml.stock_trader.sizing_policy import GAMEPLAN_SIZING_POLICY
 
 
 AUTHORITY_PATH = Path("state/gameplan-trader/authority.sqlite3")
+
+
+@dataclass(frozen=True)
+class _InitialContextLeaseExpiry:
+    """Exact no-intention context whose own published lease elapsed."""
+
+    snapshot_id: str
+    config_fingerprint: str
+    plan_path: Path
+    manifest_sha256: str
+    lease: Lease = field(repr=False)
+
+
+def matches_initial_context_lease_expiry(exc, *, config, plan, snapshot_id):
+    saved = getattr(exc, "initial_context_lease_expiry", None)
+    return (isinstance(saved, _InitialContextLeaseExpiry) and plan is not None
+            and saved.snapshot_id == snapshot_id
+            and saved.config_fingerprint == config.fingerprint
+            and saved.plan_path == plan.path
+            and saved.manifest_sha256 == plan.manifest_sha256
+            and matches_current_lease_expiry(exc, saved.lease))
 
 
 def _binding(config):
@@ -185,7 +207,11 @@ class AccountExecutionContext:
             self.assert_current()
             self._reconcile(order_evidence)
             self._snapshot(policy)
-        except BaseException:
+        except BaseException as exc:
+            if matches_current_lease_expiry(exc, self.lease):
+                exc.initial_context_lease_expiry = _InitialContextLeaseExpiry(
+                    self.snapshot_id, self.config.fingerprint, self.plan.path,
+                    self.plan.manifest_sha256, self.lease)
             self.close()
             raise
 
