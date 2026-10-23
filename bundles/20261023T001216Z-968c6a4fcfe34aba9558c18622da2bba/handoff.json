@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T00:12:16.492269Z",
+  "id": "20261023T001216Z-968c6a4fcfe34aba9558c18622da2bba",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas original saved Stats: eleven newly matured D+2 outcomes published"
+}

@@ -1,0 +1,39 @@
+{
+  "artifact_commit_sha": "49440c22f10e093f3f45798ed92ce29be0426d6b",
+  "artifact_completion_id": "20261023T000925Z-atlas-stats-outcomes-7064dd1a",
+  "author": "Atlas",
+  "branch": "main",
+  "change_id": "20261023T000925Z-atlas-stats-outcomes-7064dd1a",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/49440c22f10e093f3f45798ed92ce29be0426d6b",
+  "files": [
+    "artifacts/pc-original/20261023T000925Z-atlas-stats-outcomes-7064dd1a/artifact-manifest.json",
+    "artifacts/pc-original/20261023T000925Z-atlas-stats-outcomes-7064dd1a/gameplan-stats/20261023T000925Z-atlas-stats-outcomes-7064dd1a/original-outcome-supplement.json"
+  ],
+  "limitations": [
+    "Derived scientific outcomes for eleven original Atlas forecasts only; no raw inputs, fitted models, account state, private ledgers or native bindings.",
+    "Original combined Gameplan and completed-session Stats stay immutable; previous ten-outcome supplement ancestry retained.",
+    "Thirteen Atlas original observations and sixty Scout original outcomes remain unavailable; eighty-eight combined targets remain future. Peer receipt and display are separate facts."
+  ],
+  "remote_sha": "49440c22f10e093f3f45798ed92ce29be0426d6b",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scientific output only; no shared source, model tuning, deployment, trader start or restart, order placement or operating prerequisite.",
+  "scope": "symbol-specific",
+  "summary": "Atlas original saved Stats: eleven newly matured D+2 outcomes published",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T00:09:25.880883+00:00",
+      "description": "Exact original saved policy, probability, target, outcome, ancestry and portable privacy review: 142 checks passed",
+      "output_sha256": "67c09a8e2535b4d7d1434ffb654cb5b8e5725f185257c2efc1035ffdef37772a"
+    },
+    {
+      "completed_at_utc": "2026-10-23T00:09:11.351617+00:00",
+      "description": "Native cumulative evaluation: eight checks passed; all 8064 prior evaluated rows preserved",
+      "output_sha256": "efc6cca5133ef9e465e269a432d8cae05b7e9bff173a89aec52aa4e4aa32cb12"
+    },
+    {
+      "completed_at_utc": "2026-10-23T00:12:11.317339+00:00",
+      "description": "Exact committed bytes, namespace and remote publication: twelve checks passed",
+      "output_sha256": "ae7fc6939f70e6b30525f6f4a28737afae0e08656c0cf6baab84c2bda898ae4c"
+    }
+  ]
+}
