@@ -322,44 +322,48 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
 def score_saved_session_outcomes(store, *, session_id, actor, symbols, as_of, stopped=lambda: False):
     """Finalize this manual session using only already-persisted own candles.
 
-    This last pass runs after final collection, without constructing acquisition,
-    model or execution clients. Missing or later-received targets stay unresolved;
-    confirmed synthetic targets retain their distinct outcome status.
+    Keep one full forecast at a time and retain newer concurrent observations.
+    Missing targets stay unresolved; verified synthetic outcomes stay distinct.
+    No acquisition, model or execution clients are constructed.
     """
     from .data import completed_15m_observation, synthetic_continuity_verified
     now, membership = instant(as_of), set(symbols)
     if actor not in {"Atlas", "Scout"} or not membership:
         raise ContractError("Final scoring requires this manual session's actor and symbols")
+    result = {"session_id": session_id, "scored": 0, "synthetic": 0, "unavailable": 0}
+    if stopped():
+        return result
     with store.connect() as db:
         cycles = db.execute("SELECT id FROM cycles WHERE pc=? AND json_extract(payload,'$.mode')='live' "
                             "AND json_extract(payload,'$.experiment')=?", (actor, session_id)).fetchall()
-    result = {"session_id": session_id, "scored": 0, "synthetic": 0, "unavailable": 0}
-    candidates = []
+    latest, loaded_symbols = {}, set()
     for (cycle_id,) in cycles:
         for symbol in sorted(membership):
+            if stopped():
+                return result
             forecast = store.forecast(cycle_id, symbol)
-            if (forecast is not None and forecast["pc"] == actor and forecast["mode"] == "live"
-                    and instant(forecast["target_close"]) <= now):
-                candidates.append(forecast)
-    latest = {}
-    for symbol in sorted({forecast["symbol"] for forecast in candidates}):
-        if stopped():
-            return result
-        for candle in store.observed_candles(symbol):
-            if (instant(candle["available_at"]) <= now and completed_15m_observation(candle)
-                    and synthetic_continuity_verified(candle)):
-                latest[(symbol, candle.get("source_id"), candle.get("source_dataset"),
-                        candle.get("population_contract"), instant(candle["opened_at"]))] = candle
-    for forecast in candidates:
-        if stopped():
-            break
-        candle = latest.get((forecast["symbol"], forecast.get("source_id"), forecast.get("source_dataset"),
-                             forecast.get("population_contract"), instant(forecast["target_open"])))
-        if candle is None:
-            result["unavailable"] += 1
-            continue
-        outcome = store.observe(forecast, as_of=now, candle=candle)
-        result[outcome["status"]] += 1
+            if (forecast is None or forecast["pc"] != actor or forecast["mode"] != "live"
+                    or instant(forecast["target_close"]) > now):
+                continue
+            if symbol not in loaded_symbols:
+                for candle in store.observed_candles(symbol):
+                    if (instant(candle["available_at"]) <= now and completed_15m_observation(candle)
+                            and synthetic_continuity_verified(candle)):
+                        latest[(symbol, candle.get("source_id"), candle.get("source_dataset"),
+                                candle.get("population_contract"), instant(candle["opened_at"]))] = candle
+                loaded_symbols.add(symbol)
+            if stopped():
+                return result
+            candle = latest.get((forecast["symbol"], forecast.get("source_id"), forecast.get("source_dataset"),
+                                 forecast.get("population_contract"), instant(forecast["target_open"])))
+            if candle is None:
+                result["unavailable"] += 1
+                continue
+            outcome = store.observe(forecast, as_of=now, candle=candle, skip_newer=True)
+            if outcome is None:
+                result["newer_observation_retained"] = result.get("newer_observation_retained", 0) + 1
+            else:
+                result[outcome["status"]] += 1
     return result
 
 

@@ -615,8 +615,13 @@ class ShadowStore:
                 result.append(value)
         return result
 
-    def observe(self, forecast, *, as_of, candle=None, unavailable_reason=None):
-        """Append corrected outcomes; repeated identical evidence is idempotent."""
+    def observe(self, forecast, *, as_of, candle=None, unavailable_reason=None, skip_newer=False):
+        """Append corrected outcomes; repeated identical evidence is idempotent.
+
+        Finalization may skip a stale observation when a concurrent writer has
+        already committed newer evidence. The default retains strict chronology.
+        The skip returns None after validating the original and latest outcome.
+        """
         now = instant(as_of)
         key = forecast["forecast_id"]
         with self.connect() as db:
@@ -654,6 +659,8 @@ class ShadowStore:
             prior = db.execute("SELECT id,forecast_id,observed_at,payload FROM outcomes WHERE forecast_id=? ORDER BY rowid DESC LIMIT 1", (key,)).fetchone()
             previous = self._outcome_value(prior) if prior else None
             if previous and instant(previous["observed_at"])>now:
+                if skip_newer:
+                    return None
                 raise ContractError("Outcome evidence cannot be backdated before an existing observation")
             if previous and candle is None and previous["status"] in {"scored", "synthetic"}:
                 return previous
