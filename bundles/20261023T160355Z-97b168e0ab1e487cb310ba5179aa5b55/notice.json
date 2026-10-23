@@ -1,0 +1,47 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261023T154649Z-d2f32b04c5cd4c8da8466d56913bc62d",
+  "change_id": "20261023T154649Z-d2f32b04c5cd4c8da8466d56913bc62d",
+  "commit_sha": "d6e4f06ee7882ad7e99bdae68c3852a68ade7d75",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/d6e4f06ee7882ad7e99bdae68c3852a68ade7d75",
+  "files": [
+    "ml/intraday/client_gate_clearance.py",
+    "ml/intraday/pretransport_clearance.py",
+    "ml/intraday/scout_client.py",
+    "ml/intraday/scout_local_execution.py",
+    "tests/test_intraday_client_final_gate_history.py",
+    "tests/test_intraday_client_gate_clearance.py",
+    "tests/test_intraday_recovery_subphases.py"
+  ],
+  "limitations": [
+    "Exactly seven owned files and all 874 source/dependency fingerprints match the immutable reviewed record. Validation counts overlap.",
+    "Trusted prospective client-gate contention proof and a separate exact historical source profile preserve original UNKNOWN history, consumed send tokens and same-request fencing. Historical support requires complete source/trace, clean manual stop, original process-end, expiry and full journal evidence.",
+    "Generic callbacks, nonqualifying failures and ambiguous sender outcomes remain fenced. Source publication, main integration, peer adoption, installation, loading and affected behavior remain separately recorded. Private operating evidence and data are excluded."
+  ],
+  "parent_commit": "d015eadd116a284eaf48cd3c6b7424d1b2e33c49",
+  "parent_pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/363",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/367",
+  "remote_sha": "d6e4f06ee7882ad7e99bdae68c3852a68ade7d75",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Startup-imported correctness modules require a human-controlled manual reload after reviewed local adoption. Each trader keeps its own controls and model recipe; no trader start, stop or restart is performed by source publication.",
+  "scope": "Shared correctness source; each PC retains its own scientific recipe, symbols and private operating bindings",
+  "summary": "Preserve Scout future forecasts after proven client-gate contention",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T15:51:55.028752Z",
+      "kind": "sealed source offline checks",
+      "modules": 39,
+      "output_sha256": "a053862a3ef8e7f306ae5c4d81f3bf02ce8168ba41e9e34abdce5bb7e88ea8a4",
+      "result": "1765 passed in 302.40s (0:05:02)",
+      "started_at_utc": "2026-10-23T15:46:50.751767Z"
+    },
+    {
+      "completed_at_utc": "2026-10-23T15:59:37.173938Z",
+      "kind": "isolated publication offline checks",
+      "modules": 39,
+      "output_sha256": "0b423440b880a6a8772e56306b4a4c83d1c531f093b2970918814bedb9ba8798",
+      "result": "1765 passed in 319.95s (0:05:19)",
+      "started_at_utc": "2026-10-23T15:54:15.490938Z"
+    }
+  ]
+}
