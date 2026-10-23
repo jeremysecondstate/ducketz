@@ -1,0 +1,43 @@
+{
+  "author": "Atlas",
+  "change_id": "20261023T112343Z-87dcc35c6d0b4e78858983be03239839",
+  "commit_sha": "f8616b3b441b33961cd3f960e0d2c1fd3c611d63",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/intentions.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_read_preflight.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_recovery_read_preflight.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_phase_diagnostics.py"
+    }
+  ],
+  "limitations": [
+    "Offline network-denied fixtures; total cold recovery duration remains unresolved.",
+    "Changed originals still receive full validation in the final transaction; this correction specifically removes unchanged cold validation from writer occupancy.",
+    "Runtime loading and exercised trader recovery are unknown until naturally retained future manual-session evidence.",
+    "The independently tested alternative PR355 was closed in favor of installed PR352 and was not installed; retain both immutable publication records without adopting the alternative."
+  ],
+  "pr": "https://github.com/jeremysecondstate/ducketz/pull/352",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Exact source installation prepares a future manual start; no start, restart, hotpatch, broker/provider call or order. Existing scoring-storage repair remains separately owned.",
+  "scope": "shared recovery correctness independently applicable to Atlas and Scout",
+  "summary": "Atlas cold recovery validation runs before reserving the SQLite writer; protected identities are rechecked before atomic projection",
+  "tests": [
+    "325offline tests passed on reviewed source.",
+    "131focused offline tests passed on sealed source, isolated publication candidate, composed local preview and installed source.",
+    "Old-source control reproduces database-is-locked during competing write; new fixtures prove competing commits, between-snapshot invalidation and rollback."
+  ]
+}

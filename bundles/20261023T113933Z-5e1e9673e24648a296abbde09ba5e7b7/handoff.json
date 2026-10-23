@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T11:39:33.631634Z",
+  "id": "20261023T113933Z-5e1e9673e24648a296abbde09ba5e7b7",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas cold recovery validation runs before reserving the SQLite writer; protected identities are rechecked before atomic projection"
+}
