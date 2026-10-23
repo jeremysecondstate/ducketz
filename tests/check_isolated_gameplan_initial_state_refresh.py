@@ -71,7 +71,7 @@ def main():
     sys.addaudithook(offline_boundary)
     _assert_imports(candidate, originals)
     import pytest
-    suites = ['tests/test_gameplan_pre_context_refresh.py']
+    suites = ['tests/test_gameplan_pre_context_refresh.py', 'tests/test_gameplan_order_evidence_refresh.py']
     if not args.context_only:
         suites += ['tests/test_gameplan_initial_state_refresh.py', 'tests/test_gameplan_pre_reservation_refresh.py']
     if not args.focused and not args.context_only:

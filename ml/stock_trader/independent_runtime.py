@@ -18,7 +18,7 @@ import pandas as pd
 from app.services.schwab import SchwabSession
 from app.services.schwab_stock_orders import build_schwab_stock_order_payload
 from datafetching.runtime_lock import exclusive_runtime_lock
-from ml.account_gameplan.authority import matches_current_lease_expiry, matches_current_snapshot_expiry, SubmissionNotStarted
+from ml.account_gameplan.authority import matches_current_lease_expiry, matches_current_snapshot_expiry, matches_current_order_evidence_expiry, SubmissionNotStarted
 from ml.stock_trader.contracts import PredictionSignal, QuoteState, StockTraderPolicy, canonical_sha256, utc
 from ml.stock_trader.engine import _direct_no_trade
 from ml.stock_trader.gameplan import _entry_deadline, read_gameplan_stock_activation_intent
@@ -706,6 +706,19 @@ def run_independent_stock_trader_once(
                 execution_capacity = account_context.available_capacity()
                 metadata["account_execution_capacity"] = {"snapshot_id": snapshot_id, **execution_capacity}
             except (OSError, ValueError, RuntimeError) as exc:
+                elapsed_order = next((item for item in evidence
+                    if matches_current_order_evidence_expiry(exc, item)), None)
+                if sizing_policy == GAMEPLAN_SIZING_POLICY and elapsed_order is not None:
+                    # One no-intention return; the ordinary session captures
+                    # complete new order and portfolio evidence next. Never
+                    # advance timestamps or replay the elapsed evidence.
+                    metadata["pre_order_exact_order_evidence_refresh"] = {
+                        "schema_version": "gameplan-pre-order-exact-order-evidence-refresh-v1",
+                        "reason": "VALIDATED_EXACT_ORDER_EVIDENCE_ELAPSED",
+                        "evidence_id": elapsed_order.evidence_id,
+                        "broker_order_id": elapsed_order.broker_order_id,
+                        "observed_at": elapsed_order.observed_at}
+                    return finish("BROKER_STATE_REFRESH_REQUIRED")
                 if (sizing_policy == GAMEPLAN_SIZING_POLICY
                         and matches_current_snapshot_expiry(exc, snapshot_id, portfolio.observed_at)):
                     # Context construction/capacity reads may outlive an

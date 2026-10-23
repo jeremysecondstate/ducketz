@@ -145,6 +145,38 @@ def _require_current_account_snapshot(snapshot_id, observed, now):
 
 
 @dataclass(frozen=True)
+class _CurrentOrderEvidenceExpiry:
+    """Exact otherwise-valid own order observation rejected only for elapsed age."""
+
+    evidence_id: str
+    account_fingerprint: str
+    broker_order_id: str
+    observed_at: str
+
+
+def matches_current_order_evidence_expiry(exc, evidence):
+    saved = getattr(exc, "current_order_evidence_expiry", None)
+    if not (isinstance(exc, AuthorityError) and str(exc) == "ORDER_EVIDENCE_STALE_OR_INVALID"
+            and isinstance(saved, _CurrentOrderEvidenceExpiry)):
+        return False
+    try:
+        return (saved.evidence_id == evidence.evidence_id
+                and saved.account_fingerprint == evidence.account_fingerprint
+                and saved.broker_order_id == evidence.broker_order_id
+                and saved.observed_at == _time(evidence.observed_at).isoformat())
+    except (AttributeError, TypeError, ValueError):
+        return False
+
+
+def _reject_elapsed_order_evidence(evidence, observed, now):
+    if (now-observed).total_seconds() > 60:
+        error = AuthorityError("ORDER_EVIDENCE_STALE_OR_INVALID")
+        error.current_order_evidence_expiry = _CurrentOrderEvidenceExpiry(
+            evidence.evidence_id, evidence.account_fingerprint, evidence.broker_order_id, observed.isoformat())
+        raise error
+
+
+@dataclass(frozen=True)
 class BrokerReservation:
     broker_order_id: str
     symbol: str
@@ -1176,12 +1208,13 @@ class AccountAuthority:
             request = json.loads(row["request"])
             if not row["broker_id"] or row["broker_id"]!=evidence.broker_order_id:
                 raise AuthorityError("EXACT_PREVIOUSLY_BOUND_BROKER_ORDER_ID_REQUIRED")
-            if not _time(row["created"])<=observed<=now or (now-observed).total_seconds()>60:
+            if not _time(row["created"])<=observed<=now:
                 raise AuthorityError("ORDER_EVIDENCE_STALE_OR_INVALID")
             previous = db.execute("SELECT payload FROM order_evidence WHERE id=?", (evidence.evidence_id,)).fetchone()
             if previous:
                 if previous[0]!=_json(payload):
                     raise AuthorityError("ORDER_EVIDENCE_ID_REUSED")
+                _reject_elapsed_order_evidence(evidence, observed, now)
                 return self._reservation(row)
             quantity = _quantity(evidence.order_quantity,positive=True)
             filled = _quantity(evidence.cumulative_filled_quantity)
@@ -1212,6 +1245,10 @@ class AccountAuthority:
                         or (request["side"]=="BUY" and price>_money(request["limit_price"]))
                         or (request["side"]=="SELL" and price<_money(request["limit_price"]))):
                     raise AuthorityError("FILL_TIME_OR_LIMIT_PRICE_INVALID")
+            # Fully validate before classifying pure elapsed age. No fills or
+            # reservation updates are written for an expired observation.
+            _reject_elapsed_order_evidence(evidence, observed, now)
+            for item in fills:
                 db.execute("INSERT OR IGNORE INTO fills VALUES(?,?,?)", (evidence.reservation_id,item["fill_id"],_json(item)))
             db.execute("UPDATE reservations SET status=?,filled=?,last_evidence=? WHERE id=?", (status,filled,observed.isoformat(),evidence.reservation_id))
             db.execute("INSERT INTO order_evidence VALUES(?,?)", (evidence.evidence_id,_json(payload)))
