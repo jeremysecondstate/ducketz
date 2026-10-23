@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T13:34:21.385594Z",
+  "id": "20261023T133421Z-c77935b7c7604501a66605ca2c3d9a62",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Gameplan refreshes expired initial account and quote evidence before order preparation"
+}

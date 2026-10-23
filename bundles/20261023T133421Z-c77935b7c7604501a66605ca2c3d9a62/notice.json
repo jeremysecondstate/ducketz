@@ -1,0 +1,38 @@
+{
+  "author": "Atlas",
+  "change_id": "20261023T132452Z-20c342ffed164ec5b0947e1b56ea7469",
+  "commit_sha": "852be58049e52139a252206227e39d2059882d91",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_gameplan_initial_state_refresh.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_gameplan_initial_state_refresh.py"
+    }
+  ],
+  "limitations": [
+    "Four exact old date-fixture cases fail unchanged before capture at the reviewed base; dedicated current-expiry regression remains enabled.",
+    "A retained old-session recurrence supports evidence expiry at publication completion; exact slow operation, new module loading and affected live recovery remain unproven.",
+    "Draft PR is stacked on the reviewed Gameplan predecessor. No main merge or peer installation claimed."
+  ],
+  "pr": "https://github.com/jeremysecondstate/ducketz/pull/359",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Three exact reviewed files installed. Future ordinary Jeremy manual Gameplan start loads the source. Preserve current sessions and all manual stops; no automatic start, restart, hotpatch, broker/provider request, order, expired replay or cross-trader prerequisite.",
+  "scope": "Shared Gameplan correctness; both PCs retain local symbols, recipes, independent state and manual trader controls.",
+  "summary": "Gameplan refreshes expired initial account and quote evidence before order preparation",
+  "tests": [
+    "255passed and4exact documented base-fixture exclusions on sealed source 2026-10-23T13:24:52.960705Z through 2026-10-23T13:25:46.125112Z.",
+    "255passed and4same exclusions in isolated publication candidate 2026-10-23T13:28:46.200622Z through 2026-10-23T13:29:24.339391Z.",
+    "255passed and4same exclusions on final installed composition 2026-10-23T13:31:43.100074+00:00 through 2026-10-23T13:32:24.553372+00:00; actual imports and source fingerprints remained exact.",
+    "Seven new network-denied fixtures preserve original probabilities, target and intention identity, valid fresh recapture, manual stops, expired target and malformed or unavailable quote no-send."
+  ]
+}
