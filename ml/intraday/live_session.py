@@ -420,6 +420,17 @@ def _scout_startup_proof(executor, session_id, *, clock):
                        for name,writer in verified["writers"].items()}}
 
 
+def _market_context_failure_diagnostics(collector, error):
+    """Optional collector observations cannot replace the original worker error."""
+    diagnostics = _symbol_exception_diagnostics(error)
+    try:
+        from .market_collection import collection_failure_diagnostics
+        diagnostics["market_collection"] = collection_failure_diagnostics(collector, error)
+    except BaseException:
+        pass
+    return diagnostics
+
+
 def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcnow, sleep=time.sleep,
                scout_admission="broker-local", model_recipe=None):
     from .data import AcquisitionJournal, load_local_history
@@ -680,7 +691,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             except BaseException as exc:
                 # Provider adapters retain safe categories in their private
                 # snapshots; authenticated exception URLs must not reach logs.
-                diagnostics = _symbol_exception_diagnostics(exc)
+                diagnostics = _market_context_failure_diagnostics(market_collector, exc)
                 store.event(session_id, "market_context_worker_stopped", {
                     "error_type":type(exc).__name__, "diagnostics":diagnostics})
                 worker_errors.append({"worker":"market_context", "error_type":type(exc).__name__,
