@@ -104,3 +104,119 @@ def test_single_handoff_retains_sqlite_scalar_values_and_order(tmp_path):
         expected = [list(row) for row in db.execute("SELECT * FROM scalar_fixture ORDER BY ordinal")]
         assert ledger._read_rows(db, "SELECT * FROM scalar_fixture ORDER BY ordinal",
             ("ordinal", "quantity", "price", "payload", "optional")) == expected
+
+
+def attempt_history(tmp_path, count):
+    ledger = HorizonLedger(tmp_path / "attempts.sqlite3", ACCOUNT)
+    target = "original-with-retries"
+    with ledger._transaction() as db:
+        for key, account, symbol in (("local", ACCOUNT, "GOOG"),
+                                     ("other-account", "b" * 64, "GOOG"),
+                                     ("other-symbol", ACCOUNT, "AAPL")):
+            db.execute("INSERT INTO allocations VALUES(?,?,?,?,?,?,?,?)",
+                       (key, account, symbol, "15m", "allocation-original", AT, LATER, "CLOSED"))
+
+        def add(identity, *, forecast=target, stream="atlas-15m", allocation="local", raw=None):
+            request = json.dumps({"stream": stream, "forecast": forecast, "start": AT, "end": LATER}) if raw is None else raw
+            db.execute("INSERT INTO reservations VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                       (identity, allocation, "BUY", 3, "100.000", 0, "REJECTED", None,
+                        str(identity), "same-clock-batch", request, LATER))
+
+        add("z-first-attempt")
+        for index in range(count):
+            add(f"unrelated-{index}", forecast=f"historic-{index}")
+        # Exact legacy filtering must ignore these scopes before JSON parsing.
+        add("foreign-account", allocation="other-account", raw="{malformed")
+        add("foreign-symbol", allocation="other-symbol", raw="{malformed")
+        add("non-intraday-stream", stream="gameplan")
+        add("a-later-retry")
+    return ledger, target
+
+
+def legacy_attempts(ledger, target):
+    """Retain the old reader as an oracle for ordering/type/error compatibility."""
+    with ledger._transaction() as db:
+        output = []
+        for row in db.execute("SELECT r.id,r.request FROM reservations r JOIN allocations a ON a.id=r.allocation WHERE a.account=? AND a.symbol=? ORDER BY r.rowid",
+                              (ledger.account_fingerprint, "GOOG")):
+            request = json.loads(row["request"])
+            if request.get("stream") in {"atlas-15m", "scout-15m"} and request.get("forecast") == target:
+                output.append(ledger._reservation(db, row["id"]))
+        return tuple(output)
+
+
+@pytest.mark.parametrize("count", [0, 1200])
+def test_attempt_history_transfers_once_and_preserves_every_attempt(tmp_path, monkeypatch, count):
+    from contextlib import contextmanager
+
+    ledger, target = attempt_history(tmp_path, count)
+    expected = legacy_attempts(ledger, target)
+    original = ledger._transaction
+    transferred = []
+
+    @contextmanager
+    def counted_transaction():
+        with original() as db:
+            factory = db.row_factory
+
+            def count_row(cursor, row):
+                transferred.append(1)
+                return factory(cursor, row)
+
+            db.row_factory = count_row
+            yield db
+
+    monkeypatch.setattr(ledger, "_transaction", counted_transaction)
+    actual = ledger.intraday_attempts(symbol="goog", forecast_id=target)
+    assert actual == expected
+    assert [row.reservation_id for row in actual] == ["z-first-attempt", "a-later-retry"]
+    # Count real sqlite3 result conversions, not SELECT statements or time.
+    # Includes both unchanged full matched-reservation validations. An old
+    # per-history cursor fails this bound even though it issues only one SELECT.
+    assert len(transferred) <= 5
+
+
+def attempt_result(call):
+    try:
+        return ("returned", call())
+    except Exception as exc:
+        return ("raised", type(exc), str(exc))
+
+
+@pytest.mark.parametrize("payload", [
+    '{"stream":"atlas-15m","forecast":"unrelated","unicode":"☃"}',
+    sqlite3.Binary(b'{"stream":"atlas-15m","forecast":"unrelated"}'),
+    sqlite3.Binary('{"stream":"atlas-15m","forecast":"unrelated"}'.encode("utf-16")),
+    "{malformed", sqlite3.Binary(b"{malformed"), "null", 42, 4.2, "[]",
+])
+def test_attempt_history_preserves_unrelated_request_types_and_errors(tmp_path, payload):
+    ledger, target = attempt_history(tmp_path, 2)
+    with ledger._transaction() as db:
+        db.execute("UPDATE reservations SET request=? WHERE id='unrelated-1'", (payload,))
+    assert attempt_result(lambda: ledger.intraday_attempts(symbol="GOOG", forecast_id=target)) == attempt_result(
+        lambda: legacy_attempts(ledger, target))
+
+
+@pytest.mark.parametrize("matches", [False, True])
+def test_attempt_history_preserves_blob_identity_behavior(tmp_path, matches):
+    ledger, target = attempt_history(tmp_path, 1)
+    with ledger._transaction() as db:
+        db.execute("UPDATE reservations SET id=? WHERE id='unrelated-0'", (sqlite3.Binary(b"binary-id"),))
+        if matches:
+            db.execute("UPDATE reservations SET request=? WHERE typeof(id)='blob'",
+                       (json.dumps({"stream": "atlas-15m", "forecast": target}),))
+    assert attempt_result(lambda: ledger.intraday_attempts(symbol="GOOG", forecast_id=target)) == attempt_result(
+        lambda: legacy_attempts(ledger, target))
+
+
+def test_attempt_history_retains_full_matched_legacy_evidence_validation(tmp_path):
+    ledger, target = attempt_history(tmp_path, 2)
+    with ledger._transaction() as db:
+        db.execute("INSERT INTO evidence VALUES(?,?,?)", ("corrupt-old-submission", "submission",
+            json.dumps({"reservation_id": "z-first-attempt", "status": "SUBMITTED", "observed_at": "invalid"})))
+    with pytest.raises(LedgerError, match="Invalid evidence timestamp"):
+        legacy_attempts(ledger, target)
+    with pytest.raises(LedgerError, match="Invalid evidence timestamp"):
+        ledger.intraday_attempts(symbol="GOOG", forecast_id=target)
+    with ledger._transaction() as db:
+        assert db.execute("SELECT COUNT(*) FROM order_submission_times").fetchone()[0] == 0
