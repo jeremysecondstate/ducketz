@@ -142,6 +142,7 @@ class _ExecutionTrace:
         self.phases = []
         self.recovery_timings = None
         self.lease_expires_at = self.snapshot_observed_at = None
+        self.capture_freshness = None
 
     def _now(self):
         try:
@@ -177,6 +178,8 @@ class _ExecutionTrace:
             lease_expires_at=self.lease_expires_at, snapshot_observed_at=self.snapshot_observed_at)
         if self.unavailable:
             result["execution_diagnostics_unavailable"] = True
+        if self.capture_freshness is not None:
+            result["capture_freshness"] = dict(self.capture_freshness)
         if self.recovery_timings is not None:
             result["recovery_phase_timings"] = self.recovery_timings.snapshot()
         return result
@@ -735,7 +738,12 @@ class IntradayAccountExecutor:
         self.broker.verify_read_snapshot(portfolio.broker_identity_fingerprint)
         self._execution_stage("native_snapshot_prepare")
         at = instant(self.clock())
-        if not 0 <= (at - instant(portfolio.observed_at)).total_seconds() <= self.ledger.maximum_evidence_age_seconds:
+        age_seconds = (at - instant(portfolio.observed_at)).total_seconds()
+        if not 0 <= age_seconds <= self.ledger.maximum_evidence_age_seconds:
+            if self._execution_trace is not None:
+                self._execution_trace.capture_freshness = dict(
+                    checked_at=at.isoformat(), request_started_at=portfolio.observed_at,
+                    age_seconds=age_seconds, maximum_age_seconds=self.ledger.maximum_evidence_age_seconds)
             raise ContractError("Account snapshot is not fresh")
         # The existing capture API timestamps request start. Intraday evidence
         # must name actual information readiness, including quote receipt.
