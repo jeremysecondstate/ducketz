@@ -23,6 +23,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 import hashlib
 import json
+import math
 from pathlib import Path
 import re
 import secrets
@@ -52,6 +53,24 @@ class _LeaseAcquisitionFailure:
         self.evidence = evidence
 
 
+class _LeaseAcquisitionSuccess:
+    """Private per-call timings bound to the exact returned lease object."""
+    def __init__(self, lease, evidence):
+        self.lease, self.evidence = lease, evidence
+
+
+def lease_acquisition_success_evidence(authority, lease):
+    saved = getattr(authority, "_lease_acquisition_success", None)
+    if isinstance(saved, _LeaseAcquisitionSuccess) and saved.lease is lease:
+        evidence = saved.evidence
+        return {"schema_version": "single-host-lease-acquisition-timings-v1",
+                **{key: evidence[key] for key in ("attempt", "stage", "elapsed_seconds",
+                    "stage_elapsed_seconds", "diagnostics_unavailable")},
+                "phases": [{key: item[key] for key in ("attempt", "stage", "elapsed_seconds")}
+                           for item in evidence["phases"][-20:]]}
+    return None
+
+
 def lease_acquisition_failure_evidence(exc):
     saved = getattr(exc, "lease_acquisition_failure", None)
     if isinstance(saved, _LeaseAcquisitionFailure):
@@ -61,23 +80,57 @@ def lease_acquisition_failure_evidence(exc):
 
 class _LeaseAcquisitionTrace:
     def __init__(self):
-        self.started = self.stage_started = time.monotonic()
+        self.unavailable = False
+        self.started = self.stage_started = self._now()
         self.stage, self.attempt, self.phases = "validation", 0, []
 
+    def _now(self):
+        try:
+            value = time.monotonic()
+            if type(value) in {int, float} and math.isfinite(value):
+                return value
+        except Exception:
+            pass
+        self.unavailable = True
+        return None
+
+    def _elapsed(self, end, start):
+        if end is not None and start is not None:
+            value = max(0, end-start)
+            if math.isfinite(value):
+                return round(value, 6)
+        self.unavailable = True
+        return None
+
     def advance(self, stage, attempt):
-        now = time.monotonic()
+        now = self._now()
         self.phases.append({"attempt": self.attempt, "stage": self.stage,
-                            "elapsed_seconds": round(max(0, now-self.stage_started), 6)})
+                            "elapsed_seconds": self._elapsed(now, self.stage_started)})
         self.phases = self.phases[-20:]
         self.stage, self.attempt, self.stage_started = stage, attempt, now
 
+    def snapshot(self):
+        now = self._now()
+        elapsed, stage_elapsed = self._elapsed(now, self.started), self._elapsed(now, self.stage_started)
+        return {"schema_version": "single-host-lease-acquisition-timings-v1",
+                "attempt": self.attempt, "stage": self.stage,
+                "elapsed_seconds": elapsed, "stage_elapsed_seconds": stage_elapsed,
+                "phases": [dict(item) for item in self.phases],
+                "diagnostics_unavailable": self.unavailable}
+
+    def succeeded(self, authority, lease):
+        try:
+            authority._lease_acquisition_success = _LeaseAcquisitionSuccess(lease, self.snapshot())
+        except Exception:
+            # Optional evidence cannot change a successful lease acquisition.
+            pass
+
     def remember(self, exc):
-        now = time.monotonic()
-        exc.lease_acquisition_failure = _LeaseAcquisitionFailure({
-            "attempt": self.attempt, "stage": self.stage,
-            "elapsed_seconds": round(max(0, now-self.started), 6),
-            "stage_elapsed_seconds": round(max(0, now-self.stage_started), 6),
-            "phases": [dict(item) for item in self.phases]})
+        try:
+            exc.lease_acquisition_failure = _LeaseAcquisitionFailure(self.snapshot())
+        except Exception:
+            # Preserve the original failure even if diagnostics are unavailable.
+            pass
 
 
 class SubmissionNotStarted(AuthorityError):
@@ -380,6 +433,7 @@ class AccountAuthority:
         return seconds
 
     def acquire_lease(self, *, coordinator_id: str, holder_id: str, ttl_seconds=60) -> Lease:
+        self._lease_acquisition_success = None
         trace = _LeaseAcquisitionTrace()
         try:
             if coordinator_id != self.binding["coordinator_id"]:
@@ -418,6 +472,8 @@ class AccountAuthority:
                 if observed < granted:
                     raise AuthorityError("AUTHORITY_CLOCK_MOVED_BACKWARDS")
                 if observed < _time(lease.expires_at):
+                    trace.advance("acquisition_complete", attempt)
+                    trace.succeeded(self, lease)
                     return lease
                 # This token has never escaped acquire_lease. A slow commit
                 # may consume its entire TTL: try a new epoch, using normal

@@ -19,7 +19,7 @@ import uuid
 from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.account_gameplan.authority import (AccountAuthority, AuthorityBinding, AuthorityError,
     IntradayCapacitySnapshot, IntradayReservationRequest, Fill, OrderEvidence, OPEN, SubmissionNotStarted,
-    lease_acquisition_failure_evidence)
+    lease_acquisition_failure_evidence, lease_acquisition_success_evidence)
 from ml.stock_trader.horizon_broker import capture_order_evidence
 from ml.stock_trader.horizon_ledger import LedgerError, PortfolioEvidence
 from .local_execution import (load_local_binding, IntradayLedger as HorizonLedger, NATIVE_PATH, AUTHORITY_PATH, LOCK_PATH, broker_pending)
@@ -143,6 +143,7 @@ class _ExecutionTrace:
         self.recovery_timings = None
         self.lease_expires_at = self.snapshot_observed_at = None
         self.capture_freshness = None
+        self.lease_acquisition = None
 
     def _now(self):
         try:
@@ -168,6 +169,13 @@ class _ExecutionTrace:
         self.phases = self.phases[-32:]
         self.stage, self.stage_started = stage, now
 
+    def acquired_lease(self, authority, lease):
+        self.lease_acquisition = None
+        try:
+            self.lease_acquisition = lease_acquisition_success_evidence(authority, lease)
+        except Exception:
+            self.unavailable = True
+
     def snapshot(self):
         """Copy bounded timings for either an exception or a normal result."""
         now = self._now()
@@ -180,6 +188,12 @@ class _ExecutionTrace:
             result["execution_diagnostics_unavailable"] = True
         if self.capture_freshness is not None:
             result["capture_freshness"] = dict(self.capture_freshness)
+        if self.lease_acquisition is not None:
+            evidence = self.lease_acquisition
+            result["lease_acquisition"] = {
+                key: evidence[key] for key in ("schema_version", "attempt", "stage", "elapsed_seconds",
+                    "stage_elapsed_seconds", "diagnostics_unavailable")}
+            result["lease_acquisition"]["phases"] = [dict(item) for item in evidence["phases"]]
         if self.recovery_timings is not None:
             result["recovery_phase_timings"] = self.recovery_timings.snapshot()
         return result
@@ -443,6 +457,7 @@ class IntradayAccountExecutor:
                 self._execution_stage("lease_acquire")
                 self.lease = self.authority.acquire_lease(coordinator_id=config.machine_id,
                     holder_id="manual-" + self.stream + ":" + uuid.uuid4().hex)
+                trace.acquired_lease(self.authority, self.lease)
                 trace.lease_expires_at = self.lease.expires_at
                 keeper = self._lease_keeper = _LeaseKeeper(self.authority, self.lease,
                     active=lambda: not self.stopped() and self.manual_authority())
