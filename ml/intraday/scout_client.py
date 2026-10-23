@@ -23,6 +23,43 @@ class ClientGateError(ValueError):
     """An identity, clock, or final submission prerequisite did not pass."""
 
 
+def _saved_forecast_retry_details(error):
+    """Allow only this version's bounded numeric observations, never free text."""
+    if not isinstance(error, sqlite3.OperationalError):
+        return None
+    code = getattr(error, "sqlite_errorcode", None)
+    if type(code) is not int or code < 0 or code & 255 not in {sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED}:
+        return None
+    value = getattr(error, "scout_saved_forecast_retry", None)
+    fields = {"version", "attempt_count", "maximum_attempts", "retry_budget_seconds",
+              "retry_pause_seconds", "elapsed_seconds", "sleep_count",
+              "sleep_requested_seconds", "stop_code"}
+    if (type(value) is not dict or set(value) != fields
+            or type(value["version"]) is not str or value["version"] != "saved-forecast-read-retry-v1"):
+        return None
+    if any(type(value[name]) is not int for name in
+           ("attempt_count", "maximum_attempts", "sleep_count", "stop_code")):
+        return None
+    if (value["maximum_attempts"] != 8 or not 1 <= value["attempt_count"] <= 8
+            or not 0 <= value["sleep_count"] <= 7 or value["stop_code"] not in {1, 2, 3}):
+        return None
+    for name, upper in (("retry_budget_seconds", .25), ("retry_pause_seconds", .01),
+                        ("elapsed_seconds", 3600), ("sleep_requested_seconds", .07 + 1e-12)):
+        number = value[name]
+        if type(number) not in {int, float} or not 0 <= number <= upper:
+            return None
+    if value["retry_budget_seconds"] != .25 or value["retry_pause_seconds"] != .01:
+        return None
+    attempts, sleeps, stop = value["attempt_count"], value["sleep_count"], value["stop_code"]
+    if (sleeps != attempts - (0 if stop == 3 else 1)
+            or (stop == 2) != (attempts == 8)
+            or stop in {1, 3} and value["elapsed_seconds"] < .25
+            or value["sleep_requested_seconds"] > sleeps * .01 + 1e-12
+            or (sleeps == 0) != (value["sleep_requested_seconds"] == 0)):
+        return None
+    return dict(value)
+
+
 def exception_details(error: BaseException) -> dict:
     """Bounded diagnostic context without broker URLs, credentials or locals.
 
@@ -56,6 +93,12 @@ def exception_details(error: BaseException) -> dict:
             value = getattr(current, name, None)
             if type(value) is int:
                 item[name] = value
+        try:
+            retry = _saved_forecast_retry_details(current)
+        except BaseException:
+            retry = None
+        if retry is not None:
+            item["saved_forecast_retry"] = retry
         chain.append(item)
         current = current.__cause__ if current.__cause__ is not None else (
             None if current.__suppress_context__ else current.__context__)

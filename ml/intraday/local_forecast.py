@@ -21,6 +21,7 @@ import stat
 from threading import Lock
 import time
 
+from ml.stock_direction_policy import stock_action
 from .prediction import ContractError, PACIFIC, TARGET_VERSION, digest, instant
 from .store import ShadowStore
 from .submission_time import submission_gate
@@ -77,6 +78,8 @@ def forecast_disposition(forecast, *, now, session_started_at, local_symbols):
         raise ContractError('Forecast issue lies in the future')
     if forecast['ensemble_status'] != 'full' or forecast['successful_count'] != forecast['configured_count']:
         return 'incomplete_ensemble'
+    if stock_action(forecast['probability_not_down']) == 'HOLD':
+        return 'probability_between_action_cutoffs'
     gate = submission_gate(as_of=now, eligible_session=instant(forecast['reference_at']).astimezone(PACIFIC).date())
     if gate.state != 'before_submission_cutoff':
         return gate.state
@@ -168,12 +171,28 @@ def _saved_forecast_once(path, forecast, *, session_id, session_started):
                 raise ContractError("Newer current-session forecast supersedes this intention")
 
 
+def _record_read_retry_failure(error, *, attempt_count, elapsed_seconds,
+                               sleep_count, sleep_requested_seconds, stop_code):
+    """Attach numeric observations only; callers protect the original failure.
+
+    Stop codes: 1 is the deadline before retry, 2 is the attempt limit, and
+    3 is the deadline after sleep. This is diagnostic evidence, not authority.
+    """
+    error.scout_saved_forecast_retry = dict(
+        version="saved-forecast-read-retry-v1", attempt_count=attempt_count,
+        maximum_attempts=_READ_MAX_ATTEMPTS, retry_budget_seconds=_READ_RETRY_SECONDS,
+        retry_pause_seconds=_READ_RETRY_PAUSE_SECONDS, elapsed_seconds=elapsed_seconds,
+        sleep_count=sleep_count, sleep_requested_seconds=sleep_requested_seconds,
+        stop_code=stop_code)
+
+
 def _saved_forecast(path, forecast, *, session_id, session_started):
     # A new WAL reader can encounter SQLITE_BUSY_RECOVERY even without a stale
     # or conflicting forecast. Retry only native contention, never failed
     # evidence validation or I/O. Callers must recheck time/manual authority
     # after this read, as they must after any potentially slow integrity check.
     deadline = time.monotonic() + _READ_RETRY_SECONDS
+    sleep_count, sleep_requested_seconds = 0, 0.0
     for attempt in range(_READ_MAX_ATTEMPTS):
         try:
             return _saved_forecast_once(path, forecast, session_id=session_id,
@@ -183,9 +202,28 @@ def _saved_forecast(path, forecast, *, session_id, session_started):
             remaining = deadline - time.monotonic()
             if (type(code) is not int or code < 0 or code & 255 not in {sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED}
                     or attempt + 1 == _READ_MAX_ATTEMPTS or remaining <= 0):
+                if type(code) is int and code >= 0 and code & 255 in {sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED}:
+                    try:
+                        _record_read_retry_failure(exc, attempt_count=attempt + 1,
+                            elapsed_seconds=_READ_RETRY_SECONDS - remaining,
+                            sleep_count=sleep_count, sleep_requested_seconds=sleep_requested_seconds,
+                            stop_code=2 if attempt + 1 == _READ_MAX_ATTEMPTS else 1)
+                    except BaseException:
+                        pass
                 raise
-            time.sleep(min(_READ_RETRY_PAUSE_SECONDS, remaining))
-            if time.monotonic() >= deadline:
+            delay = min(_READ_RETRY_PAUSE_SECONDS, remaining)
+            time.sleep(delay)
+            sleep_count += 1
+            sleep_requested_seconds += delay
+            after_pause = time.monotonic()
+            if after_pause >= deadline:
+                try:
+                    _record_read_retry_failure(exc, attempt_count=attempt + 1,
+                        elapsed_seconds=after_pause - deadline + _READ_RETRY_SECONDS,
+                        sleep_count=sleep_count, sleep_requested_seconds=sleep_requested_seconds,
+                        stop_code=3)
+                except BaseException:
+                    pass
                 raise
 
 
