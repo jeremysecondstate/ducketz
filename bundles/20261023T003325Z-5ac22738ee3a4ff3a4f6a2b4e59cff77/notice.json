@@ -1,0 +1,41 @@
+{
+  "author": "Atlas",
+  "change_id": "20261023T002312Z-e297ec9fade74b21bc3ddc379b927dd2",
+  "commit_sha": "eea82a6d4b89a6891612113e5269b03f77b89c6a",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_final_scoring_concurrency.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_final_scoring_concurrency.py"
+    }
+  ],
+  "limitations": [
+    "Original affected runtime error supports the frozen-time concurrency mechanism; exact original failing forecast was not logged.",
+    "Main integration, peer installation, future manually started session closeout and other existing incidents remain separate facts."
+  ],
+  "pr": "https://github.com/jeremysecondstate/ducketz/pull/346",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas locally installed reviewed function hunks preserving other repairs. No trader start, restart, hotpatch, broker/provider call or order. Any saved-only completion uses its own scoped local receipt; failed session and manual controls remain historical.",
+  "scope": "shared final-scoring correctness and bounded-memory repair; independently applicable to Atlas and Scout",
+  "summary": "Atlas final saved-session scoring preserves concurrent newer outcomes and streams original forecasts",
+  "tests": [
+    "80offline tests passed on immutable queue and isolated publication candidate.",
+    "80offline tests passed on composed local preview and installed source.",
+    "Five old-scorer negative checks fail as expected, reproducing newer-observation races, delayed stop handling and whole-history forecast retention."
+  ]
+}

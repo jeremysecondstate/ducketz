@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T00:33:25.637048Z",
+  "id": "20261023T003325Z-5ac22738ee3a4ff3a4f6a2b4e59cff77",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas final saved-session scoring preserves concurrent newer outcomes and streams original forecasts"
+}
