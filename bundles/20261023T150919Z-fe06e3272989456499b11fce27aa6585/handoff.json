@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T15:09:19.672784Z",
+  "id": "20261023T150919Z-fe06e3272989456499b11fce27aa6585",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas Stats: twenty-two originalOct23 15:00 stock outcomes published"
+}
