@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T06:37:38.490542Z",
+  "id": "20261023T063738Z-fa270897e81c40f9acde3e79d743c5db",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed native feedback-session correction and published compatible feedback/direction-only test fixtures"
+}

@@ -1,0 +1,66 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261023T063303Z-3f3cf1f45b5647b8afcc0b51c919519e",
+  "change_id": "20261023T063303Z-3f3cf1f45b5647b8afcc0b51c919519e",
+  "commit_sha": "c8e0f5b219ae5fa3f689c7a818e143a46048f25a",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/feedback-session-adoption-fixtures.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/feedback-session-supervision-fixtures.patch"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/direction-only-adoption-fixtures.patch"
+    }
+  ],
+  "limitations": [
+    "Retain original Scout PR191 source 9de296b24d50560a4d9d94580bf60f526eb467d1 and Completion-Record 20261016T101908Z-e5a261a4bce44d1cb8ff2fb51680fb65.",
+    "Exact local candidate and installed checks each221passed, no skips/warnings/import/network violations; original eight failures and stale retired-price assertion preserved as evidence.",
+    "Shared main already has runtime/session tests; this new source publishes only three portable fixture documents. Peer installation remains independent."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/350"
+  ],
+  "main_sha": "a930f29b4641ec93a64ec7ae35b936e23ae9eecd",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No providers/brokers, production/trader launches, stop clearing or native task changes. Existing nightly production continues; no source or peer gate.",
+  "scope": "shared",
+  "summary": "Atlas installed native feedback-session correction and published compatible feedback/direction-only test fixtures",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T06:33:16.675276Z",
+      "output_sha256": "caf95f21399ead88c27a8bc46e26c9505bf368d7b8d35156c31741d69a6450de",
+      "result": ".........................................                                [100%]\r\n41 passed in 11.29s\r\n\n",
+      "stage": "sealed",
+      "started_at_utc": "2026-10-23T06:33:03.776251Z"
+    },
+    {
+      "completed_at_utc": "2026-10-23T06:33:17.215541Z",
+      "output_sha256": "5a35c8a145423b7dec766833edfc0e3a547da3af15635998006a65dd9966ef19",
+      "result": "Checked docs/development/feedback-session-adoption-fixtures.md: 46 lines\r\nMarkdown hygiene checks passed; linked content and architecture require review.\r\n\n",
+      "stage": "sealed",
+      "started_at_utc": "2026-10-23T06:33:16.745922Z"
+    },
+    {
+      "completed_at_utc": "2026-10-23T06:35:13.033143Z",
+      "output_sha256": "34ec75d6e5c0c8361414aa5af4742ab650255cb9ec7f47b166af613f6d158414",
+      "result": ".........................................                                [100%]\r\n41 passed in 11.64s\r\n\n",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-23T06:34:59.593756Z"
+    },
+    {
+      "completed_at_utc": "2026-10-23T06:35:13.678527Z",
+      "output_sha256": "5a35c8a145423b7dec766833edfc0e3a547da3af15635998006a65dd9966ef19",
+      "result": "Checked docs/development/feedback-session-adoption-fixtures.md: 46 lines\r\nMarkdown hygiene checks passed; linked content and architecture require review.\r\n\n",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-23T06:35:13.122858Z"
+    }
+  ]
+}
