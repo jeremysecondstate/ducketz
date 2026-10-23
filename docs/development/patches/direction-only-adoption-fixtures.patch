@@ -1,0 +1,37 @@
+--- a/tests/test_direction_only_joint_adoption.py
++++ b/tests/test_direction_only_joint_adoption.py
+@@ -47,13 +47,33 @@
+     assert not (tmp_path / "controls").exists()
+ 
+ 
+-@pytest.mark.parametrize("field,value", [("direction_based_trade_quantity", 1), ("trade_price_mid", 10),
++@pytest.mark.parametrize("field,value", [("direction_based_trade_quantity", 1),
+     ("direction_based_action", "HOLD"), ("direction_up_threshold", .6)])
+ def test_current_forecast_rejects_estimated_capacity_and_suppressed_direction(field, value):
+     row = next(row for row in current_plan()["forecasts"] if row["direction_based_action"] == "BUY")
+     row[field] = value
+     with pytest.raises(GameplanError):
+         _forecast(row)
++
++
++@pytest.mark.parametrize("action", ["BUY", "SELL"])
++@pytest.mark.parametrize("retired_estimates", [
++    {}, {"trade_price_mid": 10}, {"trade_price_mid": None},
++    {"trade_price_mid": 0}, {"trade_price_mid": -1},
++    {"trade_price_mid": "not-a-price"}, {"trade_price_mid": float("nan")},
++], ids=["absent", "present", "null", "zero", "negative", "non-numeric", "nan"])
++def test_current_forecast_ignores_retired_price_estimates(action, retired_estimates):
++    row = deepcopy(next(row for row in current_plan()["forecasts"]
++                        if row["direction_based_action"] == action))
++    row.pop("trade_price_mid", None)
++    expected = _forecast(row)
++    row.update(retired_estimates)
++    actual = _forecast(row)
++    assert actual == expected
++    assert actual.action == action and actual.direction == row["direction"]
++    assert actual.probability == row["calibrated_probability"]
++    assert actual.price is None and actual.quantity is None
++    assert actual.cash_after_low is None and actual.cash_after_base is None and actual.cash_after_high is None
+ 
+ 
+ def test_even_resealed_current_plan_cannot_install_fabricated_fills(tmp_path):
