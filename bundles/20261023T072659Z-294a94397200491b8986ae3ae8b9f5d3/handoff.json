@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-23T07:26:59.118033Z",
+  "id": "20261023T072659Z-294a94397200491b8986ae3ae8b9f5d3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed PR192 source chronology guards and published focused boundary regressions"
+}

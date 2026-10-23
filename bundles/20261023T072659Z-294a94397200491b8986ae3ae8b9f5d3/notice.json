@@ -1,0 +1,42 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261023T072436Z-2d2a81c8e7ed4a25a56071a58cdd8d5c",
+  "change_id": "20261023T072436Z-2d2a81c8e7ed4a25a56071a58cdd8d5c",
+  "commit_sha": "6c84089da5932fdd8688bc896ebdc0510dfb2a63",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_dated_planning_provenance.py"
+    }
+  ],
+  "limitations": [
+    "Original Scout PR192 source 7a8279222be840788c04a6d4f4b6cd9b9fb51638 and Completion-Record 20261016T104228Z-597f1e2146f24611ae84b64b2737879f retained.",
+    "Local candidate and installed suites each 77 passed; focused shared checks 13 passed. No network/import violations, skips or warnings.",
+    "Shared main already contains the runtime guards; only focused tests are new. Peer and loaded-process adoption remain separate."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/351"
+  ],
+  "main_sha": "e78286ef1948f87fbc59f35f4295074b152d4a9e",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Current direction-only recipe, original probabilities/targets and independent traders preserved. No providers/brokers, production launch, trader start/restart, manual-stop change or native task change. Nightly work continues independently.",
+  "scope": "shared",
+  "summary": "Atlas installed PR192 source chronology guards and published focused boundary regressions",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-23T07:24:44.632018Z",
+      "output_sha256": "e1a3cd31360f7332f9dafa18c566d12d586e502e20f02a626f1455488ae94207",
+      "result": ".............                                                            [100%]\r\n13 passed in 6.48s\r\n\n",
+      "stage": "sealed",
+      "started_at_utc": "2026-10-23T07:24:36.471831Z"
+    },
+    {
+      "completed_at_utc": "2026-10-23T07:25:40.614880Z",
+      "output_sha256": "22200dc0258d2ade36a018e26cfe217ff105962a92dc385aeff0df2d7a0c902f",
+      "result": ".............                                                            [100%]\r\n13 passed in 6.09s\r\n\n",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-23T07:25:32.766730Z"
+    }
+  ]
+}
