@@ -78,10 +78,91 @@ class _RecoveryTimings:
     _STAGES = frozenset({"group_total", "writer_lock", "forecast_read",
                          "forecast_validate", "sizing_read", "sizing_validate",
                          "projection_append"})
+    _DETAILS = frozenset({"preflight_connection", "writer_connection",
+        "forecast_revision_metadata", "forecast_physical_identity", "forecast_index_read",
+        "forecast_payload_read", "forecast_payload_validate", "sizing_revision_metadata",
+        "sizing_physical_identity", "sizing_index_read", "sizing_payload_read", "sizing_payload_validate"})
+    _COUNTS = frozenset(prefix + suffix for prefix in ("forecast_", "sizing_")
+        for suffix in ("cache_hits", "cache_misses", "payload_reads", "text_characters", "blob_bytes"))
 
     def __init__(self):
         self.phases = {}
         self.unavailable = False
+        self.read_details = {}
+        self.workload = {}
+        self.read_unavailable = self.thread_cpu_unavailable = False
+
+    def _detail_clock(self, name):
+        try:
+            value = getattr(time, name)()
+            if type(value) in {int, float} and math.isfinite(value):
+                return value
+        except Exception:
+            pass
+        if name == "thread_time":
+            self.thread_cpu_unavailable = True
+        else:
+            self.read_unavailable = True
+        return None
+
+    @contextmanager
+    def detail(self, stage):
+        """Fixed nested read seams; elapsed time is not proof of a SQL wait.
+
+        Connection totals include their bodies and exit/commit. Detail stages
+        are subsets of the original phases, not additional elapsed work.
+        Thread CPU excludes time spent descheduled, waiting for IO or the GIL;
+        a low CPU ratio does not distinguish those causes.
+        """
+        started, cpu = self._detail_clock("monotonic"), self._detail_clock("thread_time")
+        try:
+            yield
+        finally:
+            ended, cpu_end = self._detail_clock("monotonic"), self._detail_clock("thread_time")
+            try:
+                if stage not in self._DETAILS:
+                    self.read_unavailable = True
+                else:
+                    for first, last, prefix in ((started, ended, ""), (cpu, cpu_end, "thread_cpu_")):
+                        if first is None or last is None or last < first or not math.isfinite(last - first):
+                            if prefix:
+                                self.thread_cpu_unavailable = True
+                            else:
+                                self.read_unavailable = True
+                            continue
+                        value = self.read_details.setdefault(stage, {})
+                        count, total, maximum = prefix + "count", prefix + "total_seconds", prefix + "maximum_seconds"
+                        elapsed = last - first
+                        updated = value.get(total, 0.) + elapsed
+                        if not math.isfinite(updated):
+                            self.read_unavailable = True
+                            continue
+                        value[count] = value.get(count, 0) + 1
+                        value[total] = updated
+                        value[maximum] = max(value.get(maximum, 0.), elapsed)
+            except Exception:
+                self.read_unavailable = True
+
+    def count(self, name, amount=1):
+        try:
+            if name not in self._COUNTS or type(amount) is not int or amount < 0:
+                self.read_unavailable = True
+            else:
+                self.workload[name] = self.workload.get(name, 0) + amount
+        except Exception:
+            self.read_unavailable = True
+
+    def payload(self, prefix, raw):
+        # O(1) lengths of the row already read: no encode, new query or tree.
+        # Text characters are deliberately not presented as UTF-8 byte counts.
+        if prefix not in {"forecast_", "sizing_"}:
+            self.read_unavailable = True
+            return
+        self.count(prefix + "payload_reads")
+        if isinstance(raw, str):
+            self.count(prefix + "text_characters", len(raw))
+        elif isinstance(raw, bytes):
+            self.count(prefix + "blob_bytes", len(raw))
 
     def _now(self):
         try:
@@ -124,7 +205,13 @@ class _RecoveryTimings:
                     phases={name: {key: round(value, 6) if type(value) is float else value
                                    for key, value in phase.items()}
                             for name, phase in self.phases.items()},
-                    diagnostics_unavailable=self.unavailable)
+                    diagnostics_unavailable=self.unavailable,
+                    read_details=dict(schema_version="intraday-recovery-read-details-v1",
+                        phases={name: {key: round(value, 6) if type(value) is float else value
+                                       for key, value in phase.items()}
+                                for name, phase in self.read_details.items()},
+                        workload=dict(self.workload), diagnostics_unavailable=self.read_unavailable,
+                        thread_cpu_unavailable=self.thread_cpu_unavailable))
 
 
 class IntentionStore:
@@ -169,25 +256,29 @@ class IntentionStore:
             raise ContractError("Recovery sizing generation is invalid")
         return rows[0][1], rows[0][2]
 
-    def _revision_sizing(self, db, forecast_id, measure):
+    def _revision_sizing(self, db, forecast_id, measure, read_timings=None):
         """Read a coherent row marker; validate cold/changed original bytes.
 
         Called under the store forecast-cache lock and a pinned transaction.
         No cache key uses timestamps, row length, or another original's identity.
         """
+        detail = read_timings.detail if read_timings is not None else lambda stage: nullcontext()
         with measure("sizing_read"):
-            generation, epoch = self._row_generation(db)
-            stat = self.store.path.stat()
-            physical = (stat.st_dev, stat.st_ino, db.execute("PRAGMA schema_version").fetchone()[0], epoch)
+            with detail("sizing_revision_metadata"):
+                generation, epoch = self._row_generation(db)
+            with detail("sizing_physical_identity"):
+                stat = self.store.path.stat()
+                physical = (stat.st_dev, stat.st_ino, db.execute("PRAGMA schema_version").fetchone()[0], epoch)
             if physical != self._recovery_row_identity:
                 self._recovery_row_cache.clear()
                 self._recovery_row_highwater = 0
                 self._recovery_row_identity = physical
             if generation < self._recovery_row_highwater:
                 raise ContractError("Recovery sizing generation regressed")
-            indexed = db.execute("SELECT i.forecast_id,i.id,r.generation FROM intraday_intentions i "
-                "LEFT JOIN recovery_sizing_revisions r ON r.forecast_id=i.forecast_id "
-                "WHERE i.forecast_id=?", (forecast_id,)).fetchone()
+            with detail("sizing_index_read"):
+                indexed = db.execute("SELECT i.forecast_id,i.id,r.generation FROM intraday_intentions i "
+                    "LEFT JOIN recovery_sizing_revisions r ON r.forecast_id=i.forecast_id "
+                    "WHERE i.forecast_id=?", (forecast_id,)).fetchone()
             if indexed is None:
                 return None, None, generation
             revision = indexed[2]
@@ -197,11 +288,18 @@ class IntentionStore:
             previous = self._recovery_row_cache.get(forecast_id)
             if previous is not None and previous[0] == signature:
                 row = None
+                if read_timings is not None:
+                    read_timings.count("sizing_cache_hits")
             else:
-                row = db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
-                                 (forecast_id,)).fetchone()
+                if read_timings is not None:
+                    read_timings.count("sizing_cache_misses")
+                with detail("sizing_payload_read"):
+                    row = db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
+                                     (forecast_id,)).fetchone()
                 if row is None or row[:2] != indexed[:2]:
                     raise ContractError("Recovery sizing indexed identity changed")
+                if read_timings is not None:
+                    read_timings.payload("sizing_", row[2])
         with measure("sizing_validate"):
             if row is None:
                 _, side, desired, calculated_at = previous
@@ -210,7 +308,8 @@ class IntentionStore:
                 # A changed marker must retain the original full semantic check,
                 # even if its raw bytes match an earlier single-call cache entry.
                 getattr(self, "_recovery_sizing_cache", {}).pop(forecast_id, None)
-                value = self._recovery_sizing(row)
+                with detail("sizing_payload_validate"):
+                    value = self._recovery_sizing(row)
                 sizing = value.get("sizing") if isinstance(value, dict) else None
                 if (all(isinstance(item, str) for item in row) and isinstance(sizing, dict)
                         and isinstance(value.get("side"), str) and type(value.get("desired_quantity")) is int
@@ -402,38 +501,42 @@ class IntentionStore:
         if not observations:
             return []
         measure = timings.measure if isinstance(timings, _RecoveryTimings) else lambda stage: nullcontext()
+        read_timings = timings if isinstance(timings, _RecoveryTimings) else None
+        detail = read_timings.detail if read_timings is not None else lambda stage: nullcontext()
         # Match chronology's cache-lock -> connection ordering. Cold payload
         # reads/decoding need no reserved writer. Close that snapshot before the
         # final writer repeats every protected identity check and appends.
         # Timed read/validation phases include both passes; group_total includes
         # both connection exits, while writer_lock measures acquisition only.
         with measure("group_total"), self.store._execution_forecast_lock:
-            with self.store.connect() as db:
+            with detail("preflight_connection"), self.store.connect() as db:
                 db.execute("BEGIN")
                 with measure("forecast_read"):
-                    headers = self.store._revision_forecast_headers(db, ["f.id=?"], [forecast_id])
+                    headers = self.store._revision_forecast_headers(db, ["f.id=?"], [forecast_id],
+                                                                    read_timings=read_timings)
                 with measure("forecast_validate"):
                     if not headers:
                         raise ContractError("Native 15m order lacks original persisted intention")
                     if headers[0]["pc"] != actor:
                         raise ContractError("Recovery forecast belongs to another actor")
-                _, intention, _ = self._revision_sizing(db, forecast_id, measure)
+                _, intention, _ = self._revision_sizing(db, forecast_id, measure, read_timings)
                 if intention is None:
                     raise ContractError("Native 15m order lacks original persisted intention")
-            with self.store.connect() as db:
+            with detail("writer_connection"), self.store.connect() as db:
                 with measure("writer_lock"):
                     db.execute("BEGIN IMMEDIATE")
                 # Includes protected marker/header lookup AND full semantic
                 # validation on cold/changed forecasts. It is not pure SQL I/O.
                 with measure("forecast_read"):
-                    headers = self.store._revision_forecast_headers(db, ["f.id=?"], [forecast_id])
+                    headers = self.store._revision_forecast_headers(db, ["f.id=?"], [forecast_id],
+                                                                    read_timings=read_timings)
                 with measure("forecast_validate"):
                     if not headers:
                         raise ContractError("Native 15m order lacks original persisted intention")
                     forecast = headers[0]
                     if forecast["pc"] != actor:
                         raise ContractError("Recovery forecast belongs to another actor")
-                intention_row, intention, generation = self._revision_sizing(db, forecast_id, measure)
+                intention_row, intention, generation = self._revision_sizing(db, forecast_id, measure, read_timings)
                 if intention is None:
                     raise ContractError("Native 15m order lacks original persisted intention")
                 results = []

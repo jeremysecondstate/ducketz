@@ -107,7 +107,7 @@ def test_phase_clocks_separate_writer_reads_validation_append_and_commit(tmp_pat
     assert actual[1]["submitted_quantity"] == actual[1]["filled_quantity"] == order.quantity
     assert actual[2]["submitted_quantity"] is None and actual[2]["filled_quantity"] == 0
     assert len({row["event_identity"] for row in actual}) == 3
-    assert timings.snapshot() == {
+    assert {key: value for key, value in timings.snapshot().items() if key != "read_details"} == {
         "schema_version": "intraday-recovery-phase-timings-v1",
         "phases": {"group_total": sample(1, 128.), "writer_lock": sample(1, 3.),
                    # Both read and final writer checks are timed; protected header lookup includes cold semantic validation;
@@ -302,3 +302,133 @@ def test_executor_shares_one_aggregate_across_groups_without_changing_attempt_or
     assert phases["projection_append"] == sample(2, 57., 38.)
     assert all(value["count"] == (4 if name in {"forecast_read", "forecast_validate", "sizing_read", "sizing_validate"} else 2)
                for name, value in phases.items())
+
+
+def clear_original_caches(store, intents):
+    store._execution_forecast_cache.clear()
+    getattr(store, "_forecast_header_cache", {}).clear()
+    intents._recovery_row_cache.clear()
+
+
+def test_read_details_separate_actual_cold_reads_validation_and_warm_cache(tmp_path, monkeypatch):
+    store, original, intents, order = prepared(tmp_path)
+    clear_original_caches(store, intents)
+    with store.connect() as db:
+        forecast_raw = db.execute("SELECT payload FROM forecasts WHERE id=?", (original["forecast_id"],)).fetchone()[0]
+        sizing_raw = db.execute("SELECT payload FROM intraday_intentions WHERE forecast_id=?", (original["forecast_id"],)).fetchone()[0]
+    delayed_stages(store, intents, monkeypatch)
+    cold, warm = module._RecoveryTimings(), module._RecoveryTimings()
+    expected = intents.record_recovery_group(original["forecast_id"], actor="Atlas",
+        observations=(observation(order),), timings=cold)
+    actual = intents.record_recovery_group(original["forecast_id"], actor="Atlas",
+        observations=(observation(order),), timings=warm)
+    assert actual == expected
+    details = cold.snapshot()["read_details"]
+    assert set(details["phases"]) == module._RecoveryTimings._DETAILS
+    assert details["phases"]["forecast_payload_read"] == sample(1, 5.)
+    assert details["phases"]["forecast_payload_validate"] == sample(1, 13.)
+    assert details["phases"]["sizing_payload_read"] == sample(1, 7.)
+    assert details["phases"]["sizing_payload_validate"] == sample(1, 17.)
+    assert details["phases"]["preflight_connection"] == sample(1, 55.)
+    assert details["phases"]["writer_connection"] == sample(1, 35.)
+    assert details["workload"] == dict(forecast_cache_misses=1, forecast_cache_hits=1,
+        forecast_payload_reads=1, forecast_text_characters=len(forecast_raw),
+        sizing_cache_misses=1, sizing_cache_hits=1, sizing_payload_reads=1,
+        sizing_text_characters=len(sizing_raw))
+    warmed = warm.snapshot()["read_details"]
+    assert warmed["workload"] == {"forecast_cache_hits": 2, "sizing_cache_hits": 2}
+    assert all("payload" not in stage for stage in warmed["phases"])
+    assert not details["diagnostics_unavailable"]
+    # This fixture intentionally has no thread CPU clock; wall clocks still work.
+    assert details["thread_cpu_unavailable"]
+    details["workload"]["sizing_cache_hits"] = -1
+    assert cold.snapshot()["read_details"]["workload"]["sizing_cache_hits"] == 1
+
+
+def test_diagnostics_add_no_queries_and_preserve_exact_projection(tmp_path, monkeypatch):
+    store, original, intents, order = prepared(tmp_path)
+    connect, statements = store.connect, []
+
+    @contextmanager
+    def traced():
+        with connect() as db:
+            db.set_trace_callback(statements.append)
+            yield db
+
+    monkeypatch.setattr(store, "connect", traced)
+    item = observation(order)
+    # First create the idempotent result; both compared passes then do the same work.
+    expected = intents.record_recovery_group(original["forecast_id"], actor="Atlas", observations=(item,))
+    clear_original_caches(store, intents)
+    statements.clear()
+    assert intents.record_recovery_group(original["forecast_id"], actor="Atlas", observations=(item,)) == expected
+    without_diagnostics = list(statements)
+    before = projection_rows(store)
+    clear_original_caches(store, intents)
+    statements.clear()
+    timings = module._RecoveryTimings()
+    assert intents.record_recovery_group(original["forecast_id"], actor="Atlas", observations=(item,), timings=timings) == expected
+    assert statements == without_diagnostics
+    assert projection_rows(store) == before
+    assert not timings.snapshot()["read_details"]["thread_cpu_unavailable"]
+
+
+def test_thread_cpu_and_elapsed_measure_distinct_actual_validation_work(tmp_path, monkeypatch):
+    store, original, intents, order = prepared(tmp_path)
+    clear_original_caches(store, intents)
+    ticks, cpu = [0.], [0.]
+    monkeypatch.setattr(module, "time", SimpleNamespace(monotonic=lambda: ticks[0], thread_time=lambda: cpu[0]))
+    validate = intents._recovery_sizing
+
+    def delayed(row):
+        ticks[0] += 11
+        cpu[0] += 2
+        return validate(row)
+
+    monkeypatch.setattr(intents, "_recovery_sizing", delayed)
+    timings = module._RecoveryTimings()
+    intents.record_recovery_group(original["forecast_id"], actor="Atlas", observations=(observation(order),), timings=timings)
+    details = timings.snapshot()["read_details"]
+    assert details["phases"]["sizing_payload_validate"] == {
+        **sample(1, 11.), "thread_cpu_count": 1, "thread_cpu_total_seconds": 2., "thread_cpu_maximum_seconds": 2.}
+    assert not details["thread_cpu_unavailable"] and not details["diagnostics_unavailable"]
+
+
+@pytest.mark.parametrize("clock", ["monotonic", "thread_time"])
+@pytest.mark.parametrize("bad", [None, float("nan"), float("inf"), "invalid", RuntimeError("private diagnostic failure")])
+def test_failed_detail_clock_cannot_mask_original_operation_exception(monkeypatch, clock, bad):
+    def failed():
+        if isinstance(bad, Exception):
+            raise bad
+        return bad
+
+    clocks = {"monotonic": lambda: 0., "thread_time": lambda: 0.}
+    clocks[clock] = failed
+    monkeypatch.setattr(module, "time", SimpleNamespace(**clocks))
+    timings = module._RecoveryTimings()
+    original = RuntimeError("original operation error")
+    with pytest.raises(RuntimeError) as raised:
+        with timings.detail("sizing_index_read"):
+            raise original
+    assert raised.value is original
+    details = timings.snapshot()["read_details"]
+    assert details["thread_cpu_unavailable" if clock == "thread_time" else "diagnostics_unavailable"]
+    assert "private" not in json.dumps(details, allow_nan=False)
+
+
+def test_workload_keys_are_fixed_and_text_counts_do_not_encode_payloads():
+    timings = module._RecoveryTimings()
+
+    class Text(str):
+        def encode(self, *args, **kwargs):
+            pytest.fail("Diagnostics must not encode an existing payload to count it")
+
+    timings.payload("forecast_", Text("\u00e9\u00e9"))
+    timings.payload("sizing_", b"\xc3\xa9")
+    timings.count("private-unbounded-key")
+    timings.count("forecast_cache_hits", -1)
+    details = timings.snapshot()["read_details"]
+    assert details["workload"] == dict(forecast_payload_reads=1, forecast_text_characters=2,
+        sizing_payload_reads=1, sizing_blob_bytes=2)
+    assert details["diagnostics_unavailable"]
+    assert "private" not in json.dumps(details)
