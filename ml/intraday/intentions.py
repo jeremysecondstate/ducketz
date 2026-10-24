@@ -47,31 +47,24 @@ class IntentionStore:
                                           (forecast_id,)).fetchone())
 
     def processed_at_or_after(self, forecast):
-        """Saved sized intentions fence chronology even when no order was possible.
-
-        Read only this scope's possible fencing originals, rather than decoding
-        every historical model payload. As with the store's scoped readers,
-        integrity validation applies to selected originals, not unrelated rows.
-        """
+        """Reuse guarded scalar proofs within the original chronology scope."""
         reference = instant(forecast["reference_at"])
         with self.store.connect() as db:
-            # SQLite compares offsets correctly. The one-second margin keeps
-            # this a conservative prefilter despite julianday's finite precision;
-            # exact Python instants below decide the inclusive chronology fence.
-            rows = db.execute(
-                "SELECT f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,f.payload "
-                "FROM forecasts f JOIN intraday_intentions i ON i.forecast_id=f.id "
+            # Preserve main's conservative exact-scope SQL prefilter. Older
+            # malformed originals cannot block an unrelated current fence.
+            # Python instants below retain the inclusive chronology decision.
+            ids = [row[0] for row in db.execute(
+                "SELECT f.id FROM forecasts f JOIN intraday_intentions i ON i.forecast_id=f.id "
                 "WHERE f.pc=? AND f.symbol=? "
                 "AND julianday(f.reference_at)>=julianday(?)-1.0/86400 "
                 "ORDER BY f.rowid",
-                (forecast["pc"], forecast["symbol"], forecast["reference_at"]))
-            result = []
-            for row in rows:
-                f = self.store._forecast_value(row)
-                if (f["forecast_id"] != forecast["forecast_id"] and f["mode"] == "live"
-                        and instant(f["reference_at"]) >= reference):
-                    result.append(f["forecast_id"])
-        return result
+                (forecast["pc"], forecast["symbol"], forecast["reference_at"]))]
+        if not ids:
+            return []
+        return [f["forecast_id"] for f in self.store.execution_forecast_headers(
+                    pc=forecast["pc"], symbol=forecast["symbol"], forecast_ids=ids)
+                if f["forecast_id"] != forecast["forecast_id"] and f["mode"] == "live"
+                and instant(f["reference_at"]) >= reference]
 
     def _original_action(self, db, forecast):
         row = db.execute("SELECT id,payload FROM intents WHERE forecast_id=? ORDER BY rowid LIMIT 1",
