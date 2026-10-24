@@ -1,0 +1,105 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261024T235355Z-74c49a16bcb94becb69fb1de7ff8f4b5",
+  "change_id": "20261024T235355Z-74c49a16bcb94becb69fb1de7ff8f4b5",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/gameplan_stats.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/scout_stats_data.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/scout_stats_widgets.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/atlas_stats_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/atlas_stats_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/atlas-15m-gameplan-stats.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_atlas_stats_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_atlas_stats_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_atlas_stats_ui.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_atlas_stats_integration.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/visual_atlas_stats_fixture.py"
+    }
+  ],
+  "limitations": [
+    "Offline synthetic checks and local read-only saved-data inspection; no broker/provider calls, model training, trader operation or application restart.",
+    "Reports native reservation attempts, including preserved explicit history; pre-reservation intentions are not fabricated as orders. Partial coverage and unknown evidence remain explicit.",
+    "Realized profit is unavailable without verified purchase-cost matching and fee attribution. Forecast outcome returns are not trading profit.",
+    "Indexed discovery can list historical replay-only dates; selected-session loading scores live forecasts only. Large saved forecast payloads can take several seconds to project.",
+    "Earlier isolated verification recorded nine transient Tk initialization skips; unchanged published bytes were rerun with explicit Tcl/Tk paths and passed all 206 checks without skips. Historical test evidence is retained."
+  ],
+  "peer_applicability": "Shared presentation preserves Scout reader defaults. Atlas uses its own native ledger and own saved forecasts; no cross-trader operating dependencies.",
+  "provenance": {
+    "scout_completion_record": "20261024T184800Z-50183328cc3d443cabeeb252a515100b",
+    "scout_pr": 385,
+    "scout_source": "f3414df843add9c35cd2fa18f4ec7ca6c222d7ad"
+  },
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/386",
+  "remote_sha": "106f923037f62d6f718cb313b95cf2f818d90a72",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Locally authorized source installation only; the running application loads these UI changes on its next launch. No merge, application restart or runtime deployment is inferred. Each PC retains its own model recipes, symbols, operating evidence and manual trader controls.",
+  "scope": "shared UI/reporting; each PC retains its own saved evidence, recipes and manual trader controls",
+  "source_sha": "106f923037f62d6f718cb313b95cf2f818d90a72",
+  "stages": {
+    "locally_installed": true,
+    "main_integrated": false,
+    "runtime_loaded": false,
+    "source_published": true
+  },
+  "summary": "Atlas independent 15-Minute results are implemented and locally installed in Gameplan Stats; tested source PR 386 is ready for review.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-24T23:56:49.756843Z",
+      "kind": "published-commit network-disabled verification",
+      "output_sha256": "db8615b1d21c63c6a4962596a9783cc6244c36e508a4c3d1e28cc8e1248cb0ad",
+      "result": "206 passed; no skips",
+      "started_at_utc": "2026-10-24T23:56:20.241208Z"
+    },
+    {
+      "kind": "Atlas installed source with saved-direction regressions",
+      "result": "238 passed; no skips"
+    },
+    {
+      "kind": "Synthetic rendered UI",
+      "result": "Inspected normal 1280px and narrow 700px layout, order details and scrollbars"
+    }
+  ]
+}
