@@ -1,0 +1,55 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-24T00:28:14.971952Z",
+  "completion_id": "20261024T001311Z-atlas-stats-0000-prior-outcomes-e6fd3c98",
+  "details": [
+    "Actor Atlas; task Atlas Trader Representative; exact newly mature original scientific outcomes with each actual original action date, source-run identity and forecast hash; missing XNAS-only originals remain missing.",
+    "Original saved probabilities, directions, target definitions and recorded policy metadata preserved; absent historical policy stays unrecorded. No retrospective threshold relabeling.",
+    "Original observed same-source endpoint hashes and native300second tolerance retained. New exporter explicitly identifies multiple original action dates.",
+    "Preserves all8493prior evaluated rows, prior directional outcomes, first18midnight supplement, frozen Gameplan, completed-session Stats and every original publication.",
+    "Peer applicability: derived scientific Stats for Atlas symbols only. No source/model recipe change, raw data, fitted model, account state, ledger or bindings exported.",
+    "No added provider/account/order requests, model fits, synthesis, runtime loading, trader control or deployment."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261024T001311Z-atlas-stats-0000-prior-outcomes-e6fd3c98/gameplan-stats/20261024T001311Z-atlas-stats-0000-prior-outcomes-e6fd3c98/original-maturity-supplement.json",
+      "expected_sha256": "26ed72d5d48a48645c2e057093389cf31a965858f9e7e6294d81100491cc48d1",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261024T001311Z-atlas-stats-0000-prior-outcomes-e6fd3c98/original-maturity-supplement.json",
+      "published_sha256": "26ed72d5d48a48645c2e057093389cf31a965858f9e7e6294d81100491cc48d1",
+      "published_size": 46677,
+      "sha256": "26ed72d5d48a48645c2e057093389cf31a965858f9e7e6294d81100491cc48d1",
+      "size": 46677,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "26ed72d5d48a48645c2e057093389cf31a965858f9e7e6294d81100491cc48d1",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261024T001311Z-atlas-stats-0000-prior-outcomes-e6fd3c98/original-maturity-supplement.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "human-authorized-development",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "symbol-specific",
+  "source_head": "90704d21801f60426493bd6cc650a7fac38d4f61",
+  "summary": "Atlas Trader Representative: publish prior-date original midnight outcomes",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "COST",
+    "GOOG",
+    "IONQ",
+    "MU",
+    "NVDA",
+    "PATH",
+    "SNDK"
+  ]
+}
