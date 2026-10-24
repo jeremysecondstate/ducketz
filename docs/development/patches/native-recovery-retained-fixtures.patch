@@ -1,0 +1,62 @@
+--- a/tests/test_nightly_recovery.py
++++ b/tests/test_nightly_recovery.py
+@@ -218,19 +218,28 @@
+ 
+ def test_late_gameplan_uses_preopen_information_with_real_creation_time(configured, monkeypatch):
+     import ml.nightly_gameplan as gameplan
+-    from types import SimpleNamespace
++    from ml.artifacts import write_manifest
++    from test_nightly_stats_segments import _feedback
+     root = Path(configured["datastore"])
+     spec = root / "recovery.json"
+     spec.write_text(json.dumps(make_recovery(configured, NOW, reason="human instruction")))
+-    loop = root / "loop"
+-    loop.mkdir()
++    proposal = _feedback(root, action_date="2026-10-08", now=NOW)
++    loop = root / "ml/runs/synthetic-recovery-input"
++    loop.mkdir(parents=True)
+     samples = pd.DataFrame({"symbol": ["AAPL", "MSFT"], "feature": [1., 2.]})
+     samples.to_parquet(loop / "samples.parquet")
+     samples.to_parquet(loop / "predictions.parquet")
+-    monkeypatch.setattr(gameplan, "read_current_publication", lambda _: SimpleNamespace(run_directory=loop, manifest={}))
++    published_at = "2026-10-09T04:05:00Z"
++    write_manifest(loop, run_timestamp=published_at, input_files=[],
++                   output_files=["samples.parquet", "predictions.parquet"],
++                   feature_columns=["feature"], datastore_root=root)
++    pointer = root / "ml/latest/run.json"
++    pointer.parent.mkdir(parents=True, exist_ok=True)
++    pointer.write_text(json.dumps({"path": loop.relative_to(root).as_posix(),
++                                   "run_timestamp": published_at}))
++    source_bytes = {path.name: path.read_bytes() for path in loop.iterdir()}
+     monkeypatch.setattr(gameplan, "_configured_symbols", lambda *args: ("AAPL", "MSFT"))
+     monkeypatch.setattr(gameplan, "_feature_columns", lambda *args: ("feature",))
+-    monkeypatch.setattr("ml.gameplan_model_feedback.load_feedback_review", lambda *args, **kwargs: {})
+     cutoff = pd.Timestamp("2026-10-09T10:59:59.999999Z")
+     def sources(*args, **kwargs):
+         assert kwargs["available_at"] == cutoff
+@@ -244,20 +253,22 @@
+     monkeypatch.setattr(gameplan, "_load_equity_minute_bars", lambda *args, **kwargs: (pd.DataFrame(), ()))
+     def groups(*args, **kwargs):
+         assert kwargs["available_at"] == cutoff
++        assert kwargs["evidence_available_at"] == NOW
+         raise RuntimeError("Reached chronological fitting boundary with preopen information")
+     monkeypatch.setattr(gameplan, "build_stock_training_groups", groups)
+     with pytest.raises(RuntimeError, match="Reached chronological"):
+         gameplan.run_nightly_gameplan_once(root, run_timestamp=NOW, stock_only=True,
+-            independent_stock_horizons=True, model_feedback=root / "proposal.json", recovery_spec=spec)
++            independent_stock_horizons=True, model_feedback=proposal, recovery_spec=spec)
++    assert {path.name: path.read_bytes() for path in loop.iterdir()} == source_bytes
+ 
+ 
+ def test_native_training_and_tail_forward_same_recovery(configured, monkeypatch):
+     import ml.overnight_runtime as runtime
++    from test_nightly_stats_segments import _feedback
+     root = Path(configured["datastore"])
+     spec = root / "recovery.json"
+     spec.write_text(json.dumps(make_recovery(configured, NOW, reason="human instruction")))
+-    proposal = root / "proposal.json"
+-    proposal.write_text("{}")
++    proposal = _feedback(root, action_date="2026-10-08", now=NOW)
+     monkeypatch.setattr(runtime, "utc_timestamp", lambda value=None: NOW if value is None else pd.Timestamp(value))
+     monkeypatch.setattr(runtime, "_pin_stock_gameplan", lambda *args, **kwargs:
+         {"run_path": "ml/nightly-gameplan-runs/fixture", "receipt_sha256": "a" * 64, "action_date": "2026-10-09"})
