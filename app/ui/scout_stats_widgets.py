@@ -1,4 +1,4 @@
-"""Native read-only display of Scout's saved 15-minute results."""
+"""Native read-only display of independently saved 15-minute results."""
 from __future__ import annotations
 
 from collections import defaultdict
@@ -48,7 +48,8 @@ def _price(value):
 class ScoutStatsPanel:
     """Show independent prediction and order populations for one saved session."""
 
-    def __init__(self, parent, root):
+    def __init__(self, parent, root, *, actor="Scout"):
+        self.actor = actor
         self.root = root
         self.frame = panel(parent)
         self.snapshot = None
@@ -63,7 +64,7 @@ class ScoutStatsPanel:
         return widget
 
     def _build(self):
-        label(self.frame, "Scout 15-Minute Trader", size=19, bold=True).pack(anchor="w", padx=14, pady=(14, 3))
+        label(self.frame, f"{self.actor} 15-Minute Trader", size=19, bold=True).pack(anchor="w", padx=14, pady=(14, 3))
         self._text(self.frame, "Live saved evidence · Separate from Gameplan horizons", color=MUTED_TEXT).pack(fill="x", padx=14)
         self.session_label = self._text(self.frame, "", size=10, bold=True)
         self.session_label.pack(fill="x", padx=14, pady=(6, 3))
@@ -103,8 +104,11 @@ class ScoutStatsPanel:
         self.exclusions_label.pack(fill="x", padx=12, pady=(0, 8))
         self.company_tree = self._tree(self.prediction_panel, (
             ("symbol", "Company", 68), ("eligible", "Before open", 82), ("scored", "Scored", 60),
-            ("accuracy", "Accuracy", 75), ("missing", "Missing / unscorable", 140)), height=4)
-        self._text(self.prediction_panel, "Missing, unscorable, synthetic and pending outcomes do not enter accuracy or Brier.",
+            ("correct", "Correct", 60), ("accuracy", "Accuracy", 75),
+            ("brier", "Brier", 65), ("missing", "Missing / unscorable", 140)), height=4)
+        self._text(self.prediction_panel, "Binary accuracy uses P(not down) >= 50%; equality of the observed close and reference open counts as not down. "
+                   "Brier is mean squared probability error (lower is better). BUY/SELL/HOLD execution decisions are separate. "
+                   "Missing, unscorable, synthetic and pending outcomes do not enter either score.",
                    size=9, color=MUTED_TEXT).pack(fill="x", padx=12, pady=(7, 10))
 
         label(self.order_panel, "Orders and fills", size=15, bold=True).pack(anchor="w", padx=12, pady=(10, 4))
@@ -117,7 +121,7 @@ class ScoutStatsPanel:
         self.fill_coverage = self._text(self.order_panel, "", size=9, color=MUTED_TEXT)
         self.fill_coverage.pack(fill="x", padx=12, pady=(0, 8))
         self.order_tree = self._tree(self.order_panel, (
-            ("time", "Time", 48), ("symbol", "Company", 68), ("side", "Side", 45),
+            ("time", "Saved time", 70), ("symbol", "Company", 68), ("side", "Side", 45),
             ("fill", "Filled / requested", 115), ("status", "Status", 95)), height=4)
         self.order_tree.bind("<<TreeviewSelect>>", self._select_order)
         self.detail_label = self._text(self.order_panel, "Select an order to inspect saved fill evidence.", size=9, color=MUTED_TEXT)
@@ -179,7 +183,7 @@ class ScoutStatsPanel:
         self._orders = {}
         self.detail_label.configure(text="Select an order to inspect saved fill evidence.")
         self.session_label.configure(text=f"Session {snapshot.session} · All times Pacific" if snapshot and snapshot.session else "No saved session selected")
-        self.state_label.configure(text=snapshot.message if snapshot else "Saved Scout 15-Minute evidence has not been loaded.")
+        self.state_label.configure(text=snapshot.message if snapshot else f"Saved {self.actor} 15-Minute evidence has not been loaded.")
         self.warning_label.configure(text="\n".join(snapshot.warnings) if snapshot else "")
         prediction_available = snapshot is not None and self._available(snapshot.prediction_status)
         execution_available = snapshot is not None and self._available(snapshot.execution_status)
@@ -187,7 +191,7 @@ class ScoutStatsPanel:
         orders = snapshot.orders if snapshot else ()
         metrics = prediction_summary(forecasts)
         self.prediction_state.configure(text=(("Issued before target open · Observed outcomes only" if forecasts
-            else "No live Scout forecasts saved for this session.") if prediction_available
+            else f"No live {self.actor} forecasts saved for this session.") if prediction_available
             else "Prediction data missing or unreadable. Accuracy is unavailable."))
         if snapshot and snapshot.prediction_status == "partial":
             self.prediction_state.configure(text="Incomplete prediction evidence · Counts cover readable records only.")
@@ -209,10 +213,12 @@ class ScoutStatsPanel:
         for index, (symbol, rows) in enumerate(sorted(grouped.items())):
             summary = prediction_summary(rows)
             self.company_tree.insert("", "end", iid=f"company-{index}", values=(symbol, summary["eligible"], summary["scored"],
-                                    _percent(summary["accuracy"]), f"{summary['missing']} / {summary['unscorable']}"))
+                                    summary["correct"], _percent(summary["accuracy"]),
+                                    f"{summary['brier']:.3f}" if summary["brier"] is not None else "—",
+                                    f"{summary['missing']} / {summary['unscorable']}"))
         execution = execution_summary(orders)
         self.execution_state.configure(text=(("Latest saved order evidence · All session requests" if orders
-            else "No saved Scout order requests for this session.") if execution_available
+            else f"No saved {self.actor} order requests for this session.") if execution_available
             else "Order/fill data missing or unreadable. Counts are unavailable."))
         if snapshot and snapshot.execution_status == "partial":
             self.execution_state.configure(text="Incomplete order evidence · Counts cover readable records only.")
@@ -229,7 +235,7 @@ class ScoutStatsPanel:
         for index, order in enumerate(orders):
             item = f"order-{index}"
             self._orders[item] = order
-            self.order_tree.insert("", "end", iid=item, values=(_time(order.get("issued_at"), short=True), order.get("symbol", "—"),
+            self.order_tree.insert("", "end", iid=item, values=(_time(order.get("submitted_at") or order.get("issued_at"), short=True), order.get("symbol", "—"),
                 order.get("side", "—"), f"{_quantity(order.get('filled_quantity'))} / {_quantity(order.get('quantity'))}", order.get("status", "UNKNOWN")))
 
     def _select_order(self, _event=None):
@@ -238,7 +244,11 @@ class ScoutStatsPanel:
         if order is None:
             return
         lines = [f"{order.get('symbol', 'Unknown')} {order.get('side', '—')} · {order.get('status', 'UNKNOWN')}",
+                 f"Reference time: {_time(order.get('reference_at'))}",
+                 f"Submitted time: {_time(order.get('submitted_at'))}",
                  f"Last saved observation: {_time(order.get('observed_at'))}"]
+        if order.get("note"):
+            lines.append(str(order["note"]))
         fills = order.get("fills") or ()
         if fills:
             lines.append("Saved fills:")
@@ -247,3 +257,10 @@ class ScoutStatsPanel:
         else:
             lines.append("No identified fill records saved; unknown filled quantity remains —.")
         self.detail_label.configure(text="\n".join(lines))
+
+
+class AtlasStatsPanel(ScoutStatsPanel):
+    """The same saved-evidence presentation, labelled for Atlas local history."""
+
+    def __init__(self, parent, root):
+        super().__init__(parent, root, actor="Atlas")

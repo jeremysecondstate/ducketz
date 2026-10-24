@@ -393,7 +393,10 @@ def execution_summary(orders):
     """One row per request, cumulative fills once; missing evidence stays unknown."""
     unique = {row["request_id"]: row for row in orders}
     counts = Counter(row.get("status", "UNKNOWN") for row in unique.values())
-    fills = {(row.get("broker_order_id") or row["request_id"], fill["fill_id"]): fill
+    # Native Atlas broker IDs are account-scoped. Its adapter deduplicates
+    # orders internally and supplies a request scope without exposing accounts.
+    # Scout's journal identity and existing default behavior remain unchanged.
+    fills = {(row.get("fill_identity_scope") or row.get("broker_order_id") or row["request_id"], fill["fill_id"]): fill
              for row in unique.values() for fill in row.get("fills", ())}
     return dict(attempts=len(unique), submitted=sum(row.get("submission_state") == "ACCEPTED" for row in unique.values()),
                 filled=counts["FILLED"], partial=counts["PARTIAL"], working=counts["WORKING"],
