@@ -196,6 +196,11 @@ def _load_schema(root, symbols, schema, *, as_of, evidence_available_at=None):
         request = part.request
         if request["symbol_scope"][0] not in symbols:
             continue
+        # A later acquisition does not invalidate older evidence already saved.
+        # Exclude it from an ordinary as-of reconstruction; explicit recovery
+        # supplies a separate, truthful evidence_available_at clock.
+        if _utc(part.manifest["published_at"]) > evidence_cutoff:
+            continue
         if (request.get("dataset") != DATASET or request.get("stype_in") != "raw_symbol"
                 or request.get("schema") != schema or len(request["symbol_scope"]) != 1):
             raise ValueError("Archive feature source identity mismatch")
@@ -211,8 +216,6 @@ def _load_schema(root, symbols, schema, *, as_of, evidence_available_at=None):
                 or file_checksum(raw_path) != raw.get("checksum_sha256")
                 or part.receipt.get("raw_checksum_sha256") != raw.get("checksum_sha256")):
             raise ValueError("Archive feature raw evidence verification failed")
-        if _utc(part.manifest["published_at"]) > evidence_cutoff:
-            raise ValueError("Archive feature evidence was published after the frozen as-of")
         start, end = pd.Timestamp(request["start"], tz="UTC"), pd.Timestamp(request["end"], tz="UTC")
         symbol = request["symbol_scope"][0]
         frame = pd.read_parquet(normalized_path)
