@@ -1,0 +1,47 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261024T072745Z-5d31968c7a0f4229b3cccfe58145ff9f",
+  "change_id": "20261024T072745Z-5d31968c7a0f4229b3cccfe58145ff9f",
+  "commit_sha": "5d51a8a6743eb19b8acee0941b144bebdc0c2bbf",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/gameplan_archive_features.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_gameplan_archive_features.py"
+    }
+  ],
+  "limitations": [
+    "Original Scout PR127 source 1656db471cc37bed6318402520a4286b1e543c21 and record 20261014T101655Z-fbc04e53e6d64de199d4d4c7932bb843 retained.",
+    "Two baseline regression failures; local candidate and installed suites each 92 passed. Shared candidate, sealed, isolated and main each 84 passed; no skips, warnings or offline violations.",
+    "Local production modules unchanged; only regression suites installed. Peer installation and loaded process versions remain separate."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/384"
+  ],
+  "main_sha": "078e07390864efc1f94ba4d9f34f2180e80e9d7a",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Selected evidence validation and frozen information cutoffs remain intact; future acquisitions no longer invalidate eligible archive evidence. No provider/broker calls, production launches, trader starts/restarts, manual-stop clearing or native task changes. Nightly work proceeds independently.",
+  "scope": "shared",
+  "summary": "Atlas restored PR127 clock coverage and shared future-acquisition filtering",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-24T07:27:55.019950Z",
+      "output_sha256": "8a305ebf379e49d11375cd307256310747d9aeb2547d1f1cc9e5321bb7cbc787",
+      "result": "........................................................................ [ 85%]\r\n............                                                             [100%]\r\n84 passed in 8.00s\r\n\n",
+      "stage": "sealed",
+      "started_at_utc": "2026-10-24T07:27:45.449719Z"
+    },
+    {
+      "completed_at_utc": "2026-10-24T07:28:32.323309Z",
+      "output_sha256": "fa9d9364ad7e491d533addb893eec1ab6f609c4890a349a85a569248118bc87c",
+      "result": "........................................................................ [ 85%]\r\n............                                                             [100%]\r\n84 passed in 8.83s\r\n\n",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-24T07:28:22.023112Z"
+    }
+  ]
+}

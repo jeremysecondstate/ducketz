@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-24T07:30:08.840657Z",
+  "id": "20261024T073008Z-5ce3f897900f41378f6cde4e88af0987",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas restored PR127 clock coverage and shared future-acquisition filtering"
+}
