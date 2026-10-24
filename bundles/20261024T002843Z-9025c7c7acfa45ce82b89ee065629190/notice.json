@@ -1,0 +1,55 @@
+{
+  "author": "Atlas",
+  "change_id": "20261024T002102Z-b5ae41bcbfb64a22a245cfb938523081",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/intentions.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/forecast_header_cache.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_main_header_composition.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_main_header_composition.py"
+    }
+  ],
+  "limitations": [
+    "This integrates only the generic reader/fence subset of those original completions; their identities and the remaining predecessor work are preserved.",
+    "Source publication does not establish main integration, peer installation, runtime loading or recovery of an original latency incident. Main integration retains separate fresh-check receipts.",
+    "The existing application has a richer separately tested implementation and is not replaced by this composition. Local model recipes, symbols and private operating bindings stay local."
+  ],
+  "prior_completion_records": [
+    "20261016T221319Z-3822cca947eb48788f81481e27784933",
+    "20261019T193135Z-d1d311e28a2841c0a0fc3f192adcedda",
+    "20261019T203415Z-c91c8bec43fb4ecca3eb4c348c09030c",
+    "20261022T130047Z-9dfef5b107ff43af88341e3773eaf4f4",
+    "20261023T223121Z-de0ff2f54c4d48feba8426840d27fd97",
+    "20261023T233417Z-ab7c838562c04444bb2d2bc09ece607a"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Additive guarded scalar header reuse with original chronology scope. No trader start/restart/order, provider request, local installation or new operating prerequisite. Independent nightly production continues.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261024T002102Z-b5ae41bcbfb64a22a245cfb938523081",
+  "source_sha": "515fc0e1b99f54d668ff1950187a042065ddfc80",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/commit/515fc0e1b99f54d668ff1950187a042065ddfc80",
+  "summary": "Compose guarded forecast header caches with existing main scoring APIs",
+  "tests": [
+    "256 offline cases passed on the exact composed snapshot;256 fresh sealed-source cases passed from2026-10-24T00:21:02Z to00:22:08Z;256 fresh managed-candidate cases passed from00:26:20Z to00:27:22Z. All104source/test fingerprints bind the exact bytes.",
+    "Main scoring projections, original reload-before-write, native provenance, frozen direction metadata and model contracts retain their existing regressions. Header fixtures cover warm/mixed/cold reuse, bounded caches, schema/revision/file identity tampering, optional-cache fallback and own-scope chronology."
+  ]
+}

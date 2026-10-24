@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-24T00:28:43.525479Z",
+  "id": "20261024T002843Z-9025c7c7acfa45ce82b89ee065629190",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Compose guarded forecast header caches with existing main scoring APIs"
+}
