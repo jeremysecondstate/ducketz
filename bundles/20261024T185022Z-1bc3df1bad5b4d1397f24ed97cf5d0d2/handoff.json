@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-24T18:50:22.761093Z",
+  "id": "20261024T185022Z-1bc3df1bad5b4d1397f24ed97cf5d0d2",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout added a separate 15-Minute Trader section to Gameplan Stats."
+}
