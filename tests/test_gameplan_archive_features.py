@@ -277,15 +277,17 @@ def test_late_archive_acquisition_does_not_advance_information_cutoff(tmp_path, 
     acquired = pd.Timestamp("2026-09-24T01:00Z")
     part.manifest["published_at"] = acquired.isoformat()
     monkeypatch.setattr(archive, "discover_archive_partitions", lambda *a, **k: (part,))
-    with pytest.raises(ValueError, match="published after"):
-        archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff)
+    unavailable, files, coverage, exclusions = archive._load_schema(
+        tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff)
+    assert unavailable.empty and not files and not exclusions and coverage == {"AAPL": []}
     frame, _, _, _ = archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d",
         as_of=cutoff, evidence_available_at=acquired)
     assert len(frame) == 13
     assert (frame.timestamp + pd.Timedelta(days=1, minutes=5)).le(cutoff).all()
-    with pytest.raises(ValueError, match="published after"):
-        archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff,
-                             evidence_available_at=acquired - pd.Timedelta(seconds=1))
+    unavailable, files, coverage, exclusions = archive._load_schema(
+        tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff,
+        evidence_available_at=acquired - pd.Timedelta(nanoseconds=1))
+    assert unavailable.empty and not files and not exclusions and coverage == {"AAPL": []}
     with pytest.raises(ValueError, match="precedes"):
         archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff,
                              evidence_available_at=cutoff - pd.Timedelta(seconds=1))
@@ -307,7 +309,7 @@ def test_public_loader_preserves_causal_features_and_both_publication_clocks(tmp
     assert pd.to_datetime(result.sources.information_available_at, utc=True).le(cutoff).all()
     assert result.sources.source_session.max() == original.ts_event.iloc[22].date()
     assert all(path.read_bytes() == raw for path, raw in before.items())
-    with pytest.raises(ValueError, match="published after"):
+    with pytest.raises(ValueError, match="unavailable or inconsistent"):
         archive.load_archive_feature_sources(tmp_path, symbols=("AAPL",), available_at=cutoff)
 
 
@@ -339,3 +341,20 @@ def test_split_provenance_binds_empty_native_reports_and_prefers_modern_folder(t
     pd.DataFrame().to_parquet(current)
     pd.DataFrame().to_parquet(old)
     assert archive._split_source_files(tmp_path, "AAPL") == (current,)
+
+
+@pytest.mark.parametrize("future_first", [True, False])
+def test_later_partition_does_not_invalidate_eligible_saved_evidence(tmp_path, monkeypatch, future_first):
+    eligible = _partition(tmp_path)
+    # A later acquisition may contain the same valid observations.
+    future = SimpleNamespace(**vars(eligible))
+    future.manifest = {**eligible.manifest, "published_at": "2026-09-25T00:00Z"}
+    parts = (future, eligible) if future_first else (eligible, future)
+    monkeypatch.setattr(archive, "discover_archive_partitions", lambda *a, **k: parts)
+    original = {path: path.read_bytes() for path in
+                (eligible.normalized_path, eligible.directory / "provider.dbn.zst")}
+    frame, files, coverage, exclusions = archive._load_schema(
+        tmp_path, ["AAPL"], "ohlcv-1d", as_of=pd.Timestamp("2026-09-24T00:00Z"))
+    assert len(frame) == 25
+    assert eligible.normalized_path in files and coverage["AAPL"] and not exclusions
+    assert all(path.read_bytes() == raw for path, raw in original.items())
