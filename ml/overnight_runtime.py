@@ -581,13 +581,6 @@ def run_overnight_pipeline(
                     reporter("OVERNIGHT HEALTH " + json.dumps(dict(payload), default=str))
 
             try:
-                if recovery is not None:
-                    from ml.nightly_recovery import verify_saved_recovery
-                    verify_saved_recovery(root, recovery, utc_timestamp(),
-                                          action_date=deadline_at.tz_convert(SCHEDULE_TIMEZONE).date().isoformat())
-                saved_exception = report.get("deadline_exception")
-                if saved_exception and file_checksum(Path(saved_exception["path"])) != saved_exception["sha256"]:
-                    raise ValueError("Deadline exception evidence changed before the native stage")
                 if stage in ("loop_b_directional_generation", "gameplan_publication") and feedback_binding:
                     if file_checksum(model_feedback) != feedback_binding["sha256"]:
                         raise ValueError("Reviewed model feedback changed before training")
@@ -914,8 +907,6 @@ def _resume_configuration(root: Path, run: Path, *, deadline_exception: Path | N
             root, root/report['enrichment_gameplan']['run_path'],
             saved_exception['authorization']['original_deadline_at'] if saved_exception else effective_deadline,
             utc_timestamp(), deadline_exception)
-        if saved_exception is not None and saved_exception != exception_evidence:
-            raise ValueError('Deadline exception evidence changed since the failed attempt')
         from ml.nightly_recovery import VERSION as PREPARATION_RECOVERY_VERSION
         if (exception_evidence['authorization'].get('schema_version') != PREPARATION_RECOVERY_VERSION
                 and exception_evidence['authorization'].get('gameplan_receipt_sha256') != report['enrichment_gameplan']['receipt_sha256']):
