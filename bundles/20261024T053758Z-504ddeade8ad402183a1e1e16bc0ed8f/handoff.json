@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-24T05:37:58.589265Z",
+  "id": "20261024T053758Z-504ddeade8ad402183a1e1e16bc0ed8f",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas repaired native recovery inheritance and preserved continuation through historical annotation changes"
+}

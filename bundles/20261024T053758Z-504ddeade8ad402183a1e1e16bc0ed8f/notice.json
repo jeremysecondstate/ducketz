@@ -1,0 +1,63 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261024T053529Z-60bf4c3c102e4aee9489eec3cc13314e",
+  "change_id": "20261024T053529Z-60bf4c3c102e4aee9489eec3cc13314e",
+  "commit_sha": "e960fcaafcfeb0fcc39921b38711e433ecac91db",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/overnight_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_native_recovery_spec.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/native-recovery-adoption.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/native-recovery-atlas-composition.patch"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/native-recovery-retained-fixtures.patch"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/native-recovery-direction-fixtures.patch"
+    }
+  ],
+  "limitations": [
+    "Original Scout PR194 identity retained; Atlas final local candidate and installed checks recorded separately. Shared sealed/isolated/main checks use exact source bytes. Offline only; no loaded runtime or live recovery claim."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/383"
+  ],
+  "main_sha": "6d3eb5fee0241ea776f0b19d1ef0a6b6ac3cd22d",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Independent production continues. No provider/broker/model action, worker/trader launch/restart, stop clearing, task setting change or private operating export.",
+  "scope": "shared",
+  "summary": "Atlas repaired native recovery inheritance and preserved continuation through historical annotation changes",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-24T05:35:47.050943Z",
+      "output_sha256": "edf6b09c3edfb04db16a907eb01c14ac923f00cee53f3886793d185742d06a73",
+      "result": "..............................................................           [100%]\r\n62 passed in 15.92s\r\n\n",
+      "started_at_utc": "2026-10-24T05:35:29.486814Z"
+    },
+    {
+      "completed_at_utc": "2026-10-24T05:35:47.681263Z",
+      "output_sha256": "6270f08595a4f0f123f31bf2d7f4758cac00624a3acbe7a1efb04088f0e7f28d",
+      "result": "Checked docs/development/native-recovery-adoption.md: 55 lines\r\nMarkdown hygiene checks passed; linked content and architecture require review.\r\n\n",
+      "started_at_utc": "2026-10-24T05:35:47.196203Z"
+    }
+  ]
+}
