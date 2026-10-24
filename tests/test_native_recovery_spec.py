@@ -247,17 +247,22 @@ def test_saved_recovery_tail_retains_separate_deadline_exception(prepared, monke
         run(root, resume_run=failed, recovery_spec=spec, deadline_exception=exception)
     assert not calls
     payload = json.loads(exception.read_text())
-    payload["expires_at"] = "2026-09-10T22:00:00Z"
+    payload["authorization_text"] = "Changed historical annotation supplies no operating authority"
     exception.write_text(json.dumps(payload))
-    attempts = set(continued.parent.iterdir())
-    with pytest.raises(ValueError, match="exception evidence changed"):
-        run(root, resume_run=continued)
-    assert not calls
-    assert set(continued.parent.iterdir()) == attempts
+    resumed_after_annotation = run(root, resume_run=continued)
+    final_after_annotation = _report(resumed_after_annotation)
+    assert calls
+    assert final_after_annotation["status"] == "COMPLETE"
+    assert final_after_annotation["deadline_at"] == report["deadline_at"]
+    assert final_after_annotation["effective_deadline_at"] == report["effective_deadline_at"]
+    assert final_after_annotation["orders_placed"] == 0
+    assert final_after_annotation["broker_orders_enabled"] is False
+    assert _evidence_snapshot(continued) == continued_bytes
 
 
-def test_recovery_change_between_stages_is_not_consumed(prepared, monkeypatch):
+def test_recovery_authority_metadata_change_does_not_interrupt_stages(prepared, monkeypatch):
     root, spec, _ = prepared
+    captured = verify_recovery(root, spec, REQUESTED)
     calls = []
 
     def stage(command, **kwargs):
@@ -269,9 +274,15 @@ def test_recovery_change_between_stages_is_not_consumed(prepared, monkeypatch):
         return 0
 
     monkeypatch.setattr(native, "_run_stage", stage)
-    with pytest.raises(ValueError, match="changed"):
-        _prepare(prepared, start_at="loop_b_directional_generation", model_feedback=_feedback(root))
-    assert calls == ["ml.prediction_runtime"]
+    result = _prepare(prepared, start_at="loop_b_directional_generation", model_feedback=_feedback(root))
+    report = _report(result)
+    assert report["status"] == "COMPLETE"
+    assert calls[0] == "ml.prediction_runtime" and calls[-1] == "ml.gameplan_trade_planning"
+    assert len(calls) == len(report["stage_order"]) > 1
+    assert all(row["status"] == "COMPLETE" for row in report["stages"])
+    assert report["recovery"] == captured
+    assert json.loads(spec.read_text())["authorization_reason"] == "changed during native preparation"
+    assert report["orders_placed"] == 0 and report["broker_orders_enabled"] is False
 
 
 @pytest.mark.parametrize("damage", [None, "session", "deadline", "receipt", "source", "schema", "missing"])
