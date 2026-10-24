@@ -5,15 +5,66 @@ cycle summaries may advance; every transition also has an append-only event.
 """
 from __future__ import annotations
 
-from contextlib import contextmanager
+from collections import OrderedDict
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
 from decimal import Decimal
+import hashlib
 import json
 from pathlib import Path
 import sqlite3
+from threading import RLock
 
 from .prediction import ContractError, STEP, TARGET_VERSION, digest, encoded, instant, number
 from .direction_metadata import FIELDS as DIRECTION_FIELDS, recorded_direction, stamp_new_direction
+
+
+# These local change markers let execution recheck chronology without rereading
+# unchanged scientific model trees while a broker quote ages. Forecast originals
+# remain untouched. Every SQL mutation, including updates outside this class,
+# advances one generation in the same transaction as the original row.
+_EXECUTION_FORECAST_SCHEMA = {
+    "execution_forecast_generation": """CREATE TABLE execution_forecast_generation(
+        singleton INTEGER PRIMARY KEY CHECK(singleton=1),
+        generation INTEGER NOT NULL CHECK(generation>=0),
+        epoch TEXT NOT NULL CHECK(length(epoch)=32))""",
+    "execution_forecast_revisions": """CREATE TABLE execution_forecast_revisions(
+        forecast_id TEXT PRIMARY KEY, generation INTEGER NOT NULL CHECK(generation>=0))""",
+    "execution_generation_insert": """CREATE TRIGGER execution_generation_insert
+        BEFORE INSERT ON execution_forecast_generation
+        WHEN EXISTS(SELECT 1 FROM execution_forecast_generation) BEGIN
+        SELECT RAISE(ABORT,'Execution forecast generation cannot be replaced'); END""",
+    "execution_generation_update": """CREATE TRIGGER execution_generation_update
+        BEFORE UPDATE ON execution_forecast_generation
+        WHEN NEW.singleton!=OLD.singleton OR NEW.generation!=OLD.generation+1
+            OR typeof(NEW.generation)!='integer' OR NEW.epoch!=OLD.epoch BEGIN
+        SELECT RAISE(ABORT,'Execution forecast generation must advance'); END""",
+    "execution_generation_delete": """CREATE TRIGGER execution_generation_delete
+        BEFORE DELETE ON execution_forecast_generation BEGIN
+        SELECT RAISE(ABORT,'Execution forecast generation cannot be deleted'); END""",
+    "execution_revision_insert": """CREATE TRIGGER execution_revision_insert
+        BEFORE INSERT ON execution_forecast_revisions
+        WHEN NEW.generation!=(SELECT generation FROM execution_forecast_generation WHERE singleton=1) BEGIN
+        SELECT RAISE(ABORT,'Execution forecast revision must name current generation'); END""",
+    "execution_revision_update": """CREATE TRIGGER execution_revision_update
+        BEFORE UPDATE ON execution_forecast_revisions BEGIN
+        SELECT RAISE(ABORT,'Execution forecast revisions cannot be updated'); END""",
+}
+for _operation in ("INSERT", "UPDATE", "DELETE"):
+    _name = "execution_forecast_" + _operation.lower()
+    _identity = "NEW.id" if _operation == "INSERT" else "OLD.id"
+    _remove = f"DELETE FROM execution_forecast_revisions WHERE forecast_id={_identity};"
+    if _operation == "UPDATE":
+        _remove += " DELETE FROM execution_forecast_revisions WHERE forecast_id=NEW.id;"
+    _add = """INSERT INTO execution_forecast_revisions VALUES(
+        NEW.id,(SELECT generation FROM execution_forecast_generation WHERE singleton=1));""" if _operation != "DELETE" else ""
+    _EXECUTION_FORECAST_SCHEMA[_name] = f"""CREATE TRIGGER {_name} AFTER {_operation} ON forecasts BEGIN
+        UPDATE execution_forecast_generation SET generation=generation+1 WHERE singleton=1;
+        SELECT CASE WHEN changes()!=1 THEN RAISE(ABORT,'Missing execution forecast generation') END;
+        {_remove}
+        {_add}
+    END"""
+del _operation, _name, _identity, _remove, _add
 
 
 def utcnow():
@@ -38,16 +89,43 @@ class ShadowStore:
                 CREATE INDEX IF NOT EXISTS outcomes_forecast ON outcomes(forecast_id);
                 CREATE INDEX IF NOT EXISTS forecasts_target ON forecasts(pc,symbol,reference_at);
             """)
+            db.execute("BEGIN IMMEDIATE")
+            present = self._execution_forecast_schema(db)
+            if not present:
+                for statement in _EXECUTION_FORECAST_SCHEMA.values():
+                    db.execute(statement)
+                db.execute("INSERT INTO execution_forecast_generation VALUES(1,0,lower(hex(randomblob(16))))")
+                db.execute("INSERT INTO execution_forecast_revisions SELECT id,0 FROM forecasts")
+            self._execution_forecast_generation(db)
+        self._execution_forecast_lock = RLock()
+        self._execution_forecast_cache = OrderedDict()
+        self._execution_forecast_highwater = 0
+        self._execution_forecast_identity = None
 
     @contextmanager
     def connect(self):
         """Commit/rollback deterministically, then close even on interruption."""
-        db = sqlite3.connect(self.path, timeout=30)
         try:
+            before = self.path.stat()
+        except OSError:
+            before = None
+        db = sqlite3.connect(self.path, timeout=30)
+        identities = getattr(self, "_connection_source_identities", None)
+        if identities is None:
+            identities = self._connection_source_identities = {}
+        identities[id(db)] = None
+        try:
+            try:
+                opened = self.path.stat()
+                if before is not None and (before.st_dev, before.st_ino) == (opened.st_dev, opened.st_ino):
+                    identities[id(db)] = (opened.st_dev, opened.st_ino)
+            except OSError:
+                pass
             db.execute("PRAGMA foreign_keys=ON")
             with db:
                 yield db
         finally:
+            identities.pop(id(db), None)
             db.close()
 
     @staticmethod
@@ -148,6 +226,160 @@ class ShadowStore:
             row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE cycle_id=? AND symbol=?", (cycle_id, symbol)).fetchone()
         return self._forecast_value(row) if row else None
 
+    @staticmethod
+    def _execution_forecast_schema(db):
+        names = tuple(_EXECUTION_FORECAST_SCHEMA)
+        rows = dict(db.execute("SELECT name,sql FROM sqlite_master WHERE name IN (" +
+                               ",".join("?" for _ in names) + ")", names))
+        if rows and rows != _EXECUTION_FORECAST_SCHEMA:
+            raise ContractError("Execution forecast revision schema changed")
+        return rows
+
+    @classmethod
+    def _execution_forecast_generation(cls, db):
+        if cls._execution_forecast_schema(db) != _EXECUTION_FORECAST_SCHEMA:
+            raise ContractError("Execution forecast revision schema is missing")
+        rows = db.execute("SELECT singleton,generation,epoch FROM execution_forecast_generation").fetchall()
+        if (len(rows) != 1 or rows[0][0] != 1 or type(rows[0][1]) is not int or rows[0][1] < 0
+                or not isinstance(rows[0][2], str) or len(rows[0][2]) != 32
+                or any(c not in "0123456789abcdef" for c in rows[0][2])):
+            raise ContractError("Execution forecast generation is invalid")
+        return rows[0][1], rows[0][2]
+
+    def _forecast_projection(self, row):
+        """Cache only scalar headers of exact semantically validated evidence."""
+        fields = ("forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at",
+                  "mode", "ensemble_status", "target_open", "target_close",
+                  "population_contract", "source_dataset", "source_id")
+        cache = getattr(self, "_forecast_header_cache", None)
+        if cache is None:
+            cache = self._forecast_header_cache = OrderedDict()
+        # A hash of unsorted JSON is not proof of the semantic digest. New
+        # payloads and indexed identities always take the full validator.
+        # BLOB/irregular SQLite values retain its original behavior too.
+        signature = (*row[:6], hashlib.sha256(row[6].encode()).digest()) if isinstance(row[6], str) else None
+        previous = cache.get(row[0])
+        if signature is not None and previous is not None and previous[0] == signature:
+            return dict(previous[1]), None
+        value = self._forecast_value(row)
+        projection = {field: value[field] for field in fields if field in value}
+        if signature is not None and all(item is None or isinstance(item, str) for item in projection.values()):
+            cache[row[0]] = (signature, tuple(projection.items()))
+            if len(cache) > 4096:
+                cache.popitem(last=False)
+        return dict(projection), value
+
+    def execution_forecast_headers(self, *, pc, symbol, forecast_ids=None, cache_io_budget_seconds=.25):
+        """Revalidate changed originals and reuse unchanged scalar headers.
+
+        Exact trigger definitions and monotonic row revisions are checked in the
+        same fresh read transaction as payloads. Cold and changed rows retain
+        full semantic/index validation, including obsolete history and BLOBs.
+        No read transaction survives this method or spans broker operations.
+        """
+        clauses, parameters = ["f.pc=?", "f.symbol=?"], [pc, symbol]
+        if forecast_ids is not None:
+            identities = tuple(dict.fromkeys(forecast_ids))
+            if not identities:
+                return []
+            clauses.append("f.id IN (SELECT value FROM json_each(?))")
+            parameters.append(encoded(identities))
+        # Serialize cache publication so older concurrent snapshots cannot
+        # appear to roll back the forecast generation.
+        with self._execution_forecast_lock, self.connect() as db:
+            db.execute("BEGIN")
+            return self._revision_forecast_headers(db, clauses, parameters, cache_io_budget_seconds=cache_io_budget_seconds)
+
+    def _revision_forecast_headers(self, db, clauses, parameters, stopped=lambda: False, read_timings=None, cache_io_budget_seconds=.25):
+        """Reuse exact headers inside the caller's locked read transaction."""
+        headers = []
+        detail = read_timings.detail if read_timings is not None else lambda stage: nullcontext()
+        with detail("forecast_revision_metadata"):
+            generation, epoch = self._execution_forecast_generation(db)
+        with detail("forecast_physical_identity"):
+            try:
+                stat = self.path.stat()
+                current_physical = (stat.st_dev, stat.st_ino)
+            except OSError:
+                current_physical = None
+            opened = getattr(self, "_connection_source_identities", {}).get(id(db))
+            cache_source_certain = opened is not None and opened == current_physical
+            physical = opened if opened is not None else (None, id(db))
+            identity = (*physical, db.execute("PRAGMA schema_version").fetchone()[0], epoch)
+        from .forecast_header_cache import DurableForecastHeaders
+        durable = DurableForecastHeaders(self.path, budget_seconds=cache_io_budget_seconds)
+        if identity != self._execution_forecast_identity:
+            self._execution_forecast_cache.clear()
+            self._execution_forecast_highwater = 0
+            self._execution_forecast_identity = identity
+        if generation < self._execution_forecast_highwater:
+            raise ContractError("Execution forecast generation regressed")
+        with detail("forecast_index_read"):
+            rows = db.execute("SELECT f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,r.generation "
+                "FROM forecasts f LEFT JOIN execution_forecast_revisions r ON r.forecast_id=f.id WHERE " +
+                " AND ".join(clauses) + " ORDER BY f.rowid", parameters).fetchall()
+        try:
+            durable_identity = (str(self.path.resolve()), *identity)
+        except OSError:
+            durable_identity = None
+            cache_source_certain = False
+        # Snapshot exact scalar proofs for this locked source inventory. Later
+        # misses may evict bounded cache entries while this inventory is still
+        # being returned; they cannot invalidate these already checked proofs.
+        warm_headers, missing_signatures = {}, []
+        for row in rows:
+            signature = tuple(row)
+            previous = self._execution_forecast_cache.get(row[0])
+            if previous is not None and previous[0] == signature:
+                warm_headers[signature] = previous[1]
+            else:
+                missing_signatures.append(signature)
+        # Durable reads attest cold/changed originals only. Warm proofs already
+        # retain the same physical/schema/epoch/revision checks above and below.
+        durable_headers = (durable.load_many(durable_identity, missing_signatures)
+            if cache_source_certain and missing_signatures else {})
+        for row in rows:
+            if stopped():
+                return []
+            revision = row[6]
+            if type(revision) is not int or not 0 <= revision <= generation:
+                raise ContractError("Execution forecast row revision is invalid")
+            signature = (*row[:6], revision)
+            previous = warm_headers.get(signature)
+            if previous is not None:
+                projection = dict(previous)
+                if read_timings is not None:
+                    read_timings.count("forecast_cache_hits")
+            else:
+                if read_timings is not None:
+                    read_timings.count("forecast_cache_misses")
+                projection = durable_headers.get(signature)
+                if projection is None:
+                    with detail("forecast_payload_read"):
+                        original = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                                              "FROM forecasts WHERE id=?", (row[0],)).fetchone()
+                    if read_timings is not None and original is not None:
+                        read_timings.payload("forecast_", original[6])
+                    with detail("forecast_payload_validate"):
+                        projection, _ = self._forecast_projection(original)
+                    # Separate optional cache writes never escalate the source
+                    # transaction or change original scientific evidence.
+                    if cache_source_certain:
+                        try:
+                            current_stat = self.path.stat()
+                        except OSError:
+                            pass
+                        else:
+                            if opened == (current_stat.st_dev, current_stat.st_ino):
+                                durable.save(durable_identity, signature, projection)
+                if all(item is None or isinstance(item, str) for item in projection.values()):
+                    self._execution_forecast_cache[row[0]] = (signature, tuple(projection.items()))
+                    if len(self._execution_forecast_cache) > 4096:
+                        self._execution_forecast_cache.popitem(last=False)
+            headers.append(projection)
+        self._execution_forecast_highwater = generation
+        return headers
+
     def forecast_by_id(self, forecast_id, *, pc=None):
         """Validate one immutable forecast without loading unrelated history."""
         with self.connect() as db:
@@ -157,9 +389,26 @@ class ShadowStore:
         # column cannot disguise corruption as an ordinary missing forecast.
         return value if value is not None and (pc is None or value["pc"] == pc) else None
 
-    def forecasts(self, *, pc=None):
+    def forecasts(self, *, pc=None, symbol=None, forecast_ids=None):
+        # Execution chronology concerns one symbol. Use the existing index to
+        # avoid decoding unrelated model payloads while account evidence ages.
+        clauses, parameters = [], []
+        if pc:
+            clauses.append("pc=?")
+            parameters.append(pc)
+        if symbol is not None:
+            clauses.append("symbol=?")
+            parameters.append(symbol)
+        if forecast_ids is not None:
+            identities = tuple(dict.fromkeys(forecast_ids))
+            if not identities:
+                return []
+            clauses.append("id IN (SELECT value FROM json_each(?))")
+            parameters.append(encoded(identities))
+        where = " WHERE " + " AND ".join(clauses) if clauses else ""
         with self.connect() as db:
-            rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts" + (" WHERE pc=?" if pc else "") + " ORDER BY rowid", (pc,) if pc else ()).fetchall()
+            rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts" +
+                              where + " ORDER BY rowid", parameters).fetchall()
         return [self._forecast_value(row) for row in rows]
 
     def save_forecast(self, payload, *, intent=None):
