@@ -1,0 +1,48 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261025T062604Z-d2a7247b841a46d1aed7fab445e1c6b6",
+  "change_id": "20261025T062604Z-d2a7247b841a46d1aed7fab445e1c6b6",
+  "commit_sha": "bfd0c470b7356cb59930fd7753db08d4401f3bee",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-readiness-delegate-regression.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/intraday-readiness-model-delegate.patch"
+    }
+  ],
+  "limitations": [
+    "Original Scout PR131 source e57d0826b7a696ff305976efa9e11b59e4b29452 and record 20261014T105516Z-f359f17277e24f478d10994bea01ab07 retained.",
+    "Installed local suites: 68 passed, no skips/warnings/network or import violations, 26 bound imports. Exact patch reconstruction verified.",
+    "Shared publication is documentation plus exact regression patch; main lacks readiness and does not run its regression. Fresh document hygiene checks passed.",
+    "No production modules or model-policy changes; peer installation and loaded runtime versions remain separate facts."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/387"
+  ],
+  "main_sha": "9cc14d91e155fa9fda6f3cbe849de19c80b9373e",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Regression coverage only; retains both independent local bindings and manual controls. Obsolete shared-trader compatibility/prestart gates not restored. No operating actions or nightly prerequisites.",
+  "scope": "shared",
+  "summary": "Atlas retained PR131 delegated-fit regression with current independent readiness",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-25T06:26:05.340330Z",
+      "output_sha256": "b88063eba8291f494a48e05ab10c8c4ad8134584db61d8835dff7249e297eebf",
+      "result": "Checked docs/development/intraday-readiness-delegate-regression.md: 42 lines\r\nMarkdown hygiene checks passed; linked content and architecture require review.\r\n\n",
+      "stage": "sealed",
+      "started_at_utc": "2026-10-25T06:26:04.800229Z"
+    },
+    {
+      "completed_at_utc": "2026-10-25T06:26:19.061120Z",
+      "output_sha256": "b88063eba8291f494a48e05ab10c8c4ad8134584db61d8835dff7249e297eebf",
+      "result": "Checked docs/development/intraday-readiness-delegate-regression.md: 42 lines\r\nMarkdown hygiene checks passed; linked content and architecture require review.\r\n\n",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-25T06:26:18.583871Z"
+    }
+  ]
+}

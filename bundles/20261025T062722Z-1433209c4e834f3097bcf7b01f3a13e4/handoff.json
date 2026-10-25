@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-25T06:27:22.455660Z",
+  "id": "20261025T062722Z-1433209c4e834f3097bcf7b01f3a13e4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas retained PR131 delegated-fit regression with current independent readiness"
+}
