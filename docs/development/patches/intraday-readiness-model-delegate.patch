@@ -1,0 +1,36 @@
+--- /dev/null
++++ b/tests/test_intraday_readiness_model_delegate.py
+@@ -0,0 +1,33 @@
++"""Check delegated-fit diagnostic wiring using temporary source copies only."""
++import ast
++from pathlib import Path
++
++from ml.intraday import readiness
++
++
++def test_model_delegate_requires_actual_helper_fit_wiring(tmp_path):
++    installed = Path(readiness.__file__).resolve().parents[2]
++    repository = tmp_path / "repository"
++    for relative in readiness.PUBLIC_SOURCES:
++        destination = repository / relative
++        destination.parent.mkdir(parents=True, exist_ok=True)
++        destination.write_bytes((installed / relative).read_bytes())
++
++    component = "forecasting_and_scoring"
++    helper_key = "ml/intraday/models.py:fit_calibrated_estimator"
++    original = readiness._source_capabilities(repository)
++    assert original["source_component_checks"][component]["source_interfaces_verified"]
++    assert original["source_component_checks"][component]["interface_evidence"][helper_key]["verified"]
++
++    source = repository / "ml/intraday/models.py"
++    tree = ast.parse(source.read_text(encoding="utf-8"))
++    helper = next(node for node in tree.body
++                  if isinstance(node, ast.FunctionDef) and node.name == "fit_calibrated_estimator")
++    helper.body = [ast.Expr(value=ast.Constant(value="build_estimator fit")), ast.Pass()]
++    source.write_text(ast.unparse(tree), encoding="utf-8")
++
++    result = readiness._source_capabilities(repository)
++    assert "SOURCE_CAPABILITY_UNVERIFIED:" + component in result["missing_integration"]
++    check = result["source_component_checks"][component]["interface_evidence"][helper_key]
++    assert not check["verified"]
++    assert check["required_calls_present"] == []
