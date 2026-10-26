@@ -1,0 +1,56 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-26T14:38:16.927427Z",
+  "completion_id": "20261026T142833Z-atlas-stats-oct26-early-outcomes-54a35c0c",
+  "details": [
+    "Actor Atlas; task Atlas Trader Representative; thirty-eight original October26 hourly and opening-gap forecasts matured through1400UTC and scored from genuine completed native same-source observations.",
+    "Original probabilities, targets, frozen direction labels, recorded policy identities and observed endpoint hashes remain exact.",
+    "Preserves the original combined Gameplan and completed-session Stats, all8546previous evaluated outcomes, prior directional outcomes and published supplement ancestry.",
+    "Peer applicability: derived scientific outcomes for Atlas symbols only. No model tuning, raw observations, fitted models, account state, execution state or bindings exported.",
+    "Ten exact native-input scientific checks, nine full admitted-source checks, thirteen source selection checks and eight native cumulative checks passed.",
+    "Six newly admitted mature originals remain missing valid endpoint pairs; no result fabricated. Scientific output only; no source change, model fit, synthesis rerun, runtime loading, trader control, order or deployment."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261026T142833Z-atlas-stats-oct26-early-outcomes-54a35c0c/gameplan-stats/20261026T142833Z-atlas-stats-oct26-early-outcomes-54a35c0c/original-outcome-supplement.json",
+      "expected_sha256": "b1ef26386658abe47eae8f6789e49995ad254f529f12e63d459e1715adeb17e0",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261026T142833Z-atlas-stats-oct26-early-outcomes-54a35c0c/original-outcome-supplement.json",
+      "published_sha256": "b1ef26386658abe47eae8f6789e49995ad254f529f12e63d459e1715adeb17e0",
+      "published_size": 46178,
+      "sha256": "b1ef26386658abe47eae8f6789e49995ad254f529f12e63d459e1715adeb17e0",
+      "size": 46178,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "b1ef26386658abe47eae8f6789e49995ad254f529f12e63d459e1715adeb17e0",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261026T142833Z-atlas-stats-oct26-early-outcomes-54a35c0c/original-outcome-supplement.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "human-authorized-development",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "symbol-specific",
+  "source_head": "90704d21801f60426493bd6cc650a7fac38d4f61",
+  "summary": "Atlas Trader Representative: publish thirty-eight original early-session outcomes",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "COST",
+    "GOOG",
+    "IONQ",
+    "MU",
+    "NVDA",
+    "PATH",
+    "SNDK",
+    "TWST"
+  ]
+}
