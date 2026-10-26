@@ -1,0 +1,52 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T111725Z-27073d2030f74c3ca2e157f02502e187",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/scoring_candles.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_main_retained_priority.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_main_retained_priority.py"
+    }
+  ],
+  "limitations": [
+    "Only the current-session priority subset of original completions is composed; broader predecessor work remains separately owned.",
+    "Local application already retains independently installed priority/chronology behavior and is preserved. Different scientific population/native reader API graphs are not declared equivalent.",
+    "Source publication and main integration do not establish peer installation, runtime loading or resolution of an original latency incident."
+  ],
+  "prior_completion_records": [
+    "20261020T215621Z-8a8fe169778749c4a5e1bf01b471f305",
+    "20261022T152743Z-4a96037fe3934d51bda4bf91c19e816e"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No application replacement, model-policy transplant, trader start/restart/order, provider request or new operating prerequisite. Each trader and nightly production remain independent.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T111725Z-27073d2030f74c3ca2e157f02502e187",
+  "source_sha": "60d98c876589f5fbf3c46e445391c66c5de396ce",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/commit/60d98c876589f5fbf3c46e445391c66c5de396ce",
+  "summary": "Score saved current-session targets before historical acquisition retries",
+  "tests": [
+    "Four pre-fix priority regressions reproduced across both participants. Final253 offline cases passed on implementation, sealed snapshot, managed source candidate and fresh common-main candidate with104 exact fingerprints.",
+    "Network and subprocess denied. Target timing, own actor/session, cold unrelated candle routing, native/source/availability/continuity, corruption, ancestry, concurrency and bounded warm-history routing retained.",
+    "Reviewed common-main publication completed at089fa5352cd963c487ea488dc343880e6217c0a9; both remote SHAs read back; PR388 is the closed source integration record, with no GitHub merge action."
+  ]
+}

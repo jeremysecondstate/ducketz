@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T11:24:06.943939Z",
+  "id": "20261026T112406Z-1800aa263f814d9ea889897b48d00333",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Score saved current-session targets before historical acquisition retries"
+}
