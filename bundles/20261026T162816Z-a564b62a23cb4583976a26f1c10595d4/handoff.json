@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T16:28:16.831793Z",
+  "id": "20261026T162816Z-a564b62a23cb4583976a26f1c10595d4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Reuse validated original sizing facts across independent worker restarts"
+}

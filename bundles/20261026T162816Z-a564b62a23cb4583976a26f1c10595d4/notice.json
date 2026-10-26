@@ -1,0 +1,43 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T161907Z-01118bac6def4383b9733ac36ead97cc",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/execution_intentions.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/sizing_header_cache.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_durable_sizing_headers.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_durable_sizing_headers.py"
+    }
+  ],
+  "limitations": [
+    "Offline tests establish guarded scalar reuse and unchanged source/projection evidence; affected natural live latency recovery remains unproved.",
+    "Optional local sidecar files remain private and are neither source publication nor authority to start a trader.",
+    "Installed and main use different existing module composition; both graphs require exact offline evidence."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Main keeps its existing separate execution-intentions subclass. Local composition installation must preserve that PC original graph, symbols, model recipes, source forecasts, probabilities, targets, execution state and manual controls. Optional private sizing sidecar proofs reduce repeated original-research decoding without changing scientific source or requiring a cache. Runtime loading and naturally affected latency recovery remain unproved; no trader start, restart, stop, replay, order, broker/provider or fitting operation is performed by source publication. Nightly work remains independent of source publication and peer acceptance.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T161907Z-01118bac6def4383b9733ac36ead97cc",
+  "source_sha": "ec3cabdd4c4c6e9bbf3edc246b2eea513220e30f",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/397",
+  "summary": "Reuse validated original sizing facts across independent worker restarts",
+  "tests": [
+    "Nineteen focused regression cases establish fresh-worker scalar reuse, exact-source mutation/replacement/schema/epoch rejection, authenticated-proof rejection, optional-cache fallback and concurrent changes while preserving original bytes and projections.",
+    "All117portable offline cases passed implementation, immutable snapshot, managed source and fresh main on114exactfingerprints and110raw-base dependencies. Independent review and root whole-diff review passed;232committed-byte, test-attestation and remote-readback checks verified source ec3cabdd4c4c6e9bbf3edc246b2eea513220e30f and main 1d4e7ee4e9a003b633fad0ce34f92c001ce2f951.",
+    "Separate reviewed Atlas installed local composition passed221offline cases on115exact imported fingerprints. This is separate from main source and runtime loading."
+  ]
+}
