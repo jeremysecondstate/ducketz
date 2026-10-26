@@ -191,7 +191,7 @@ def test_optional_aggregate_failure_uses_canonical_reads_in_original_order(ledge
             return ({"malformed": "not json", "shape": "[1]", "missing_field": '[{"id":"own-0"}]'}[failure],)
     class Connection:
         def execute(self, sql, *parameters):
-            if "json_group_array" in sql:
+            if "json_group_array" in sql and "FROM reservations" in sql:
                 optional_calls.append(sql)
                 if failure == "unsupported": raise sqlite3.OperationalError("synthetic unsupported JSON aggregate")
                 return Cursor()
@@ -209,7 +209,7 @@ def test_aggregate_error_that_loses_transaction_cannot_fall_back_without_fence(l
     add(db, 0); db.commit(); before = state(db); points = []
     class Connection:
         def execute(self, sql, *parameters):
-            if "json_group_array" in sql:
+            if "json_group_array" in sql and "FROM reservations" in sql:
                 db.rollback()
                 raise sqlite3.OperationalError("synthetic transaction ended")
             if sql.startswith("SELECT * FROM reservations WHERE id="): points.append(parameters)

@@ -1285,7 +1285,28 @@ class AccountAuthority:
         reservation_references = None
         reservation_batch_unavailable = False
         with _receipt_phase(timings, "receipt_read"):
-            receipts = db.execute("SELECT * FROM submission_receipts ORDER BY rowid").fetchall()
+            try:
+                # Return the frozen inventory in one SQLite result row instead
+                # of one Python/SQLite handoff per historical receipt. Payload
+                # remains opaque text; canonical receipt validation still runs
+                # for every entry, in exactly the original rowid order.
+                raw_receipts = db.execute(
+                    "SELECT json_group_array(json_object('reservation',reservation,"
+                    "'broker_id',broker_id,'receipt_id',receipt_id,"
+                    "'received_at',received_at,'payload',payload)) "
+                    "FROM (SELECT * FROM submission_receipts ORDER BY rowid)").fetchone()[0]
+                receipts = json.loads(raw_receipts)
+                fields = {"reservation", "broker_id", "receipt_id", "received_at", "payload"}
+                if (not isinstance(receipts, list)
+                        or any(not isinstance(item, dict) or set(item) != fields for item in receipts)):
+                    raise ValueError("Irregular optional receipt inventory")
+            except (sqlite3.Error, TypeError, ValueError, UnicodeError):
+                # Unsupported JSON, BLOB/invalid text and irregular optional
+                # results use the original read and its exact type semantics.
+                # Never fall back after a failed read has lost the held fence.
+                if not getattr(db, "in_transaction", True):
+                    raise
+                receipts = db.execute("SELECT * FROM submission_receipts ORDER BY rowid").fetchall()
         for raw in receipts:
             with _receipt_phase(timings, "receipt_validate"):
                 receipt = self._submission_receipt_value(raw)
@@ -1430,7 +1451,20 @@ class AccountAuthority:
                     now, _ = self._lease(db,token)
                     status = "NOT_SUBMITTED" if isinstance(exc, SubmissionNotStarted) and not gate_called else "UNKNOWN"
                     db.execute("UPDATE reservations SET status=? WHERE id=? AND status='SUBMITTING'", (status,reservation_id))
-                    self._event(db,now,"submission-" + status.lower(),{"reservation_id":reservation_id})
+                    evidence = {"reservation_id": reservation_id}
+                    if status == "UNKNOWN":
+                        # Type and local gate progress explain the failure
+                        # boundary without retaining exception messages. They
+                        # never establish acceptance or audited no-send proof.
+                        error_type = "BaseException"
+                        try:
+                            name = type(exc).__name__
+                            if type(name) is str and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,63}", name):
+                                error_type = name
+                        except BaseException:
+                            pass  # Optional diagnostics preserve the original exception.
+                        evidence.update(error_type=error_type, gate_called=gate_called)
+                    self._event(db,now,"submission-" + status.lower(),evidence)
                 definitely_unsubmitted = status == "NOT_SUBMITTED"
             except AuthorityError:
                 pass
