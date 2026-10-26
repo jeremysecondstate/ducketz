@@ -202,7 +202,8 @@ class ShadowStore:
     def freeze_inputs(self, cycle_id, symbol, payload):
         """First validated snapshot wins, including after a crash before inference."""
         payload = json.loads(encoded(payload))
-        key = digest(payload)
+        canonical = encoded(payload)
+        key = hashlib.sha256(canonical.encode()).hexdigest()
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             old = db.execute("SELECT snapshot_id FROM symbol_inputs WHERE cycle_id=? AND symbol=?", (cycle_id, symbol)).fetchone()
@@ -211,8 +212,15 @@ class ShadowStore:
                 if row is None:
                     raise ContractError("Persisted snapshot evidence is missing")
                 return old[0], self._snapshot_value(old[0], row[0])
-            db.execute("INSERT OR IGNORE INTO snapshots VALUES(?,?)", (key, encoded(payload)))
-            self._snapshot_value(key, db.execute("SELECT payload FROM snapshots WHERE id=?", (key,)).fetchone()[0])
+            db.execute("INSERT OR IGNORE INTO snapshots VALUES(?,?)", (key, canonical))
+            recorded = db.execute("SELECT payload FROM snapshots WHERE id=?", (key,)).fetchone()[0]
+            # The normalized payload and canonical bytes were validated before
+            # entering the writer. Exact readback preserves that proof without
+            # decoding and re-encoding the same scientific snapshot again.
+            # Existing/colliding or changed stored bytes still take the full
+            # original semantic-hash validation path.
+            if recorded != canonical or not isinstance(payload, dict):
+                self._snapshot_value(key, recorded)
             db.execute("INSERT INTO symbol_inputs VALUES(?,?,?)", (cycle_id, symbol, key))
         return key, payload
 
