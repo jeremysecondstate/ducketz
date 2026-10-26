@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T11:28:22.750358Z",
+  "id": "20261026T112822Z-9eb865f0e13448a2bbeff8eedb89e48e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Attribute receipt recovery delay inside own intraday lease diagnostics"
+}

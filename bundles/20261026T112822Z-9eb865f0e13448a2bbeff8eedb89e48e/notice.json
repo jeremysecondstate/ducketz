@@ -1,0 +1,46 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T112323Z-ea43465353264a9099afcfec1a7bd2b0",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/account_gameplan/authority.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_successful_lease_diagnostics.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_receipt_recovery_diagnostics.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_receipt_recovery_diagnostics.py"
+    }
+  ],
+  "limitations": [
+    "Diagnostic attribution repaired; underlying live receipt recovery latency remains unresolved.",
+    "New diagnostics not loaded by the already-running process; runtime exercise and recovery remain separate.",
+    "Main integration and peer installation are not established."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/389",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Five reviewed source/test hunks installed locally; unrelated source, local bindings, original execution state and manual controls preserved. A future human-controlled source load is needed for new telemetry; no start, restart, order, provider call or operating gate.",
+  "scope": "shared",
+  "source_sha": "5e1623f742c18a111848a3a787919eb0c4eaaf70",
+  "summary": "Attribute receipt recovery delay inside own intraday lease diagnostics",
+  "tests": [
+    "139 passed in 18.12s on sealed source; 139 passed in 16.95s on reviewed isolated candidate; 139 passed in 17.69s on installed composition bound to118source/test paths.",
+    "Network-denied fixtures cover every receipt outcome, rollback, optional clocks, deep-copy privacy, exact connection and attempt binding, and unchanged SQL."
+  ]
+}
