@@ -1,0 +1,302 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261026T222317Z-1944abef9809489f85a8623eabb9d6ea",
+  "change_details": [
+    "Actor Scout; task independent fifteen-minute journal/native-send correctness and final diagnostic regression coverage. Shared source applies where the Scout executor is used; scientific recipes and private operating bindings stay local.",
+    "Hash the already fully protocol-validated canonical JSON bytes once per stored row, preserving full historical audits, corruption rejection, finite/integer/UTF8 bounds and exception behavior without row caching.",
+    "Only the exact frozen native sender without any instance shadow omits the redundant outer gate. Keep the complete synchronous before-POST gate; opaque/custom/overridden/inherited senders retain original outer behavior and uncertainty.",
+    "A separate follow-up aligns stale native diagnostic fixture hooks with actual authorization read four and proves inclusive boundary advancement and all five reads. Production source remains the original six reviewed repair paths."
+  ],
+  "change_id": "20261026T222317Z-1944abef9809489f85a8623eabb9d6ea",
+  "checks": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_checked_json_bytes.py",
+        "tests/test_intraday_scout_journal.py",
+        "tests/test_intraday_scout_paired_recovery.py",
+        "tests/test_intraday_scout_periodic_paired_recovery.py",
+        "tests/test_intraday_scout_session_books.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T22:23:42.978622Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "db472440c6e5cc367ae43b549a4fdf193ba69dd2ee2da8bb8b2c5dc4bd103b41",
+      "output_sha256": "f26e98d8f8c21ba2d5d17b647688a4ba4a69e43aa32b1f4a5cfe63f247ade2a0",
+      "passed": 253,
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-26T22:23:17.843169Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_native_send_gate.py",
+        "tests/test_intraday_initial_gate_clearance.py",
+        "tests/test_intraday_pretransport_clearance.py",
+        "tests/test_intraday_scout_broker.py",
+        "tests/test_intraday_scout_client.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_intraday_scout_initial_local_window.py",
+        "tests/test_intraday_local_evidence_freshness_diagnostics.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T22:26:10.595855Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "62638e036ee5a05a7ffcebc45c953052c435fb8f3e10dd82641fed659a3ef3cf",
+      "output_sha256": "135fa92af2436b98a609eb63e394bee5cb73fa8db479c616261535b05aa56f2e",
+      "passed": 790,
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-26T22:23:43.183286Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_stock_direction_policy.py",
+        "tests/test_intraday_starter_sizing.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T22:26:13.922937Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "0dd945154645ad08f84d547105b03b13df9eb3b032bb4d0aa0896abd4bc38eae",
+      "output_sha256": "2299f65997c37cf405fd598328b4852bdcf615da35c097fc24e2f1b3c67374f2",
+      "passed": 55,
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-26T22:26:10.827451Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_checked_json_bytes.py",
+        "tests/test_intraday_scout_journal.py",
+        "tests/test_intraday_scout_paired_recovery.py",
+        "tests/test_intraday_scout_periodic_paired_recovery.py",
+        "tests/test_intraday_scout_session_books.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T22:29:40.988117Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "db472440c6e5cc367ae43b549a4fdf193ba69dd2ee2da8bb8b2c5dc4bd103b41",
+      "output_sha256": "192472c4fa0d6e984e44dc8d96a6f0c8be7acd0cb2d3da3ed17385bb76dc467c",
+      "passed": 253,
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-26T22:29:15.807016Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_native_send_gate.py",
+        "tests/test_intraday_initial_gate_clearance.py",
+        "tests/test_intraday_pretransport_clearance.py",
+        "tests/test_intraday_scout_broker.py",
+        "tests/test_intraday_scout_client.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_intraday_scout_initial_local_window.py",
+        "tests/test_intraday_local_evidence_freshness_diagnostics.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T22:32:10.124261Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "62638e036ee5a05a7ffcebc45c953052c435fb8f3e10dd82641fed659a3ef3cf",
+      "output_sha256": "7aca7644e51e63dfd9ac52b1c6551304a202d9ab9d45fbc80361ee208a5c7604",
+      "passed": 790,
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-26T22:29:41.172442Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_stock_direction_policy.py",
+        "tests/test_intraday_starter_sizing.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T22:32:13.668624Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "0dd945154645ad08f84d547105b03b13df9eb3b032bb4d0aa0896abd4bc38eae",
+      "output_sha256": "abf048b1ba4ca5b761692e82706c10903fe128a7d5f2d97829a41e6581fed2e9",
+      "passed": 55,
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-26T22:32:10.364125Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_checked_json_bytes.py",
+        "tests/test_intraday_scout_journal.py",
+        "tests/test_intraday_scout_paired_recovery.py",
+        "tests/test_intraday_scout_periodic_paired_recovery.py",
+        "tests/test_intraday_scout_session_books.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T22:35:02.916443Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "db472440c6e5cc367ae43b549a4fdf193ba69dd2ee2da8bb8b2c5dc4bd103b41",
+      "output_sha256": "36d622e3178aaa700c90c637ffafc67229f220a86d2e12d76082572f06d225e8",
+      "passed": 253,
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-26T22:34:37.184031Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_native_send_gate.py",
+        "tests/test_intraday_initial_gate_clearance.py",
+        "tests/test_intraday_pretransport_clearance.py",
+        "tests/test_intraday_scout_broker.py",
+        "tests/test_intraday_scout_client.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_intraday_scout_initial_local_window.py",
+        "tests/test_intraday_local_evidence_freshness_diagnostics.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T22:37:36.239388Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "62638e036ee5a05a7ffcebc45c953052c435fb8f3e10dd82641fed659a3ef3cf",
+      "output_sha256": "c6fb38ca31b6fcb74360ffaa7e798c038e7aef371f4997afad96fbf910fb107a",
+      "passed": 790,
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-26T22:35:03.124397Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_stock_direction_policy.py",
+        "tests/test_intraday_starter_sizing.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T22:37:39.441618Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "0dd945154645ad08f84d547105b03b13df9eb3b032bb4d0aa0896abd4bc38eae",
+      "output_sha256": "c085acddea3a4e857ed832d13fdf9ec1b7d58142337c4a97c9e7e237b0efa37c",
+      "passed": 55,
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-26T22:37:36.433748Z"
+    }
+  ],
+  "file_sha256": {
+    "ml/intraday/scout_broker.py": "c6f5de844bac4426ae92ca127969a95cecf22ff257b6b446cdd4d979750f053f",
+    "ml/intraday/scout_journal.py": "e57dd3dcf22e9396ecfe1b6514344f56638a5cd595636ab15162d869334caddb",
+    "tests/test_intraday_initial_gate_clearance.py": "2a3c69fc7ab81b10ed36ced1e20c8bc005e34813f790e697c8b0b957392f2bc2",
+    "tests/test_intraday_local_evidence_freshness_diagnostics.py": "674ca9ea67af133fde4e878e65846fd0340ee2a7df675c89ab15af04896dd0b3",
+    "tests/test_intraday_pretransport_clearance.py": "e208b2f08d00ceab30e06ee42119bb7fa3044a966add654eb411b52e56756069",
+    "tests/test_intraday_scout_checked_json_bytes.py": "a624bb3b90e025b637b5bcd4e555b35978d7bee6abd86f707970ca092ff6dded",
+    "tests/test_intraday_scout_native_send_gate.py": "d16f57e5a8fab16e79fcd234f1873f6c10cb47e4e84e9d82baa31522f22a4b6c"
+  },
+  "files": [
+    "ml/intraday/scout_journal.py",
+    "ml/intraday/scout_broker.py",
+    "tests/test_intraday_scout_checked_json_bytes.py",
+    "tests/test_intraday_scout_native_send_gate.py",
+    "tests/test_intraday_initial_gate_clearance.py",
+    "tests/test_intraday_pretransport_clearance.py",
+    "tests/test_intraday_local_evidence_freshness_diagnostics.py"
+  ],
+  "limitations": [
+    "Offline synthetic checks do not prove affected production recovery or latency. Full-history audit complexity remains quadratic; this removes repeated constant work only.",
+    "The original publication and its sixteen-module checks remain historical stages. Final seventeen-module evidence is newly generated; no claim is made that earlier tests covered the later fixture correction."
+  ],
+  "linked_publications": [
+    {
+      "completion_record": "20261026T215830Z-f90b808e9f6043049b4ce2fa1ce34827",
+      "files": [
+        "ml/intraday/scout_journal.py",
+        "ml/intraday/scout_broker.py",
+        "tests/test_intraday_scout_checked_json_bytes.py",
+        "tests/test_intraday_scout_native_send_gate.py",
+        "tests/test_intraday_initial_gate_clearance.py",
+        "tests/test_intraday_pretransport_clearance.py"
+      ],
+      "main_sha": "c231780198a56a8ecdf94ef0ac14e4a87080c5bb",
+      "original_stages_preserved": true,
+      "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/412",
+      "source_sha": "4fe34ea73eb413758fbd06117871b28b6dc2b08a"
+    },
+    {
+      "completion_record": "20261026T222317Z-1944abef9809489f85a8623eabb9d6ea",
+      "files": [
+        "tests/test_intraday_local_evidence_freshness_diagnostics.py"
+      ],
+      "main_sha": "fe67cb4c2729e250d7bc21e943065173c30b93b5",
+      "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/414",
+      "source_sha": "2fe6e7e195ce02a6bfeee73fa3f17b06a74f80f1"
+    }
+  ],
+  "main_integration": {
+    "main_before": "6a74c27808b618fdbfd4a0d505e4f43760b3cc8a",
+    "main_sha": "fe67cb4c2729e250d7bc21e943065173c30b93b5",
+    "record_id": "20261026T222317Z-1944abef9809489f85a8623eabb9d6ea",
+    "stage": "main_integrated",
+    "verified_remote_sha": "fe67cb4c2729e250d7bc21e943065173c30b93b5"
+  },
+  "operations": {
+    "ml/intraday/scout_broker.py": "modify",
+    "ml/intraday/scout_journal.py": "modify",
+    "tests/test_intraday_initial_gate_clearance.py": "modify",
+    "tests/test_intraday_local_evidence_freshness_diagnostics.py": "modify",
+    "tests/test_intraday_pretransport_clearance.py": "modify",
+    "tests/test_intraday_scout_checked_json_bytes.py": "add",
+    "tests/test_intraday_scout_native_send_gate.py": "add"
+  },
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/414",
+  "pull_request_created_as_draft": true,
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source publication, local installation, code loading and affected observation are separate. Earlier startup-imported production changes require human-controlled reload when not yet loaded; the regression-only follow-up adds no extra restart requirement. Preserve broker capacity, private recipes, order identity and idempotency; no trader controls or orders are issued for verification.",
+  "scope": "shared",
+  "source_sha": "2fe6e7e195ce02a6bfeee73fa3f17b06a74f80f1",
+  "summary": "Scout canonical journal bytes and exact native send guards validated with final phase coverage",
+  "tests": [
+    "Final source queue, fresh isolated candidate and fresh main candidate each passed1098 offline checks across17 whole modules; repeated stage counts overlap.",
+    "All157 final source/dependency fingerprints and candidate imports verified. The original six integrated repair paths are exact dependencies of the one-file diagnostic regression follow-up.",
+    "Native phase tests retain exact account/quote ages, failed-input masks, UNKNOWN identities, no-POST receipt provenance and no replay; inclusive zero/sixty-second boundaries now prove their actual injection seam ran."
+  ]
+}
