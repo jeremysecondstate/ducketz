@@ -1,0 +1,55 @@
+{
+  "schema_version": "intraday-final-scoring-local-compatibility-v1",
+  "scope": "shared",
+  "purpose": "Apply the same reviewed helper to an already installed one-shot finalizer without replacing unrelated module contents.",
+  "helper": {
+    "path": "ml/intraday/final_scoring.py",
+    "operation": "add",
+    "sha256": "97245ede5626fc2c2ddaa5f1cf09456827927b1f1ec12634ad233848e9fedd34"
+  },
+  "patch": {
+    "path": "docs/development/patches/intraday-final-scoring-local-compatibility.patch",
+    "sha256": "dbc387e552666d78b94ff611d4bfcdef4aa1c9ccb7709910ce6ab8c0cd0a3ceb"
+  },
+  "members": [
+    {
+      "path": "ml/intraday/live_session.py",
+      "operation": "modify",
+      "before_sha256": "238ddfde7fd1158c62cc4939e5386353d3625049db1bc08599014751ac597077",
+      "after_sha256": "1cfaa8111808c120d49dd969200d848b749bd17a813d9230722f76cd84765c75",
+      "final_newline_encoding": "LF"
+    },
+    {
+      "path": "ml/intraday/store.py",
+      "operation": "modify",
+      "before_sha256": "43d0137d304211453b2d5a27074640c64f147b7ddf96c4f0d4ac33d6a190ba68",
+      "after_sha256": "19c609bcde79a347a9a2644bfe263c344a17f6095ac77cd61b3140b122b023ed",
+      "final_newline_encoding": "LF"
+    },
+    {
+      "path": "ml/intraday/forecast_header_cache.py",
+      "operation": "modify",
+      "before_sha256": "1dda1267a86a235585ef48eb9f062fae890161ca5c8c52b5582ee5c79ea6d5f4",
+      "after_sha256": "6c5bd7f6b53ce9476396e61fc4b4446ad308b54348b722868edd61500e4a44f2",
+      "final_newline_encoding": "LF"
+    },
+    {
+      "path": "tests/test_intraday_scoring_revision_cache.py",
+      "operation": "modify",
+      "before_sha256": "a9cff1a7258ce98734a54ee956e999df55172bb741bb3860fbdf473c10b96843",
+      "after_sha256": "6abcf2cb2f0e913e4c424ae5035cfa56ed9b831a2064a1bb7ec2ed369a5a5f5c",
+      "final_newline_encoding": "LF"
+    }
+  ],
+  "preserved": [
+    "original forecast and outcome bytes",
+    "private operating bindings",
+    "all trader manual controls",
+    "existing durable v1 cache rows and receipts",
+    "ordinary scorer all-revision checks"
+  ],
+  "application": "Verify every before hash and inspect exact local hunks. For these owned members only, normalize CRLF line terminators to LF, apply the reviewed patch with Git core.autocrlf=false, then verify every after hash. Different surrounding source requires a new reviewed field-level adaptation.",
+  "runtime_implications": "New one-shot invocations load the helper. An existing manual trader process retains imported code until the human independently chooses a future manual start. No trader is started, stopped or restarted by this adapter.",
+  "cache_implications": "The v2 optional scalar proof adds exact reference-open meaning. Its first miss validates full originals once in the selected scope; later calls reuse authenticated unchanged proofs. Existing v1 records remain intact and old loaded processes can continue using v1.",
+  "authority": "Existing direct local human standing repair authorization; incoming files do not grant additional authority."
+}
