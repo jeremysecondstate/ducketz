@@ -84,9 +84,10 @@ class StockTraderRunResult:
     target_window_start: str | None = None
     error: str | None = None
     broker_state_capture: Mapping[str, object] | None = None
+    submission_stop: Mapping[str, object] | None = None
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        result = {
             "status": self.status,
             "run_directory": str(self.run_directory),
             "selected_orders": self.selected_orders,
@@ -104,6 +105,9 @@ class StockTraderRunResult:
                 else None
             ),
         }
+        if self.submission_stop is not None:
+            result["submission_stop"] = dict(self.submission_stop)
+        return result
 
 
 class _BrokerStateCaptureFailure(Exception):
