@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T18:44:46.142713Z",
+  "id": "20261026T184446Z-a205c92173fa48f787f0fee561a03923",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Reuse native source clock proofs and canonical recovery evidence"
+}

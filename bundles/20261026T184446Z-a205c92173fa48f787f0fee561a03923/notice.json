@@ -1,0 +1,68 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T183305Z-c9b634c253c04ac0a422a30877f52d86",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/intraday-source-row-validation.patch"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-source-row-validation-adapter.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_source_row_validation_adapter.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_source_row_validation_adapter.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/fixtures/intraday_source_row_validation/coverage-before.py.txt"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/fixtures/intraday_source_row_validation/recovery-before.py.txt"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/fixtures/intraday_source_row_validation/native-support.py.txt"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/fixtures/intraday_source_row_validation/inputs.py.txt"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/fixtures/intraday_source_row_validation/manifest.json"
+    }
+  ],
+  "limitations": [
+    "No process-loaded or naturally affected full latency recovery claim. Original historical incident and unidentified broker commitment remain protected.",
+    "The complete operating source-population/provider stack is absent from this main base; exact compatibility patches and authentic pure offline fixtures are published without bulkadding that stack."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas exacttwofunction local adaptation is installed and offline verified. Existing local population/model policy, native controls, data, source hashes, original values and unrelated writers remain intact. A future Jeremy-chosen ordinary manual15m start loads installed source; no automatic trader control, replay, order, fitting, cross-trader or nightly prerequisite.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T183305Z-c9b634c253c04ac0a422a30877f52d86",
+  "source_sha": "885c05d1644e24dc58d898dce38ba3f5af9c96da",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/404",
+  "summary": "Reuse native source clock proofs and canonical recovery evidence",
+  "tests": [
+    "106 portable offline cases passed reviewed source, sealed queue, isolated candidate and fresh main on16fingerprints/sevenexactrawdependencies.34authentic source fragments and exact patch reconstruction were independently verified.",
+    "546 final local candidate and546actualinstalled cases PASS;38 actual installed source imports remained exact and network/subprocess IO was denied.108 additional independent adversarial comparisons passed.",
+    "All24284retained original candle decisions and the complete original saved sizing payload match. Native duration and clock validation and canonical expected serialization remove repeated work without dropping evidence checks.",
+    "Verified source885c05d1644e24dc58d898dce38ba3f5af9c96da and main7a66bdb12e3a0e89c6ddc806cd5c006f0f48261f by pinned procedures and remote SHA readback; prior original publications/recipes/manual controls preserved."
+  ]
+}
