@@ -317,8 +317,49 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
         raise ContractError("Explicit Atlas or Scout scoring participant required")
     audited = set()
     forecasts = ScoringForecastReader(store, pc=pc)
+    session_forecasts = ScoringForecastReader(store, pc=pc, session_id=session_id)
     candles = ScoringCandleReader(store, stopped=stopped)
+
+    def drain_retained_targets():
+        """Score this session's saved targets before historical acquisition."""
+        if stopped():
+            return
+        as_of = clock()
+        current = [forecast for forecast in session_forecasts
+            if forecast["mode"] == "live" and instant(forecast["target_close"]) <= instant(as_of)]
+        targets = {(forecast["symbol"], instant(forecast["target_open"])) for forecast in current}
+        ready = {}
+        for selection in candles.iter_targets(targets):
+            if stopped():
+                return
+            candle = selection['candle']
+            if (selection['actual'] and selection['continuity_verified'] and selection['completed']
+                    and instant(candle['available_at']) <= instant(as_of)):
+                ready.setdefault((candle['symbol'], instant(candle['opened_at'])), []).append(selection)
+        for forecast in current:
+            if stopped():
+                return
+            observed = next((row for row in reversed(ready.get(
+                (forecast['symbol'], instant(forecast['target_open'])), []))
+                if all(not forecast.get(field) or row['candle'].get(field) == forecast[field]
+                       for field in ('source_dataset', 'source_id'))
+                and candles.matches(row, forecast)), None)
+            if observed is None:
+                continue
+            revisions = store.revisions(forecast['forecast_id'])
+            if _outcome_already_observed(forecast, observed['candle'], revisions, as_of=as_of,
+                                        verified_candle_id=observed['candle_id']):
+                continue
+            original_candle = candles.original(observed)
+            original_forecast = session_forecasts.original(forecast)
+            if stopped():
+                return
+            store.observe(original_forecast, as_of=as_of, candle=original_candle, skip_newer=True)
+
     while not stopped():
+        drain_retained_targets()
+        if stopped():
+            return
         observed_candidates = {}
         for selection in candles:
             if stopped():
@@ -365,13 +406,16 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                     original_forecast = forecasts.original(forecast)
                     if stopped():
                         return
-                    store.observe(original_forecast,as_of=clock(),candle=original_candle)
+                    store.observe(original_forecast,as_of=clock(),candle=original_candle,skip_newer=True)
                 continue
             if revisions and revisions[-1]["status"] in {"scored", "synthetic", "unscorable"}:
                 continue
             symbol = forecast["symbol"]
             if symbol not in histories:
                 continue
+            drain_retained_targets()
+            if stopped():
+                return
             incoming = (history_source(forecast["target_open"]) if history_source is not None else
                         LiveHistories(histories=dict(histories),provider=provider,store=store,journal=journal,
                                       reference_at=forecast["target_open"],clock=clock,sleep=pause,bounded=True,stopped=stopped))
@@ -393,7 +437,7 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                 original_forecast = forecasts.original(forecast)
                 if stopped():
                     return
-                store.observe(original_forecast,as_of=clock(),candle=_jsonable(match.iloc[-1].to_dict()))
+                store.observe(original_forecast,as_of=clock(),candle=_jsonable(match.iloc[-1].to_dict()),skip_newer=True)
             except InterruptedError:
                 if stopped():
                     return
@@ -403,6 +447,8 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                     return
                 store.event(session_id,"target_scoring_retry",{"forecast_id":forecast["forecast_id"],
                     "error_type":type(exc).__name__,"message":str(exc)},symbol=symbol)
+            finally:
+                drain_retained_targets()
         pause(3)
 
 

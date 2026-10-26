@@ -541,8 +541,12 @@ class ShadowStore:
                 result.append(value)
         return result
 
-    def observe(self, forecast, *, as_of, candle=None, unavailable_reason=None):
-        """Append corrected outcomes; repeated identical evidence is idempotent."""
+    def observe(self, forecast, *, as_of, candle=None, unavailable_reason=None, skip_newer=False):
+        """Append corrected outcomes; repeated identical evidence is idempotent.
+
+        A concurrent scorer may opt to retain an already validated newer
+        observation. Ordinary callers keep the strict no-backdating contract.
+        """
         now = instant(as_of)
         key = forecast["forecast_id"]
         with self.connect() as db:
@@ -585,6 +589,8 @@ class ShadowStore:
             prior = db.execute("SELECT id,forecast_id,observed_at,payload FROM outcomes WHERE forecast_id=? ORDER BY rowid DESC LIMIT 1", (key,)).fetchone()
             previous = self._outcome_value(prior) if prior else None
             if previous and instant(previous["observed_at"])>now:
+                if skip_newer:
+                    return None
                 raise ContractError("Outcome evidence cannot be backdated before an existing observation")
             if previous and candle is None and previous["status"] in {"scored", "synthetic", "unscorable"}:
                 return previous
@@ -659,10 +665,11 @@ class ScoringForecastReader:
                "mode", "target_open", "target_close", "reference_open", "source_dataset",
                "source_id", "feature_version", "native_interval_contract")
 
-    def __init__(self, store, *, pc):
+    def __init__(self, store, *, pc, session_id=None):
         if pc not in {"Atlas", "Scout"}:
             raise ContractError("Explicit scoring participant required")
         self.store, self.pc = store, pc
+        self.session_id = session_id
         self._cache = {}
         self._cache_bytes = 0
 
@@ -685,8 +692,14 @@ class ScoringForecastReader:
 
     def __iter__(self):
         with self.store.connect() as db:
-            rows = db.execute("SELECT rowid,id,pc,symbol,cycle_id,reference_at,issued_at "
-                              "FROM forecasts WHERE pc=? ORDER BY rowid", (self.pc,)).fetchall()
+            if self.session_id is None:
+                rows = db.execute("SELECT rowid,id,pc,symbol,cycle_id,reference_at,issued_at "
+                                  "FROM forecasts WHERE pc=? ORDER BY rowid", (self.pc,)).fetchall()
+            else:
+                rows = db.execute("SELECT f.rowid,f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at "
+                    "FROM forecasts f JOIN cycles c ON c.id=f.cycle_id WHERE f.pc=? AND c.pc=? "
+                    "AND json_extract(c.payload,'$.experiment')=? ORDER BY f.rowid",
+                    (self.pc, self.pc, self.session_id)).fetchall()
         present = {row[1] for row in rows}
         for identity in self._cache.keys() - present:
             self._discard(identity)
