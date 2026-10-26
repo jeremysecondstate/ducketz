@@ -249,3 +249,67 @@ def test_path_replacement_during_batch_invalidates_snapshot_proof(tmp_path, monk
         assert intents._recovery_row_highwater <= highwater
     finally:
         store.path = original_path
+
+
+@pytest.mark.parametrize("operation", ["batch", "single"])
+@pytest.mark.parametrize("boundary", ["before_forecast_read", "before_sizing_reader"])
+def test_open_connection_cannot_adopt_replaced_sizing_source(tmp_path, monkeypatch, boundary, operation):
+    import shutil
+    store, originals, intents, groups, _ = fixture(tmp_path)
+    before = projection_rows(store)
+    highwater = intents._recovery_row_highwater
+    original_path = store.path
+    replacement = tmp_path / "replacement.sqlite3"
+    shutil.copyfile(original_path, replacement)
+    key = originals[-1][0]["forecast_id"]
+    db = sqlite3.connect(replacement)
+    try:
+        with db:
+            db.execute("UPDATE intraday_intentions SET payload='{}' WHERE forecast_id=?", (key,))
+    finally:
+        db.close()
+    original_read = store._revision_forecast_headers
+    switched = []
+    def read(*args, **kwargs):
+        if boundary == "before_forecast_read":
+            store.path = replacement
+            switched.append(True)
+        result = original_read(*args, **kwargs)
+        if boundary == "before_sizing_reader":
+            store.path = replacement
+            switched.append(True)
+        return result
+    monkeypatch.setattr(store, "_revision_forecast_headers", read)
+    try:
+        with pytest.raises(ContractError, match="source identity changed"):
+            if operation == "batch":
+                run(intents, groups)
+            else:
+                intents.record_recovery_group(key, actor="Atlas", observations=groups[key])
+        assert switched
+    finally:
+        store.path = original_path
+    assert projection_rows(store) == before
+    assert intents._recovery_row_highwater <= highwater
+
+
+@pytest.mark.parametrize("operation", ["batch", "single"])
+def test_unknown_opened_source_retains_original_full_validation(tmp_path, monkeypatch, operation):
+    store, originals, intents, groups, expected = fixture(tmp_path)
+    original_connect = store.connect
+    @contextmanager
+    def unknown_source():
+        with original_connect() as db:
+            store._connection_source_identities[id(db)] = None
+            yield db
+    monkeypatch.setattr(store, "connect", unknown_source)
+    key = originals[-1][0]["forecast_id"]
+    def invoke():
+        if operation == "batch":
+            return run(intents, groups)
+        return intents.record_recovery_group(key, actor="Atlas", observations=groups[key])
+    assert invoke() == (expected if operation == "batch" else expected[key])
+    with store.connect() as db:
+        db.execute("UPDATE intraday_intentions SET payload='{}' WHERE forecast_id=?", (key,))
+    with pytest.raises(ContractError):
+        invoke()
