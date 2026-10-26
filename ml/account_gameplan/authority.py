@@ -18,6 +18,7 @@ execution-window checks, and invoke the supplied gate immediately before POST.
 from __future__ import annotations
 
 from contextlib import closing, contextmanager
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
@@ -47,6 +48,118 @@ class AuthorityError(ValueError):
     pass
 
 
+_RECEIPT_RECOVERY_CONTEXT = ContextVar("receipt_recovery_diagnostics", default=None)
+_RECEIPT_PHASES = ("receipt_read", "receipt_validate", "reservation_read", "scope_validate", "projection")
+_RECEIPT_METRICS = ("count", "elapsed_count", "total_seconds", "maximum_seconds",
+                    "thread_cpu_count", "thread_cpu_total_seconds", "thread_cpu_maximum_seconds")
+
+
+class _ReceiptRecoveryTimings:
+    """Fixed aggregate work seams; elapsed time alone does not identify SQL waits."""
+    def __init__(self, acquisition, connection, attempt):
+        self.acquisition, self.connection, self.attempt = acquisition, connection, attempt
+        self.phases = {name: dict.fromkeys(_RECEIPT_METRICS, 0) for name in _RECEIPT_PHASES}
+        self.unavailable = self.cpu_unavailable = False
+
+    def clock(self, name):
+        try:
+            value = getattr(time, name)()
+            if type(value) in {int, float} and math.isfinite(value):
+                return value
+        except Exception:
+            pass
+        if name == "thread_time":
+            self.cpu_unavailable = True
+        else:
+            self.unavailable = True
+        return None
+
+    @contextmanager
+    def measure(self, stage):
+        # Both entry and exit diagnostics are optional, including on an error.
+        started = cpu = None
+        try:
+            self.phases[stage]["count"] += 1
+            started, cpu = self.clock("monotonic"), self.clock("thread_time")
+        except Exception:
+            self.unavailable = True
+        try:
+            yield
+        finally:
+            try:
+                ended, cpu_end = self.clock("monotonic"), self.clock("thread_time")
+                for first, last, prefix, count in ((started, ended, "", "elapsed_count"),
+                        (cpu, cpu_end, "thread_cpu_", "thread_cpu_count")):
+                    if first is None or last is None or last < first or not math.isfinite(last-first):
+                        if prefix:
+                            self.cpu_unavailable = True
+                        else:
+                            self.unavailable = True
+                        continue
+                    phase = self.phases[stage]
+                    total = phase[prefix + "total_seconds"] + last-first
+                    if not math.isfinite(total):
+                        self.unavailable = True
+                        continue
+                    phase[count] += 1
+                    phase[prefix + "total_seconds"] = total
+                    phase[prefix + "maximum_seconds"] = max(phase[prefix + "maximum_seconds"], last-first)
+            except Exception:
+                self.unavailable = True
+
+    def snapshot(self):
+        return dict(attempt=self.attempt, diagnostics_unavailable=self.unavailable,
+                    thread_cpu_unavailable=self.cpu_unavailable,
+                    phases={name: {key: round(value, 6) if type(value) is float else value
+                                   for key, value in phase.items()}
+                            for name, phase in self.phases.items()})
+
+
+def receipt_recovery_details_evidence(evidence):
+    """Copy only bounded fixed-schema diagnostics, never database or account values."""
+    try:
+        details = evidence.get("receipt_recovery_details")
+        if not isinstance(details, dict) or details.get("schema_version") != "single-host-receipt-recovery-details-v1":
+            return None
+        output = []
+        attempts = details["attempts"]
+        if not isinstance(attempts, list) or not 1 <= len(attempts) <= 3:
+            return None
+        for item in attempts:
+            if type(item["attempt"]) is not int or not 1 <= item["attempt"] <= 3:
+                return None
+            copied = {"attempt": item["attempt"]}
+            for flag in ("diagnostics_unavailable", "thread_cpu_unavailable"):
+                if type(item[flag]) is not bool:
+                    return None
+                copied[flag] = item[flag]
+            copied["phases"] = {}
+            for name in _RECEIPT_PHASES:
+                phase = item["phases"][name]
+                values = {}
+                for key in _RECEIPT_METRICS:
+                    value = phase[key]
+                    if (type(value) not in {int, float} or not math.isfinite(value) or value < 0
+                            or (key.endswith("count") and type(value) is not int)):
+                        return None
+                    values[key] = value
+                copied["phases"][name] = values
+            output.append(copied)
+        return {"schema_version": "single-host-receipt-recovery-details-v1", "attempts": output}
+    except Exception:
+        return None
+
+
+@contextmanager
+def _receipt_phase(timings, stage):
+    # A stale/different acquisition connection never receives these samples.
+    if timings is None:
+        yield
+    else:
+        with timings.measure(stage):
+            yield
+
+
 class _LeaseAcquisitionFailure:
     """Only acquisition's locally constructed timings cross diagnostic boundaries."""
     def __init__(self, evidence):
@@ -63,18 +176,35 @@ def lease_acquisition_success_evidence(authority, lease):
     saved = getattr(authority, "_lease_acquisition_success", None)
     if isinstance(saved, _LeaseAcquisitionSuccess) and saved.lease is lease:
         evidence = saved.evidence
-        return {"schema_version": "single-host-lease-acquisition-timings-v1",
-                **{key: evidence[key] for key in ("attempt", "stage", "elapsed_seconds",
-                    "stage_elapsed_seconds", "diagnostics_unavailable")},
-                "phases": [{key: item[key] for key in ("attempt", "stage", "elapsed_seconds")}
-                           for item in evidence["phases"][-20:]]}
+        result = {"schema_version": "single-host-lease-acquisition-timings-v1",
+                  **{key: evidence[key] for key in ("attempt", "stage", "elapsed_seconds",
+                      "stage_elapsed_seconds", "diagnostics_unavailable")},
+                  "phases": [{key: item[key] for key in ("attempt", "stage", "elapsed_seconds")}
+                             for item in evidence["phases"][-20:]]}
+        try:
+            details = receipt_recovery_details_evidence(evidence)
+            if details is not None:
+                result["receipt_recovery_details"] = details
+        except Exception:
+            result["diagnostics_unavailable"] = True
+        return result
     return None
 
 
 def lease_acquisition_failure_evidence(exc):
     saved = getattr(exc, "lease_acquisition_failure", None)
     if isinstance(saved, _LeaseAcquisitionFailure):
-        return {**saved.evidence, "phases": [dict(item) for item in saved.evidence["phases"]]}
+        result = {key: saved.evidence[key] for key in ("schema_version", "attempt", "stage",
+                  "elapsed_seconds", "stage_elapsed_seconds", "diagnostics_unavailable")}
+        result["phases"] = [{key: item[key] for key in ("attempt", "stage", "elapsed_seconds")}
+                            for item in saved.evidence["phases"][-20:]]
+        try:
+            details = receipt_recovery_details_evidence(saved.evidence)
+            if details is not None:
+                result["receipt_recovery_details"] = details
+        except Exception:
+            result["diagnostics_unavailable"] = True
+        return result
     return None
 
 
@@ -83,6 +213,7 @@ class _LeaseAcquisitionTrace:
         self.unavailable = False
         self.started = self.stage_started = self._now()
         self.stage, self.attempt, self.phases = "validation", 0, []
+        self.receipt_recoveries = []
 
     def _now(self):
         try:
@@ -112,11 +243,37 @@ class _LeaseAcquisitionTrace:
     def snapshot(self):
         now = self._now()
         elapsed, stage_elapsed = self._elapsed(now, self.started), self._elapsed(now, self.stage_started)
-        return {"schema_version": "single-host-lease-acquisition-timings-v1",
-                "attempt": self.attempt, "stage": self.stage,
-                "elapsed_seconds": elapsed, "stage_elapsed_seconds": stage_elapsed,
-                "phases": [dict(item) for item in self.phases],
-                "diagnostics_unavailable": self.unavailable}
+        result = {"schema_version": "single-host-lease-acquisition-timings-v1",
+                  "attempt": self.attempt, "stage": self.stage,
+                  "elapsed_seconds": elapsed, "stage_elapsed_seconds": stage_elapsed,
+                  "phases": [dict(item) for item in self.phases],
+                  "diagnostics_unavailable": self.unavailable}
+        try:
+            if self.receipt_recoveries:
+                result["receipt_recovery_details"] = {
+                    "schema_version": "single-host-receipt-recovery-details-v1",
+                    "attempts": [item.snapshot() for item in self.receipt_recoveries[-3:]]}
+        except Exception:
+            result["diagnostics_unavailable"] = True
+        return result
+
+    @contextmanager
+    def receipt_recovery(self, connection, attempt):
+        token = None
+        try:
+            timings = _ReceiptRecoveryTimings(self, connection, attempt)
+            self.receipt_recoveries.append(timings)
+            token = _RECEIPT_RECOVERY_CONTEXT.set(timings)
+        except Exception:
+            self.unavailable = True
+        try:
+            yield
+        finally:
+            if token is not None:
+                try:
+                    _RECEIPT_RECOVERY_CONTEXT.reset(token)
+                except Exception:
+                    self.unavailable = True
 
     def succeeded(self, authority, lease):
         try:
@@ -460,7 +617,8 @@ class AccountAuthority:
                     # already consumed by acquisition. Published expiry remains strict.
                     trace.advance("receipt_recovery", attempt)
                     current = self._now(db)
-                    self._recover_submission_receipts(db,current,lease.epoch)
+                    with trace.receipt_recovery(db, attempt):
+                        self._recover_submission_receipts(db,current,lease.epoch)
                     trace.advance("grant_timestamp", attempt)
                     granted = self._now(db)
                     lease = Lease(lease.token,lease.epoch,holder,
@@ -1009,41 +1167,52 @@ class AccountAuthority:
 
     def _recover_submission_receipts(self, db, now, epoch):
         """Caller must hold the current fence inside this same transaction."""
+        timings = _RECEIPT_RECOVERY_CONTEXT.get()
+        if not (isinstance(timings, _ReceiptRecoveryTimings) and timings.connection is db
+                and timings.acquisition.stage == "receipt_recovery"
+                and timings.acquisition.attempt == timings.attempt):
+            timings = None
         recovered = []
-        for raw in db.execute("SELECT * FROM submission_receipts ORDER BY rowid").fetchall():
-            receipt = self._submission_receipt_value(raw)
-            row = self._row(db,receipt["reservation_id"])
-            if (receipt["account_fingerprint"]!=self.binding["account_fingerprint"]
-                    or receipt["request_sha256"]!=_sha(json.loads(row["request"]))
-                    or receipt["submission_epoch"]>epoch or _time(receipt["received_at"])>now
-                    or _time(row["created"])>_time(receipt["submission_started_at"])):
-                raise AuthorityError("SUBMISSION_RECEIPT_SCOPE_OR_TIME_MISMATCH")
-            if receipt["outcome"]=="NOT_SUBMITTED":
-                if row["broker_id"] is not None or row["filled"]:
-                    raise AuthorityError("SUBMISSION_RECEIPT_STATE_CONFLICT")
-                if row["status"]=="NOT_SUBMITTED":
+        with _receipt_phase(timings, "receipt_read"):
+            receipts = db.execute("SELECT * FROM submission_receipts ORDER BY rowid").fetchall()
+        for raw in receipts:
+            with _receipt_phase(timings, "receipt_validate"):
+                receipt = self._submission_receipt_value(raw)
+            with _receipt_phase(timings, "reservation_read"):
+                row = self._row(db,receipt["reservation_id"])
+            with _receipt_phase(timings, "scope_validate"):
+                if (receipt["account_fingerprint"]!=self.binding["account_fingerprint"]
+                        or receipt["request_sha256"]!=_sha(json.loads(row["request"]))
+                        or receipt["submission_epoch"]>epoch or _time(receipt["received_at"])>now
+                        or _time(row["created"])>_time(receipt["submission_started_at"])):
+                    raise AuthorityError("SUBMISSION_RECEIPT_SCOPE_OR_TIME_MISMATCH")
+            with _receipt_phase(timings, "projection"):
+                if receipt["outcome"]=="NOT_SUBMITTED":
+                    if row["broker_id"] is not None or row["filled"]:
+                        raise AuthorityError("SUBMISSION_RECEIPT_STATE_CONFLICT")
+                    if row["status"]=="NOT_SUBMITTED":
+                        continue
+                    if row["status"] not in {"SUBMITTING","UNKNOWN"}:
+                        raise AuthorityError("SUBMISSION_RECEIPT_STATE_CONFLICT")
+                    db.execute("UPDATE reservations SET status='NOT_SUBMITTED' WHERE id=?",(row["id"],))
+                    self._event(db,now,"not-submitted",{"reservation_id":row["id"],
+                                                         "submission_receipt_id":raw["receipt_id"]})
+                    recovered.append(self._reservation(self._row(db,row["id"])))
                     continue
-                if row["status"] not in {"SUBMITTING","UNKNOWN"}:
+                if row["broker_id"] is not None:
+                    if row["broker_id"]!=receipt["broker_order_id"]:
+                        raise AuthorityError("SUBMISSION_RECEIPT_BROKER_ID_CONFLICT")
+                    continue  # Complete status/fill evidence is never downgraded.
+                if row["status"] not in {"SUBMITTING","UNKNOWN"} or row["filled"]:
                     raise AuthorityError("SUBMISSION_RECEIPT_STATE_CONFLICT")
-                db.execute("UPDATE reservations SET status='NOT_SUBMITTED' WHERE id=?",(row["id"],))
-                self._event(db,now,"not-submitted",{"reservation_id":row["id"],
-                                                     "submission_receipt_id":raw["receipt_id"]})
+                try:
+                    db.execute("UPDATE reservations SET status='SUBMITTED',broker_id=? WHERE id=?",
+                               (receipt["broker_order_id"],row["id"]))
+                except sqlite3.IntegrityError as exc:
+                    raise AuthorityError("BROKER_ORDER_ID_ALREADY_BOUND") from exc
+                self._event(db,now,"submitted",{"reservation_id":row["id"],
+                    "broker_order_id":receipt["broker_order_id"],"submission_receipt_id":raw["receipt_id"]})
                 recovered.append(self._reservation(self._row(db,row["id"])))
-                continue
-            if row["broker_id"] is not None:
-                if row["broker_id"]!=receipt["broker_order_id"]:
-                    raise AuthorityError("SUBMISSION_RECEIPT_BROKER_ID_CONFLICT")
-                continue  # Complete status/fill evidence is never downgraded.
-            if row["status"] not in {"SUBMITTING","UNKNOWN"} or row["filled"]:
-                raise AuthorityError("SUBMISSION_RECEIPT_STATE_CONFLICT")
-            try:
-                db.execute("UPDATE reservations SET status='SUBMITTED',broker_id=? WHERE id=?",
-                           (receipt["broker_order_id"],row["id"]))
-            except sqlite3.IntegrityError as exc:
-                raise AuthorityError("BROKER_ORDER_ID_ALREADY_BOUND") from exc
-            self._event(db,now,"submitted",{"reservation_id":row["id"],
-                "broker_order_id":receipt["broker_order_id"],"submission_receipt_id":raw["receipt_id"]})
-            recovered.append(self._reservation(self._row(db,row["id"])))
         return recovered
 
     def recover_submission_receipts(self, token: str) -> list[Reservation]:
