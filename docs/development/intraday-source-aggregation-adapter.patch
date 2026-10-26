@@ -1,0 +1,55 @@
+--- a/ml/intraday/coverage.py
++++ b/ml/intraday/coverage.py
+@@ -196,7 +196,15 @@
+         for quarter in pd.date_range(_utc(session.opened_at),_utc(session.closed_at),freq="15min",inclusive="left"):
+             if any(_utc(r["opened_at"]) <= quarter and quarter+STEP <= _utc(r["closed_at"]) for r in ranges):
+                 expected.add(quarter)
+-    for slot, group in frame.groupby(frame.opened_at.dt.floor("15min"),sort=True):
++    # Validation has stably sorted the minutes. Project their typed values once;
++    # rebuilding a DataFrame and namedtuple class for every quarter dominates
++    # full-history startup. Retain pandas reductions on the original numeric
++    # Series so float precision, integer overflow and nullable dtype behavior
++    # remain exactly the same as the prior per-group reductions.
++    from .source_aggregation import source_minute_groups
++    highs, lows, volumes = frame.high, frame.low, frame.volume
++    for slot, group, begin, end in source_minute_groups(frame):
++        first, last = group[0], group[-1]
+         session = next((s for s in sessions_by_day.get(slot.normalize(),()) if s.contains(slot)),None)
+         if session is None:
+             continue
+@@ -207,24 +215,24 @@
+         observations = [{"opened_at": row.opened_at.isoformat(),"available_at": row.available_at.isoformat(),
+                          "source_id": row.source_id,"synthetic":False,
+                          **{key:float(getattr(row,key)) for key in ("open","high","low","close","volume")}}
+-                        for row in group.itertuples()]
++                        for row in group]
+         count = len(group)
+         incomplete += count < 15
+-        evidence = {"aggregation":POPULATION_CONTRACT,"source_id":str(group.source_id.iloc[0]),
+-                    "source_dataset":str(group.source_dataset.iloc[0]),"source_coverage":proof,
++        evidence = {"aggregation":POPULATION_CONTRACT,"source_id":str(first.source_id),
++                    "source_dataset":str(first.source_dataset),"source_coverage":proof,
+                     "observations":observations,"absence_policy":"unobserved_not_no_trade"}
+-        records.append(dict(symbol=str(group.symbol.iloc[0]),opened_at=slot,
+-            available_at=max(group.available_at.max(),slot+STEP),
+-            availability_kind="assumed_historical_close" if group.availability_kind.ne("actual").any() else "actual",
+-            open=float(group.open.iloc[0]),high=float(group.high.max()),low=float(group.low.min()),
+-            close=float(group.close.iloc[-1]),volume=float(group.volume.sum()),
+-            source_id=str(group.source_id.iloc[0]),source_dataset=str(group.source_dataset.iloc[0]),
++        records.append(dict(symbol=str(first.symbol),opened_at=slot,
++            available_at=max(max(row.available_at for row in group),slot+STEP),
++            availability_kind="assumed_historical_close" if any(row.availability_kind != "actual" for row in group) else "actual",
++            open=float(first.open),high=float(highs.iloc[begin:end].max()),low=float(lows.iloc[begin:end].min()),
++            close=float(last.close),volume=float(volumes.iloc[begin:end].sum()),
++            source_id=str(first.source_id),source_dataset=str(first.source_dataset),
+             session_id=session.session_id,session_open=session.opened_at,session_close=session.closed_at,
+             synthetic=False,no_trade=False,synthetic_open=False,synthetic_close=False,
+             observed_constituents=count,synthetic_constituents=0,source_empty_constituents=15-count,
+             interval_seconds=900,population_contract=POPULATION_CONTRACT,
+-            native_first_opened_at=group.opened_at.iloc[0].isoformat(),
+-            native_last_opened_at=group.opened_at.iloc[-1].isoformat(),
++            native_first_opened_at=first.opened_at.isoformat(),
++            native_last_opened_at=last.opened_at.isoformat(),
+             evidence_json=json.dumps(evidence,sort_keys=True,separators=(",", ":"))))
+     columns = ["symbol","opened_at","available_at","availability_kind","open","high","low","close","volume",
+                "source_id","source_dataset","session_id","session_open","session_close","synthetic","no_trade",
