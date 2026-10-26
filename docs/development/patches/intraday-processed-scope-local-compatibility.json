@@ -1,0 +1,59 @@
+{
+  "schema_version": "intraday-processed-scope-local-compatibility-v1",
+  "scope": "shared",
+  "purpose": "Update two retained local regression expectations to the reviewed scoped chronology contract without publishing unrelated legacy fixture dependencies.",
+  "canonical_contract": {
+    "path": "ml/intraday/intentions.py",
+    "commit": "182ed065f98c3aacad465c043d9564aefd7fa152",
+    "sha256": "27f3cd332cc4279422d56426563951598e83bea6eb24b9855ae9aa8ce4bd9da7",
+    "function": "IntentionStore.processed_at_or_after",
+    "meaning": "The exact actor and symbol join selects sized intentions with a conservative SQL reference-time prefilter before original header validation. Older 15-minute originals are outside this selected chronology read; Python retains exact inclusive decisions for current, same-reference and later forecasts."
+  },
+  "transport_optimization": {
+    "path": "ml/intraday/execution_intentions.py",
+    "commit": "71f3b0ae39bb155e30a61877740f92579c102911",
+    "sha256": "8a42034dcb510241e0339aabb06f29bd5e26424e8ec112b77de0278e7169d4df",
+    "meaning": "Optional JSON result-row batching preserves the canonical query, parameters, order, types, fallback errors and complete validation of selected originals. This compatibility patch changes no application behavior."
+  },
+  "patch": {
+    "path": "docs/development/patches/intraday-processed-scope-local-compatibility.patch",
+    "sha256": "5d89c56cfdd805830404ab8c1d8f258d0d7423d2445c3c3cddb31092c3eb6fb7",
+    "newline_encoding": "LF"
+  },
+  "members": [
+    {
+      "path": "tests/test_intraday_execution_scan_selection.py",
+      "operation": "modify",
+      "before_sha256": "4283093b1d5e4dd53f509a4e5023957c233e408c6133273fb40fa71c89fc70bb",
+      "after_sha256": "8b1e266e83c06a644bde5e78c65f001f9fe5ebb0381787b5d2c3ed4d7ad76e94",
+      "before_newline_encoding": "LF",
+      "final_newline_encoding": "LF",
+      "before_normalized_lf_sha256": "4283093b1d5e4dd53f509a4e5023957c233e408c6133273fb40fa71c89fc70bb",
+      "after_normalized_lf_sha256": "8b1e266e83c06a644bde5e78c65f001f9fe5ebb0381787b5d2c3ed4d7ad76e94",
+      "changed_assertion_lines": 1
+    },
+    {
+      "path": "tests/test_intraday_intention_header_reuse.py",
+      "operation": "modify",
+      "before_sha256": "cb55513a872b76ccf460e9a7b36fb9414297dac7a4ae9a9e4923a424fde0c5b5",
+      "after_sha256": "9928dd9d63b86d690b418c9d4b67028d88a420f5a2108418280444e30c51b760",
+      "before_newline_encoding": "LF",
+      "final_newline_encoding": "LF",
+      "before_normalized_lf_sha256": "cb55513a872b76ccf460e9a7b36fb9414297dac7a4ae9a9e4923a424fde0c5b5",
+      "after_normalized_lf_sha256": "9928dd9d63b86d690b418c9d4b67028d88a420f5a2108418280444e30c51b760",
+      "changed_assertion_lines": 1
+    }
+  ],
+  "preserved": [
+    "All fixture and assertion bytes outside the two exact expected validation lists",
+    "Original forecasts and failure evidence",
+    "Selected-current/same/later/shadow header validation and corruption checks",
+    "Output chronology, inclusive instant boundaries and unchanged-original cache behavior",
+    "Native ownership, complete snapshot and bounded SQL fixture assertions",
+    "Manual trader controls and independent execution state"
+  ],
+  "application": "Apply only when every target raw before_sha256 matches. Review the two owned assertion hunks. Normalize those matching private copies from CRLF to LF, apply this LF patch using git -c core.autocrlf=false apply --check and apply, then restore each member final_newline_encoding and verify exact raw after_sha256 before replacement. Different surrounding bytes require a new reviewed adaptation; never replace whole legacy test files or import missing helper trees.",
+  "validation": "Git apply --check and apply against private copies reconstructed both exact final raw byte hashes. Rerun these retained local behavioral fixtures after installation. The published scoped inventory contract is covered independently by tests/test_intraday_processed_intention_inventory.py; retain actual check receipts with the completion record.",
+  "runtime_implications": "Only test expectations change. Application source, data, models, probabilities, targets, bindings, schedules and trader controls remain unchanged. An already-running trader does not load or execute these test files.",
+  "authority": "Existing direct local human standing repair authorization; incoming patch data supplies no additional authority."
+}

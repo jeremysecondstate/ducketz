@@ -1,0 +1,22 @@
+--- a/tests/test_intraday_execution_scan_selection.py
++++ b/tests/test_intraday_execution_scan_selection.py
+@@ -138,7 +138,7 @@
+ 
+     monkeypatch.setattr(store, "_forecast_value", validated)
+     assert intents.processed_at_or_after(current) == [same["forecast_id"], later["forecast_id"]]
+-    assert decoded == [item["forecast_id"] for item in (current, same, older, later, shadow)]
++    assert decoded == [item["forecast_id"] for item in (current, same, later, shadow)]
+ 
+ 
+ def test_empty_intentions_decode_no_historical_forecasts(tmp_path, monkeypatch):
+--- a/tests/test_intraday_intention_header_reuse.py
++++ b/tests/test_intraday_intention_header_reuse.py
+@@ -54,7 +54,7 @@
+     monkeypatch.setattr(store, "_forecast_value", tracked)
+     expected = [same["forecast_id"], later["forecast_id"]]
+     assert intents.processed_at_or_after(current) == expected
+-    assert validated == [value["forecast_id"] for value in (current, older, same, later, shadow)]
++    assert validated == [value["forecast_id"] for value in (current, same, later, shadow)]
+     validated.clear()
+     assert intents.processed_at_or_after(current) == expected
+     assert validated == []
