@@ -1,0 +1,359 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261026T235044Z-4253fd739bb14c6da187296793019cc2",
+  "change_details": [
+    "Actor Scout; task independent fifteen-minute native receipt and journal inventory correctness repair. Shared source applies where these loaders and books are used; each PC retains its local scientific recipe and private operating bindings.",
+    "Normalize timestamp storage resolution only when both complete projections are empty and literal UTC. Preserve strict nonempty equality, receipt hashes, source/mapping/count/time/provenance checks and truthful missing observations.",
+    "Validate unchanged exact-native books JSON and digest once per scan, then refresh raw bytes, headers, identity, bindings and all member filesystem metadata before every yield. Changed bytes force complete validation; every journal retains its full identity/event/lifecycle audit.",
+    "Preserve frozen session order, custom-object/subclass traversal, UNKNOWN and known-order recovery, reservations, fill attribution, idempotency and manual controls.",
+    "All five owned bytes are identical across three source revisions. Earlier main preparations stopped before copying after newer reviewed dependencies appeared. Final source, isolated and main evidence is freshly generated against the final complete fingerprint map."
+  ],
+  "change_id": "20261026T235044Z-4253fd739bb14c6da187296793019cc2",
+  "checks": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_inventory_scan.py",
+        "tests/test_intraday_scout_session_books.py",
+        "tests/test_intraday_scout_paired_recovery.py",
+        "tests/test_intraday_scout_periodic_paired_recovery.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T23:51:06.801878Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "a94dfb58bf4e2c17833781ff71440056792e1f7c7eec8d2cefe1a1a7ce38a4e3",
+      "output_sha256": "b0bc805ab84bbc61a8edac5f918aa381f9a095f7829821c2edea24839b1309df",
+      "passed": 117,
+      "skipped": 2,
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-26T23:50:44.885604Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_native_send_gate.py",
+        "tests/test_intraday_local_evidence_freshness_diagnostics.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T23:51:43.180437Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "b6184d6a17bf84f76fc83f071fc154accbf22c77fe23c828c7fa208a0c8ebe2e",
+      "output_sha256": "c683c3be0ed89988b42f3c913cde3d391d5b439add3ab526c6da4f1ab10eb203",
+      "passed": 177,
+      "skipped": 0,
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-26T23:51:07.283275Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_native_recovery_projection.py",
+        "tests/test_intraday_native_recovery.py",
+        "tests/test_intraday_native_interval.py",
+        "tests/test_intraday_genuine_scoring_feed.py",
+        "tests/test_intraday_observed_data.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T23:52:17.405888Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "d488e7f9fbf441251b0c59871c6d77b88c7f3c6cec410457b142619f73ea9a4f",
+      "output_sha256": "9ee210eea4ddbaf0e20ce56cb9da9876c4fa458c2058b470145365dc818c3097",
+      "passed": 193,
+      "skipped": 0,
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-26T23:51:43.505518Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_processed_intention_inventory.py",
+        "tests/test_intraday_symbol_failure_evidence.py",
+        "tests/test_stock_direction_policy.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T23:52:21.439280Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "0c7aa6f8da03ceb4ca18308c715b23132209c3a03b9234688b83ca4fca60d501",
+      "output_sha256": "a7d91ade4c4f30bf843da66988b5d639d200f08374e279824a5a0d1b179294b0",
+      "passed": 51,
+      "skipped": 0,
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-26T23:52:17.792977Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_inventory_scan.py",
+        "tests/test_intraday_scout_session_books.py",
+        "tests/test_intraday_scout_paired_recovery.py",
+        "tests/test_intraday_scout_periodic_paired_recovery.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T23:53:32.412344Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "a94dfb58bf4e2c17833781ff71440056792e1f7c7eec8d2cefe1a1a7ce38a4e3",
+      "output_sha256": "252eae23ec179c5247e551af4130b8e59346c5267fb51b14a726e592e8e4b076",
+      "passed": 117,
+      "skipped": 2,
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-26T23:53:11.512902Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_native_send_gate.py",
+        "tests/test_intraday_local_evidence_freshness_diagnostics.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T23:54:06.574932Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "b6184d6a17bf84f76fc83f071fc154accbf22c77fe23c828c7fa208a0c8ebe2e",
+      "output_sha256": "f385e8e3ebd8440de97967f6385c8faf4dc4d6b0c3502d0872397810d1d3c9f7",
+      "passed": 177,
+      "skipped": 0,
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-26T23:53:32.806274Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_native_recovery_projection.py",
+        "tests/test_intraday_native_recovery.py",
+        "tests/test_intraday_native_interval.py",
+        "tests/test_intraday_genuine_scoring_feed.py",
+        "tests/test_intraday_observed_data.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T23:54:43.421472Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "d488e7f9fbf441251b0c59871c6d77b88c7f3c6cec410457b142619f73ea9a4f",
+      "output_sha256": "6a10ab235af69033098c4d3a4e0f5bd6b29ab5c8e7ae917674ae47d52b3cac8d",
+      "passed": 193,
+      "skipped": 0,
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-26T23:54:06.948772Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_processed_intention_inventory.py",
+        "tests/test_intraday_symbol_failure_evidence.py",
+        "tests/test_stock_direction_policy.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T23:54:47.865235Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "0c7aa6f8da03ceb4ca18308c715b23132209c3a03b9234688b83ca4fca60d501",
+      "output_sha256": "ba0416d662659d059938740953f3abdb33fac43b1bf07bffdeed9a9976f8016b",
+      "passed": 51,
+      "skipped": 0,
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-26T23:54:43.807408Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_inventory_scan.py",
+        "tests/test_intraday_scout_session_books.py",
+        "tests/test_intraday_scout_paired_recovery.py",
+        "tests/test_intraday_scout_periodic_paired_recovery.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T23:56:29.086728Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "a94dfb58bf4e2c17833781ff71440056792e1f7c7eec8d2cefe1a1a7ce38a4e3",
+      "output_sha256": "c86d0ca568adfef31c25a8f46f7abdff7f637be378ce2a705bd680e908042bdc",
+      "passed": 117,
+      "skipped": 2,
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-26T23:56:08.383855Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_native_send_gate.py",
+        "tests/test_intraday_local_evidence_freshness_diagnostics.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T23:57:01.834900Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "b6184d6a17bf84f76fc83f071fc154accbf22c77fe23c828c7fa208a0c8ebe2e",
+      "output_sha256": "8b3ac62ee6aa3bb289d23cd57068b92f5c9b4c49f16e8279ebc187fd1ba133e7",
+      "passed": 177,
+      "skipped": 0,
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-26T23:56:29.459967Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_native_recovery_projection.py",
+        "tests/test_intraday_native_recovery.py",
+        "tests/test_intraday_native_interval.py",
+        "tests/test_intraday_genuine_scoring_feed.py",
+        "tests/test_intraday_observed_data.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T23:57:32.911028Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "d488e7f9fbf441251b0c59871c6d77b88c7f3c6cec410457b142619f73ea9a4f",
+      "output_sha256": "947153e65c8e51f0ed7a64e86bc85b3f0ac424dbf1cda931bbdbe7141d3fa963",
+      "passed": 193,
+      "skipped": 0,
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-26T23:57:02.146800Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_processed_intention_inventory.py",
+        "tests/test_intraday_symbol_failure_evidence.py",
+        "tests/test_stock_direction_policy.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T23:57:36.526545Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "0c7aa6f8da03ceb4ca18308c715b23132209c3a03b9234688b83ca4fca60d501",
+      "output_sha256": "17fddbe5241d3aeda2d2541bac82d6f764e0a6d2d17c896a1a7cd8add05097fa",
+      "passed": 51,
+      "skipped": 0,
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-26T23:57:33.174035Z"
+    }
+  ],
+  "file_sha256": {
+    "ml/intraday/native_recovery.py": "5b56c592ecb839f583764b2e1b29387486e545d75e3d23e1507eb5d9146d243f",
+    "ml/intraday/scout_local_execution.py": "15be424174ceb3d078846e2ac340dc25ccc89e35e095fcff472c5b742265a275",
+    "ml/intraday/scout_session_books.py": "f89bce185f0c92a3e278c6cc8f720a78c1e5414a1c2405f1007e1f543381d4f0",
+    "tests/test_intraday_native_recovery_projection.py": "8828c01e920356a87c4e4450367174df2791423fa1cd33978a75ec05bd95f805",
+    "tests/test_intraday_scout_inventory_scan.py": "f1a10df6cf0ee841e581aeb2ce14deaa343367d8ace6fb1321f57c33a9266e0e"
+  },
+  "files": [
+    "ml/intraday/native_recovery.py",
+    "ml/intraday/scout_session_books.py",
+    "ml/intraday/scout_local_execution.py",
+    "tests/test_intraday_native_recovery_projection.py",
+    "tests/test_intraday_scout_inventory_scan.py"
+  ],
+  "limitations": [
+    "Two native symbolic-link fixtures require Windows privileges unavailable on the test account (error 1314). Hardlink, mocked reparse, metadata, corruption and full-audit checks passed.",
+    "Global per-yield filesystem metadata work and complete journal replay remain. Runtime latency and full-cycle recovery require operation-specific evidence. Empty receipts still provide zero observations and cannot supply missing target candles."
+  ],
+  "linked_publications": [
+    {
+      "completion_record": "20261026T225313Z-a1b9d607cda54488b630051344744e53",
+      "main_preparation_stopped_before_copy": true,
+      "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/416",
+      "source_sha": "c0696c9cd7399fdcfbf61464f299035219a83127",
+      "stages_preserved": true
+    },
+    {
+      "completion_record": "20261026T231925Z-edbfb34944b14d0d9c74350e5c6a02f8",
+      "main_preparation_stopped_before_copy": true,
+      "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/417",
+      "source_sha": "ab609d66f9cbf56ee3a8c9224e545d4e7d36ab80",
+      "stages_preserved": true
+    },
+    {
+      "completion_record": "20261026T234035Z-3af624b1a07b49e786fdfc2cf4c28ed7",
+      "main_metadata_validation_stopped_before_tests": true,
+      "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/418",
+      "source_sha": "8bd874c37445934a65598873d854e3f1aecb173d",
+      "stages_preserved": true
+    },
+    {
+      "completion_record": "20261026T235044Z-4253fd739bb14c6da187296793019cc2",
+      "main_sha": "ee2128dc8759ad311168f4e3175f2a89116a4a62",
+      "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/419",
+      "source_sha": "649185649b57440c5403600e46755467e3a39ffc"
+    }
+  ],
+  "main_integration": {
+    "main_before": "c191cd50a03a4892960972676268bf4b9b496a7b",
+    "main_sha": "ee2128dc8759ad311168f4e3175f2a89116a4a62",
+    "record_id": "20261026T235044Z-4253fd739bb14c6da187296793019cc2",
+    "stage": "main_integrated",
+    "verified_remote_sha": "ee2128dc8759ad311168f4e3175f2a89116a4a62"
+  },
+  "operations": {
+    "ml/intraday/native_recovery.py": "modify",
+    "ml/intraday/scout_local_execution.py": "modify",
+    "ml/intraday/scout_session_books.py": "modify",
+    "tests/test_intraday_native_recovery_projection.py": "add",
+    "tests/test_intraday_scout_inventory_scan.py": "add"
+  },
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/419",
+  "pull_request_created_as_draft": true,
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source publication, local installation, loading and affected runtime behavior are separate facts. Preserve each PC scientific recipe, private bindings, original probabilities and labels, account state, live broker capacity and manual controls. Newer main dependencies are not automatically adopted into a local runtime by this notice.",
+  "scope": "shared",
+  "source_sha": "649185649b57440c5403600e46755467e3a39ffc",
+  "summary": "Scout empty native receipts and inventory scan validation preserve evidence and order safeguards",
+  "tests": [
+    "Final source, isolated candidate and main candidate each passed 538 tests with two skips across fifteen complete canonical modules and four commands; repeated stage counts overlap.",
+    "All 202 source/dependency fingerprints and actual imported application and fixture bytes verified. The new chronology inventory and real SQLite failure seam are included; previous 31-module results remain historical evidence only."
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T23:59:06.836760Z",
+  "id": "20261026T235906Z-96370e6656d848ac8dddb60742e95949",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout empty native receipts and inventory scan validation preserve evidence and order safeguards"
+}
