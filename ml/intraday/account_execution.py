@@ -1175,6 +1175,7 @@ class IntradayAccountExecutor:
             groups = {}
             for index, native in enumerate(owned):
                 groups.setdefault(native.forecast_id, []).append((index, native))
+            observations_by_forecast = {}
             for forecast_id, attempts in groups.items():
                 observations = []
                 for _, native in attempts:
@@ -1186,11 +1187,11 @@ class IntradayAccountExecutor:
                     event_key = digest([kind, disposition, evidence, asdict(native), None])
                     observations.append(dict(event_key=event_key, recorded_at=self.clock(),
                         disposition=disposition, kind=kind, evidence=evidence, order=native))
-                # A single forecast's attempts share exact validated originals
-                # only within this transaction. Keep every attempt and restore
-                # native snapshot order in the public result.
-                projected = self.intents.record_recovery_group(forecast_id, actor=self.actor,
-                                                               observations=observations, timings=timings)
+                observations_by_forecast[forecast_id] = observations
+            projected_groups = self.intents.record_recovery_groups(observations_by_forecast,
+                actor=self.actor, timings=timings)
+            for forecast_id, attempts in groups.items():
+                projected = projected_groups[forecast_id]
                 for (index, _), value in zip(attempts, projected):
                     results[index] = value
             self._execution_stage("recovery_complete")
