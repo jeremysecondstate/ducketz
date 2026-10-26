@@ -492,9 +492,10 @@ class IntentionStore(_OriginalIntentionStore):
         """Project every native attempt for one original in a pinned transaction.
 
         Cold/changed originals first retain full semantic validation in a read
-        transaction, without reserving SQLite's writer. The final write
-        transaction repeats the same revision schema, epoch and indexed identity
-        checks; changed originals still take full validation. Only safe scalar
+        transaction, without reserving SQLite's writer. Exact existing groups
+        return from that coherent read snapshot. Groups needing an append take
+        a final write transaction that repeats the same revision schema, epoch
+        and indexed identity checks; changed originals still take full validation. Only safe scalar
         caches cross that boundary. Every attempt validates its projection
         identity, evidence and chronology before an atomic group append.
         """
@@ -507,6 +508,25 @@ class IntentionStore(_OriginalIntentionStore):
         measure = timings.measure if isinstance(timings, _RecoveryTimings) else lambda stage: nullcontext()
         read_timings = timings if isinstance(timings, _RecoveryTimings) else None
         detail = read_timings.detail if read_timings is not None else lambda stage: nullcontext()
+
+        def project(db, forecast, intention_row, intention, *, existing_only=False):
+            results = []
+            for item in observations:
+                identity(item["event_key"]); identity(item["disposition"]); identity(item["kind"])
+                if item["order"] is None:
+                    raise ContractError("Recovery requires an explicit local actor")
+                at = instant(item["recorded_at"])
+                if at < instant(forecast["issued_at"]) or not isinstance(item["evidence"], dict) or not item["evidence"]:
+                    raise ContractError("Intention event needs available explicit evidence")
+                result = self._append_validated(db, forecast, intention_row, intention,
+                    event_key=item["event_key"], at=at, disposition=item["disposition"],
+                    evidence=item["evidence"], kind=item["kind"], order=item["order"],
+                    existing_only=existing_only)
+                if result is None:
+                    return None
+                results.append(result)
+            return results
+
         # Match chronology's cache-lock -> connection ordering. Cold payload
         # reads/decoding need no reserved writer. Close that snapshot before the
         # final writer repeats every protected identity check and appends.
@@ -523,9 +543,17 @@ class IntentionStore(_OriginalIntentionStore):
                         raise ContractError("Native 15m order lacks original persisted intention")
                     if headers[0]["pc"] != actor:
                         raise ContractError("Recovery forecast belongs to another actor")
-                _, intention, _ = self._revision_sizing(db, forecast_id, measure, read_timings)
+                intention_row, intention, generation = self._revision_sizing(db, forecast_id, measure, read_timings)
                 if intention is None:
                     raise ContractError("Native 15m order lacks original persisted intention")
+                # An already exact group needs no append. Validate every stored
+                # projection in this same source snapshot before returning it;
+                # any missing event still takes the final writer recheck.
+                with measure("projection_append"):
+                    existing = project(db, headers[0], intention_row, intention, existing_only=True)
+            if existing is not None:
+                self._recovery_row_highwater = generation
+                return existing
             with detail("writer_connection"), self.store.connect() as db:
                 with measure("writer_lock"):
                     db.execute("BEGIN IMMEDIATE")
@@ -543,18 +571,8 @@ class IntentionStore(_OriginalIntentionStore):
                 intention_row, intention, generation = self._revision_sizing(db, forecast_id, measure, read_timings)
                 if intention is None:
                     raise ContractError("Native 15m order lacks original persisted intention")
-                results = []
                 with measure("projection_append"):
-                    for item in observations:
-                        identity(item["event_key"]); identity(item["disposition"]); identity(item["kind"])
-                        if item["order"] is None:
-                            raise ContractError("Recovery requires an explicit local actor")
-                        at = instant(item["recorded_at"])
-                        if at < instant(forecast["issued_at"]) or not isinstance(item["evidence"], dict) or not item["evidence"]:
-                            raise ContractError("Intention event needs available explicit evidence")
-                        results.append(self._append_validated(db, forecast, intention_row, intention,
-                            event_key=item["event_key"], at=at, disposition=item["disposition"],
-                            evidence=item["evidence"], kind=item["kind"], order=item["order"]))
+                    results = project(db, forecast, intention_row, intention)
             # Publish this watermark only after successful transaction exit.
             self._recovery_row_highwater = generation
             return results
@@ -572,7 +590,8 @@ class IntentionStore(_OriginalIntentionStore):
             capacity=capacity, order=order, scope_to_intention=scope_to_intention)
 
     def _append_validated(self, db, forecast, intention_row, intention, *, event_key, at,
-                          disposition, evidence, kind, capacity=None, order=None, scope_to_intention=False):
+                          disposition, evidence, kind, capacity=None, order=None, scope_to_intention=False,
+                          existing_only=False):
         desired = intention["desired_quantity"] if intention else None
         # Preserve canonical frozen actions and each first immutable sizing.
         side = intention["side"] if intention is not None else self._original_action(db, forecast)
@@ -604,13 +623,19 @@ class IntentionStore(_OriginalIntentionStore):
             key_parts.append({"intention_id": intention_row[1]})
         key = digest(key_parts)
         value.update(event_identity=key, recorded_at=at.isoformat())
-        old = db.execute("SELECT i.id,i.payload,i.recorded_at FROM intraday_intention_events e JOIN intents i ON i.id=e.intent_entry_id WHERE e.event_key=?", (key,)).fetchone()
+        old = db.execute("SELECT e.forecast_id,e.intent_entry_id,i.forecast_id,i.id,i.payload,i.recorded_at "
+            "FROM intraday_intention_events e LEFT JOIN intents i ON i.id=e.intent_entry_id WHERE e.event_key=?", (key,)).fetchone()
         if old:
-            previous = json.loads(old[1])
+            if (old[0] != forecast["forecast_id"] or old[2] != forecast["forecast_id"]
+                    or old[1] != old[3] or old[4] is None or old[5] is None):
+                raise ContractError("Persisted intention event index changed")
+            previous = json.loads(old[4])
             value["recorded_at"] = previous["recorded_at"]
-            if digest(previous) != old[0] or previous["recorded_at"] != old[2] or encoded(value) != old[1]:
+            if digest(previous) != old[3] or previous["recorded_at"] != old[5] or encoded(value) != old[4]:
                 raise ContractError("Intention event identity reused with changed evidence")
-            return json.loads(old[1])
+            return previous
+        if existing_only:
+            return None
         # Fresh projections cannot attach sizing before it was available.
         # Exact immutable receipt replay above keeps its original time.
         if intention is not None and at < instant(intention["sizing"]["calculated_at"]):

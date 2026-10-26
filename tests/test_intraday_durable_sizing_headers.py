@@ -227,7 +227,7 @@ def test_changed_sizing_between_preflight_and_writer_revalidates(tmp_path, monke
     between_preflight_and_writer(cold_store, monkeypatch, mutate)
     before = projection_rows(store)
     with pytest.raises(ContractError):
-        group(cold, original, observation(order))
+        group(cold, original, observation(order, key="missing-event-requires-writer"))
     assert projection_rows(store) == before
 
 
