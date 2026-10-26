@@ -1069,6 +1069,7 @@ class IntradayAccountExecutor:
             # A zero desired or elapsed forecast still retires an old intention.
             self._execution_stage("execution_after_sizing")
             from .cancellation import CancellationService
+            self._execution_stage("post_sizing_pending_read")
             pending = [r for r in self.ledger.pending_reservations()
                        if self.ledger.reservation_stream(r.reservation_id) == self.stream
                        and r.symbol == forecast["symbol"] and r.forecast_id != forecast["forecast_id"]]
@@ -1101,10 +1102,12 @@ class IntradayAccountExecutor:
                 return self._record(forecast, "previous_intention_reconciliation", evidence=asdict(outcome))
             if unavailable is not None:
                 return unavailable
+            self._execution_stage("post_sizing_eligibility")
             disposition = forecast_disposition(forecast, now=self.clock(), session_started_at=self.session_started_at,
                                                local_symbols=self.symbols, actor=self.actor)
             if disposition != "eligible_for_account_checks":
                 return self._record(forecast, disposition)
+            self._execution_stage("post_sizing_market_window")
             window = stock_execution_window(self.clock())
             if not window.executable:
                 return self._record(forecast, "market_session_closed", evidence={"reason":window.reason})
@@ -1112,6 +1115,7 @@ class IntradayAccountExecutor:
             # Retain that first desired size, but use an actual current account
             # observation for capacity and price. This boundary refreshes once;
             # submission still enforces the unchanged final freshness checks.
+            self._execution_stage("pre_capacity_freshness")
             at = instant(self.clock())
             quote = self.portfolio.quotes[forecast["symbol"]]
             ages = ((at - instant(self.portfolio.observed_at)).total_seconds(),
@@ -1127,21 +1131,29 @@ class IntradayAccountExecutor:
                 window = stock_execution_window(self.clock())
                 if not window.executable:
                     return self._record(forecast, "market_session_closed", evidence={"reason":window.reason})
-            quote = self.portfolio.quotes[forecast["symbol"]]
-            side = original["side"]
-            price = Decimal(str(quote.ask if side == "BUY" else quote.bid)).quantize(Decimal(".01"),
-                rounding=ROUND_CEILING if side == "BUY" else ROUND_FLOOR)
-            available = self.authority.available_intraday_capacity(self.lease.token, self.snapshot_id)
-            capacity = clip_to_capacity(symbol=forecast["symbol"], side=side,
-                desired_quantity=original["desired_quantity"], limit_price=str(price),
-                available_cash=available["cash_available"], available_shares=available["eligible_shares"][forecast["symbol"]],
-                capacity_evidence_id=self.snapshot_id, observed_at=self.portfolio.observed_at, calculated_at=self.clock())
-            self._record(forecast, capacity.disposition, kind="capacity", capacity=capacity,
-                         evidence={"snapshot_id":self.snapshot_id})
+            capacity, quote = self._submission_capacity(forecast, original)
             if not capacity.adjusted_quantity:
                 return self._record(forecast, capacity.disposition, capacity=capacity,
                                      evidence={"snapshot_id":self.snapshot_id})
-            return self._submit(forecast, capacity, quote, window)
+            return self._submit(forecast, capacity, quote, window, original)
+
+    def _submission_capacity(self, forecast, original):
+        """Clip the frozen desired size against this actual observation only."""
+        quote = self.portfolio.quotes[forecast["symbol"]]
+        side = original["side"]
+        price = Decimal(str(quote.ask if side == "BUY" else quote.bid)).quantize(Decimal(".01"),
+            rounding=ROUND_CEILING if side == "BUY" else ROUND_FLOOR)
+        self._execution_stage("capacity_available_read")
+        available = self.authority.available_intraday_capacity(self.lease.token, self.snapshot_id)
+        self._execution_stage("capacity_clip")
+        capacity = clip_to_capacity(symbol=forecast["symbol"], side=side,
+            desired_quantity=original["desired_quantity"], limit_price=str(price),
+            available_cash=available["cash_available"], available_shares=available["eligible_shares"][forecast["symbol"]],
+            capacity_evidence_id=self.snapshot_id, observed_at=self.portfolio.observed_at, calculated_at=self.clock())
+        self._execution_stage("capacity_record")
+        self._record(forecast, capacity.disposition, kind="capacity", capacity=capacity,
+                     evidence={"snapshot_id":self.snapshot_id})
+        return capacity, quote
 
     def recover(self):
         """Reconcile tracked orders even after cutoff; never submit from history."""
@@ -1184,17 +1196,7 @@ class IntradayAccountExecutor:
             self._execution_stage("recovery_complete")
             return results
 
-    def _submit(self, forecast, capacity, quote, window):
-        key = self.stream + ":" + forecast["forecast_id"]
-        previous = self._same_forecast(forecast)
-        if previous:
-            if not self._proven_unsent(previous):
-                raise ContractError("Retry requires exact proof the previous attempt was never submitted")
-            key += ":retry:" + previous.reservation_id
-        attempts = self.ledger.intraday_attempts(symbol=forecast["symbol"],forecast_id=forecast["forecast_id"])
-        account_records = {r["request"]["native_reservation_id"]:r for r in self.authority.read_state()["reservations"]}
-        admitted = [r for r in attempts if r.reservation_id in account_records]
-        account_previous = admitted[-1].reservation_id if admitted else None
+    def _submit(self, forecast, capacity, quote, window, original):
         native = account = None
         detail = _SubmissionDiagnostics()
         detail.context(self, forecast, quote)
@@ -1204,13 +1206,65 @@ class IntradayAccountExecutor:
             nonlocal stage
             stage = stage_name
             detail.advance(stage_name)
+            self._execution_stage(stage_name)
         def failure_clocks():
             nonlocal frozen
             if frozen is None:
                 frozen = detail.snapshot()
             return frozen
         try:
-            context = self.broker.prepare_order_submission()
+            # Capacity reads, their durable record and exact retry-history reads
+            # can age a previously fresh capture. Refresh this last no-send
+            # boundary once, before creating either reservation. Never retry a
+            # reservation or a possibly sent order here.
+            for preparation_attempt in range(2):
+                advance("submission_previous_native_read")
+                key = self.stream + ":" + forecast["forecast_id"]
+                previous = self._same_forecast(forecast)
+                if previous:
+                    if not self._proven_unsent(previous):
+                        raise ContractError("Retry requires exact proof the previous attempt was never submitted")
+                    key += ":retry:" + previous.reservation_id
+                advance("submission_attempts_read")
+                attempts = self.ledger.intraday_attempts(symbol=forecast["symbol"],forecast_id=forecast["forecast_id"])
+                advance("submission_authority_read")
+                account_records = {r["request"]["native_reservation_id"]:r for r in self.authority.read_state()["reservations"]}
+                admitted = [r for r in attempts if r.reservation_id in account_records]
+                account_previous = admitted[-1].reservation_id if admitted else None
+                advance("prepare_order_submission")
+                context = self.broker.prepare_order_submission()
+                advance("submission_evidence_freshness")
+                at = instant(self.clock())
+                ages = ((at - instant(self.portfolio.observed_at)).total_seconds(),
+                        (at - instant(quote.freshness_observed_at)).total_seconds())
+                captured_quote_age = (instant(self.portfolio.observed_at)
+                                      - instant(quote.freshness_observed_at)).total_seconds()
+                aged_after_capture = (ages[0] > self.ledger.maximum_evidence_age_seconds
+                    or (0 <= captured_quote_age <= self.ledger.maximum_evidence_age_seconds
+                        and ages[1] > self.ledger.maximum_evidence_age_seconds))
+                if preparation_attempt or not (all(age >= 0 for age in ages)
+                        and aged_after_capture):
+                    break
+                disposition = forecast_disposition(forecast, now=at, session_started_at=self.session_started_at,
+                                                   local_symbols=self.symbols, actor=self.actor)
+                if disposition != "eligible_for_account_checks":
+                    return self._record(forecast, disposition)
+                self._assert_current()
+                self._assert_latest(forecast)
+                advance("late_submission_evidence_refresh")
+                self._capture()
+                disposition = forecast_disposition(forecast, now=self.clock(), session_started_at=self.session_started_at,
+                                                   local_symbols=self.symbols, actor=self.actor)
+                if disposition != "eligible_for_account_checks":
+                    return self._record(forecast, disposition)
+                window = stock_execution_window(self.clock())
+                if not window.executable:
+                    return self._record(forecast, "market_session_closed", evidence={"reason":window.reason})
+                capacity, quote = self._submission_capacity(forecast, original)
+                detail.context(self, forecast, quote)
+                if not capacity.adjusted_quantity:
+                    return self._record(forecast, capacity.disposition, capacity=capacity,
+                                        evidence={"snapshot_id":self.snapshot_id})
             advance("reserve_native")
             native = self.ledger.reserve_intraday(symbol=forecast["symbol"], forecast_id=forecast["forecast_id"],
                 side=capacity.side, quantity=capacity.adjusted_quantity, limit_price=capacity.limit_price,
