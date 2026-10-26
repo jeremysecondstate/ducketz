@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T20:07:51.946965Z",
+  "id": "20261026T200751Z-2bba739df4674af9a7afc2a0a7477a49",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Paired journal recovery is reviewed, tested and integrated into common main"
+}

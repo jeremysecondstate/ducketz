@@ -1,0 +1,88 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261026T195558Z-80e8206d55e6499f8fd0a01e35a1a1a0",
+  "change_id": "source:20261026T195558Z-80e8206d55e6499f8fd0a01e35a1a1a0",
+  "commit_sha": "f7175979482741f86fac9e3609527ab5da4bf42c",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/scout_journal.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/scout_local_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_scout_paired_recovery.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_scout_expiry_during_capacity.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_scoring_dedup.py"
+    }
+  ],
+  "limitations": [
+    "Offline synthetic/native regressions; affected live behavior and manually controlled loading remain separate operation-specific evidence.",
+    "Prior broader suites remain bound to their recorded earlier source/dependency bytes and are not substituted for these fresh native-composition checks."
+  ],
+  "main_commit_sha": "4d4ca98d9dac8f5a083ca72033a953a64e571e44",
+  "main_verified_remote_sha": "4d4ca98d9dac8f5a083ca72033a953a64e571e44",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/408",
+  "repository": "jeremysecondstate/ducketz",
+  "revision_ancestry": [
+    {
+      "completion_record": "20261026T190021Z-f1093de299104ac1a8cc91d1f04346d3",
+      "source_sha": "f1fcdc76636a5d0fd421f2e171a94a9c2a008ee3"
+    },
+    {
+      "completion_record": "20261026T193140Z-671013c15c544b8288436c2986cb2582",
+      "source_sha": "136927dde685061f4170f84825bc0f0e9c7cbaf5"
+    }
+  ],
+  "runtime_implications": "Common main preserves newer shared dependency behavior. Each PC keeps its own original scientific recipe and private bindings; local installation, startup loading and execution remain separate facts.",
+  "scope": "shared",
+  "summary": "Paired journal recovery is reviewed, tested and integrated into common main",
+  "tests": {
+    "counts_overlap": true,
+    "isolated": [
+      {
+        "completed_at_utc": "2026-10-26T20:00:13.691050Z",
+        "exit_code": 0,
+        "modules": 12,
+        "output_sha256": "499bb7022160f7b6e18fc79b6b8b59beddc9e84ec7e875f62a1bfb10f3ac66d9",
+        "passed": 418,
+        "started_at_utc": "2026-10-26T19:58:59.661828Z"
+      }
+    ],
+    "main_integration": [
+      {
+        "completed_at_utc": "2026-10-26T20:03:48.627104Z",
+        "exit_code": 0,
+        "modules": 12,
+        "output_sha256": "6152585b7c382bcef19b9cf15e012f80aecaa3dc7cf5f74cb2dc4d0c28574821",
+        "passed": 418,
+        "started_at_utc": "2026-10-26T20:02:31.338604Z"
+      }
+    ],
+    "scope": "Fresh exact-byte checks cover five owned repair/regression paths and the newer native transaction and recovery-batch dependency composition.",
+    "source": [
+      {
+        "completed_at_utc": "2026-10-26T19:57:15.511991Z",
+        "exit_code": 0,
+        "modules": 12,
+        "output_sha256": "8b2d0da35788e0de0b8aa5d61a9efc3a86dd66ffbb698e17fa8d569d70b01902",
+        "passed": 418,
+        "started_at_utc": "2026-10-26T19:56:00.042996Z"
+      }
+    ]
+  }
+}
