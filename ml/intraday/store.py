@@ -322,9 +322,8 @@ class ShadowStore:
         if generation < self._execution_forecast_highwater:
             raise ContractError("Execution forecast generation regressed")
         with detail("forecast_index_read"):
-            rows = db.execute("SELECT f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,r.generation "
-                "FROM forecasts f LEFT JOIN execution_forecast_revisions r ON r.forecast_id=f.id WHERE " +
-                " AND ".join(clauses) + " ORDER BY f.rowid", parameters).fetchall()
+            from .forecast_index_reads import forecast_index_rows
+            rows = forecast_index_rows(db, clauses, parameters)
         try:
             durable_identity = (str(self.path.resolve()), *identity)
         except OSError:
