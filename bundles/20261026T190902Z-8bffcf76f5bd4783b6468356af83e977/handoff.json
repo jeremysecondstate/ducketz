@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T19:09:02.538067Z",
+  "id": "20261026T190902Z-8bffcf76f5bd4783b6468356af83e977",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas 15m late freshness repair and full retained-receipt read optimization published and installed"
+}

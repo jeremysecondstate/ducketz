@@ -1,0 +1,24 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T185824Z-7487cf23af08401b92321248792661f6",
+  "files": [
+    "ml/intraday/account_execution.py",
+    "ml/account_gameplan/authority.py",
+    "tests/test_intraday_late_submission_refresh.py",
+    "tests/test_intraday_receipt_recovery_latency.py",
+    "tests/test_receipt_recovery_batch_reads.py"
+  ],
+  "limitations": [
+    "One optional receipt-result row replaces495handoffs while every receipt remains validated; idle timing does not prove live contention cause or runtime recovery.",
+    "UNKNOWN diagnostics preserve gate progress and safe exception type; they do not supply acceptance or audited no-send proof for historical missing evidence."
+  ],
+  "main_sha": "0dc0178faf03c1bd87c1906a31ac1a41e9d5b219",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Owned source hunks installed locally while retaining local module alias. Existing manual process not started/restarted, no broker/provider/test orders. Exact loaded-byte and affected runtime recovery remain separate.",
+  "scope": "shared reusable correctness and observability; bothPCs; local model recipes and independent execution preserved",
+  "source_sha": "200e0e3438c956e782893712c1db094511882404",
+  "summary": "Atlas 15m late freshness repair and full retained-receipt read optimization published and installed",
+  "tests": [
+    "101offline checks pass on exact source and main candidates; local95late-freshness and177authority checks retained; final35portable receipt/diagnostic checks pass."
+  ]
+}
