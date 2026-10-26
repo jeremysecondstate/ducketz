@@ -285,11 +285,12 @@ class IntentionStore(_OriginalIntentionStore):
             raise ContractError("Recovery sizing generation is invalid")
         return rows[0][1], rows[0][2]
 
-    def _revision_sizing(self, db, forecast_id, measure, read_timings=None):
-        """Read a coherent row marker; validate cold/changed original bytes.
+    @contextmanager
+    def _recovery_sizing_reader(self, db, measure, read_timings=None):
+        """Share exact sizing metadata only inside this pinned read snapshot.
 
-        Called under the store forecast-cache lock and a pinned transaction.
-        No cache key uses timestamps, row length, or another original's identity.
+        The bound reader becomes unusable on context exit. No schema, epoch,
+        generation or physical proof crosses into a later writer transaction.
         """
         detail = read_timings.detail if read_timings is not None else lambda stage: nullcontext()
         with measure("sizing_read"):
@@ -304,6 +305,33 @@ class IntentionStore(_OriginalIntentionStore):
                 self._recovery_row_identity = physical
             if generation < self._recovery_row_highwater:
                 raise ContractError("Recovery sizing generation regressed")
+        active = True
+        def read(forecast_id):
+            if not active or not db.in_transaction:
+                raise ContractError("Recovery sizing reader lost its pinned source snapshot")
+            return self._revision_sizing_row(db, forecast_id, measure, read_timings,
+                                             generation, stat, physical)
+        try:
+            yield read, generation
+            # A pinned connection can still read its original database after
+            # the public pathname is replaced. Do not publish that snapshot's
+            # proof as the current source identity after such a replacement.
+            current = self.store.path.stat()
+            if (current.st_dev, current.st_ino) != (stat.st_dev, stat.st_ino):
+                self._recovery_row_cache.clear()
+                self._recovery_row_identity = None
+                raise ContractError("Recovery sizing source identity changed")
+        finally:
+            active = False
+
+    def _revision_sizing(self, db, forecast_id, measure, read_timings=None):
+        with self._recovery_sizing_reader(db, measure, read_timings) as (read, _):
+            return read(forecast_id)
+
+    def _revision_sizing_row(self, db, forecast_id, measure, read_timings, generation, stat, physical):
+        """Validate a row using the enclosing snapshot's exact source proof."""
+        detail = read_timings.detail if read_timings is not None else lambda stage: nullcontext()
+        with measure("sizing_read"):
             with detail("sizing_index_read"):
                 indexed = db.execute("SELECT i.forecast_id,i.id,r.generation FROM intraday_intentions i "
                     "LEFT JOIN recovery_sizing_revisions r ON r.forecast_id=i.forecast_id "
@@ -487,6 +515,72 @@ class IntentionStore(_OriginalIntentionStore):
             return self._append(db, forecast, event_key=event_key, at=at,
                 disposition=disposition, evidence=evidence, kind=kind, order=order, required_sizing=True)
 
+    def _project_recovery_observations(self, db, forecast, intention_row, intention, observations, *, existing_only=False):
+        results = []
+        for item in observations:
+            identity(item["event_key"]); identity(item["disposition"]); identity(item["kind"])
+            if item["order"] is None:
+                raise ContractError("Recovery requires an explicit local actor")
+            at = instant(item["recorded_at"])
+            if at < instant(forecast["issued_at"]) or not isinstance(item["evidence"], dict) or not item["evidence"]:
+                raise ContractError("Intention event needs available explicit evidence")
+            result = self._append_validated(db, forecast, intention_row, intention,
+                event_key=item["event_key"], at=at, disposition=item["disposition"],
+                evidence=item["evidence"], kind=item["kind"], order=item["order"],
+                existing_only=existing_only)
+            if result is None:
+                return None
+            results.append(result)
+        return results
+
+    def record_recovery_groups(self, groups, *, actor, timings=None):
+        """Validate exact existing own groups in one coherent read snapshot.
+
+        Every original and projection retains its existing validation. Missing
+        groups leave this snapshot and use the ordinary per-group writer path,
+        with fresh metadata and original checks before an atomic append.
+        """
+        if actor not in {"Atlas", "Scout"}:
+            raise ContractError("Recovery requires an explicit local actor")
+        groups = {identity(key): tuple(dict(item) for item in observations)
+                  for key, observations in groups.items()}
+        results = {key: [] for key, items in groups.items() if not items}
+        pending = {key: items for key, items in groups.items() if items}
+        if not pending:
+            return results
+        measure = timings.measure if isinstance(timings, _RecoveryTimings) else lambda stage: nullcontext()
+        read_timings = timings if isinstance(timings, _RecoveryTimings) else None
+        detail = read_timings.detail if read_timings is not None else lambda stage: nullcontext()
+        with measure("group_total"), self.store._execution_forecast_lock:
+            with detail("preflight_connection"), self.store.connect() as db:
+                db.execute("BEGIN")
+                with measure("forecast_read"):
+                    headers = self.store._revision_forecast_headers(db,
+                        ["f.id IN (SELECT value FROM json_each(?))"], [encoded(tuple(pending))],
+                        read_timings=read_timings)
+                with measure("forecast_validate"):
+                    by_id = {header["forecast_id"]: header for header in headers}
+                    if set(by_id) != set(pending):
+                        raise ContractError("Native 15m order lacks original persisted intention")
+                    if any(header["pc"] != actor for header in headers):
+                        raise ContractError("Recovery forecast belongs to another actor")
+                with self._recovery_sizing_reader(db, measure, read_timings) as (read_sizing, generation):
+                    for key, observations in pending.items():
+                        intention_row, intention, _ = read_sizing(key)
+                        if intention is None:
+                            raise ContractError("Native 15m order lacks original persisted intention")
+                        with measure("projection_append"):
+                            results[key] = self._project_recovery_observations(db, by_id[key],
+                                intention_row, intention, observations, existing_only=True)
+            # A failed context exit cannot publish a newer sizing watermark.
+            self._recovery_row_highwater = generation
+        for key, observations in pending.items():
+            if results[key] is None:
+                # No batch source proof crosses this transaction boundary.
+                results[key] = self.record_recovery_group(key, actor=actor,
+                    observations=observations, timings=timings)
+        return {key: results[key] for key in groups}
+
     def record_recovery_group(self, forecast_id, *, actor, observations, timings=None):
         """Project every native attempt for one original in a pinned transaction.
 
@@ -507,24 +601,6 @@ class IntentionStore(_OriginalIntentionStore):
         measure = timings.measure if isinstance(timings, _RecoveryTimings) else lambda stage: nullcontext()
         read_timings = timings if isinstance(timings, _RecoveryTimings) else None
         detail = read_timings.detail if read_timings is not None else lambda stage: nullcontext()
-
-        def project(db, forecast, intention_row, intention, *, existing_only=False):
-            results = []
-            for item in observations:
-                identity(item["event_key"]); identity(item["disposition"]); identity(item["kind"])
-                if item["order"] is None:
-                    raise ContractError("Recovery requires an explicit local actor")
-                at = instant(item["recorded_at"])
-                if at < instant(forecast["issued_at"]) or not isinstance(item["evidence"], dict) or not item["evidence"]:
-                    raise ContractError("Intention event needs available explicit evidence")
-                result = self._append_validated(db, forecast, intention_row, intention,
-                    event_key=item["event_key"], at=at, disposition=item["disposition"],
-                    evidence=item["evidence"], kind=item["kind"], order=item["order"],
-                    existing_only=existing_only)
-                if result is None:
-                    return None
-                results.append(result)
-            return results
 
         # Match chronology's cache-lock -> connection ordering. Cold payload
         # reads/decoding need no reserved writer. Close that snapshot before the
@@ -549,7 +625,8 @@ class IntentionStore(_OriginalIntentionStore):
                 # projection in this same source snapshot before returning it;
                 # any missing event still takes the final writer recheck.
                 with measure("projection_append"):
-                    existing = project(db, headers[0], intention_row, intention, existing_only=True)
+                    existing = self._project_recovery_observations(db, headers[0], intention_row, intention,
+                        observations, existing_only=True)
             if existing is not None:
                 self._recovery_row_highwater = generation
                 return existing
@@ -571,7 +648,7 @@ class IntentionStore(_OriginalIntentionStore):
                 if intention is None:
                     raise ContractError("Native 15m order lacks original persisted intention")
                 with measure("projection_append"):
-                    results = project(db, forecast, intention_row, intention)
+                    results = self._project_recovery_observations(db, forecast, intention_row, intention, observations)
             # Publish this watermark only after successful transaction exit.
             self._recovery_row_highwater = generation
             return results

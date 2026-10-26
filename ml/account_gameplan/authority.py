@@ -29,6 +29,7 @@ from pathlib import Path
 import re
 import secrets
 import sqlite3
+import threading
 import time
 from typing import Callable, Mapping
 from zoneinfo import ZoneInfo
@@ -593,6 +594,7 @@ class AccountAuthority:
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.binding = self._binding(binding)
         self.symbols = frozenset(s for symbols in self.binding["participants"].values() for s in symbols)
+        self._transaction_lock = threading.Lock()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._transaction() as db:
             for statement in (
@@ -638,18 +640,23 @@ class AccountAuthority:
 
     @contextmanager
     def _transaction(self):
-        db = sqlite3.connect(self.path, timeout=30, isolation_level=None)
-        db.row_factory = sqlite3.Row
-        try:
-            db.execute("PRAGMA synchronous=EXTRA")
-            db.execute("BEGIN IMMEDIATE")
-            yield db
-            db.commit()
-        except BaseException:
-            db.rollback()
-            raise
-        finally:
-            db.close()
+        # Foreground work and its renewal worker share this authority. Queue
+        # their writers before entering SQLite so one cannot time out against
+        # the other's transaction. External writers retain SQLite's policy;
+        # lease checks still run after admission and never revive expiry.
+        with self._transaction_lock:
+            db = sqlite3.connect(self.path, timeout=30, isolation_level=None)
+            db.row_factory = sqlite3.Row
+            try:
+                db.execute("PRAGMA synchronous=EXTRA")
+                db.execute("BEGIN IMMEDIATE")
+                yield db
+                db.commit()
+            except BaseException:
+                db.rollback()
+                raise
+            finally:
+                db.close()
 
     def _now(self, db):
         now = _time(self.clock())
