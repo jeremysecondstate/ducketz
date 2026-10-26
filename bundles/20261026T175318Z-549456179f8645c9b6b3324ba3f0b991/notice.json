@@ -1,0 +1,44 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T173847Z-1d31960585bb43c8a4c15bd8c6a7850e",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/forecast_index_reads.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_forecast_index_rows.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_forecast_index_rows.py"
+    }
+  ],
+  "limitations": [
+    "Controlled contention mitigation does not establish the complete cause or recovery of original natural runtime delays.",
+    "Runtime loading and naturally affected behavior remain unproved. Peer installation remains independently owned."
+  ],
+  "main_sha": "87692d7f5a8aab7760ec73c6880a60b2af8ee8bb",
+  "main_url": "https://github.com/jeremysecondstate/ducketz/commit/87692d7f5a8aab7760ec73c6880a60b2af8ee8bb",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The shared scalar reader preserves each PC's symbols, model recipes, original probabilities, targets, execution state and manual controls. Optional aggregation retains the canonical fallback, source snapshot and original validation. Four Atlas application files are installed with originals preserved and foreign schema/freeze methods unchanged. A future human-chosen ordinary manual 15-minute start loads this change. No broker/provider requests, fitting, trader controls, orders, replay or cross-trader/nightly prerequisite were introduced.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T173847Z-1d31960585bb43c8a4c15bd8c6a7850e",
+  "source_sha": "f3378af298fca4c9a180472bc62947ee549c8dd2",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/402",
+  "summary": "Batch execution forecast scalar index reads under contention",
+  "tests": [
+    "Canonical, sealed, isolated source and fresh-main checks each passed 122 offline cases, binding 37 fingerprints and 33 raw-base dependencies. Controlled contention preserved 310 exact ordered scalar rows while reducing result-row boundary cost.",
+    "The LF-preserving Atlas composition and actual installed source each passed 211 cases. All 117 actual imports remained exact with network and subprocess access denied. Four legacy writer expectations reproduce failure on the unchanged approved no-op baseline; current exact-existing projection checks are included.",
+    "Root whole-diff review passed 88 checks, courier review 76, main candidate review 40, and committed-byte/test/remote verification 99. Source and main were verified remotely."
+  ]
+}

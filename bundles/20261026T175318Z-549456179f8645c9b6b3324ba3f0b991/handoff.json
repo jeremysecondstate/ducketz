@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T17:53:18.125094Z",
+  "id": "20261026T175318Z-549456179f8645c9b6b3324ba3f0b991",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Batch execution forecast scalar index reads under contention"
+}
