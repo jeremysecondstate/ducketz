@@ -133,6 +133,9 @@ class ScoutLocalAccountExecutor:
             yield
 
     def _journals(self):
+        if type(self.books) is ScoutBooks:
+            yield from self.books.open_sessions()
+            return
         for session in self.books.sessions():
             with self.books.open_session(session) as journal:
                 yield journal
