@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T21:27:27.317413Z",
+  "id": "20261026T212727Z-059ff8a217444edaaadfb63cabbc937f",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout periodic recovery reuses audited pairs for terminal journal entries"
+}

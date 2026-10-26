@@ -1,0 +1,188 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261026T211814Z-456f483c3e8247cf9c680209f452a14d",
+  "change_details": [
+    "Actor Scout; task independent fifteen-minute periodic recovery repair; shared source applies where the Scout executor is used while both PCs retain their scientific recipes and operating bindings.",
+    "Route periodic accepted-record recovery through the existing audited journal-pair helper, saving one duplicate full audit for terminal records.",
+    "Preserve fresh projection and reservation checks, full submission and lifecycle validation, post-I/O audits, unknown-send fences, custom-journal fallback, exact direction and manual trader controls."
+  ],
+  "change_id": "20261026T211814Z-456f483c3e8247cf9c680209f452a14d",
+  "checks": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_periodic_paired_recovery.py",
+        "tests/test_intraday_scout_paired_recovery.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_journal.py",
+        "tests/test_intraday_scout_broker.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T21:18:59.220067Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "b1776ee378cd51eeea5d26921af66b0ebc388867de8cbbad99bed3118394bda1",
+      "output_sha256": "863b70925605cbb2ffee20e411266b3870e63f2e8e14811ccf2a3fa716a1a7f0",
+      "passed": 292,
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-26T21:18:14.490691Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_client.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_intraday_scout_initial_local_window.py",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "tests/test_stock_direction_policy.py",
+        "tests/test_intraday_starter_sizing.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T21:19:45.107206Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "626f61b05fc23f6a9b7a20d1abfc763949af035d21c6ae488e33dba5049b126d",
+      "output_sha256": "419399596fea0af190b1bb133502a160211fe14c841ca6d674940d6eadf27349",
+      "passed": 205,
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-26T21:18:59.489735Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_periodic_paired_recovery.py",
+        "tests/test_intraday_scout_paired_recovery.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_journal.py",
+        "tests/test_intraday_scout_broker.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T21:22:11.178445Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "b1776ee378cd51eeea5d26921af66b0ebc388867de8cbbad99bed3118394bda1",
+      "output_sha256": "90fcc2a4323664f5c4e6336123fb4ec244a44d7677a6ba8830259a07cc3767d0",
+      "passed": 292,
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-26T21:21:34.169871Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_client.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_intraday_scout_initial_local_window.py",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "tests/test_stock_direction_policy.py",
+        "tests/test_intraday_starter_sizing.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T21:22:50.542206Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "626f61b05fc23f6a9b7a20d1abfc763949af035d21c6ae488e33dba5049b126d",
+      "output_sha256": "afbca7f009875f1475de773e5059fafe39f6da2e11793b826bc45a4347397cc5",
+      "passed": 205,
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-26T21:22:11.374345Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_periodic_paired_recovery.py",
+        "tests/test_intraday_scout_paired_recovery.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_journal.py",
+        "tests/test_intraday_scout_broker.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T21:25:28.454420Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "b1776ee378cd51eeea5d26921af66b0ebc388867de8cbbad99bed3118394bda1",
+      "output_sha256": "099f8c0420fe68acb1bceb5acec215460f1d54ccb811edfd1da736abacd8ca40",
+      "passed": 292,
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-26T21:24:46.826002Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_client.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_intraday_scout_initial_local_window.py",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "tests/test_stock_direction_policy.py",
+        "tests/test_intraday_starter_sizing.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T21:26:11.808426Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "626f61b05fc23f6a9b7a20d1abfc763949af035d21c6ae488e33dba5049b126d",
+      "output_sha256": "9ca4e42867326118bfa11262bd5af13c6e80928fc63566df5acec2f2b77851e7",
+      "passed": 205,
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-26T21:25:28.717346Z"
+    }
+  ],
+  "file_sha256": {
+    "ml/intraday/scout_local_execution.py": "152db4b466714a0982109b388dc93df759e90b3cee25c11c46d9ce9fb768d3a1",
+    "tests/test_intraday_scout_periodic_paired_recovery.py": "78de19dc0b7b37e2b959320d5c74c46608e3b1b5eab878821a37fe68a595d6b8"
+  },
+  "files": [
+    "ml/intraday/scout_local_execution.py",
+    "tests/test_intraday_scout_periodic_paired_recovery.py"
+  ],
+  "limitations": [
+    "Offline synthetic journal checks; production latency cause, loaded behavior and affected runtime recovery remain unverified.",
+    "Working-order audit counts remain unchanged and whole-history audit complexity remains quadratic; this change removes constant duplicate work only."
+  ],
+  "main_integration": {
+    "main_before": "b659c5122a4d05ab1ec0fc1a80d62fb68bccfbcc",
+    "main_sha": "9595aec753567577a110a935c857757d8e0afb7e",
+    "record_id": "20261026T211814Z-456f483c3e8247cf9c680209f452a14d",
+    "stage": "main_integrated",
+    "verified_remote_sha": "9595aec753567577a110a935c857757d8e0afb7e"
+  },
+  "operations": {
+    "ml/intraday/scout_local_execution.py": "modify",
+    "tests/test_intraday_scout_periodic_paired_recovery.py": "add"
+  },
+  "prior_shared_main_preserved": "5a142a37c75251ce967717473f347dc2b26ebec1",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/411",
+  "pull_request_created_as_draft": true,
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout execution code loads at startup. Source publication, reviewed local installation, human-controlled restart and affected session observation are separate stages. Preserve private model recipes, live broker capacity and order/send identities.",
+  "scope": "shared",
+  "source_sha": "dce9eb2a719fba02b869bf3c5c41288e4a9b44a9",
+  "summary": "Scout periodic recovery reuses audited pairs for terminal journal entries",
+  "tests": [
+    "497 offline checks passed on the source queue, 497 on the isolated source candidate and 497 on the fresh main candidate; repeated stage counts overlap.",
+    "Each stage includes 292 recovery/native-journal/broker checks and 205 client/control/expiry/sizing/direction checks across 11 modules, including all 14 existing native crash-process cases. All 151 source/dependency fingerprints and candidate import bindings verified."
+  ]
+}
