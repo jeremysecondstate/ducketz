@@ -1,0 +1,104 @@
+--- a/ml/intraday/market_inputs.py
++++ b/ml/intraday/market_inputs.py
+@@ -405,7 +405,8 @@
+         if not path.is_relative_to(self.root) or path.name != identity+".json":
+             raise ValueError("Invalid market input object identity/path")
+         info = path.stat()
+-        key = (identity,info.st_mtime_ns,info.st_size)
++        key = (identity, info.st_dev, info.st_ino, info.st_mtime_ns,
++               info.st_ctime_ns, info.st_size)
+         with self._lock:
+             if key not in self._verified:
+                 if info.st_size > 1024*1024:
+@@ -451,30 +452,67 @@
+                 previous = same_clock.setdefault(item[0], item[2:4])
+                 if previous != item[2:4]:
+                     conflicting_clocks[source].add(item[0])
+-        matrix, provenance = [], []
+-        for decision in decisions:
+-            row, used = [], {}
+-            for source, fields in SOURCE_FIELDS.items():
+-                index = bisect_right(clocks[source], decision) - 1
+-                item = by_source[source][index] if index >= 0 else None
+-                eligible = item is not None and item[2] == "ok" and (decision - item[0]).total_seconds() <= SOURCE_TTL_SECONDS[source]
+-                verification = "not_selected"
+-                if item:
+-                    try:
+-                        self._verify_receipt(item,symbol,source)
+-                        verification = "receipt_hash_verified"
+-                    except (OSError,ValueError,KeyError,TypeError,json.JSONDecodeError):
+-                        eligible, verification = False,"receipt_integrity_unavailable"
+-                    if item[0] in conflicting_clocks[source]:
+-                        eligible,verification=False,"conflicting_same_receipt_time"
+-                if item:
+-                    used[source] = {"id": item[1], "received_at": _iso(item[0]), "status": item[2], "eligible": eligible, "object_path": item[4],"verification":verification}
+-                for field in fields:
+-                    number = _number(item[3].get(field)) if eligible else None
+-                    row.extend((number if number is not None else 0.0, float(number is not None)))
+-            matrix.append(row)
+-            provenance.append({"decision_at": _iso(decision), "sources": used})
+-        return {"feature_names": list(MODEL_FEATURE_NAMES), "rows": matrix, "provenance": provenance}
++        # A parsed catalog tuple remains distinct even when a corrupt catalog
++        # reuses an envelope identity with different fields. Count actual selected
++        # tuples, including stale/unavailable selections whose provenance is kept.
++        selection_counts = {}
++        if len(decisions) >= 3:
++            for decision in decisions:
++                for source in SOURCE_FIELDS:
++                    index = bisect_right(clocks[source], decision) - 1
++                    if index >= 0:
++                        key = id(by_source[source][index])
++                        selection_counts[key] = selection_counts.get(key, 0) + 1
++        from .market_join_receipts import ReceiptJoinProofs
++        integrity_errors = (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError)
++
++        def physical_identity(value):
++            item, _, _ = value
++            path = (self.root / item[4]).resolve()
++            if not path.is_relative_to(self.root) or path.name != item[1] + ".json":
++                raise ValueError("Invalid market input object identity/path")
++            info = path.stat()
++            return (str(path), info.st_dev, info.st_ino, info.st_mtime_ns,
++                    info.st_ctime_ns, info.st_size)
++
++        def render(proofs):
++            matrix, provenance = [], []
++            for decision in decisions:
++                row, used = [], {}
++                for source, fields in SOURCE_FIELDS.items():
++                    index = bisect_right(clocks[source], decision) - 1
++                    item = by_source[source][index] if index >= 0 else None
++                    eligible = item is not None and item[2] == "ok" and (decision - item[0]).total_seconds() <= SOURCE_TTL_SECONDS[source]
++                    verification = "not_selected"
++                    if item:
++                        try:
++                            if proofs is None:
++                                self._verify_receipt(item, symbol, source)
++                            else:
++                                proofs.verify(id(item), (item, symbol, source),
++                                              uses=selection_counts.get(id(item), 1))
++                            verification = "receipt_hash_verified"
++                        except (OSError,ValueError,KeyError,TypeError,json.JSONDecodeError):
++                            eligible, verification = False,"receipt_integrity_unavailable"
++                        if item[0] in conflicting_clocks[source]:
++                            eligible,verification=False,"conflicting_same_receipt_time"
++                    if item:
++                        used[source] = {"id": item[1], "received_at": _iso(item[0]), "status": item[2], "eligible": eligible, "object_path": item[4],"verification":verification}
++                    for field in fields:
++                        number = _number(item[3].get(field)) if eligible else None
++                        row.extend((number if number is not None else 0.0, float(number is not None)))
++                matrix.append(row)
++                provenance.append({"decision_at": _iso(decision), "sources": used})
++            return {"feature_names": list(MODEL_FEATURE_NAMES), "rows": matrix, "provenance": provenance}
++
++        proofs = ReceiptJoinProofs(lambda value: self._verify_receipt(*value),
++                                  physical_identity, integrity_errors)
++        result = render(proofs)
++        if not proofs.fences_unchanged():
++            # One bounded fallback uses the original per-row verifier. A final
++            # fence never lets a changed receipt retain an earlier valid proof.
++            return render(None)
++        return result
+ 
+     def latest_receipt(self, symbol: str, source: str) -> datetime | None:
+         if not self.database.exists():
