@@ -119,23 +119,39 @@ def test_expiry_during_sizing_keeps_intention_and_does_not_replace_existing_orde
     assert len(env.broker.posts) == 1 and env.broker.deletes == []
 
 
-def test_expiry_during_own_order_recovery_does_not_cancel(env, monkeypatch):
+@pytest.mark.parametrize('offset', [timedelta(0), timedelta(microseconds=1)], ids=['at-target', 'past-target'])
+def test_expiry_during_own_order_recovery_does_not_cancel(env, monkeypatch, offset):
     assert env.executor.step(env.forecast)['disposition'] == 'submitted'
+    original = record(env)
+    original_reservation = env.executor.journal.lookup_reservation(original['grant']['reservation_id'])
     previous = env.forecast
     env.forecast = forecast(env, advance=True)
-    env.state.now = instant(env.forecast['target_close']) - timedelta(seconds=10)
-    recover = env.executor._recover_record
+    target = instant(env.forecast['target_close'])
+    env.state.now = target - timedelta(seconds=10)
+    recover = env.executor._recover_record_for_step
 
     def delayed_recovery(*args, **kwargs):
         value = recover(*args, **kwargs)
-        env.state.now = instant(env.forecast['target_close'])
+        env.state.now = target + offset
         return value
 
-    monkeypatch.setattr(env.executor, '_recover_record', delayed_recovery)
+    monkeypatch.setattr(env.executor, '_recover_record_for_step', delayed_recovery)
     result = env.executor.step(env.forecast)
     assert result['disposition'] == 'fixed_target_already_elapsed'
     assert record(env) is None and record(env, previous)['state'] == 'ACCEPTED'
     assert len(env.broker.posts) == 1 and env.broker.deletes == []
+    recovered = record(env, previous)
+    assert all(recovered[key] == original[key] for key in ('request', 'grant', 'send_token', 'broker_order_id'))
+    reservation = env.executor.journal.lookup_reservation(original['grant']['reservation_id'])
+    assert all(getattr(reservation, key) == getattr(original_reservation, key)
+        for key in original_reservation.__dataclass_fields__ if key not in ('status', 'last_evidence_at'))
+    assert original_reservation.status == 'SUBMITTED' and reservation.status == 'WORKING'
+    assert reservation.reserved_quantity == original_reservation.reserved_quantity == original['grant']['quantity']
+    assert reservation.filled_quantity == 0 and reservation.cancel_requested_at is None
+    assert original_reservation.last_evidence_at is None
+    assert instant(reservation.last_evidence_at) == target - timedelta(seconds=10)
+    assert env.executor.journal.order_state(original['request']['request_id'])['cancellation'] is None
+    assert env.state.now == target + offset
 
 
 def test_expiry_during_cancellation_saved_read_blocks_delete_and_recovery_still_observes_fills(env, monkeypatch):
