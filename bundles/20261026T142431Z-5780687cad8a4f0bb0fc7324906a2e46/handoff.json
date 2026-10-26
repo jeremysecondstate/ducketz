@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T14:24:31.265214Z",
+  "id": "20261026T142431Z-5780687cad8a4f0bb0fc7324906a2e46",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Restore independent manual preparation and readiness package"
+}

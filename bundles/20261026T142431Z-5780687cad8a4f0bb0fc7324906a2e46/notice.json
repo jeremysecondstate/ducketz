@@ -1,0 +1,79 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T141653Z-5371234b142f433bab2dcc21faea649e",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tools/prepare_independent_intraday.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/readiness.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "Start-15m-Trader.cmd"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "Check-15m-Readiness.cmd"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_readiness.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_local_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_manual_trader_launchers.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_main_manual_preparation.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_main_preparation.py"
+    }
+  ],
+  "limitations": [
+    "Offline fixtures establish preparation, descriptive source capabilities and manual-wrapper semantics; no broker/provider availability or running process loading proved.",
+    "Current installed Atlas already has original nightly prep/readiness/manual launchers; candidate only adds canonical adapter support and corrects canonical default diagnostic return. Installed applicability retains separate review.",
+    "Scientific forecasts, targets, policy and numerical model fitting are unchanged.",
+    "Scout existing own report is consumed with its original ready/local_checks_passed fields; no Scout check, model or runtime behavior changed."
+  ],
+  "prior_completion_records": [
+    "20261013T194458Z-464d36a9261c4a6e895918c87a06e640",
+    "20261014T233031Z-85f62c5949ab473bac0bb75b51b13186",
+    "20261020T203633Z-53ccf339e76f4cd894cb55fb1ca6c9b1"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Canonical package restoration preserves frozen scientific contracts and manual controls. Readiness remains descriptive and performs no live verification. Separate operating production, source publication, existing installation, runtime loading and affected live exercise; no trader controls, peer acceptance or automatic starts. Each PC retains its own models, symbols and bindings.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T141653Z-5371234b142f433bab2dcc21faea649e",
+  "source_sha": "8dec4ec23f5693017457931c5d5ef06560ee145b",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/395",
+  "summary": "Restore independent manual preparation and readiness package",
+  "tests": [
+    "Six clean baseline failures reproduced missing preparation/readiness modules and default diagnostic failure. All96offlinecases passed implementation,sealed snapshot,managed source and fresh main candidate on122fingerprints/112exactraw-base dependencies.",
+    "Independent whole-diff/dependency review passed35checks;248committed-byte/test-attestation/remote checks verified source 8dec4ec23f5693017457931c5d5ef06560ee145b and main 219b0782b2603d8105a29896a435b78d2b3a0c18.",
+    "Twelve fresh installed-Atlas fixture cases pass on31exactimports. Corresponding original manual preparation is already installed; no application replacement or new restart needed for this group."
+  ]
+}
