@@ -1,0 +1,21 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T200407Z-e4bab2ccdbe04c5ab21945ff24934d42",
+  "files": [
+    "ml/intraday/execution_intentions.py",
+    "tests/test_intraday_recovery_batch_preflight.py"
+  ],
+  "limitations": [
+    "Synthetic temporary SQLite regressions demonstrate the source-replacement boundary, not the cause of observed live latency.",
+    "Running-process source loading and exercised recovery remain separate facts; no acceptance or fill is inferred for an unknown original commitment."
+  ],
+  "main_sha": "ced314372f1d0269c536f3ec52d13d773ddb60f6",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install exact three-line guard and synthetic regressions with the existing local module alias retained. No trader process/control/provider/order changes; source loading remains under manual controls.",
+  "scope": "shared reusable recovery correctness on both PCs; independent execution and local model recipes preserved",
+  "source_sha": "a1cc884d86b474012afd2b75b895f1f50ed952aa",
+  "summary": "Atlas 15m recovery source-identity boundary repair published and locally installed",
+  "tests": [
+    "Four replacement-seam regressions fail on the previous source; final94targeted checks,79checked source/publication/main checks and74installed local-alias checks pass. Unknown-source full validation and existing projections remain preserved."
+  ]
+}
