@@ -1,0 +1,22 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T224426Z-9ace502d175b4af7811f995e1979d616",
+  "files": [
+    "ml/account_gameplan/authority.py",
+    "tests/test_account_intraday_capacity_inventory.py"
+  ],
+  "limitations": [
+    "This evidence-backed candidate removes per-order SQLite/Python result handoffs in the capacity inventory while preserving all original rows and validation. Controlled SQL improved; a bounded whole-publication experiment did not establish overall latency improvement.",
+    "The original live capacity-publication phase includes lease renewal and transaction admission, so its exact delay cause remains unknown. Historical post-capture cold header validation is a separate cost.",
+    "Local installation does not establish loading or sustained runtime recovery in an existing manually started worker. Unknown original submissions retain their commitments without guessed IDs, release or resend."
+  ],
+  "main_sha": "8383e9367404f0b40c6a86f1aec0e61d710f808f",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Only exact reviewed authority and test changes installed, retaining local LF source formatting and unrelated bytes. No trader start/restart, control, broker/provider/order/replay, schedule, binding, model, or trading-state changes. Future manual launch and naturally exercised affected behavior remain separate stages.",
+  "scope": "Shared source correctness and read efficiency for each PC independently; local model recipes, scientific probabilities, direction policies and execution state retained",
+  "source_sha": "76d9db6e43ed933e40c0886385bb01a4ad871edc",
+  "summary": "Atlas 15m capacity inventory candidate published and locally installed",
+  "tests": [
+    "44 fresh offline checks passed on reviewed, immutable queued, source and common-main candidates. 180 installed offline checks passed with exact local imports and unchanged tested bytes. Old per-row behavior, REAL precision and nondefault text-factory regressions reproduced before their corrections."
+  ]
+}
