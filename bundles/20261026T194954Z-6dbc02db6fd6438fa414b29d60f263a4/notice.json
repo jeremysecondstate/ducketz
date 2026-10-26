@@ -1,0 +1,72 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261026T193140Z-671013c15c544b8288436c2986cb2582",
+  "change_id": "source:20261026T193140Z-671013c15c544b8288436c2986cb2582",
+  "commit_sha": "136927dde685061f4170f84825bc0f0e9c7cbaf5",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/scout_journal.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/scout_local_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_scout_paired_recovery.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_scout_expiry_during_capacity.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_scoring_dedup.py"
+    }
+  ],
+  "limitations": [
+    "Optional native CatBoost contract cases skipped because that optional package is unavailable; no numerical production fitting or dependency changes performed.",
+    "Main advanced again across three protected native-recovery dependencies; strict preparation rejected before candidate copy. A separately reviewed successor is being prepared.",
+    "Affected live recovery still requires separate authorized local loading and operation-specific observation."
+  ],
+  "original_completion_record": "20261026T190021Z-f1093de299104ac1a8cc91d1f04346d3",
+  "original_source_sha": "f1fcdc76636a5d0fd421f2e171a94a9c2a008ee3",
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/407",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Shared source only; each PC retains its own scientific recipe and private bindings. This publication does not adopt current main dependencies into an operating runtime or control a trader.",
+  "scope": "shared",
+  "summary": "Reviewed current-main paired journal recovery revision preserves newer shared behavior and scoring guards",
+  "tests": {
+    "counts_overlap": true,
+    "isolated": [
+      {
+        "completed_at_utc": "2026-10-26T19:42:20.515710Z",
+        "exit_code": 0,
+        "modules": 41,
+        "output_sha256": "ac5f92bd4f97e52c8b23a866db08c21957aab1438273b7bff16fb644c50a5497",
+        "passed": 1963,
+        "skipped": 28,
+        "started_at_utc": "2026-10-26T19:37:43.851808Z",
+        "warnings": 1
+      }
+    ],
+    "source": [
+      {
+        "completed_at_utc": "2026-10-26T19:36:27.152450Z",
+        "exit_code": 0,
+        "modules": 41,
+        "output_sha256": "e54a5b9a2c120a8521736100c15278f7d3e1d9dc6e2700389dbdf33d782f5e06",
+        "passed": 1963,
+        "skipped": 28,
+        "started_at_utc": "2026-10-26T19:31:41.638153Z",
+        "warnings": 1
+      }
+    ]
+  }
+}

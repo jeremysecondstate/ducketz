@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T19:49:54.761986Z",
+  "id": "20261026T194954Z-6dbc02db6fd6438fa414b29d60f263a4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Reviewed current-main paired journal recovery revision preserves newer shared behavior and scoring guards"
+}
