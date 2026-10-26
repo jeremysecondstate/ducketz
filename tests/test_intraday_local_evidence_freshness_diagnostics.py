@@ -48,10 +48,10 @@ def test_native_failure_retains_exact_gate_ages_and_immutable_unknown(env, monke
     journal_clock(env, monkeypatch)
     native_transport(env, monkeypatch)
     env.capture_seconds, env.quote_age = capture_seconds, quote_age
-    calls = expire_at(env, monkeypatch, 6, advance)
+    calls = expire_at(env, monkeypatch, 4, advance)
     result = env.executor.step(env.forecast)
     old = record(env)
-    assert len(calls) == 6 and env.broker.posts == []
+    assert len(calls) == 4 and env.broker.posts == []
     assert old["state"] == "UNKNOWN" and old["send_token"] and old["broker_order_id"] is None
     failure = result["evidence"]["submission_failure"]
     item = failure["original"]["chain"][0]
@@ -95,11 +95,14 @@ def test_gate_position_keeps_original_claim_and_clearance_rules(env, monkeypatch
 @pytest.mark.parametrize("seconds", [0, 60])
 def test_valid_inclusive_boundary_sends_once_without_failure_metadata(env, monkeypatch, seconds):
     native_transport(env, monkeypatch)
-    expire_at(env, monkeypatch, 6, seconds)
+    # Exact native authorization/final reads are4/5; prove the boundary seam ran.
+    started_at = env.state.now
+    calls = expire_at(env, monkeypatch, 4, seconds)
     def forbidden(*args, **kwargs):
         pytest.fail("Successful evidence must not invoke the failure observer")
     monkeypatch.setattr(execution, "_record_local_evidence_freshness_failure", forbidden)
     result = env.executor.step(env.forecast)
+    assert len(calls) == 5 and env.state.now == started_at + timedelta(seconds=seconds)
     assert result["disposition"] == "submitted" and record(env)["state"] == "ACCEPTED"
     assert len(env.broker.posts) == 1 and "local_evidence_freshness" not in json.dumps(result)
 
