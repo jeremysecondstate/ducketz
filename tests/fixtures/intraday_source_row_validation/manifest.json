@@ -1,0 +1,306 @@
+{
+  "fixture_sha256": {
+    "coverage-before.py.txt": "d005d6b0780a85297705f06d5ced11ec773e6d542332fa9d0fabb4179f78fa4c",
+    "inputs.py.txt": "e95113d674a4b13edb17763415c4c554320663b66b86f511027df2523da1658e",
+    "native-support.py.txt": "95a348f363666d731dc8dfeb9894de2fe800958d3f28847bcc9eea5bc541a299",
+    "recovery-before.py.txt": "d6acf7edae0fdfca01d2cf0607c4b64684f77af81191438cc2c07930775c9489"
+  },
+  "patch_sha256": "b38785ed947b7dce2ae398a206ea9a05d6887be424901fb3dce7533a673c1340",
+  "patched_fragment_sha256": {
+    "coverage-before.py.txt": "0e8276a384c48a4e3fc3e2b01a9aab9d1a998b8fc2645f192e62e2c0aa2dbc78",
+    "recovery-before.py.txt": "f8c6809cf7788cd995a995ed58c2906a1424fde62c19003cc77fe160e5724329"
+  },
+  "reviewed_shared_base": "906418d1368b197b74bc3bc630dd3bd601f71ff0",
+  "schema_version": "intraday-source-row-validation-adapter-fixtures-v1",
+  "scope": "Authentic pure validation methods and exact helpers only; no runtime/provider modules or private inputs",
+  "segments": [
+    {
+      "end_line": 20,
+      "name": "POPULATION_CONTRACT",
+      "normalized_segment_sha256": "87ea8fb95878d6f4d69e7f2f3b291eee8d31e2918d690ee7c7081b0ddcc11ded",
+      "original_full_sha256": "2a249d2caa57026e12ff7933f453bbf50aa3612612af63fd623d62a9a24f5bd3",
+      "original_path": "ml/intraday/coverage.py",
+      "start_line": 20
+    },
+    {
+      "end_line": 25,
+      "name": "_NATIVE_MINUTE",
+      "normalized_segment_sha256": "9f22bd052e6ecfcdcab6b147ca27d3cd2446e43c029460959a7ea37051a792f0",
+      "original_full_sha256": "2a249d2caa57026e12ff7933f453bbf50aa3612612af63fd623d62a9a24f5bd3",
+      "original_path": "ml/intraday/coverage.py",
+      "start_line": 25
+    },
+    {
+      "end_line": 26,
+      "name": "_SOURCE_QUARTER",
+      "normalized_segment_sha256": "dee6d0df29cbe938a6f60298d2cc17451c3bc7176ecebd8b55bdc74c182151d8",
+      "original_full_sha256": "2a249d2caa57026e12ff7933f453bbf50aa3612612af63fd623d62a9a24f5bd3",
+      "original_path": "ml/intraday/coverage.py",
+      "start_line": 26
+    },
+    {
+      "end_line": 36,
+      "name": "_utc",
+      "normalized_segment_sha256": "1cdddade408c7b4a06b6e8d9ca6538b5b841befea04559727b98b024d0bfc16a",
+      "original_full_sha256": "2a249d2caa57026e12ff7933f453bbf50aa3612612af63fd623d62a9a24f5bd3",
+      "original_path": "ml/intraday/coverage.py",
+      "start_line": 35
+    },
+    {
+      "end_line": 166,
+      "name": "verified_source_observation",
+      "normalized_segment_sha256": "689b770048bff908d629811eb8abb9e388c24404fd3d4d33281112fb327e4882",
+      "original_full_sha256": "2a249d2caa57026e12ff7933f453bbf50aa3612612af63fd623d62a9a24f5bd3",
+      "original_path": "ml/intraday/coverage.py",
+      "start_line": 110
+    },
+    {
+      "end_line": 26,
+      "name": "POPULATION_CONTRACT",
+      "normalized_segment_sha256": "922a884712e0eba9dc6f4f941d1ec14c73d7fa3764e4701601ec147b78cc302b",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 26
+    },
+    {
+      "end_line": 27,
+      "name": "SOURCE_ID",
+      "normalized_segment_sha256": "c644f9d07bfcd74b572a5c9365d9d589595d9e6879926efe026682493826864d",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 27
+    },
+    {
+      "end_line": 28,
+      "name": "SOURCE_DATASET",
+      "normalized_segment_sha256": "265b452d5e4e296bbc6b9fa5942d5ff5620e35db3b275582777901a35a61c31c",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 28
+    },
+    {
+      "end_line": 29,
+      "name": "PRICE_FIELDS",
+      "normalized_segment_sha256": "81ab097d316114214915dc4fd2bbfa1c9ae364a84236a1979dc7987322bb2c22",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 29
+    },
+    {
+      "end_line": 39,
+      "name": "_utc",
+      "normalized_segment_sha256": "d442a78dfbdc5c0725af9bbb3efe07d568588284db524c911f55ab84aa43ab02",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 35
+    },
+    {
+      "end_line": 47,
+      "name": "_default",
+      "normalized_segment_sha256": "e277476c484de997abe9d9ceb8aedd8ef73b99362a637c68b41ac977c30e46c2",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 42
+    },
+    {
+      "end_line": 51,
+      "name": "_json",
+      "normalized_segment_sha256": "b03c253a2f6399f7c0e48562b4596455f49eb75c129e7c520023e121c183d273",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 50
+    },
+    {
+      "end_line": 55,
+      "name": "_plain",
+      "normalized_segment_sha256": "4245d0946dfb56dffcd18ff21b857181a71782dbeea4bcd0d07f7425b9c83c63",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 54
+    },
+    {
+      "end_line": 59,
+      "name": "_digest",
+      "normalized_segment_sha256": "9b8915ab6609ffd27c1a6bc739644102caba71aa3d4e38b36e329b0b7212f453",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 58
+    },
+    {
+      "end_line": 69,
+      "name": "_session",
+      "normalized_segment_sha256": "3ffdb3e70fcfea932ea0a20b56205d62bd88c47809cb5deac36851a8b311f5fb",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 62
+    },
+    {
+      "end_line": 76,
+      "name": "_wrapper",
+      "normalized_segment_sha256": "e8ca944141d15e9cb054b5481f8d967669697370027b155c592d7a2dec325c7e",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 72
+    },
+    {
+      "end_line": 93,
+      "name": "wrap_primary",
+      "normalized_segment_sha256": "d7cf2c67c52412c10de16a5a5be9fddee34920a0c92f6bbd6bc99301dbaafeea",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 79
+    },
+    {
+      "end_line": 103,
+      "name": "_assessment_valid",
+      "normalized_segment_sha256": "f54458e7c74c14d3022ad19beea6b15b2e654db136012ffc843c776a507cef6a",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 96
+    },
+    {
+      "end_line": 154,
+      "name": "_candidate",
+      "normalized_segment_sha256": "4753a86248021c48b98e3ef7803c33e25c0f9d6903c6bf1cfd44cf76c5cd73d3",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 106
+    },
+    {
+      "end_line": 206,
+      "name": "recovery_candle",
+      "normalized_segment_sha256": "df686dbcf14255c4a505287283838e8834e9a23b9fe466a58063d9a4e0c7db1d",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 157
+    },
+    {
+      "end_line": 252,
+      "name": "verified_recovery_candle",
+      "normalized_segment_sha256": "9f095c29f723c954148618e40f8923b5763e5285babf98cf66e5e2ed8ed22ec0",
+      "original_full_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "original_path": "ml/intraday/recovered_population.py",
+      "start_line": 209
+    },
+    {
+      "end_line": 62,
+      "name": "utc",
+      "normalized_segment_sha256": "6f2a31c990f5be21d774b05a448a8072edfff6764ec9d6825bcce941378bdf19",
+      "original_full_sha256": "7bf155050d80405b07fd6b6e6475cdd8cb352db888e3bea7e401b160f249e06f",
+      "original_path": "ml/intraday/data.py",
+      "start_line": 60
+    },
+    {
+      "end_line": 103,
+      "name": "SessionBounds",
+      "normalized_segment_sha256": "c9ac2c1658dbe974e1c153072fb27a4c2a40bfbba92f66b08cf33dd144316fc4",
+      "original_full_sha256": "7bf155050d80405b07fd6b6e6475cdd8cb352db888e3bea7e401b160f249e06f",
+      "original_path": "ml/intraday/data.py",
+      "start_line": 94
+    },
+    {
+      "end_line": 147,
+      "name": "_require_native_observations",
+      "normalized_segment_sha256": "f1d7850b8265f7489e4b810a639ca8355e52cd3aac1e46bf87e9f3dcbc31f431",
+      "original_full_sha256": "7bf155050d80405b07fd6b6e6475cdd8cb352db888e3bea7e401b160f249e06f",
+      "original_path": "ml/intraday/data.py",
+      "start_line": 129
+    },
+    {
+      "end_line": 41,
+      "name": "source_candle",
+      "normalized_segment_sha256": "815e066b18456b5fd6bfc2648eee943838152803498d794605d06d58723f6347",
+      "original_full_sha256": "6c858c5dd2f7199f1259eb816b984f909cbb62d665798362c6d52a1e1f2cd9b2",
+      "original_path": "tests/test_intraday_source_alignment.py",
+      "start_line": 15
+    },
+    {
+      "end_line": 20,
+      "name": "START",
+      "normalized_segment_sha256": "9f8dfae375b82ee098ce29364f75c4eb4cda99d245e165c11e35dfd54e4f5896",
+      "original_full_sha256": "27783ea81035870caa49f92fe5ba8a4071737af207985fb3d3027a262db722c2",
+      "original_path": "tests/test_intraday_recovered_population.py",
+      "start_line": 20
+    },
+    {
+      "end_line": 21,
+      "name": "END",
+      "normalized_segment_sha256": "857b5768a742505aa73433eb8a15c7c120e6b6bba2a635db3763c7f050eec3de",
+      "original_full_sha256": "27783ea81035870caa49f92fe5ba8a4071737af207985fb3d3027a262db722c2",
+      "original_path": "tests/test_intraday_recovered_population.py",
+      "start_line": 21
+    },
+    {
+      "end_line": 22,
+      "name": "NOW",
+      "normalized_segment_sha256": "4edce2fcbb16927ef12f7189a6f26a73e4100ee016d774b407d721f534f0f576",
+      "original_full_sha256": "27783ea81035870caa49f92fe5ba8a4071737af207985fb3d3027a262db722c2",
+      "original_path": "tests/test_intraday_recovered_population.py",
+      "start_line": 22
+    },
+    {
+      "end_line": 23,
+      "name": "SESSION",
+      "normalized_segment_sha256": "d9e8fd7596a8fa5b38759eb9405156f731f2739d908f81840582d644d101cacd",
+      "original_full_sha256": "27783ea81035870caa49f92fe5ba8a4071737af207985fb3d3027a262db722c2",
+      "original_path": "tests/test_intraday_recovered_population.py",
+      "start_line": 23
+    },
+    {
+      "end_line": 39,
+      "name": "primary",
+      "normalized_segment_sha256": "1a8dd8b58153663699e1cf2f3574c1a7a8d7ca27c504d43622f4ac56c117e04a",
+      "original_full_sha256": "27783ea81035870caa49f92fe5ba8a4071737af207985fb3d3027a262db722c2",
+      "original_path": "tests/test_intraday_recovered_population.py",
+      "start_line": 26
+    },
+    {
+      "end_line": 43,
+      "name": "bar",
+      "normalized_segment_sha256": "c1e1526eb070c4c4a5308ce102489a6385b663c78f2ac3d97e14344099b20512",
+      "original_full_sha256": "27783ea81035870caa49f92fe5ba8a4071737af207985fb3d3027a262db722c2",
+      "original_path": "tests/test_intraday_recovered_population.py",
+      "start_line": 42
+    },
+    {
+      "end_line": 52,
+      "name": "response",
+      "normalized_segment_sha256": "034514f28919d51a1a15b51e44c342a7e1249b5734c05d5d561bd56a6722e1d7",
+      "original_full_sha256": "27783ea81035870caa49f92fe5ba8a4071737af207985fb3d3027a262db722c2",
+      "original_path": "tests/test_intraday_recovered_population.py",
+      "start_line": 46
+    },
+    {
+      "end_line": 59,
+      "name": "assessment",
+      "normalized_segment_sha256": "5f985664aa6f81ef56b630027e1c3b5d95c7d3f65eb369b859cb7a4e03f6c0aa",
+      "original_full_sha256": "27783ea81035870caa49f92fe5ba8a4071737af207985fb3d3027a262db722c2",
+      "original_path": "tests/test_intraday_recovered_population.py",
+      "start_line": 55
+    },
+    {
+      "end_line": 64,
+      "name": "rehash",
+      "normalized_segment_sha256": "cf144345581d24172465f86cc475000f2cfd8b4ca2ee66900ad8c54a7d048328",
+      "original_full_sha256": "27783ea81035870caa49f92fe5ba8a4071737af207985fb3d3027a262db722c2",
+      "original_path": "tests/test_intraday_recovered_population.py",
+      "start_line": 62
+    }
+  ],
+  "source_modules": [
+    {
+      "after_lf_sha256": "2251781f4311a5a6c825604a597219de33f1cab12b37c5c6bb86090c8b32eec8",
+      "after_sha256": "7c549b2dcd5ea750fda1762b4fe9c6bbd1d4b154b601ffbcb667720abe93b11a",
+      "before_lf_sha256": "7f595f48403fde33874d29f16588e80b4d57871f7f0e28aa5f081d91ec203723",
+      "before_sha256": "2a249d2caa57026e12ff7933f453bbf50aa3612612af63fd623d62a9a24f5bd3",
+      "path": "ml/intraday/coverage.py"
+    },
+    {
+      "after_lf_sha256": "2b4863c9c7df715b58f943b9f180a1410f1771701537d9a355af75f3d8f51426",
+      "after_sha256": "268351c7138645529faf0b6acad571a8a46b2ec3b0c7d145df1971bb39136b2d",
+      "before_lf_sha256": "b12ade5224d1d7bcb131b85cbd8e955a06eed0972eb41863c818711df1ae5016",
+      "before_sha256": "3b263de6be4b964ce8cb4dd36f36ec92a0893f9b3e4f02a83093d6b5735cee9f",
+      "path": "ml/intraday/recovered_population.py"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+def utc(value) -> pd.Timestamp:
+    """Require timezone awareness; never guess the host timezone."""
+    return pd.Timestamp(instant(value))
+
+
+@dataclass(frozen=True)
+class SessionBounds:
+    session_id: str
+    opened_at: str
+    closed_at: str
+    policy: str = "explicit-session-bounds"
+
+    def contains(self, opened_at, duration=STEP) -> bool:
+        start = utc(opened_at)
+        return utc(self.opened_at) <= start and start + duration <= utc(self.closed_at)
+
+
+def _require_native_observations(rows):
+    """Never erase explicit synthetic provenance while normalizing native rows."""
+    from ml.market_gap_evidence import MARKERS as markers
+    def valid_flag(value):
+        return isinstance(value, (bool, np.bool_)) and not bool(value)
+    def valid_count(value):
+        return (not isinstance(value, (bool, np.bool_))
+                and isinstance(value, (int, float, np.integer, np.floating))
+                and math.isfinite(float(value)) and float(value) == 0)
+    if isinstance(rows, pd.DataFrame):
+        invalid = any(not rows[key].map(valid_flag).all() for key in markers if key in rows)
+        invalid |= ("synthetic_constituents" in rows
+                    and not rows.synthetic_constituents.map(valid_count).all())
+    else:
+        invalid = any(any(key in row and not valid_flag(row[key]) for key in markers)
+            or ("synthetic_constituents" in row and not valid_count(row["synthetic_constituents"]))
+            for row in rows)
+    if invalid:
+        raise ContractError("Native source observations cannot contain synthetic or no-trade markers")
+
