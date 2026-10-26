@@ -1,0 +1,81 @@
+def source_candle(indices=tuple(range(15)), *, opened_at="2026-10-12T17:00:00Z"):
+    """Construct explicit native evidence, without providers or private records."""
+    opened = pd.Timestamp(opened_at)
+    observations = [dict(opened_at=(opened + timedelta(minutes=i)).isoformat(),
+        available_at=(opened + timedelta(minutes=i + 1)).isoformat(),
+        source_id="offline-native", synthetic=False, open=100. + i,
+        high=101. + i, low=99. + i, close=100.5 + i, volume=float(i + 1))
+        for i in indices]
+    evidence = dict(aggregation=coverage.POPULATION_CONTRACT,
+        source_id="offline-native", source_dataset="OFFLINE_NATIVE",
+        source_coverage=dict(opened_at=opened.isoformat(),
+            closed_at=(opened + timedelta(minutes=15)).isoformat(), basis="explicit offline fixture"),
+        observations=observations)
+    return dict(symbol="AAPL", opened_at=opened.isoformat(),
+        available_at=(opened + timedelta(minutes=15)).isoformat(),
+        open=observations[0]["open"], high=max(row["high"] for row in observations),
+        low=min(row["low"] for row in observations), close=observations[-1]["close"],
+        volume=sum(row["volume"] for row in observations),
+        source_id="offline-native", source_dataset="OFFLINE_NATIVE",
+        session_id="offline-session", session_open=opened.isoformat(),
+        session_close=(opened + timedelta(hours=1)).isoformat(),
+        synthetic=False, no_trade=False, synthetic_open=False, synthetic_close=False,
+        interval_seconds=900, synthetic_constituents=0,
+        observed_constituents=len(indices), source_empty_constituents=15-len(indices),
+        native_first_opened_at=observations[0]["opened_at"],
+        native_last_opened_at=observations[-1]["opened_at"],
+        population_contract=coverage.POPULATION_CONTRACT, evidence_json=evidence)
+
+
+START = pd.Timestamp("2026-10-12T14:00:00Z")
+
+
+END = START+pd.Timedelta(minutes=15)
+
+
+NOW = END+pd.Timedelta(seconds=30)
+
+
+SESSION = SessionBounds("2026-10-12", "2026-10-12T08:00:00Z", "2026-10-13T00:00:00Z")
+
+
+def primary():
+    observation = {"opened_at":START.isoformat(),"available_at":(START+pd.Timedelta(minutes=1)).isoformat(),
+        "source_id":"databento:EQUS.MINI:ohlcv-1m","synthetic":False,
+        "open":100.,"high":102.,"low":99.,"close":101.,"volume":20.}
+    evidence={"aggregation":PRIMARY_CONTRACT,"source_id":observation["source_id"],"source_dataset":"EQUS.MINI",
+        "source_coverage":{"opened_at":START.isoformat(),"closed_at":END.isoformat(),"basis":"recorded_request"},
+        "observations":[observation]}
+    return {"symbol":"TEST","opened_at":START,"available_at":END,"availability_kind":"actual",
+        "open":100.,"high":102.,"low":99.,"close":101.,"volume":20.,
+        "source_id":observation["source_id"],"source_dataset":"EQUS.MINI","population_contract":PRIMARY_CONTRACT,
+        "session_id":SESSION.session_id,"session_open":SESSION.opened_at,"session_close":SESSION.closed_at,
+        "interval_seconds":900,"observed_constituents":1,"source_empty_constituents":14,"synthetic_constituents":0,
+        "synthetic":False,"no_trade":False,"synthetic_open":False,"synthetic_close":False,
+        "native_first_opened_at":START.isoformat(),"native_last_opened_at":START.isoformat(),"evidence_json":json.dumps(evidence)}
+
+
+def bar(at=START, price=100, volume=10, **kw):
+    return {"timestamp":at.isoformat(),"open":price,"high":price+1,"low":price-1,"close":price,"volume":volume,**kw}
+
+
+def response(provider, records=(), received=NOW):
+    return {"provider":provider,"source":provider+":native","dataset":provider+".NATIVE","symbol":"TEST",
+        "receipt_id":provider+"-receipt","payload_sha256":("a" if provider=="schwab" else "b")*64,
+        "status":"ok","response_complete":True,"request_start":START.isoformat(),"request_end":END.isoformat(),
+        "received_at":received.isoformat(),"native_interval_seconds":300 if provider=="fmp" else 60,"records":list(records),
+        "price_context":{"before":{"timestamp":START.isoformat(),"received_at":received.isoformat(),"price":100},
+                         "after":{"timestamp":END.isoformat(),"received_at":received.isoformat(),"price":100}}}
+
+
+def assessment(schwab=(), fmp=()):
+    return assess_interval_gap("TEST",START,END,as_of=NOW,
+        evidence=[response("databento"),response("schwab",schwab),response("fmp",fmp)],
+        anchor={"timestamp":START.isoformat(),"received_at":START.isoformat(),"price":100,"receipt_id":"anchor",
+            "source":"databento:native","payload_sha256":"c"*64,"kind":"observed_trade_close","is_synthetic":False})
+
+
+def rehash(proof):
+    proof["assessment_sha256"]=hashlib.sha256(json.dumps({k:v for k,v in proof.items() if k!="assessment_sha256"},sort_keys=True,separators=(",",":"),default=str).encode()).hexdigest()
+    return proof
+

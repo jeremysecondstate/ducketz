@@ -1,0 +1,38 @@
+--- a/ml/intraday/coverage.py
++++ b/ml/intraday/coverage.py
+@@ -139,16 +139,18 @@
+             return False
+         from .data import _require_native_observations
+         _require_native_observations([candle, *evidence["observations"]])
++        native_step = pd.Timedelta(minutes=1)
+         times = [_utc(row["opened_at"]) for row in evidence["observations"]]
+         if (len(times) != observed or len(set(times)) != len(times) or times != sorted(times)
+-                or any(t < op or t+pd.Timedelta(minutes=1) > op+STEP or t != t.floor(_NATIVE_MINUTE) for t in times)):
++                or any(t < op or t+native_step > op+STEP or t != t.floor(_NATIVE_MINUTE) for t in times)):
+             return False
+         if _utc(candle["native_first_opened_at"]) != times[0] or _utc(candle["native_last_opened_at"]) != times[-1]:
+             return False
+-        for row in evidence["observations"]:
++        for row, opened in zip(evidence["observations"], times):
+             if row.get("source_id") != candle["source_id"] or row.get("synthetic") is not False:
+                 return False
+-            if _utc(row["available_at"]) > av or _utc(row["available_at"]) < _utc(row["opened_at"])+pd.Timedelta(minutes=1):
++            available = _utc(row["available_at"])
++            if available > av or available < opened+native_step:
+                 return False
+             vals = [float(row[key]) for key in ("open","high","low","close","volume")]
+             a,h,l,c,v = vals
+--- a/ml/intraday/recovered_population.py
++++ b/ml/intraday/recovered_population.py
+@@ -247,7 +247,10 @@
+             actual["evidence_json"] = _json(actual["evidence_json"])
+         for key in ("opened_at", "available_at", "session_open", "session_close"):
+             actual[key], expected[key] = _utc(actual[key]).isoformat(), _utc(expected[key]).isoformat()
+-        return _plain(actual) == _plain(expected)
++        # Both expected constructors return canonical JSON values;
++        # only canonical clock strings are assigned above. Validate/normalize
++        # the supplied actual value, retaining the same semantic comparison.
++        return _plain(actual) == expected
+     except (KeyError, TypeError, ValueError, OverflowError, ContractError):
+         return False
+ 
