@@ -495,10 +495,6 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         raise ContractError("Existing single-source live provider binding required")
     if pc == "Atlas":
         from .account_execution import IntradayAccountExecutor
-        from .runtime_compatibility import read_gameplan_runtime_compatibility
-        def compatibility():
-            return read_gameplan_runtime_compatibility(root,repository,as_of=clock(),
-                maximum_heartbeat_age_seconds=120,allow_verified_absence=True)
     started = instant(clock())
     wake_at = manual_wake_at(started)
     session_id = "manual-" + pc.lower() + "-15m:" + uuid.uuid4().hex
@@ -599,17 +595,13 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 raise InterruptedError("Scout manual session reached its 5pm Pacific stop")
             if waiting:
                 status("STARTING")
-            # Read overnight-installed recipes and compatibility at wake, not
+            # Read overnight-installed recipes at wake, not
             # when the operator first launches the sleeping process.
             from .live_model_recipe import prepare_manual_models, native_interval_symbols_for_runtime
             startup_stage = "model_recipe"
             config, model_runtime = prepare_manual_models(config, datastore=root, pc=pc, symbols=symbols,
                 **({"recipe_path": model_recipe} if model_recipe is not None else {}))
             native_interval_symbols = native_interval_symbols_for_runtime(model_runtime)
-            if pc == "Atlas":
-                proof = compatibility()
-                if not proof["ready"]:
-                    raise ContractError("Live startup requires compatible loaded Gameplan or verified absence: " + ",".join(proof["reason_codes"]))
             startup_stage = "local_configuration"
             load_dotenv(repository / ".env")
             if pc == "Scout":
@@ -677,7 +669,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             if pc == "Atlas":
                 startup_stage = "local_executor"
                 executor = IntradayAccountExecutor(datastore=root,store=store,broker=SchwabSession(),local_symbols=symbols,
-                    session_started_at=started,clock=clock,manual_authority=manual_authority,compatibility=compatibility,stopped=should_stop)
+                    session_started_at=started,clock=clock,manual_authority=manual_authority,stopped=should_stop,
+                    actor=pc,diagnostic_session_id=session_id)
         except BaseException as exc:
             scheduled_stop = isinstance(exc,InterruptedError) and automatic_stop_requested_at[0] is not None
             diagnostics = _symbol_exception_diagnostics(exc)
