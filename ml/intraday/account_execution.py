@@ -19,7 +19,7 @@ import uuid
 from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.account_gameplan.authority import (AccountAuthority, AuthorityBinding, AuthorityError,
     IntradayCapacitySnapshot, IntradayReservationRequest, Fill, OrderEvidence, OPEN, SubmissionNotStarted,
-    lease_acquisition_failure_evidence, lease_acquisition_success_evidence)
+    lease_acquisition_failure_evidence, lease_acquisition_success_evidence, receipt_recovery_details_evidence)
 from ml.stock_trader.horizon_broker import capture_order_evidence
 from ml.stock_trader.horizon_ledger import LedgerError, PortfolioEvidence
 from .local_execution import (load_local_binding, IntradayLedger as HorizonLedger, NATIVE_PATH, AUTHORITY_PATH, LOCK_PATH, broker_pending)
@@ -194,6 +194,12 @@ class _ExecutionTrace:
                 key: evidence[key] for key in ("schema_version", "attempt", "stage", "elapsed_seconds",
                     "stage_elapsed_seconds", "diagnostics_unavailable")}
             result["lease_acquisition"]["phases"] = [dict(item) for item in evidence["phases"]]
+            try:
+                details = receipt_recovery_details_evidence(evidence)
+                if details is not None:
+                    result["lease_acquisition"]["receipt_recovery_details"] = details
+            except Exception:
+                result["lease_acquisition"]["diagnostics_unavailable"] = True
         if self.recovery_timings is not None:
             result["recovery_phase_timings"] = self.recovery_timings.snapshot()
         return result

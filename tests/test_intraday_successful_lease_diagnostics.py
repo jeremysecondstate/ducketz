@@ -36,8 +36,12 @@ def assert_bounded_success(evidence, *, attempt=1):
     assert evidence["stage"] == "acquisition_complete" and evidence["attempt"] == attempt
     assert type(evidence["diagnostics_unavailable"]) is bool
     assert 1 <= len(evidence["phases"]) <= 20
-    assert set(evidence) == {"schema_version", "attempt", "stage", "elapsed_seconds",
-                            "stage_elapsed_seconds", "phases", "diagnostics_unavailable"}
+    assert set(evidence) - {"receipt_recovery_details"} == {
+        "schema_version", "attempt", "stage", "elapsed_seconds", "stage_elapsed_seconds",
+        "phases", "diagnostics_unavailable"}
+    if "receipt_recovery_details" in evidence:
+        assert evidence["receipt_recovery_details"]["schema_version"] == "single-host-receipt-recovery-details-v1"
+        assert 1 <= len(evidence["receipt_recovery_details"]["attempts"]) <= 3
     for phase in evidence["phases"]:
         assert set(phase) == {"attempt", "stage", "elapsed_seconds"}
         assert phase["stage"] in PHASES
