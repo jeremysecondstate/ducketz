@@ -719,6 +719,18 @@ class ScoutJournal:
                 _, records, _, _ = self._audit(db)
                 return tuple(deepcopy(record) for record in records.values())
 
+    def get_with_order_state(self, request_id):
+        """Read one submission and lifecycle from the same complete audit.
+
+        The original transaction, identity/schema checks and full replay remain
+        mandatory. Returned values share no mutable state with the journal, and
+        the transaction closes before the caller performs broker work.
+        """
+        with self._transaction() as db:
+            _, records, _, _, (_, states, _) = self._audit(db, include_lifecycle=True)
+            record = self._required(records, request_id)
+            return deepcopy(record), deepcopy(states.get(request_id, self._empty_lifecycle()))
+
     def order_state(self, request_id):
         with self._transaction() as db:
             _, records, _, _, (_, states, _) = self._audit(db, include_lifecycle=True)
