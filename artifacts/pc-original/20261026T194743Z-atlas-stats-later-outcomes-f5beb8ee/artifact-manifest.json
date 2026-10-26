@@ -1,0 +1,44 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-26T19:47:43.874171Z",
+  "completion_id": "20261026T194743Z-atlas-stats-later-outcomes-f5beb8ee",
+  "details": [
+    "Actor Atlas; task ATLAS Trader Representative; completed shared scientific revision of the original combined October23 Stats publication, applicable to both PCs under their existing private exchange and reviewed intake.",
+    "Preserve all528original forecast identities, probabilities, saved direction labels, scientific targets, recorded or unrecorded policies, and all349earlier scored rows. Include nine genuine later original outcomes and13clock-only matured missing-input dispositions.",
+    "The exact versioned scalar package binds immutable origin and local parent ancestry, original producer package hashes and scientific evidence hashes. It contains no raw observations, model artifacts, account state, execution ledger, credentials, native identity or machine paths.",
+    "Independent216raw-science checks,30adversarial cases,16actual-output clone checks and79canonical source checks passed. New source Completion-Record20261026T194344Z-fcb354c2652f49e1984689ae4a7aedfd supplies explicit reviewed export and adoption without a trader start or restart.",
+    "Original completed-session publications and prior supplements remain immutable. Peer source installation and exact revision adoption/display are separately unproved and create no nightly operating prerequisite."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261026T194743Z-atlas-stats-later-outcomes-f5beb8ee/gameplan-stats/20261026T194743Z-atlas-stats-later-outcomes-f5beb8ee/original-outcome-revision.json",
+      "expected_sha256": "ec7bdea081035ee317847a5bcd68551fa4b8557d50afd3588627f5b7be4dbeae",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261026T194743Z-atlas-stats-later-outcomes-f5beb8ee/original-outcome-revision.json",
+      "published_sha256": "ec7bdea081035ee317847a5bcd68551fa4b8557d50afd3588627f5b7be4dbeae",
+      "published_size": 435158,
+      "sha256": "ec7bdea081035ee317847a5bcd68551fa4b8557d50afd3588627f5b7be4dbeae",
+      "size": 435158,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "ec7bdea081035ee317847a5bcd68551fa4b8557d50afd3588627f5b7be4dbeae",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261026T194743Z-atlas-stats-later-outcomes-f5beb8ee/original-outcome-revision.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "human-authorized-development",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "shared-analysis",
+  "source_head": "90704d21801f60426493bd6cc650a7fac38d4f61",
+  "summary": "Atlas Stats: publish later original outcomes for the combined October23 review",
+  "symbols": []
+}
