@@ -268,9 +268,8 @@ class IntentionStore(_OriginalIntentionStore):
 
     @staticmethod
     def _row_schema(db):
-        names = tuple(_RECOVERY_ROW_SCHEMA)
-        rows = dict(db.execute("SELECT name,sql FROM sqlite_master WHERE name IN (" +
-                               ",".join("?" for _ in names) + ")", names))
+        from .schema_reads import schema_definitions
+        rows = schema_definitions(db, _RECOVERY_ROW_SCHEMA)
         if rows and rows != _RECOVERY_ROW_SCHEMA:
             raise ContractError("Recovery sizing revision schema changed")
         return rows
