@@ -49,9 +49,10 @@ def case(env, monkeypatch, tmp_path, request):
 
     def fail_first_adapter_final_gate(*args, **kwargs):
         calls.append(1)
-        # step, outer client gate, claimed client gate, adapter authorization,
-        # then adapter's initial final gate. No transport was entered.
-        if native and len(calls) == 7:
+        # Step, outer client gate, claimed client gate, adapter authorization,
+        # then final gate. Exact native calls it only at before-POST; opaque
+        # senders retain the initial outer gate. No POST was entered.
+        if native and len(calls) == 5:
             env.state.now += timedelta(seconds=61)
         elif not native and len(calls) == 5:
             exc = sqlite3.OperationalError("database is locked")
@@ -62,7 +63,7 @@ def case(env, monkeypatch, tmp_path, request):
     monkeypatch.setattr(execution, "_saved_forecast", fail_first_adapter_final_gate)
     value = env.executor.step(env.forecast)
     monkeypatch.setattr(execution, "_saved_forecast", saved_read)
-    assert len(calls) == (7 if native else 5) and env.broker.posts == []
+    assert len(calls) == 5 and env.broker.posts == []
     original = record(env)
     assert original["state"] == "UNKNOWN"
     actual = value["evidence"]["submission_failure"]
