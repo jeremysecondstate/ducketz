@@ -1,0 +1,25 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T193140Z-46045aff73fb4ccc80ead5821b904988",
+  "files": [
+    "ml/account_gameplan/authority.py",
+    "ml/intraday/account_execution.py",
+    "ml/intraday/execution_intentions.py",
+    "tests/test_account_authority_transaction_serialization.py",
+    "tests/test_intraday_recovery_batch_preflight.py"
+  ],
+  "limitations": [
+    "Actual historical lock holder is unproved; external database contention remains an error and strict expired/replaced fences remain rejected.",
+    "A single coherent preflight replaces repeated metadata/connection work while every original/projection validates; live latency recovery and current worker loading remain unproved.",
+    "Original unknown acceptances remain unknown without exact terminal response evidence; no order replay or synthetic fill."
+  ],
+  "main_sha": "86e3cad9f3cf6489679f8caa4c0b5472e0ee2403",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Owned source hunks installed locally with existing local module alias and unrelated projection behavior retained. No trader start/restart or broker/provider/order calls. Installed source loads under manual process controls; exercised behavior is separate.",
+  "scope": "shared reusable correctness and read efficiency; bothPC library users; independent traders and local model recipes preserved",
+  "source_sha": "db9efd608ba35ff7187e1eae44aa62aff32f8303",
+  "summary": "Atlas 15m same-authority writer contention and exact recovery preflight repairs published and installed",
+  "tests": [
+    "187offline checks pass on exact reviewed source and main candidates;81installed local-alias checks pass. Same-instance lock failure and source-replacement failure reproduced before their corrections."
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T19:38:56.641599Z",
+  "id": "20261026T193856Z-808a6f083487404daee56de63c27bc92",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas 15m same-authority writer contention and exact recovery preflight repairs published and installed"
+}
