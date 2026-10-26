@@ -298,6 +298,9 @@ class IntentionStore(_OriginalIntentionStore):
                 generation, epoch = self._row_generation(db)
             with detail("sizing_physical_identity"):
                 stat = self.store.path.stat()
+                opened = getattr(self.store, "_connection_source_identities", {}).get(id(db))
+                if opened is not None and opened != (stat.st_dev, stat.st_ino):
+                    raise ContractError("Recovery sizing source identity changed")
                 physical = (stat.st_dev, stat.st_ino, db.execute("PRAGMA schema_version").fetchone()[0], epoch)
             if physical != self._recovery_row_identity:
                 self._recovery_row_cache.clear()
