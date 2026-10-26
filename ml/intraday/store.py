@@ -228,9 +228,8 @@ class ShadowStore:
 
     @staticmethod
     def _execution_forecast_schema(db):
-        names = tuple(_EXECUTION_FORECAST_SCHEMA)
-        rows = dict(db.execute("SELECT name,sql FROM sqlite_master WHERE name IN (" +
-                               ",".join("?" for _ in names) + ")", names))
+        from .schema_reads import schema_definitions
+        rows = schema_definitions(db, _EXECUTION_FORECAST_SCHEMA)
         if rows and rows != _EXECUTION_FORECAST_SCHEMA:
             raise ContractError("Execution forecast revision schema changed")
         return rows

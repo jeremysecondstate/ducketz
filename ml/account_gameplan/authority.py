@@ -1281,13 +1281,56 @@ class AccountAuthority:
                 and timings.acquisition.attempt == timings.attempt):
             timings = None
         recovered = []
+        reservation_rows = None
+        reservation_references = None
+        reservation_batch_unavailable = False
         with _receipt_phase(timings, "receipt_read"):
             receipts = db.execute("SELECT * FROM submission_receipts ORDER BY rowid").fetchall()
         for raw in receipts:
             with _receipt_phase(timings, "receipt_validate"):
                 receipt = self._submission_receipt_value(raw)
             with _receipt_phase(timings, "reservation_read"):
-                row = self._row(db,receipt["reservation_id"])
+                # Keep the request as an opaque string. A single aggregate
+                # row avoids per-reservation SQLite stepping/GIL handoffs.
+                # Every receipt still validates in its original order, and
+                # any unsupported/irregular aggregate uses canonical reads.
+                # Bind the frozen receipt inventory even if projection triggers
+                # later alter the receipt table inside this same transaction.
+                if reservation_rows is None and not reservation_batch_unavailable:
+                    try:
+                        if reservation_references is None:
+                            reservation_references = _json([item["reservation"] for item in receipts])
+                        raw_rows = db.execute(
+                            "SELECT json_group_array(json_object('id',r.id,'key',r.key,"
+                            "'native_id',r.native_id,'forecast_key',r.forecast_key,"
+                            "'request',r.request,'status',r.status,'filled',r.filled,"
+                            "'broker_id',r.broker_id,'created',r.created,"
+                            "'last_evidence',r.last_evidence)) FROM reservations r "
+                            "WHERE r.id IN (SELECT value FROM json_each(?))",
+                            (reservation_references,)).fetchone()[0]
+                        values = json.loads(raw_rows)
+                        fields = {"id", "key", "native_id", "forecast_key", "request", "status",
+                                  "filled", "broker_id", "created", "last_evidence"}
+                        if (not isinstance(values, list)
+                                or any(not isinstance(item, dict) or set(item) != fields for item in values)):
+                            raise ValueError("Irregular optional reservation batch")
+                        reservation_rows = {item["id"]: item for item in values}
+                        if len(reservation_rows) != len(values):
+                            raise ValueError("Duplicate optional reservation batch")
+                    except (sqlite3.Error, TypeError, ValueError, UnicodeError):
+                        # A failed optional read cannot proceed without the
+                        # caller's existing fence/transaction still held.
+                        if not getattr(db, "in_transaction", True):
+                            raise
+                        reservation_batch_unavailable = True
+                if reservation_batch_unavailable:
+                    row = self._row(db, receipt["reservation_id"])
+                else:
+                    row = reservation_rows.get(_name(receipt["reservation_id"]))
+                    if row is None:
+                        # Preserve canonical PK collation/coercion and missing
+                        # row behavior when an optional map cannot match it.
+                        row = self._row(db, receipt["reservation_id"])
             with _receipt_phase(timings, "scope_validate"):
                 if (receipt["account_fingerprint"]!=self.binding["account_fingerprint"]
                         or receipt["request_sha256"]!=_sha(json.loads(row["request"]))
@@ -1306,6 +1349,7 @@ class AccountAuthority:
                     self._event(db,now,"not-submitted",{"reservation_id":row["id"],
                                                          "submission_receipt_id":raw["receipt_id"]})
                     recovered.append(self._reservation(self._row(db,row["id"])))
+                    reservation_rows = None
                     continue
                 if row["broker_id"] is not None:
                     if row["broker_id"]!=receipt["broker_order_id"]:
@@ -1321,6 +1365,7 @@ class AccountAuthority:
                 self._event(db,now,"submitted",{"reservation_id":row["id"],
                     "broker_order_id":receipt["broker_order_id"],"submission_receipt_id":raw["receipt_id"]})
                 recovered.append(self._reservation(self._row(db,row["id"])))
+                reservation_rows = None
         return recovered
 
     def recover_submission_receipts(self, token: str) -> list[Reservation]:
