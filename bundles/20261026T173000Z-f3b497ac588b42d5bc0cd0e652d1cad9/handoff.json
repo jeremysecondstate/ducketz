@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T17:30:00.219421Z",
+  "id": "20261026T173000Z-f3b497ac588b42d5bc0cd0e652d1cad9",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Reuse canonical scientific inputs and stable receipt proofs during preprocessing"
+}

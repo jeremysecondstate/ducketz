@@ -1,0 +1,65 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T171548Z-aa6b4bd18d874bbab10c3025a83a61f4",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/market_join_receipts.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_input_freeze_canonical_reuse.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_input_freeze_canonical_reuse.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_market_join_receipt_snapshot.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_market_join_receipt_snapshot.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/market-join-receipt-snapshot.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/market-join-receipt-snapshot.patch"
+    }
+  ],
+  "limitations": [
+    "Original complete live preprocessing latency is not attributed or established as recovered; running workers have not loaded these new source changes.",
+    "The fuller existing market-input component is absent from the portable publication base. Shared helper code and an exact reviewed adapter compatibility patch are published, with separate local composition evidence.",
+    "Retain each PC model recipes, training windows, synthetic-data policy, original scientific values, source observations, publications and manual controls. No peer-specific model tuning is transferred."
+  ],
+  "main_sha": "250435954799a3dd062adc667ddb9a9f2268ab17",
+  "main_url": "https://github.com/jeremysecondstate/ducketz/commit/250435954799a3dd062adc667ddb9a9f2268ab17",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Nine reviewed Atlas application files were installed with original backups, foreign schema repair, HEAD/index and operating bindings preserved. Future ordinary manual starts load installed source; installation and source publication never start, restart, stop, replay or place orders through a trader. No model fitting, provider/broker requests or trader-control actions are performed. Nightly production remains independent of source publication and peer acceptance.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T171548Z-aa6b4bd18d874bbab10c3025a83a61f4",
+  "source_sha": "d47ed24ed3056d0236f9700389ab7b7f7fb691b9",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/400",
+  "summary": "Reuse canonical scientific inputs and stable receipt proofs during preprocessing",
+  "tests": [
+    "All44portable offline cases passed sealed, managed source and fresh main on23exactfingerprints with15raw-base dependencies:12new canonical-input regressions,17existing immutable-store cases and15generic receipt-proof cases.",
+    "Independent whole-diff review and exact compatibility-patch reconstruction passed. Fifty-eight committed-byte, original test-attestation, preserved-ancestry and remote-readback checks verify the source and common-main commits.",
+    "The private existing-component adapter candidate passed182offline cases without exclusions. Actual reviewed Atlas installation passed211unique offline cases across71actual imported paths and94readback checks; duplicated helper cases were removed from the adapter runner without losing distinct coverage."
+  ]
+}
