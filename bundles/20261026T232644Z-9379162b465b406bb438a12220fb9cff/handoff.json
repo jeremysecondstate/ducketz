@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T23:26:44.494667Z",
+  "id": "20261026T232644Z-9379162b465b406bb438a12220fb9cff",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas 15m scoped scan correction and bounded exception evidence installed"
+}

@@ -1,0 +1,27 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T232351Z-da5801cc60b64c5e96ca179476c4a55d",
+  "files": [
+    "ml/intraday/execution_intentions.py",
+    "tests/test_intraday_processed_intention_inventory.py",
+    "tests/test_intraday_symbol_failure_evidence.py",
+    "docs/development/patches/intraday-processed-scope-local-compatibility.json",
+    "docs/development/patches/intraday-processed-scope-local-compatibility.patch"
+  ],
+  "limitations": [
+    "Fewer SQLite result-row crossings is an evidence-backed candidate for measured chronology delay. The original live lockholder/CPU cause and total latency recovery remain unproved.",
+    "Original historical SQLite denial operation and unknown submissions retain their exact unresolved evidence; the diagnostic adoption does not bypass SQL policy or fabricate outcomes.",
+    "Existing process loading and naturally exercised affected recovery are separate from publication and local installation."
+  ],
+  "main_sha": "c191cd50a03a4892960972676268bf4b9b496a7b",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Installed only reviewed scoped helper/method, existing published bounded symbol-exception evidence hunk, fixture tests and exact portability documentation. No trader start/restart/order/replay, data/model, native task, schedule, binding or manual control change.",
+  "scope": "Shared source and portable exact fixture adaptation for each independent PC; local models, original probabilities, targets, direction policy, scientific history and operating bindings retained",
+  "source_sha": "926d040ca01efcf3315c62a2bd26b7a333142c5b",
+  "summary": "Atlas 15m scoped scan correction and bounded exception evidence installed",
+  "tests": [
+    "189 fresh offline checks passed on the reviewed newer-base source, immutable queue, source candidate and common-main candidate; exact imports and dependency bytes bound. Prior pushed source record retained and superseded after concurrent header dependencies advanced.",
+    "135 installed offline checks passed after real SQLite AUTH evidence-loss reproduction and exact scope fixture correction; no network and actual installed imports attested.",
+    "21 scoped chronology contract checks passed for companion portable compatibility publication; private-copy Git application reconstructed both exact fixture final hashes."
+  ]
+}
