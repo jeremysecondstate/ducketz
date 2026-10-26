@@ -10,6 +10,7 @@ from dataclasses import asdict
 
 from .prediction import ContractError, digest, encoded, identity, instant, quantity
 from .direction_metadata import recorded_action, recorded_direction
+from . import ordinary_diagnostics as _ordinary
 
 VERSION = "intraday-independent-intentions-v1"
 
@@ -27,10 +28,17 @@ class IntentionStore:
             """)
 
     def _forecast(self, db, forecast):
-        row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE id=?",
-                         (forecast["forecast_id"],)).fetchone()
-        if row is None or self.store._forecast_value(row) != forecast:
+        with _ordinary.phase("writer_payload_read"):
+            row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE id=?",
+                             (forecast["forecast_id"],)).fetchone()
+        if row is None:
             raise ContractError("Intention requires the original saved forecast")
+        _ordinary.payload(row[6])
+        with _ordinary.phase("writer_payload_validate"):
+            original = self.store._forecast_value(row)
+        with _ordinary.phase("writer_caller_compare"):
+            if original != forecast:
+                raise ContractError("Intention requires the original saved forecast")
 
     def _ordinary_forecast_marker(self, db, forecast_id):
         """Optional call-local proof that a fully validated row is unchanged.
@@ -63,26 +71,36 @@ class IntentionStore:
         The caller holds the store lock through its final write transaction.
         The independent tree is local to that operation, never a store cache.
         """
-        with self.store.connect() as db:
-            db.execute("BEGIN")
-            marker = self._ordinary_forecast_marker(db, forecast["forecast_id"])
-            row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
-                             "FROM forecasts WHERE id=?", (forecast["forecast_id"],)).fetchone()
+        with _ordinary.context(self.store.connect(), "preflight_connection_open", "preflight_connection_close") as db:
+            with _ordinary.phase("preflight_begin"):
+                db.execute("BEGIN")
+            with _ordinary.phase("preflight_marker"):
+                marker = self._ordinary_forecast_marker(db, forecast["forecast_id"])
+            with _ordinary.phase("preflight_payload_read"):
+                row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                                 "FROM forecasts WHERE id=?", (forecast["forecast_id"],)).fetchone()
             if row is None:
                 raise ContractError("Intention requires the original saved forecast")
-            original = self.store._forecast_value(row)
-            if original != forecast:
-                raise ContractError("Intention requires the original saved forecast")
+            _ordinary.payload(row[6])
+            with _ordinary.phase("preflight_payload_validate"):
+                original = self.store._forecast_value(row)
+            with _ordinary.phase("preflight_caller_compare"):
+                if original != forecast:
+                    raise ContractError("Intention requires the original saved forecast")
         return marker, original
 
 
     def _ordinary_forecast_recheck(self, db, forecast, marker, original):
         # Both branches retain full caller equality, including nested/extra
         # fields. Optional markers only avoid decoding the same original again.
-        if marker is None or marker != self._ordinary_forecast_marker(db, forecast["forecast_id"]):
+        with _ordinary.phase("writer_marker"):
+            changed = marker is None or marker != self._ordinary_forecast_marker(db, forecast["forecast_id"])
+        if changed:
             self._forecast(db, forecast)
-        elif original != forecast:
-            raise ContractError("Intention requires the original saved forecast")
+        else:
+            with _ordinary.phase("writer_caller_compare"):
+                if original != forecast:
+                    raise ContractError("Intention requires the original saved forecast")
 
 
     @staticmethod
@@ -103,7 +121,7 @@ class IntentionStore:
     def processed_at_or_after(self, forecast):
         """Reuse guarded scalar proofs within the original chronology scope."""
         reference = instant(forecast["reference_at"])
-        with self.store.connect() as db:
+        with _ordinary.phase("processed_id_read"), self.store.connect() as db:
             # Preserve main's conservative exact-scope SQL prefilter. Older
             # malformed originals cannot block an unrelated current fence.
             # Python instants below retain the inclusive chronology decision.
@@ -115,10 +133,11 @@ class IntentionStore:
                 (forecast["pc"], forecast["symbol"], forecast["reference_at"]))]
         if not ids:
             return []
-        return [f["forecast_id"] for f in self.store.execution_forecast_headers(
-                    pc=forecast["pc"], symbol=forecast["symbol"], forecast_ids=ids)
-                if f["forecast_id"] != forecast["forecast_id"] and f["mode"] == "live"
-                and instant(f["reference_at"]) >= reference]
+        with _ordinary.phase("processed_header_read"):
+            return [f["forecast_id"] for f in self.store.execution_forecast_headers(
+                        pc=forecast["pc"], symbol=forecast["symbol"], forecast_ids=ids)
+                    if f["forecast_id"] != forecast["forecast_id"] and f["mode"] == "live"
+                    and instant(f["reference_at"]) >= reference]
 
     def _original_action(self, db, forecast):
         row = db.execute("SELECT id,payload FROM intents WHERE forecast_id=? ORDER BY rowid LIMIT 1",

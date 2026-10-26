@@ -15,6 +15,7 @@ from dataclasses import asdict
 
 from .intentions import IntentionStore as _OriginalIntentionStore
 from .direction_metadata import FIELDS as _DIRECTION_FIELDS, recorded_direction
+from . import ordinary_diagnostics as _ordinary
 
 from .prediction import ContractError, digest, encoded, identity, instant, quantity
 
@@ -406,20 +407,24 @@ class IntentionStore(_OriginalIntentionStore):
         # This independently decoded tree belongs only to this call, and full
         # caller equality (including nested/extra fields) is checked again in
         # the final writer. Scalar headers cannot certify caller equivalence.
-        with self.store._execution_forecast_lock:
+        with _ordinary.context(self.store._execution_forecast_lock, "record_cache_lock", "record_cache_unlock"):
             marker, original = self._ordinary_forecast_preflight(forecast)
-            with self.store.connect() as db:
-                db.execute("BEGIN IMMEDIATE")
-                self._ordinary_forecast_recheck(db, forecast, marker, original)
+            with _ordinary.context(self.store.connect(), "writer_connection_open", "writer_commit_close") as db:
+                with _ordinary.phase("writer_lock"):
+                    db.execute("BEGIN IMMEDIATE")
+                with _ordinary.phase("writer_forecast_recheck"):
+                    self._ordinary_forecast_recheck(db, forecast, marker, original)
                 del original  # Do not overlap forecast and sizing research trees.
-                row, intention, generation = self._revision_sizing(
-                    db, forecast["forecast_id"], lambda stage: nullcontext())
+                with _ordinary.phase("sizing_read"):
+                    row, intention, generation = self._revision_sizing(
+                        db, forecast["forecast_id"], lambda stage: nullcontext())
                 if require_original_intention and intention is None:
                     raise ContractError("Local order lacks its original immutable intention")
-                result = self._append_validated(db, forecast, row, intention,
-                    event_key=event_key, at=at, disposition=disposition,
-                    evidence=evidence, kind=kind, capacity=capacity, order=order,
-                    scope_to_intention=scope_to_intention)
+                with _ordinary.phase("projection_append"):
+                    result = self._append_validated(db, forecast, row, intention,
+                        event_key=event_key, at=at, disposition=disposition,
+                        evidence=evidence, kind=kind, capacity=capacity, order=order,
+                        scope_to_intention=scope_to_intention)
             # A failed append, rollback or transaction exit cannot publish a
             # committed sizing watermark for an unsuccessful projection.
             self._recovery_row_highwater = generation
