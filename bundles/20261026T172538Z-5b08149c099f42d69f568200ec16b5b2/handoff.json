@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T17:25:38.917472Z",
+  "id": "20261026T172538Z-5b08149c099f42d69f568200ec16b5b2",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Report proven Gameplan target expiry without false cycle failure"
+}

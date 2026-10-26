@@ -1,0 +1,47 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T171548Z-1e64cd2c24ed488289ab8b6a40f26a04",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/session_reporting.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_gameplan_target_elapsed_status.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_gameplan_target_elapsed_status.py"
+    }
+  ],
+  "limitations": [
+    "Runtime loading and naturally affected expiry exercise remain unproved. The running manual session retains its loaded source.",
+    "This reporting correction does not establish execution latency recovery. Existing separate receipt/metadata and scientific preprocessing producers retain their own stages."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Both PCs may independently adopt this shared Gameplan correction while retaining their symbols, recipes, original probabilities, targets, order identities, private execution state and manual controls. The final expiry guard and five-second lead remain unchanged. Valid typed no-send expiry retains exact cutoff, observation and cleanup evidence; real failures remain errors. Atlas reviewed local adaptation is installed with originals backed up. A future human-chosen manual Gameplan start loads it. This procedure starts, stops or restarts no trader, submits no order and adds no nightly or peer prerequisite.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T171548Z-1e64cd2c24ed488289ab8b6a40f26a04",
+  "source_sha": "3deb410bf2958a7b3acb0e40d446f01e70752347",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/401",
+  "summary": "Report proven Gameplan target expiry without false cycle failure",
+  "tests": [
+    "Final canonical, sealed, isolated and fresh-main checks each passed 110 offline cases, binding 94 fingerprints and 89 exact base dependencies; clean baseline reproduced three affected failures.",
+    "Independent whole five-file review passed 33 checks. Atlas account-context adaptation passed 173 fresh composed and 173 actual installed offline cases on 111 exact imports; clean baseline reproduced seven affected failures.",
+    "Main integrated as 35af5d560805b240843affb5140e66f8aa715c90 through the pinned standing-authorized procedure with remote readback. All checks denied network/subprocess activity; no broker/provider or trader control was performed."
+  ]
+}
