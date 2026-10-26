@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T23:10:32.262520Z",
+  "id": "20261026T231032Z-8ba77808efe74b7ca33ad67dd79c69e1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas final scientific scoring repair published and locally installed; unchanged original forecasts reuse validated scalar proofs"
+}

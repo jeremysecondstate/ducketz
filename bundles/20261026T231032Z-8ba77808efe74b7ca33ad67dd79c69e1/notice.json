@@ -1,0 +1,77 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261026T230112Z-5f4794acee8e4bb883e218d48e6d06d8",
+  "change_id": "20261026T230112Z-5f4794acee8e4bb883e218d48e6d06d8",
+  "details": [
+    "Finalization preserves counted idempotence, exact source/population and issue/target scope, all eligible candle integrity checks, original scientific bytes and latest-outcome concurrency.",
+    "A validated reference-open scalar and optional cache contract v2 allow exact expected-outcome recomputation; changed or unproved originals use full semantic validation.",
+    "Minimal canonical source hunks are published; the exact local compatibility patch also carries the existing fallback-fixture correction. Preserve each PC own recipes and operating bindings."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "ml/intraday/final_scoring.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/forecast_header_cache.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_final_scoring_indexed.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_final_scoring.py"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-final-scoring-local-compatibility.patch"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-final-scoring-local-compatibility.json"
+    }
+  ],
+  "limitations": [
+    "Offline tests establish source behavior and installed composition; running-trader loading and naturally affected closeout recovery remain separately unproved.",
+    "Existing v1 cache records remain intact. The first optional v2 proof miss validates the original once; unchanged warm fixtures require zero full scientific payload reads.",
+    "Different surrounding installed source needs a reviewed field-level adaptation. No peer installation or runtime adoption is inferred."
+  ],
+  "local_installation": "Atlas installed five exact committed additions and four manifest-bound adapter members, then passed the fresh installed suite; unrelated owners and local bindings preserved.",
+  "main_commit": "be3da69968f92ff4b466548eaff5fecdd8b74d53",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/415",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "A new one-shot invocation can load the helper. Existing manual trader processes retain imported code until a future ordinary human-chosen start. No trader start, restart, stop, order, broker/provider call, model tuning, new schedule or operating prerequisite was introduced.",
+  "scope": "shared",
+  "source_commit": "a5c0c236fb29bd7b2efd1ff1add7fae4e00c2067",
+  "summary": "Atlas final scientific scoring repair published and locally installed; unchanged original forecasts reuse validated scalar proofs",
+  "tests": [
+    {
+      "command": "python -B tests/check_isolated_intraday_final_scoring.py --focused --basetemp scratch/final-scoring-check",
+      "completed_at_utc": "2026-10-26T23:03:34.528396+00:00",
+      "passed_cases": 15,
+      "scope": "canonical author, sealed source, isolated candidate and fresh main candidate"
+    },
+    {
+      "command": "python -B tests/check_isolated_intraday_final_scoring.py",
+      "completed_at_utc": "2026-10-26T23:07:24.086645+00:00",
+      "passed_cases": 193,
+      "scope": "exact final installed composition",
+      "started_at_utc": "2026-10-26T23:06:42.211730+00:00"
+    },
+    {
+      "evidence": "Same-snapshot changed-original/outcome revalidation, exact derived outcome identity, manual-stop interleavings and corruption scope passed.",
+      "passed_cases": 15,
+      "scope": "independent adversarial source review"
+    }
+  ]
+}
