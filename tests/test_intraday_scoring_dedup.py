@@ -125,13 +125,31 @@ def test_legacy_synthetic_outcome_is_still_invalidated_and_original_retained(tmp
         assert db.execute("SELECT count(*) FROM events WHERE kind='unverified_synthetic_outcome_requires_audit'").fetchone()[0] == 1
 
 
-def test_identical_outcome_still_raises_for_backdated_observation(tmp_path, monkeypatch):
+def test_loop_retains_newer_outcome_while_direct_observe_rejects_backdating(tmp_path, monkeypatch):
     store, saved = observed_store(tmp_path)
     store.observe(saved, as_of=NOW, candle=candle())
-    calls = count_methods(monkeypatch, store, "observe")
+    with store.connect() as db:
+        original_forecast = db.execute("SELECT payload FROM forecasts WHERE id=?",
+                                      (saved["forecast_id"],)).fetchone()[0]
+        original_outcomes = db.execute(
+            "SELECT id,observed_at,payload FROM outcomes WHERE forecast_id=? ORDER BY rowid",
+            (saved["forecast_id"],)).fetchall()
+    # The ordinary writer still rejects backdating. Only the concurrent
+    # scoring loop opts into preserving an already validated newer outcome.
     with pytest.raises(ContractError, match="backdated"):
-        run_polls(store, 1, clock=lambda: "2026-10-08T17:49:00Z")
+        store.observe(saved, as_of="2026-10-08T17:49:00Z", candle=candle())
+    calls = count_methods(monkeypatch, store, "observe")
+    assert run_polls(store, 1, clock=lambda: "2026-10-08T17:49:00Z") == [3]
     assert len(calls["observe"]) == 1
+    args, kwargs = calls["observe"][0]
+    assert args[0] == saved and kwargs["skip_newer"] is True
+    assert kwargs["as_of"] == "2026-10-08T17:49:00Z"
+    with store.connect() as db:
+        assert db.execute("SELECT payload FROM forecasts WHERE id=?",
+                          (saved["forecast_id"],)).fetchone()[0] == original_forecast
+        assert db.execute(
+            "SELECT id,observed_at,payload FROM outcomes WHERE forecast_id=? ORDER BY rowid",
+            (saved["forecast_id"],)).fetchall() == original_outcomes
 
 
 def test_unavailable_future_candle_is_not_observed_or_used_by_shortcut(tmp_path, monkeypatch):
@@ -145,16 +163,44 @@ def test_unavailable_future_candle_is_not_observed_or_used_by_shortcut(tmp_path,
 
 def test_clock_reversal_after_eligibility_retains_unavailable_target_error(tmp_path, monkeypatch):
     store, saved = observed_store(tmp_path)
-    # A structurally valid old revision must not bypass observe's receipt check
-    # if the wall clock moves back between candidate selection and observation.
-    revision = store.observe(saved, as_of=NOW, candle=candle())
-    revision["observed_at"] = "2026-10-08T17:45:00Z"
-    monkeypatch.setattr(store, "revisions", lambda _: [revision])
-    times = iter([NOW, NOW, NOW, "2026-10-08T17:45:00Z"])
+    store.observe(saved, as_of=NOW, candle=candle())
+    # A genuine corrected target makes deduplication false without changing
+    # historical outcome metadata. Reverse time only after original validation.
+    store.record_candle(candle(close="99", available_at="2026-10-08T17:48:00Z"))
+    with store.connect() as db:
+        original_forecast = db.execute("SELECT payload FROM forecasts WHERE id=?",
+                                      (saved["forecast_id"],)).fetchone()[0]
+        original_outcomes = db.execute(
+            "SELECT id,observed_at,payload FROM outcomes WHERE forecast_id=? ORDER BY rowid",
+            (saved["forecast_id"],)).fetchall()
+    now = [NOW]
+    reversed_originals = []
+    original = ScoringForecastReader.original
+
+    def reverse_after_original(reader, projection):
+        value = original(reader, projection)
+        assert value["forecast_id"] == saved["forecast_id"]
+        reversed_originals.append(value["forecast_id"])
+        now[0] = "2026-10-08T17:45:00Z"
+        return value
+
+    monkeypatch.setattr(ScoringForecastReader, "original", reverse_after_original)
     calls = count_methods(monkeypatch, store, "observe")
     with pytest.raises(ContractError, match="available target"):
-        run_polls(store, 1, clock=lambda: next(times, "2026-10-08T17:45:00Z"))
+        run_polls(store, 1, clock=lambda: now[0])
+    assert reversed_originals == [saved["forecast_id"]]
     assert len(calls["observe"]) == 1
+    args, kwargs = calls["observe"][0]
+    assert args[0] == saved and kwargs["skip_newer"] is True
+    assert kwargs["as_of"] == now[0] == "2026-10-08T17:45:00Z"
+    assert kwargs["candle"]["close"] == "99"
+    assert live_session.instant(kwargs["candle"]["available_at"]) == live_session.instant("2026-10-08T17:48:00Z")
+    with store.connect() as db:
+        assert db.execute("SELECT payload FROM forecasts WHERE id=?",
+                          (saved["forecast_id"],)).fetchone()[0] == original_forecast
+        assert db.execute(
+            "SELECT id,observed_at,payload FROM outcomes WHERE forecast_id=? ORDER BY rowid",
+            (saved["forecast_id"],)).fetchall() == original_outcomes
 
 
 @pytest.mark.parametrize("table", ["forecasts", "candles"])
