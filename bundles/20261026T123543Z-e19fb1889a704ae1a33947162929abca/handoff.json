@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T12:35:43.290254Z",
+  "id": "20261026T123543Z-e19fb1889a704ae1a33947162929abca",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Preserve provider retry journal through brief Windows replacement denial"
+}

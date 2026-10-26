@@ -1,0 +1,41 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T123156Z-3541b6fc930a4725b631377cfef20c70",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/provider_recovery.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_retry_journal_replace.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_retry_journal_replace.py"
+    }
+  ],
+  "limitations": [
+    "Original denyinghandle and its transient duration are unrecorded; candidate resilience is supported, historical attribution and live prevention remain unproved.",
+    "Atlas currentworker predates installation; future humancontrolledmanual loading is separate. Peer installation not inferred.",
+    "Other missing scientific/recovery composition groups retain their existing provenance and continuation."
+  ],
+  "prior_completion_records": [
+    "20261019T160318Z-683a20600b4943b496cc70222d7e5649"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Retries exact fsynced temporary under existing merge lock only for Windows errors5/32/33, at most nine20ms pauses; syscall durations are not asserted bounded. Provider request/callback not replayed. Independent traders/manualcontrols/policy/recipes preserved; no new operating prerequisite.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T123156Z-3541b6fc930a4725b631377cfef20c70",
+  "source_sha": "68a90a481f66224afdbdbaaedb3e2b37ab2ae15a",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/commit/68a90a481f66224afdbdbaaedb3e2b37ab2ae15a",
+  "summary": "Preserve provider retry journal through brief Windows replacement denial",
+  "tests": [
+    "Original module reproduced11failures including realWindowsWinError5 with a deny-delete reader. Final37offlinecases pass on implementation, sealed snapshot, managed source and fresh main candidates with10exact fingerprints and7raw-base dependencies.",
+    "Atlas installed exact module;37dedicated plus61provider/gap regression checks pass with62actualimportedpaths. Network/subprocess denied; no real provider request, trader control or order.",
+    "Canonicalmainafd43744daa55181629e16a506def669cbb68654 and source68a90a481f66224afdbdbaaedb3e2b37ab2ae15a verified by remote SHA readback."
+  ]
+}
