@@ -23,6 +23,34 @@ VERSION = "intraday-independent-intentions-v1"
 _RECOVERY_SIZING_CACHE_LIMIT = 4096
 
 
+def _processed_intention_ids(db, forecast):
+    """Return the canonical chronology inventory with one result-row crossing.
+
+    Optional JSON batching preserves the original scope, order and values.
+    Unusual storage or connection factories retain the canonical reader.
+    """
+    query = ("SELECT f.id FROM forecasts f JOIN intraday_intentions i ON i.forecast_id=f.id "
+             "WHERE f.pc=? AND f.symbol=? "
+             "AND julianday(f.reference_at)>=julianday(?)-1.0/86400 ORDER BY f.rowid")
+    parameters = (forecast["pc"], forecast["symbol"], forecast["reference_at"])
+    if (getattr(db, "text_factory", str) is not str
+            or getattr(db, "row_factory", None) is not None):
+        return [row[0] for row in db.execute(query, parameters)]
+    was_in_transaction = getattr(db, "in_transaction", False)
+    try:
+        raw = db.execute("SELECT json_group_array(id) FROM (" + query + ")", parameters).fetchone()[0]
+        ids = json.loads(raw)
+        if not isinstance(ids, list) or any(not isinstance(value, str) for value in ids):
+            raise ValueError("Optional intention inventory has irregular values")
+        if was_in_transaction and not getattr(db, "in_transaction", True):
+            raise sqlite3.OperationalError("Intention inventory lost pinned source snapshot")
+        return ids
+    except (sqlite3.Error, TypeError, ValueError, UnicodeError, IndexError):
+        if was_in_transaction and not getattr(db, "in_transaction", True):
+            raise
+    return [row[0] for row in db.execute(query, parameters)]
+
+
 # Every mutation of an original sizing row advances its revision in the same
 # transaction. Recovery can then recheck small indexed identities instead of
 # rereading unchanged scientific/research trees. Exact schema checks and an
@@ -218,6 +246,19 @@ class _RecoveryTimings:
 
 
 class IntentionStore(_OriginalIntentionStore):
+    def processed_at_or_after(self, forecast):
+        """Reuse guarded scalar proofs within the original chronology scope."""
+        reference = instant(forecast["reference_at"])
+        with _ordinary.phase("processed_id_read"), self.store.connect() as db:
+            ids = _processed_intention_ids(db, forecast)
+        if not ids:
+            return []
+        with _ordinary.phase("processed_header_read"):
+            return [f["forecast_id"] for f in self.store.execution_forecast_headers(
+                        pc=forecast["pc"], symbol=forecast["symbol"], forecast_ids=ids)
+                    if f["forecast_id"] != forecast["forecast_id"] and f["mode"] == "live"
+                    and instant(f["reference_at"]) >= reference]
+
     def _projection_direction(self, db, forecast):
         """Carry original policy through a canonical scalar recovery header.
 
