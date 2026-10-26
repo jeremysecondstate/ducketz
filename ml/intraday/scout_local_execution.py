@@ -214,6 +214,28 @@ class ScoutLocalAccountExecutor:
                     journal.observe_order(rid, evidence, as_of=self.clock())
             return journal.get(rid)
 
+    def _recover_record_for_step(self, journal, old):
+        """Reuse an audited pair only within this step's recovery scan.
+
+        No snapshot spans broker IO. Keep the original supplied record for the
+        adapter, then reread both values after observing its exact response.
+        Legacy/custom journals retain the original recovery/read path.
+        """
+        rid = old['request']['request_id']
+        if old['state'] == 'ACCEPTED':
+            reader = getattr(journal, 'get_with_order_state', None)
+            if callable(reader):
+                with recovery_phase('journal_record_recovery', journal=journal):
+                    record, lifecycle = reader(rid)
+                    prior = lifecycle['evidence']
+                    if prior is None or prior['status'] not in TERMINAL:
+                        with recovery_phase('broker_status', journal=journal):
+                            evidence = self._adapter(journal, old).status(rid)
+                        journal.observe_order(rid, evidence, as_of=self.clock())
+                        record, lifecycle = reader(rid)
+                    return record, lifecycle
+        return self._recover_record(journal, old), None
+
     def _project(self, journal, record, forecast, disposition):
         order = self._order(journal, record)
         lifecycle = journal.order_state(record['request']['request_id'])
@@ -508,7 +530,7 @@ class ScoutLocalAccountExecutor:
                 for old in journal.records():
                     if not old['request']['request_id'].startswith(PREFIX):
                         continue
-                    record = self._recover_record(journal, old)
+                    record, paired_lifecycle = self._recover_record_for_step(journal, old)
                     if record['request']['forecast_id'] == forecast['forecast_id']:
                         return self._project(journal, record, forecast, 'recover_existing_intention')
                     if record['state'] == 'UNKNOWN':
@@ -520,7 +542,9 @@ class ScoutLocalAccountExecutor:
                         return self._record(forecast, 'submission_recovery_required',
                             evidence={'unresolved_request_id': record['request']['request_id'], 'retry_after_seconds': 3})
                     if record['state'] == 'ACCEPTED':
-                        state = journal.order_state(record['request']['request_id'])['evidence']
+                        lifecycle = (paired_lifecycle if paired_lifecycle is not None else
+                                     journal.order_state(record['request']['request_id']))
+                        state = lifecycle['evidence']
                         if state['status'] in TERMINAL:
                             continue
                         if record['request']['symbol'] == forecast['symbol']:
