@@ -1,0 +1,108 @@
+--- a/ml/intraday/live_session.py
++++ b/ml/intraday/live_session.py
+@@ -431,52 +431,10 @@
+ 
+ 
+ def score_saved_session_outcomes(store, *, session_id, actor, symbols, as_of, stopped=lambda: False):
+-    """Finalize this manual session using only already-persisted own candles.
+-
+-    Keep one full forecast at a time and retain newer concurrent observations.
+-    Missing targets stay unresolved; verified synthetic outcomes stay distinct.
+-    No acquisition, model or execution clients are constructed.
+-    """
+-    from .data import completed_15m_observation, synthetic_continuity_verified
+-    now, membership = instant(as_of), set(symbols)
+-    if actor not in {"Atlas", "Scout"} or not membership:
+-        raise ContractError("Final scoring requires this manual session's actor and symbols")
+-    result = {"session_id": session_id, "scored": 0, "synthetic": 0, "unavailable": 0}
+-    if stopped():
+-        return result
+-    with store.connect() as db:
+-        cycles = db.execute("SELECT id FROM cycles WHERE pc=? AND json_extract(payload,'$.mode')='live' "
+-                            "AND json_extract(payload,'$.experiment')=?", (actor, session_id)).fetchall()
+-    latest, loaded_symbols = {}, set()
+-    for (cycle_id,) in cycles:
+-        for symbol in sorted(membership):
+-            if stopped():
+-                return result
+-            forecast = store.forecast(cycle_id, symbol)
+-            if (forecast is None or forecast["pc"] != actor or forecast["mode"] != "live"
+-                    or instant(forecast["issued_at"]) > now
+-                    or instant(forecast["target_close"]) > now):
+-                continue
+-            if symbol not in loaded_symbols:
+-                for candle in store.observed_candles(symbol):
+-                    if (instant(candle["available_at"]) <= now and completed_15m_observation(candle)
+-                            and synthetic_continuity_verified(candle)):
+-                        latest[(symbol, candle.get("source_id"), candle.get("source_dataset"),
+-                                candle.get("population_contract"), instant(candle["opened_at"]))] = candle
+-                loaded_symbols.add(symbol)
+-            if stopped():
+-                return result
+-            candle = latest.get((forecast["symbol"], forecast.get("source_id"), forecast.get("source_dataset"),
+-                                 forecast.get("population_contract"), instant(forecast["target_open"])))
+-            if candle is None:
+-                result["unavailable"] += 1
+-                continue
+-            outcome = store.observe(forecast, as_of=now, candle=candle, skip_newer=True)
+-            if outcome is None:
+-                result["newer_observation_retained"] = result.get("newer_observation_retained", 0) + 1
+-            else:
+-                result[outcome["status"]] += 1
+-    return result
++    """Finalize persisted own outcomes using unchanged-original revision proofs."""
++    from .final_scoring import score_saved_session_outcomes as finalize
++    return finalize(store, session_id=session_id, actor=actor, symbols=symbols,
++                    as_of=as_of, stopped=stopped)
+ 
+ 
+ _STARTUP_STAGES = frozenset({
+--- a/ml/intraday/store.py
++++ b/ml/intraday/store.py
+@@ -294,7 +294,7 @@
+         """Cache only scalar headers of exact semantically validated evidence."""
+         fields = ("forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at",
+                   "mode", "ensemble_status", "target_open", "target_close",
+-                  "population_contract", "source_dataset", "source_id")
++                  "population_contract", "source_dataset", "source_id", "reference_open")
+         cache = getattr(self, "_forecast_header_cache", None)
+         if cache is None:
+             cache = self._forecast_header_cache = OrderedDict()
+@@ -307,6 +307,10 @@
+             return dict(previous[1]), None
+         value = self._forecast_value(row)
+         projection = {field: value[field] for field in fields if field in value}
++        if "reference_open" in projection:
++            # Preserve the exact numeric meaning as a scalar cache field. The
++            # final scorer still applies the ordinary positive Decimal check.
++            projection["reference_open"] = str(projection["reference_open"])
+         if signature is not None and all(item is None or isinstance(item, str) for item in projection.values()):
+             cache[row[0]] = (signature, tuple(projection.items()))
+             if len(cache) > 4096:
+--- a/ml/intraday/forecast_header_cache.py
++++ b/ml/intraday/forecast_header_cache.py
+@@ -18,9 +18,9 @@
+ import uuid
+ 
+ # Bump this contract when full semantic validation or header meanings change.
+-_CONTRACT = "validated-forecast-scalar-headers-v1"
++_CONTRACT = "validated-forecast-scalar-headers-v2"
+ _FIELDS = frozenset({"forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at",
+-    "mode", "ensemble_status", "target_open", "target_close", "population_contract", "source_dataset", "source_id"})
++    "mode", "ensemble_status", "target_open", "target_close", "population_contract", "source_dataset", "source_id", "reference_open"})
+ _INDEXED = ("forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at")
+ _SCHEMA = {
+     "forecast_header_cache_meta": "CREATE TABLE forecast_header_cache_meta(singleton INTEGER PRIMARY KEY CHECK(singleton=1),epoch BLOB NOT NULL CHECK(typeof(epoch)='blob' AND length(epoch)=16))",
+--- a/tests/test_intraday_scoring_revision_cache.py
++++ b/tests/test_intraday_scoring_revision_cache.py
+@@ -202,6 +202,10 @@
+ 
+ 
+ def test_evicted_and_independent_store_caches_revalidate_own_originals(tmp_path, monkeypatch):
++    from ml.intraday.forecast_header_cache import DurableForecastHeaders
++    # This fixture verifies the cache-miss fallback. Authenticated durable
++    # reuse is covered separately and can survive in-memory eviction/restart.
++    monkeypatch.setattr(DurableForecastHeaders, "load_many", lambda *args, **kwargs: {})
+     store = ShadowStore(tmp_path / "evicted.sqlite3")
+     scored(store)
+     statements = trace(store, monkeypatch)
