@@ -1,0 +1,39 @@
+{
+  "artifact_commit_sha": "a458091729df0e714cff56402dc71d5d46eec174",
+  "artifact_completion_id": "20261026T220343Z-atlas-stats-oct26-2200-outcomes-17a7b356",
+  "author": "Atlas",
+  "branch": "main",
+  "change_id": "20261026T220343Z-atlas-stats-oct26-2200-outcomes-17a7b356",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/a458091729df0e714cff56402dc71d5d46eec174",
+  "files": [
+    "artifacts/pc-original/20261026T220343Z-atlas-stats-oct26-2200-outcomes-17a7b356/artifact-manifest.json",
+    "artifacts/pc-original/20261026T220343Z-atlas-stats-oct26-2200-outcomes-17a7b356/gameplan-stats/20261026T220343Z-atlas-stats-oct26-2200-outcomes-17a7b356/original-outcome-supplement.json"
+  ],
+  "limitations": [
+    "Derived scientific outcomes for original Atlas October26 one-hour forecasts only; no raw inputs, fitted models, account state, ledgers or bindings.",
+    "Frozen combined Gameplan, completed-session Stats and previous supplements remain unchanged; original directions and recorded policy metadata are retained.",
+    "Peer receipt and supplemental display adoption remain unproved. Historical missing outcomes remain missing unless actual supported inputs establish them."
+  ],
+  "remote_sha": "a458091729df0e714cff56402dc71d5d46eec174",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scientific output only; no source or model deployment, trader start or restart, order or operating prerequisite.",
+  "scope": "symbol-specific",
+  "summary": "Atlas Stats: eight original22UTC hourly outcomes published",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-26T22:15:29.869248+00:00",
+      "description": "Independent exact scientific fields, frozen original labels and policies, observed endpoint scores, ancestry and privacy review passed",
+      "output_sha256": "aa26022716436201d7dfb3dea3e77e9ddd7a5df5591db4939a10acfb2316971e"
+    },
+    {
+      "completed_at_utc": "2026-10-26T22:14:15.521477+00:00",
+      "description": "Native cumulative checks passed and all prior evaluated outcomes preserved",
+      "output_sha256": "bb365b603289ef8b2b71da0398ba876f0c0e66c135f77bf622476a2752bdcb47"
+    },
+    {
+      "completed_at_utc": "2026-10-26T22:16:05.046063+00:00",
+      "description": "Exact committed bytes, namespace and remote readback: eleven checks passed",
+      "output_sha256": "ea33a47527eeb32e42af2418c0bd7cb5303be95b129e12dbc8fcf320bbe7f518"
+    }
+  ]
+}
