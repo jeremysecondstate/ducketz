@@ -315,7 +315,26 @@ class IntentionStore(_OriginalIntentionStore):
             if type(revision) is not int or not 0 <= revision <= generation:
                 raise ContractError("Recovery sizing row revision is invalid")
             signature = tuple(indexed)
+            # A separate authenticated scalar proof can survive a manual
+            # restart. Exact source/schema/epoch/revision checks above still
+            # guard it; uncertainty only takes the original full validator.
+            from .sizing_header_cache import DurableSizingHeaders
+            durable = DurableSizingHeaders(self.store.path)
+            opened = getattr(self.store, "_connection_source_identities", {}).get(id(db))
+            cache_source_certain = opened is not None and opened == (stat.st_dev, stat.st_ino)
+            try:
+                durable_identity = (str(self.store.path.resolve()), *physical)
+            except OSError:
+                durable_identity = None
+                cache_source_certain = False
             previous = self._recovery_row_cache.get(forecast_id)
+            if previous is None or previous[0] != signature:
+                saved = durable.load(durable_identity, signature) if cache_source_certain else None
+                if saved is not None:
+                    previous = (signature, saved["side"], saved["desired_quantity"], saved["calculated_at"])
+                    self._recovery_row_cache[forecast_id] = previous
+                    if len(self._recovery_row_cache) > _RECOVERY_SIZING_CACHE_LIMIT:
+                        self._recovery_row_cache.popitem(last=False)
             if previous is not None and previous[0] == signature:
                 row = None
                 if read_timings is not None:
@@ -348,6 +367,20 @@ class IntentionStore(_OriginalIntentionStore):
                         signature, value["side"], value["desired_quantity"], sizing["calculated_at"])
                     if len(self._recovery_row_cache) > _RECOVERY_SIZING_CACHE_LIMIT:
                         self._recovery_row_cache.popitem(last=False)
+                    # Cache only facts produced by the full original validator.
+                    # Recheck the pathname before writing the optional sidecar;
+                    # it never mutates scientific or execution source rows.
+                    if cache_source_certain:
+                        try:
+                            current_stat = self.store.path.stat()
+                        except OSError:
+                            pass
+                        else:
+                            if opened == (current_stat.st_dev, current_stat.st_ino):
+                                durable.save(durable_identity, signature, dict(
+                                    forecast_id=indexed[0], intention_id=indexed[1],
+                                    side=value["side"], desired_quantity=value["desired_quantity"],
+                                    calculated_at=sizing["calculated_at"]))
                     # Release the fully validated research tree in this read
                     # preflight, before the final transaction reserves a writer.
                     # Both passes need only these same protected scalar facts.
