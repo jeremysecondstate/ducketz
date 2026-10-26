@@ -54,6 +54,19 @@ def valid_recovery_coverage(candle, coverage):
         return False
 
 
+def _same_native_projection(native, normalized):
+    """Parquet may change an empty UTC timestamp column's storage resolution."""
+    if not native.empty or not normalized.empty:
+        return native.equals(normalized)
+    for frame in (native, normalized):
+        dtype = frame["ts_event"].dtype
+        if (not isinstance(dtype, pd.DatetimeTZDtype) or str(dtype.tz) != "UTC"
+                or dtype.tz.utcoffset(None) != pd.Timedelta(0)):
+            return False
+    return native.assign(ts_event=native.ts_event.astype("datetime64[ns, UTC]")).equals(
+        normalized.assign(ts_event=normalized.ts_event.astype("datetime64[ns, UTC]")))
+
+
 @lru_cache(maxsize=16)
 def _verified_receipt(receipt_name, receipt_sha, raw_sha, normalized_sha):
     import databento
@@ -80,7 +93,7 @@ def _verified_receipt(receipt_name, receipt_sha, raw_sha, normalized_sha):
     normalized = pd.read_parquet(normalized_path)
     columns = ["symbol", "ts_event", *FIELDS]
     if (len(native) != receipt["rows"] or not set(columns).issubset(normalized)
-            or not native[columns].equals(normalized[columns])):
+            or not _same_native_projection(native[columns], normalized[columns])):
         raise ContractError("Native recovery projection differs from original DBN values")
     if not set(native.symbol).issubset(request["symbols"]):
         raise ContractError("Native recovery response contains unrequested symbols")
