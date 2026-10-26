@@ -1,0 +1,55 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-26T14:21:47.326107Z",
+  "completion_id": "20261026T140847Z-atlas-stats-1400-outcomes-a3d52034",
+  "details": [
+    "Actor Atlas; task Atlas Trader Representative; nine original October23 four-hour forecasts matured October26 at1400UTC and scored from genuine completed native same-source observations.",
+    "Original probabilities, targets, frozen direction labels, recorded policy identities and observed endpoint hashes remain exact.",
+    "Preserves the original combined Gameplan and completed-session Stats, all8537previous evaluated outcomes, prior directional outcomes and published supplement ancestry.",
+    "Peer applicability: derived scientific outcomes for Atlas symbols only. No model tuning, raw observations, fitted models, account state, execution state or bindings exported.",
+    "Ten exact native-input scientific checks, nine full admitted-source checks, thirteen source selection checks and eight native cumulative checks passed.",
+    "Two newly mature originals remain missing valid endpoint pairs; no result fabricated. Scientific output only; no source change, model fit, synthesis rerun, runtime loading, trader control, order or deployment."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261026T140847Z-atlas-stats-1400-outcomes-a3d52034/gameplan-stats/20261026T140847Z-atlas-stats-1400-outcomes-a3d52034/original-outcome-supplement.json",
+      "expected_sha256": "16d8adaa6dc3bc774ebc07717bf2353388fc0bd70e2fc3058173c7f980148684",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261026T140847Z-atlas-stats-1400-outcomes-a3d52034/original-outcome-supplement.json",
+      "published_sha256": "16d8adaa6dc3bc774ebc07717bf2353388fc0bd70e2fc3058173c7f980148684",
+      "published_size": 12143,
+      "sha256": "16d8adaa6dc3bc774ebc07717bf2353388fc0bd70e2fc3058173c7f980148684",
+      "size": 12143,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "16d8adaa6dc3bc774ebc07717bf2353388fc0bd70e2fc3058173c7f980148684",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261026T140847Z-atlas-stats-1400-outcomes-a3d52034/original-outcome-supplement.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "human-authorized-development",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "symbol-specific",
+  "source_head": "90704d21801f60426493bd6cc650a7fac38d4f61",
+  "summary": "Atlas Trader Representative: publish nine original four-hour outcomes",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "COST",
+    "GOOG",
+    "IONQ",
+    "MU",
+    "NVDA",
+    "PATH",
+    "SNDK"
+  ]
+}
