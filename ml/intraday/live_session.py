@@ -860,7 +860,9 @@ def main(argv=None):
             report = inspect_readiness(repository=args.repository,datastore=args.datastore,
                 profile=profile,watchlist=watchlist)
         print(json.dumps(report,sort_keys=True))
-        return 2
+        if scout_profile and args.scout_admission == "broker-local":
+            return 0 if report.get("ready") and report.get("local_checks_passed") else 2
+        return 0 if report.get("manual_live_start_ready") else 2
     result = run_manual(repository=args.repository,datastore=args.datastore,profile=profile,watchlist=watchlist,
         scout_admission=args.scout_admission,model_recipe=args.model_recipe,
         config=ResearchConfig(publication_offset_seconds=args.publication_offset_seconds,
