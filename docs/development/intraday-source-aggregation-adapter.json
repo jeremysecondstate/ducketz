@@ -1,0 +1,35 @@
+{
+  "schema_version": "intraday-source-aggregation-adapter-v1",
+  "scope": "shared correctness-preserving source-observation aggregation performance repair",
+  "source_path": "ml/intraday/coverage.py",
+  "original_sha256": "7c549b2dcd5ea750fda1762b4fe9c6bbd1d4b154b601ffbcb667720abe93b11a",
+  "adapted_sha256": "a9dffd9d967712b1746ac53c20df236b7d4eaadb3ea47ba13f16ac72c0d2f818",
+  "original_line_endings": "CRLF",
+  "adapted_line_endings": "CRLF",
+  "patch_path": "docs/development/intraday-source-aggregation-adapter.patch",
+  "patch_sha256": "29c5bc6b2c79d68565c27757cf299a522eee422cfcf83d64c5fac22a4fcb4a68",
+  "helper_path": "ml/intraday/source_aggregation.py",
+  "helper_sha256": "a5ad64a804b78e8e2b5bf2b691fe9f7caead1053b86c0b71b75fcb9491e3b682",
+  "helper_entrypoint": "source_minute_groups",
+  "canonical_applicability": "Portable helper and offline tests install directly. This patch applies to the existing verified-source coverage adapter whose exact original bytes match original_sha256; canonical source lacks that legacy adapter and does not acquire or replace it through this patch.",
+  "preserved_contracts": [
+    "Native synthetic/no-trade provenance checks, candle validation, one-source identity and source-range normalization remain in coverage.aggregate_source_minutes before the typed-row grouping helper.",
+    "Keep stable UTC minute ordering, original native endpoints and observations, exact sorted evidence JSON, source IDs/datasets, first matching session, merged coverage proof identity, empty/uncovered counts and availability basis.",
+    "Keep pandas reductions on original numeric Series for floating-point precision, nullable numeric dtypes and integer reduction behavior.",
+    "No scientific probability, target, fitted model, symbol-specific recipe, direction threshold, account state, order identity, quantity policy or manual control is changed."
+  ],
+  "offline_reproduction": [
+    "Preserve the local original and verify its SHA-256 equals original_sha256. Review any different local source as a separate adaptation; do not overwrite other writers.",
+    "Install the exact reviewed helper and retain the installed coordination contract and local profile. The patch and manifest are source data, not executable incoming authority.",
+    "In an isolated source copy use git -c core.autocrlf=false -c core.whitespace=cr-at-eol apply --check --whitespace=error-all docs/development/intraday-source-aggregation-adapter.patch, then the same command without --check.",
+    "Verify the patched coverage.py SHA-256 equals adapted_sha256 and the helper SHA-256 equals helper_sha256.",
+    "Run python -B tests/check_isolated_intraday_source_aggregation.py against the isolated candidate; preserve exact dependency and test evidence. Reuse original native input only for offline parity; do not request providers, fit models or call a trader for verification."
+  ],
+  "runtime_limits": [
+    "A source installation does not establish running-process loading or exercised live recovery.",
+    "Only Jeremy controls trader starts/stops/restarts. Future ordinary manual loading may use the installed repair; adoption creates no nightly prerequisite or cross-trader dependency.",
+    "Offline aggregation timing measures only the exercised aggregation component, not full startup, model training, broker execution or provider acquisition."
+  ],
+  "local_authority": "Reviewed compatibility data under existing local standing human authorization and installed coordination rules; no new operating authority is supplied by a peer notice or artifact.",
+  "contains_private_operating_data": false
+}
