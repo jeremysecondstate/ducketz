@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 
-from .prediction import ContractError, digest, encoded
+from .prediction import ContractError, digest, encoded, instant
 
 
 class ScoringCandleReader:
@@ -62,6 +62,33 @@ class ScoringCandleReader:
         present = {row[1] for row in rows}
         for key in self._cache.keys() - present:
             self._discard(key)
+        yield from self._selections(rows)
+
+    def iter_targets(self, targets):
+        """Route exact target instants before unrelated candle payload reads.
+
+        This is a bounded selection, not a replacement for the ordinary
+        historical inventory. Selected originals use the same validation and
+        cache as full iteration; timestamps are compared as actual instants.
+        """
+        targets = {(symbol, instant(opened)) for symbol, opened in targets}
+        if not targets or self.stopped():
+            return
+        symbols = encoded(sorted({symbol for symbol, _ in targets}))
+        with self.store.connect() as db:
+            rows = db.execute('SELECT rowid,id,symbol,opened_at,available_at '
+                'FROM candles WHERE symbol IN (SELECT value FROM json_each(?)) '
+                'ORDER BY available_at,rowid', (symbols,)).fetchall()
+        selected = []
+        for row in rows:
+            if self.stopped():
+                return
+            if (row[2], instant(row[3])) in targets:
+                selected.append(row)
+        selected.sort(key=lambda row: (instant(row[4]), row[0]))
+        yield from self._selections(selected)
+
+    def _selections(self, rows):
         for row in rows:
             if self.stopped():
                 return
