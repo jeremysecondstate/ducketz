@@ -1,0 +1,54 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T152709Z-80864659c062492193f5149fc4c6d467",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/intentions.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/execution_intentions.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/ordinary_diagnostics.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_ordinary_chronology_diagnostics.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_ordinary_chronology.py"
+    }
+  ],
+  "limitations": [
+    "Attribution repair only: original216second chronology cause and169second receipt cause remain unproved",
+    "No runtime load or affected natural recovery exercise by this work",
+    "Current installed application composes intentions adapters in one file; reviewed semantic merge required, not blind overwrite",
+    "External Schwab interactive consent remains required; source does not fabricate credentials or clear rejection marker"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Only timing attribution changes: original latency cause and affected recovery remain unproved. Three exact reviewed semantic-merge files locally installed; existing trader worker has not proved loading them. Jeremy retains every manual start/stop. Each PC retains original science, policies, symbols, model recipes and independent state. No provider/broker/model/trader-control operation; nightly work and private exchange continue independently without peer acceptance.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T152709Z-80864659c062492193f5149fc4c6d467",
+  "source_sha": "527ced780d93674d2372dd23fab3d57f09790533",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/396",
+  "summary": "Attribute expired-intention chronology delays without changing execution",
+  "tests": [
+    "Thirteen clean baseline cases reproduced missing attribution. All81offlinecases passed implementation,sealed snapshot,managed source and fresh main on113fingerprints and107exactraw-base dependencies.",
+    "Independent whole-diff and semantic installation review passed148checks;230committed-byte/test-attestation/remote checks verified source 527ced780d93674d2372dd23fab3d57f09790533 and main 182ed065f98c3aacad465c043d9564aefd7fa152.",
+    "Separate installed Atlas semantic merge passed145offlinecases on117exactimports before installation; final actual-installed evidence is recorded separately."
+  ]
+}

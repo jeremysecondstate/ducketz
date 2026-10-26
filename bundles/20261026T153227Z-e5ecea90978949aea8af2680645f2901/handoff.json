@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T15:32:27.792447Z",
+  "id": "20261026T153227Z-e5ecea90978949aea8af2680645f2901",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Attribute expired-intention chronology delays without changing execution"
+}
