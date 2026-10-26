@@ -33,6 +33,7 @@ from .execution_intentions import IntentionStore, _RecoveryTimings
 from .prediction import ContractError, PACIFIC, TARGET_VERSION, digest, encoded, instant
 from .starter_sizing import QuoteObservation, size_forecast
 from .technical_sizing import AvailableInput
+from . import ordinary_diagnostics as _ordinary
 
 
 _SAFE_SUBMISSION_REASONS = frozenset({
@@ -141,6 +142,7 @@ class _ExecutionTrace:
         self.stage = "account_entry"
         self.phases = []
         self.recovery_timings = None
+        self.ordinary_timings = None
         self.lease_expires_at = self.snapshot_observed_at = None
         self.capture_freshness = None
         self.lease_acquisition = None
@@ -202,6 +204,8 @@ class _ExecutionTrace:
                 result["lease_acquisition"]["diagnostics_unavailable"] = True
         if self.recovery_timings is not None:
             result["recovery_phase_timings"] = self.recovery_timings.snapshot()
+        if self.ordinary_timings is not None:
+            result["ordinary_intention_details"] = self.ordinary_timings.snapshot()
         return result
 
     def remember(self, exc):
@@ -426,12 +430,14 @@ class IntradayAccountExecutor:
         self._lease_keeper = None
 
     def _record(self, forecast, disposition, *, kind="execution_disposition", evidence=None, capacity=None, order=None):
-        evidence = evidence or {"reason": disposition}
-        event_key = digest([kind, disposition, evidence, asdict(order) if order else None,
-                            capacity.payload() if capacity else None])
-        return self.intents.record(forecast, event_key=event_key, recorded_at=self.clock(),
-            disposition=disposition, kind=kind, evidence=evidence, capacity=capacity, order=order,
-            scope_to_intention=True)
+        with _ordinary.phase("record_total"):
+            evidence = evidence or {"reason": disposition}
+            with _ordinary.phase("record_identity"):
+                event_key = digest([kind, disposition, evidence, asdict(order) if order else None,
+                                    capacity.payload() if capacity else None])
+            return self.intents.record(forecast, event_key=event_key, recorded_at=self.clock(),
+                disposition=disposition, kind=kind, evidence=evidence, capacity=capacity, order=order,
+                scope_to_intention=True)
 
     def _binding(self):
         if self.stopped() or not self.manual_authority():
@@ -933,22 +939,33 @@ class IntradayAccountExecutor:
                for native in state.reservations):
             return None
         self._execution_stage("expired_intention_chronology")
-        superseding = self._newer_forecasts(forecast)
-        newer = [native for native in state.reservations
-                 if native.forecast_id != forecast["forecast_id"] and native.symbol == forecast["symbol"]
-                 and native.target_start is not None
-                 and instant(native.target_start) >= instant(forecast["reference_at"])]
-        processed = self.intents.processed_at_or_after(forecast)
-        # Recheck this manual binding and the same unexpired fence after local
-        # reads, before an immutable local receipt. No account/provider IO.
-        self._renew_current_lease()
-        if superseding or newer or processed:
-            return self._record(forecast, "newer_or_same_reference_intention_already_processed",
-                evidence={"superseding_forecast_ids":superseding} if superseding else
-                         {"processed_forecast_ids":processed,
-                          "native_reservation_ids":[native.reservation_id for native in newer]})
-        return self._record(forecast, "fixed_target_already_elapsed",
-                            evidence={"reason":"fixed_target_already_elapsed", "no_pending_own_order_work":True})
+        timings = _ordinary.OrdinaryTimings() if self._execution_trace is not None else None
+        if self._execution_trace is not None:
+            self._execution_trace.ordinary_timings = timings
+        with _ordinary.capture(timings), _ordinary.phase("chronology_total"):
+            with _ordinary.phase("newer_forecast_scan"):
+                superseding = self._newer_forecasts(forecast)
+            _ordinary.count("newer_forecasts", len(superseding))
+            with _ordinary.phase("native_filter"):
+                newer = [native for native in state.reservations
+                         if native.forecast_id != forecast["forecast_id"] and native.symbol == forecast["symbol"]
+                         and native.target_start is not None
+                         and instant(native.target_start) >= instant(forecast["reference_at"])]
+            _ordinary.count("native_rows", len(state.reservations))
+            with _ordinary.phase("processed_scan"):
+                processed = self.intents.processed_at_or_after(forecast)
+            _ordinary.count("processed_forecasts", len(processed))
+            # Recheck this manual binding and the same unexpired fence after local
+            # reads, before an immutable local receipt. No account/provider IO.
+            with _ordinary.phase("fence_renewal"):
+                self._renew_current_lease()
+            if superseding or newer or processed:
+                return self._record(forecast, "newer_or_same_reference_intention_already_processed",
+                    evidence={"superseding_forecast_ids":superseding} if superseding else
+                             {"processed_forecast_ids":processed,
+                              "native_reservation_ids":[native.reservation_id for native in newer]})
+            return self._record(forecast, "fixed_target_already_elapsed",
+                                evidence={"reason":"fixed_target_already_elapsed", "no_pending_own_order_work":True})
 
     def step(self, forecast):
         """One bounded execution/recovery step; the outer session owns retries."""
