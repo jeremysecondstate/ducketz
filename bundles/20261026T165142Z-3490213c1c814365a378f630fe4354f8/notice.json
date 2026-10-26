@@ -1,0 +1,43 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T164352Z-04ef696d1f1f4549a650a8a2ae910846",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/execution_intentions.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_durable_sizing_headers.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_existing_projection.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_recovery_existing_projection.py"
+    }
+  ],
+  "limitations": [
+    "Offline volume reduction does not establish full natural runtime latency recovery.",
+    "Current manual workers retain imported source; loading and naturally affected exercise remain unproved.",
+    "A separate existing producer owns complementary private receipt/metadata read optimizations. Preserve this exact completed projection delta when composing later work."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Both PCs may independently adopt the shared two-method projection correction under existing standing installation authority. Preserve frozen source probabilities, targets, saved policies, original sizing, order identity, uncertainty, local model recipes, symbols, ledgers and manual controls. Exact existing groups return from a validated read snapshot; every missing event keeps final writer rechecks and atomic append. A future human-chosen manual15mload is needed to load this code. Source procedures start or stop no trader, place no order, call no broker/provider and add no nightly or peer prerequisite.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T164352Z-04ef696d1f1f4549a650a8a2ae910846",
+  "source_sha": "59b741e36b2b03dcfdc0592ee808dc6a238b54bc",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/398",
+  "summary": "Avoid redundant writers for unchanged recovery projections",
+  "tests": [
+    "Twenty-eight portable targeted regressions plus adjacent checks total145cases. Final sealed canonical source, isolated candidate and fresh main candidate each passed all145 on115exactfile fingerprints and111raw-base dependencies, with network and subprocess denied.",
+    "The separately reviewed Atlas five-file application adaptation passed244cases against actual installed bytes, including23new cases. Ten exact existing fixture groups used zero writer transactions instead of ten; all original results and rows were preserved.",
+    "Main integrated through the pinned standing-authorized procedure as c96548be26d9301bf8321ee0a8d6254e04cd2c4a with remote readback. Original completion20261026T163903Z-7f3b2f2ac436441f949a4e07f9f9cb8e/sourcea7f4954e7be77073f93fe552922b07b30e158a06 retained; final identical bytes re-reviewed on canonical parent and superseded by this record."
+  ]
+}

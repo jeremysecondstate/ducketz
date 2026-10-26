@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T16:51:42.076730Z",
+  "id": "20261026T165142Z-3490213c1c814365a378f630fe4354f8",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Avoid redundant writers for unchanged recovery projections"
+}
