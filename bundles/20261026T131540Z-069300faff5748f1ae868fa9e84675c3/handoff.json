@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T13:15:40.161060Z",
+  "id": "20261026T131540Z-069300faff5748f1ae868fa9e84675c3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Bound CatBoost stages while preserving frozen original model contracts"
+}

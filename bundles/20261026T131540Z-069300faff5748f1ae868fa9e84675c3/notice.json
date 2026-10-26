@@ -1,0 +1,46 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T131109Z-9f389ae9484046e286c7fc98ccbacded",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/models.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/catboost_adapter.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_main_catboost_contract.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_main_catboost_contract.py"
+    }
+  ],
+  "limitations": [
+    "Dispatch fakes and untrained constructor/clone/persistence tests prove resource arguments and frozen-contract preservation; no numerical fitting, provider/broker operation or trader control occurred.",
+    "Historical native joblib artifacts retain original bytes and native identity. Bounds apply to newly constructed pipelines. Current-disk adapter hash is explicitly labeled and does not prove running process loading.",
+    "Historical latency causality, live recovery and peer installation remain unproved. Grouped Atlas execution source adoption requires a separate complete real-caller graph review; no orphan helper was added."
+  ],
+  "prior_completion_records": [
+    "20261021T150607Z-75ddb714801543a991f1fb18cd6499a5"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Preserve local symbols, parameters, calibration, projection, original probabilities and targets. The exact recorded native CatBoost to exact adapter pair is the sole frozen-class compatibility exception. Atlas already has the original adapter, so this group requires no local replacement or new restart. Peer review and human-controlled loading are independent and never nightly prerequisites.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T131109Z-9f389ae9484046e286c7fc98ccbacded",
+  "source_sha": "66f3fcbdca9a2448acad137a45330176edc436ac",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/393",
+  "summary": "Bound CatBoost stages while preserving frozen original model contracts",
+  "tests": [
+    "Two clean pre-fix dispatch cases reproduced all-core Pool preprocessing, automatic importance and prediction despite training thread_count=1. Final 58 offline cases passed on implementation, sealed snapshot, managed source and fresh main candidates, bound to 12 exact fingerprints and eight raw-base dependencies.",
+    "Independent whole-diff review passed 25 checks; committed-byte, attestation and remote verification passed 28 checks. Exact source 66f3fcbdca9a2448acad137a45330176edc436ac and canonical main 1614487ac20ddcbeb23550654229def7c55379e4 are remotely verified.",
+    "Atlas exact original adapter and call/provenance ASTs remain installed. Seven focused mocked application checks passed; all 1039 application source fingerprints and six protected bindings are unchanged."
+  ]
+}
