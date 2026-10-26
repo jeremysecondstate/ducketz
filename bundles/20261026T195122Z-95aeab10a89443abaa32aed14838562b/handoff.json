@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T19:51:22.080595Z",
+  "id": "20261026T195122Z-95aeab10a89443abaa32aed14838562b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Later original Gameplan Stats outcomes published, installed and selected on Atlas"
+}

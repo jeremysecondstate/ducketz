@@ -1,0 +1,54 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T194344Z-fcb354c2652f49e1984689ae4a7aedfd",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/gameplan_stats_outcome_revision.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tools/gameplan_stats_outcome_revision.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_gameplan_stats_outcome_revision.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_gameplan_stats_outcome_revision.py"
+    }
+  ],
+  "limitations": [
+    "Onscreen refresh and Scout source installation, revision intake and display adoption remain unobserved; no peer acceptance or operating gate.",
+    "Older evaluated records without original endpoint proof remain unavailable for revision; no fabricated endpoints, historical relabeling or replacement of earlier scores.",
+    "The active independent15-minute repair owner retains its separate lease and recovery preparation work; these scientific changes establish no trader recovery."
+  ],
+  "main_sha": "80b2ed1d33ccc4a69972654bc64f96c38eeb0a27",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Stats scientific display work only. Scout may adopt the exact reviewed private revision with the published CLI against its own original local completed-session parent; stable scientific identity permits distinct local receipt bytes. Preserve original publications, local bindings and all manual trader controls. No broker request, order, model fit, trader start/restart or nightly prerequisite.",
+  "scientific_artifact": {
+    "commit_sha": "c685e1bd1967fa29cc88d1b47e14522b82ca857a",
+    "completion_id": "20261026T194743Z-atlas-stats-later-outcomes-f5beb8ee",
+    "original_session": "2026-10-23",
+    "path": "artifacts/pc-original/20261026T194743Z-atlas-stats-later-outcomes-f5beb8ee/gameplan-stats/20261026T194743Z-atlas-stats-later-outcomes-f5beb8ee/original-outcome-revision.json",
+    "private_relative_path": "outcome-revisions/2026-10-23/atlas/20261026T194743Z-atlas-stats-later-outcomes-f5beb8ee/original-outcome-revision.json",
+    "sha256": "ec7bdea081035ee317847a5bcd68551fa4b8557d50afd3588627f5b7be4dbeae",
+    "version": "cross-pc-gameplan-stats-outcome-revision-v1"
+  },
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T194344Z-fcb354c2652f49e1984689ae4a7aedfd",
+  "source_sha": "319aeb035808464322e05709f53cf9e14ade409a",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/406",
+  "summary": "Later original Gameplan Stats outcomes published, installed and selected on Atlas",
+  "tests": [
+    "79 offline cases passed exact reviewed, sealed, isolated source, fresh main and installed local graphs; network and subprocess execution denied.",
+    "216 original-native-science checks,30 exact-final independent adversarial cases,4 portability delta checks and16 actual-real-data clone checks passed.",
+    "Installed helper normally imported and adopted exact reviewed bytes. Actual display reader now returns358evaluated/60awaiting-genuine-input/110future, preserving528original forecasts and349prior complete scored rows.",
+    "Exact source/main/artifact commits and immutable scientific bytes verified; private readback matches published package. Two abandoned old domain pointers released with71frozen historical files preserved."
+  ]
+}
