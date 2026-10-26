@@ -1,0 +1,59 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T170507Z-d5cb431d5baa4ba59cf1bdb18ba2252a",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/account_gameplan/authority.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/execution_intentions.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/schema_reads.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_receipt_recovery_batch_reads.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_schema_reads.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_receipt_recovery_batch_reads.py"
+    }
+  ],
+  "limitations": [
+    "Historical live wall delay was not established as solely caused by repeated SQLite stepping.",
+    "Offline fixtures and retained-data copies do not prove runtime loading or natural affected recovery.",
+    "Main and installed application use different existing intention-module composition; concurrent local event fast-path work must be preserved by method-only installation with fresh evidence.",
+    "No historical receipt, reservation, scientific forecast, original target/probability, execution fill or manual control is rewritten."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The bounded repair changes receipt recovery and only two protected-schema inventory readers. Main keeps its existing execution-intentions class split and accepted projection fast path. Optional aggregate failures preserve canonical reads; schema/generation/epoch and receipt hash/scope/time/state guards remain intact. Each PC preserves its symbols, models, scientific evidence and independent trader state. Runtime loading and naturally affected latency recovery remain unproved. No trader control, order, replay, broker/provider operation or fitting is performed by this source procedure; nightly work and private exchange remain independent of source publication and peer acceptance.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T170507Z-d5cb431d5baa4ba59cf1bdb18ba2252a",
+  "source_sha": "bd259415e476237ea183229288af7b42cbe2c50a",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/399",
+  "summary": "Reduce repeated SQLite stepping in receipt recovery and schema guards",
+  "tests": [
+    "Forty-eight new receipt/schema regressions cover guarded one-row reads, canonical fallback, frozen initial receipt membership, exact opaque requests, primary-key collation, original validation/error order, transaction loss and projection rollback/side effects.",
+    "All150portable cases passed implementation, sealed snapshot, managed source and fresh main on113exactfingerprints and106raw-base dependencies. Accepted canonical projection fast-path and prior sizing-cache regressions are included unchanged. Independent final review and root whole-diff review passed.",
+    "Post-publication230committed-byte/test-attestation/remote-readback checks verified source bd259415e476237ea183229288af7b42cbe2c50a and main 3f679c1a55b391fc879bce9e33ca390264dee48a. Separate reviewed Atlas installation preserves the accepted local fast-path successor; actual installed358cases passed."
+  ]
+}

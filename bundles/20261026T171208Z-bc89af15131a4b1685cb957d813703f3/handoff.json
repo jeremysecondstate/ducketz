@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T17:12:08.310883Z",
+  "id": "20261026T171208Z-bc89af15131a4b1685cb957d813703f3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Reduce repeated SQLite stepping in receipt recovery and schema guards"
+}
