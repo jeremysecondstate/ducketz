@@ -1,0 +1,105 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T134247Z-c5966484b82e4ce698bd22a230ac044e",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/account_gameplan/authority.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/book.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/cancellation.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/execution_intentions.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/execution_policy.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/local_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/native_ledger.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/starter_sizing.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_main_executor.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/intraday_main_order_fixtures.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_main_account_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_main_executor_graph.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_main_direction_quantity.py"
+    }
+  ],
+  "limitations": [
+    "Offline fake broker/session/constructor tests deny network and subprocess operations; no real trader controls, broker/provider calls, model fits or scientific revisions.",
+    "Existing prepared local binding required for explicit manual use. Canonical preparation/readiness packaging remains separate; installed local workflow already has it.",
+    "Source existence and offline success do not establish running code loading, affected live recovery, historical latency causality or any original unresolved commitment resolution."
+  ],
+  "prior_completion_records": [
+    "20261012T160403Z-45b006781e4a4c3da7c94b3c4ecc7b51",
+    "20261013T194458Z-464d36a9261c4a6e895918c87a06e640",
+    "20261026T112323Z-ea43465353264a9099afcfec1a7bd2b0",
+    "20261021T201552Z-970404564ef1411187c669a77b5bd5bd",
+    "20261020T001107Z-a6826e223f7143a389913638078e57a6"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Additive own-ledger and intention adapters preserve canonical common Gameplan ledger, frozen forecasts/model/probability/target contracts, original policy labels, native IDs and exact unknown-order recovery. Remove obsolete Atlas Gameplan compatibility proof. Preserve local symbols, model recipes, manual controls and each trader independent state. Peer applicability and human-controlled loading remain separate and never gate nightly operation.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T134247Z-c5966484b82e4ce698bd22a230ac044e",
+  "source_sha": "eb5ac1ec9016e5ef738b8d4d6b075ac2e11b2ded",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/394",
+  "summary": "Restore independent Atlas executor and valid whole-share directions",
+  "tests": [
+    "Exact main baseline reproduced missing executor and forbidden compatibility dependency; seven sizing behavior failures reproduced valid-direction suppression. All255offlinecases passed final implementation, sealed snapshot, managed source and fresh main candidates on125exactfingerprints and110raw-base dependencies.",
+    "Independent whole-diff review24checks and committed-byte/test-attestation/remote verification254checks passed. Source eb5ac1ec9016e5ef738b8d4d6b075ac2e11b2ded and canonical main 0bcee67009d32ef17486c8529c64a9f221621e97 verified remotely, preserving the disjoint intervening diagnostic commit.",
+    "Twelve focused installed-application checks pass. Existing Atlas executor, own state, capacity and whole-share direction behavior already installed; no application replacement or new restart required for this group."
+  ]
+}

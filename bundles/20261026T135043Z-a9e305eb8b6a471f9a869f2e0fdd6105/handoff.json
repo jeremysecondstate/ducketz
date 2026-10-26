@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T13:50:43.301008Z",
+  "id": "20261026T135043Z-a9e305eb8b6a471f9a869f2e0fdd6105",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Restore independent Atlas executor and valid whole-share directions"
+}
