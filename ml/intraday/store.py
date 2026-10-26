@@ -257,7 +257,7 @@ class ShadowStore:
         """Cache only scalar headers of exact semantically validated evidence."""
         fields = ("forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at",
                   "mode", "ensemble_status", "target_open", "target_close",
-                  "population_contract", "source_dataset", "source_id")
+                  "population_contract", "source_dataset", "source_id", "reference_open")
         cache = getattr(self, "_forecast_header_cache", None)
         if cache is None:
             cache = self._forecast_header_cache = OrderedDict()
@@ -270,6 +270,10 @@ class ShadowStore:
             return dict(previous[1]), None
         value = self._forecast_value(row)
         projection = {field: value[field] for field in fields if field in value}
+        if "reference_open" in projection:
+            # Preserve the exact numeric meaning as a scalar cache field. The
+            # final scorer still applies the ordinary positive Decimal check.
+            projection["reference_open"] = str(projection["reference_open"])
         if signature is not None and all(item is None or isinstance(item, str) for item in projection.values()):
             cache[row[0]] = (signature, tuple(projection.items()))
             if len(cache) > 4096:

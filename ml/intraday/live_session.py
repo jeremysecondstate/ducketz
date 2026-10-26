@@ -452,6 +452,12 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
         pause(3)
 
 
+def score_saved_session_outcomes(store, *, session_id, actor, symbols, as_of, stopped=lambda: False):
+    """Finalize persisted own outcomes using unchanged-original revision proofs."""
+    from .final_scoring import score_saved_session_outcomes as finalize
+    return finalize(store, session_id=session_id, actor=actor, symbols=symbols,
+                    as_of=as_of, stopped=stopped)
+
 def _scout_startup_proof(executor, session_id, *, clock):
     """Require the authenticated executor's bound result, never a local bypass."""
     from .scout_runtime_gate import readiness_gate

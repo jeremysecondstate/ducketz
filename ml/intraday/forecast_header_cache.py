@@ -18,9 +18,9 @@ import time
 import uuid
 
 # Bump this contract when full semantic validation or header meanings change.
-_CONTRACT = "validated-forecast-scalar-headers-v1"
+_CONTRACT = "validated-forecast-scalar-headers-v2"
 _FIELDS = frozenset({"forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at",
-    "mode", "ensemble_status", "target_open", "target_close", "population_contract", "source_dataset", "source_id"})
+    "mode", "ensemble_status", "target_open", "target_close", "population_contract", "source_dataset", "source_id", "reference_open"})
 _INDEXED = ("forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at")
 _SCHEMA = {
     "forecast_header_cache_meta": "CREATE TABLE forecast_header_cache_meta(singleton INTEGER PRIMARY KEY CHECK(singleton=1),epoch BLOB NOT NULL CHECK(typeof(epoch)='blob' AND length(epoch)=16))",
