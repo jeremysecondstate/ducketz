@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T12:53:44.332991Z",
+  "id": "20261026T125344Z-cc0135c4fca04504a5c13f6cfcfb336e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Keep native resources and warning ownership until the last concurrent fit exits"
+}

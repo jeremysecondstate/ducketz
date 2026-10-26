@@ -1,0 +1,41 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T124819Z-a07d823f9b6749a391ce5eeca5e125ad",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/models.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_main_fit_resources.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_main_fit_resources.py"
+    }
+  ],
+  "limitations": [
+    "Offline fake numerical work proves scoped resource behavior, not original latency causality, runtime loading or live recovery.",
+    "Independent third-party modifications of process-global warning hooks retain Python concurrency limitations. Existing constructor deprecation is retained with original model identity.",
+    "Peer installation is not inferred. Other scoped canonical composition groups retain original provenance."
+  ],
+  "prior_completion_records": [
+    "20261019T160318Z-683a20600b4943b496cc70222d7e5649"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No local worker policy, configured model, probability, target or trader control changes. Atlas already has this helper and requires no replacement or new restart for this group. Review peer applicability independently under standing local authority; add no operating prerequisite.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T124819Z-a07d823f9b6749a391ce5eeca5e125ad",
+  "source_sha": "f15de8cfb1294d3e0579880bc0f8bf78b43ddcf6",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/392",
+  "summary": "Keep native resources and warning ownership until the last concurrent fit exits",
+  "tests": [
+    "Two clean original-source failures reproduce early native-budget restoration while another fake fit remains active. Final30offlinecases passed implementation, sealed snapshot, managed source and fresh main candidates on9exactfingerprints and6raw-base dependencies.",
+    "Independent whole-diff review47checks and committed-byte/attestation/remote verification22checks passed. Exact sourcef15de8cfb1294d3e0579880bc0f8bf78b43ddcf6 and canonicalmain8d93e8d1561ff303e4b4f9bac1625716f4b3c2a9 remotely verified.",
+    "Atlas existing helper/global state/callsite match original and canonical source; five focused mocked application cases passed. All1039application source fingerprints and local settings preserved without replacement."
+  ]
+}
