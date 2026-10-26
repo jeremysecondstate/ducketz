@@ -272,7 +272,7 @@ class ScoutLocalAccountExecutor:
                     forecast = forecasts[forecast_id]
                     # Reject changed original bytes before recovery can revoke
                     # a pending attempt or request broker status for this row.
-                    record = self._recover_record(journal, old)
+                    record, _ = self._recover_record_for_step(journal, old)
                     if forecast is None:
                         raise ContractError('Local order lacks its original immutable intention')
                     clearance = (self._commitment_clearance(journal, record)
