@@ -68,7 +68,15 @@ def test_actual_queue_lock_retries_without_attempt_or_data_loss(case, monkeypatc
     finally:
         if lock.is_locked:
             lock.release()
-    assert retries == [{"reason": "queue_lock_contention", "error_type": "Timeout", "retry_after_seconds": 0.02}]
+    assert [{key: row[key] for key in ("reason", "error_type", "retry_after_seconds")}
+            for row in retries] == [{"reason": "queue_lock_contention", "error_type": "Timeout", "retry_after_seconds": 0.02}]
+    timing = retries[0]["queue_lock_timing"]
+    assert timing["schema_version"] == "intraday-market-queue-lock-timing-v1"
+    assert timing["observer_error"] is False and len(timing["recent"]) <= 32
+    failed = timing["recent"][-1]
+    assert failed["phase"] == ("enqueue" if stage == "enqueue" else "step_due")
+    assert failed["outcome"] == "acquire_error" and failed["hold_seconds"] is None
+    assert failed["wait_seconds"] >= 0 and str(col.root) not in json.dumps(timing)
     assert pauses == [0.02, 1.0] and calls == [1]
     assert task(col)["status"] == "COMPLETE" and task(col)["attempts"] == 1
     assert len(task(col)["snapshots"]) == 1

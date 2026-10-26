@@ -19,6 +19,7 @@ import uuid
 from typing import Callable, Mapping, Sequence
 
 from filelock import FileLock, Timeout
+from .market_collection_timing import QueueLockTiming, queue_lock_timing_snapshot, observed_lock_acquire_trace
 
 VERSION = "intraday-market-snapshot-v1"
 QUEUE_VERSION = "intraday-market-collection-v1"
@@ -47,24 +48,30 @@ def _select_tasks(due, maximum):
     """Reserve current price/options, background progress and oldest recovery."""
     if not due:
         return []
+    from collections import deque
     market = {"stock_quote", "stock_trades", "stock_bars", "options", "opra_options"}
     ordered = sorted(due, key=lambda item: (
         item[1]["quarter_start"], item[1]["request"]["source_kind"] in market,
         -item[1].get("attempts", 0), item[0]), reverse=True)
+    cohorts = {}
+    for item in ordered:
+        request = item[1]["request"]
+        cohort = (item[1]["quarter_start"], request["source_kind"] in market)
+        buckets = cohorts.setdefault(cohort, {})
+        buckets.setdefault(_lane(request), deque()).append(item)
+    limit = len(due) if maximum < 0 else maximum
     selected = []
-    # Round-robin the independent provider lanes within each priority cohort.
-    # A hash ordering can otherwise fill every worker with one slow provider.
-    for quarter in sorted({t["quarter_start"] for _, t in due}, reverse=True):
-        for current in (True, False):
-            buckets = {}
-            for item in ordered:
-                request = item[1]["request"]
-                if item[1]["quarter_start"] == quarter and (request["source_kind"] in market) == current:
-                    buckets.setdefault(_lane(request), []).append(item)
-            while any(buckets.values()):
-                for bucket in buckets.values():
-                    if bucket:
-                        selected.append(bucket.pop(0))
+    # The original ordering already places newer quarters and market cohorts
+    # first. Build each lane once, then stop at the requested prefix.
+    for buckets in cohorts.values():
+        while any(buckets.values()) and len(selected) < limit:
+            for bucket in buckets.values():
+                if bucket:
+                    selected.append(bucket.popleft())
+                    if len(selected) >= limit:
+                        break
+        if len(selected) >= limit:
+            break
     selected = selected[:maximum]
     if len(due) > maximum and maximum > 1:
         latest = max(t["quarter_start"] for _, t in due)
@@ -72,11 +79,11 @@ def _select_tasks(due, maximum):
                       and item[1]["request"]["source_kind"] not in market and item not in selected]
         if background and maximum >= 4:
             selected[-2] = background[0]
-        # Preserve an oldest recovery slot, including background-only workloads.
         remaining = [item for item in due if item not in selected[:-1]]
         selected[-1] = min(remaining, key=lambda item: (
             item[1]["quarter_start"], item[1].get("attempts", 0), item[0]))
     return selected
+
 
 
 def instant(value) -> datetime:
@@ -293,10 +300,11 @@ class QuarterHourMarketCollector:
         self.adapters = adapters if adapters is not None else default_adapters(self.root, self.requests)
         self.state_path = self.root / "queue.json"
         self.lock = FileLock(str(self.root / "queue.lock"), timeout=10)
+        self.queue_lock_timing = QueueLockTiming()
         self.root.mkdir(parents=True, exist_ok=True)
         from .market_collection_index import initialize_receipt_index
         initialize_receipt_index(self.root)
-        with self.lock:
+        with self.queue_lock_timing.observe(self.lock, "initialize"):
             state = self._state()
             if state.get("symbols") != list(self.symbols):
                 raise ValueError("Saved collection scope belongs to another symbol configuration")
@@ -314,7 +322,7 @@ class QuarterHourMarketCollector:
         if start.minute % 15 or start.second or start.microsecond or start.nanosecond or start + STEP > now:
             raise ValueError("Only exact, completed quarter-hour windows may be enqueued")
         added = 0
-        with self.lock:
+        with self.queue_lock_timing.observe(self.lock, "enqueue"):
             state = self._state()
             # Compact terminal task indexes after seven days; immutable receipts
             # and raw evidence are never deleted. Unfinished old work expires.
@@ -357,7 +365,8 @@ class QuarterHourMarketCollector:
                     delay = min(30.0, self.retry_seconds)
                     if on_retry is not None:
                         on_retry({"reason": "queue_lock_contention", "error_type": "Timeout",
-                                  "retry_after_seconds": delay})
+                                  "retry_after_seconds": delay,
+                                  "queue_lock_timing": queue_lock_timing_snapshot(self)})
                     if not stopped():
                         pause(delay)
                     continue
@@ -379,7 +388,7 @@ class QuarterHourMarketCollector:
     def step(self, *, max_requests=8) -> list[dict]:
         if isinstance(max_requests, bool) or not isinstance(max_requests, int) or max_requests < 1:
             raise ValueError("max_requests must be a positive integer")
-        with self.lock:
+        with self.queue_lock_timing.observe(self.lock, "step_due"):
             state = self._state()
             now = instant(self.clock())
             due = [(key, task) for key, task in state["tasks"].items()
@@ -391,7 +400,7 @@ class QuarterHourMarketCollector:
             task_lock = FileLock(str(self.root / (key + ".lock")), timeout=0)
             try:
                 with task_lock:
-                    with self.lock:
+                    with self.queue_lock_timing.observe(self.lock, "task_recheck"):
                         task = self._state()["tasks"][key]
                     if _settled(task) or instant(task["due_at"]) > instant(self.clock()):
                         return None
@@ -417,7 +426,7 @@ class QuarterHourMarketCollector:
             from .market_collection_index import index_receipt
             index_receipt(self.root, path, recovered)
             if _settled(recovered) and recovered.get("source_id") == request.source_id:
-                with self.lock:
+                with self.queue_lock_timing.observe(self.lock, "orphan_commit"):
                     state = self._state()
                     saved = state["tasks"][key]
                     relative = str(path.relative_to(self.root))
@@ -428,7 +437,7 @@ class QuarterHourMarketCollector:
                     saved["window_finalized"] = recovered.get("window_finalized", False)
                     _atomic(self.state_path, state)
                 return recovered
-        with self.lock:
+        with self.queue_lock_timing.observe(self.lock, "source_block"):
             blocked = self._state().get("source_blocks", {}).get(request.identity)
         if started - instant(task["quarter_end"]) > timedelta(hours=48):
             result = CollectionResult([], "EXPIRED", "Unfinished source window exceeded the bounded 48-hour recovery horizon")
@@ -515,7 +524,7 @@ class QuarterHourMarketCollector:
             os.fsync(handle.fileno())
         from .market_collection_index import index_receipt
         index_receipt(self.root, path, snapshot)
-        with self.lock:
+        with self.queue_lock_timing.observe(self.lock, "receipt_commit"):
             state = self._state()
             saved = state["tasks"][key]
             saved["attempts"] += 1
@@ -532,7 +541,7 @@ class QuarterHourMarketCollector:
 
     def capability_manifest(self):
         from .market_collection_adapters import capability_catalog
-        with self.lock:
+        with self.queue_lock_timing.observe(self.lock, "capability_manifest"):
             tasks = self._state()["tasks"]
         latest = {}
         for task in tasks.values():
@@ -693,13 +702,15 @@ def collection_failure_diagnostics(collector, error):
                 detail["collector_phase"] = name
                 following = trace.tb_next
                 if (name in {"enqueue", "step", "_collect"} and following is not None
-                        and Path(following.tb_frame.f_code.co_filename).name == "_api.py"
-                        and following.tb_frame.f_code.co_name == "__enter__"):
+                        and (Path(following.tb_frame.f_code.co_filename).name == "_api.py"
+                             and following.tb_frame.f_code.co_name == "__enter__"
+                             or observed_lock_acquire_trace(following, collector.lock))):
                     detail["collector_phase"] = name.lstrip("_") + "_queue_lock_acquire"
             trace, count = trace.tb_next, count + 1
         detail["trace_truncated"] = trace is not None
     except BaseException:
         detail["observer_error"] = True
+    detail["queue_lock_timing"] = queue_lock_timing_snapshot(collector)
     return detail
 
 
