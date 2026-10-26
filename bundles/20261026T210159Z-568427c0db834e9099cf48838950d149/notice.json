@@ -1,0 +1,233 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261026T205023Z-c0160806a01848fda701a886347bd261",
+  "change_details": [
+    "Actor Scout; task independent fifteen-minute context input repair; shared source applies to both PCs while each keeps its own scientific recipe and operating bindings.",
+    "Build priority cohorts and provider lanes once while preserving exact selection identities, background and oldest recovery slots.",
+    "Observe existing native queue lock acquisition and hold phases with bounded in-memory diagnostics, preserving retry, exception, provider and receipt behavior.",
+    "Keep scientific recipes, stock direction thresholds and independent trader controls unchanged.",
+    "Fresh main-base revision preserves the newer sizing source-identity guard. Related Completion-Record 20261026T202724Z-70d32323529f488f9d8c83438b127572 and source c7fb00f6f19018b61c98a9e3bf73e8f706e3cd9b remain published with their original evidence."
+  ],
+  "change_id": "20261026T205023Z-c0160806a01848fda701a886347bd261",
+  "checks": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_market_queue_timing.py",
+        "tests/test_intraday_market_task_selection.py",
+        "tests/test_intraday_market_collection_lock_retry.py",
+        "tests/test_intraday_market_collection_failure_diagnostics.py",
+        "tests/test_intraday_market_collection.py",
+        "tests/test_intraday_market_collection_pipeline_repair.py",
+        "tests/test_intraday_market_queue_recovery_evidence.py",
+        "tests/test_intraday_market_collection_extended.py",
+        "tests/test_intraday_market_collection_fmp_context.py",
+        "tests/test_intraday_market_collection_history.py",
+        "tests/test_intraday_market_collection_index.py",
+        "tests/test_intraday_market_collection_schwab_stream.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T20:50:49.529563Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "589fddf18c459300c7a842b35612e09699ca7071d697d11bde92acc4a8b3853c",
+      "output_sha256": "891ca9d6644dda27107df6ab72b5e44053d07fe8e712069ddc5a7f8e1bc045fc",
+      "passed": 263,
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-26T20:50:23.700804Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_paired_recovery.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_stock_direction_policy.py",
+        "tests/test_intraday_starter_sizing.py",
+        "tests/test_intraday_recovery_batch_preflight.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T20:51:57.927079Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "5e208b9053fb9b53d7b6a36af7e7eae8b3f56dcfa55ecb049ba0594aa179fca1",
+      "output_sha256": "7b6cbad10bd526d6d24377201cad3d40c0594fcd0d4c4440dc78e94ebf147ac6",
+      "passed": 304,
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-26T20:50:49.858347Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_market_queue_timing.py",
+        "tests/test_intraday_market_task_selection.py",
+        "tests/test_intraday_market_collection_lock_retry.py",
+        "tests/test_intraday_market_collection_failure_diagnostics.py",
+        "tests/test_intraday_market_collection.py",
+        "tests/test_intraday_market_collection_pipeline_repair.py",
+        "tests/test_intraday_market_queue_recovery_evidence.py",
+        "tests/test_intraday_market_collection_extended.py",
+        "tests/test_intraday_market_collection_fmp_context.py",
+        "tests/test_intraday_market_collection_history.py",
+        "tests/test_intraday_market_collection_index.py",
+        "tests/test_intraday_market_collection_schwab_stream.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T20:53:28.191723Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "589fddf18c459300c7a842b35612e09699ca7071d697d11bde92acc4a8b3853c",
+      "output_sha256": "d291c9363ff3ae60002ad5b791d925ddcff5aa8393e0b1fa51e897f49153fab5",
+      "passed": 263,
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-26T20:53:00.990943Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_paired_recovery.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_stock_direction_policy.py",
+        "tests/test_intraday_starter_sizing.py",
+        "tests/test_intraday_recovery_batch_preflight.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T20:54:35.855053Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "5e208b9053fb9b53d7b6a36af7e7eae8b3f56dcfa55ecb049ba0594aa179fca1",
+      "output_sha256": "9c6d553c2fc55078383a7ead8c004b9ba5200ffcb9f9986499c06cc78a943d1d",
+      "passed": 304,
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-26T20:53:28.479118Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_market_queue_timing.py",
+        "tests/test_intraday_market_task_selection.py",
+        "tests/test_intraday_market_collection_lock_retry.py",
+        "tests/test_intraday_market_collection_failure_diagnostics.py",
+        "tests/test_intraday_market_collection.py",
+        "tests/test_intraday_market_collection_pipeline_repair.py",
+        "tests/test_intraday_market_queue_recovery_evidence.py",
+        "tests/test_intraday_market_collection_extended.py",
+        "tests/test_intraday_market_collection_fmp_context.py",
+        "tests/test_intraday_market_collection_history.py",
+        "tests/test_intraday_market_collection_index.py",
+        "tests/test_intraday_market_collection_schwab_stream.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T20:57:09.735925Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "589fddf18c459300c7a842b35612e09699ca7071d697d11bde92acc4a8b3853c",
+      "output_sha256": "a1dd824b805b6aab69c60c387f617148c02523004b87203a4f8b1f8812664814",
+      "passed": 263,
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-26T20:56:43.412894Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_paired_recovery.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "tests/test_stock_direction_policy.py",
+        "tests/test_intraday_starter_sizing.py",
+        "tests/test_intraday_recovery_batch_preflight.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-26T20:58:15.043455Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "5e208b9053fb9b53d7b6a36af7e7eae8b3f56dcfa55ecb049ba0594aa179fca1",
+      "output_sha256": "8877b05ce37160b19dd887478fb1842960ca8d5a87dae2707490169b6f7f4d6f",
+      "passed": 304,
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-26T20:57:09.980311Z"
+    }
+  ],
+  "file_sha256": {
+    "ml/intraday/market_collection.py": "a0aa062303337f5b26032594d93ce35decea40340cd9b0c64d9cb0c64bf17577",
+    "ml/intraday/market_collection_timing.py": "ecc4e03597bd5c9ffef85b0e4328ca2508d9a3092335d2d122744a85686187ed",
+    "tests/test_intraday_market_collection_lock_retry.py": "23b64709af9add04656d4c0cfa7cac316d0018ddf1bae41dea591a16aa6acfaa",
+    "tests/test_intraday_market_queue_timing.py": "181356ccdb3e54ee801fe30cdddb505c91b3669d07792a150bd1627a7f17ab0c",
+    "tests/test_intraday_market_task_selection.py": "70a9bce5f73d611e27be6bb1883f10d41d0286573b7ec76ed331ee052ad8bc9a"
+  },
+  "files": [
+    "ml/intraday/market_collection.py",
+    "tests/test_intraday_market_collection_lock_retry.py",
+    "tests/test_intraday_market_queue_timing.py",
+    "tests/test_intraday_market_task_selection.py",
+    "ml/intraday/market_collection_timing.py"
+  ],
+  "limitations": [
+    "Offline fixture checks establish source behavior; the real contention holder and production latency recovery remain unverified.",
+    "Source publication, peer installation and runtime adoption are separate facts. This notice contains shared source references only."
+  ],
+  "main_integration": {
+    "main_before": "c537e74496e91758feb35a74b8431001a09d6ec9",
+    "main_sha": "5a142a37c75251ce967717473f347dc2b26ebec1",
+    "record_id": "20261026T205023Z-c0160806a01848fda701a886347bd261",
+    "stage": "main_integrated",
+    "verified_remote_sha": "5a142a37c75251ce967717473f347dc2b26ebec1"
+  },
+  "operations": {
+    "ml/intraday/market_collection.py": "modify",
+    "ml/intraday/market_collection_timing.py": "add",
+    "tests/test_intraday_market_collection_lock_retry.py": "modify",
+    "tests/test_intraday_market_queue_timing.py": "add",
+    "tests/test_intraday_market_task_selection.py": "add"
+  },
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/410",
+  "pull_request_created_as_draft": true,
+  "related_publications": [
+    {
+      "branch": "codex/scout/20261026T202724Z-70d32323529f488f9d8c83438b127572",
+      "preserved": true,
+      "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/409",
+      "record_id": "20261026T202724Z-70d32323529f488f9d8c83438b127572",
+      "scope": "shared",
+      "source_sha": "c7fb00f6f19018b61c98a9e3bf73e8f706e3cd9b",
+      "stage": "source_pushed"
+    }
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Collector modules import at startup. Reviewed local installation and a human-controlled trader restart are separate stages; no provider/account/order or local model recipe changes.",
+  "scope": "shared",
+  "source_sha": "7157af3dfd7857d9ff27c815714dbf22fa137b4d",
+  "summary": "Scout shared queue selection and native lock timing repair published on common main",
+  "tests": [
+    "567 offline checks passed on the source queue, 567 on the isolated source candidate and 567 on the fresh main candidate; these repeated counts overlap.",
+    "Each stage passed 263 collector checks and 304 live-session, recovery, expiry, policy, sizing and source-identity checks across 19 modules; 181 source/dependency fingerprints and import bindings verified."
+  ]
+}

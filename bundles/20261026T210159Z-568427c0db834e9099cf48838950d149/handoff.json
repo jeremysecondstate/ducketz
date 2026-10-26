@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T21:01:59.658310Z",
+  "id": "20261026T210159Z-568427c0db834e9099cf48838950d149",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout shared queue selection and native lock timing repair published on common main"
+}
