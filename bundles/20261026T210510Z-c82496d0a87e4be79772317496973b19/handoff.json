@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T21:05:10.261403Z",
+  "id": "20261026T210510Z-c82496d0a87e4be79772317496973b19",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas 15m bounded stale-portfolio recapture repair published and locally installed"
+}

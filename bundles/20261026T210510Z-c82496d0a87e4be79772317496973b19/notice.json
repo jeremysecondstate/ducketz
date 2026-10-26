@@ -1,0 +1,22 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T210021Z-300988f6fb4f4ae6805cf418a23629b8",
+  "files": [
+    "ml/intraday/account_execution.py",
+    "tests/test_intraday_capture_order_recapture.py",
+    "tests/test_intraday_capture_freshness_diagnostics.py"
+  ],
+  "limitations": [
+    "Synthetic fake-broker and temporary own-ledger checks prove the bounded mechanism. Running-worker loading and exercised new repair recovery remain unknown.",
+    "Historical unknown commitments retain original identities and reservations; no inferred external order status."
+  ],
+  "main_sha": "326b5583be703040a637f72f1deba3053ca75451",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "One full own-order and portfolio recapture shares the existing two-pair maximum. The inclusive freshness limit, future rejection, exact fills, lease/manual controls and expiry remain. Local source is installed; process loading remains under manual controls.",
+  "scope": "Shared capture correctness applicable on both PCs; independent execution state and local model recipes preserved",
+  "source_sha": "1d49004a5e9a11bec6596a38026a017c7be21d28",
+  "summary": "Atlas 15m bounded stale-portfolio recapture repair published and locally installed",
+  "tests": [
+    "Original stale-request regression fails on prior source and passes after correction. Final canonical suite90checks passes in checked, queued, publication candidate and common-main verification; actual local-alias suite68checks passes with network denied."
+  ]
+}
