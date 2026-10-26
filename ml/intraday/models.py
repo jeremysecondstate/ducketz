@@ -285,8 +285,8 @@ def build_estimator(spec: ModelSpec) -> Pipeline:
             from lightgbm import LGBMClassifier
             estimator = LGBMClassifier(**params)
         else:
-            from catboost import CatBoostClassifier
-            estimator = CatBoostClassifier(**params)
+            from .catboost_adapter import SingleWorkerCatBoostClassifier
+            estimator = SingleWorkerCatBoostClassifier(**params)
     else:
         estimator = constructors[spec.family](**params)
     if spec.runtime_contract is not None:
@@ -361,6 +361,22 @@ def _construct_frozen_step(description, constructor):
     return estimator
 
 
+def _frozen_estimator_identity_matches(spec, estimator):
+    """Allow only the reviewed native CatBoost to bounded-adapter transition.
+
+    Keep the saved constructor identity intact. This adapter changes resource
+    dispatch for newly constructed pipelines; it does not rewrite old artifacts
+    or normalize other classes, subclasses, parameters or dependency versions.
+    """
+    recorded = spec.runtime_contract.get("estimator_class")
+    if recorded == _constructor_identity(estimator):
+        return True
+    if spec.family != "catboost" or recorded != "catboost.core.CatBoostClassifier":
+        return False
+    from .catboost_adapter import SingleWorkerCatBoostClassifier
+    return type(estimator) is SingleWorkerCatBoostClassifier
+
+
 def _frozen_pipeline(spec, estimator):
     contract = spec.runtime_contract
     required = {"version", "estimator_class", "preprocessing", "calibrator", "dependency_versions"}
@@ -370,7 +386,7 @@ def _frozen_pipeline(spec, estimator):
         if contract["market_feature_projection"] != PROJECTION_POLICY:
             raise ContractError("Frozen market feature projection requires local review")
     if (set(contract) != required or contract["version"] != RUNTIME_CONTRACT_VERSION
-            or contract["estimator_class"] != _constructor_identity(estimator)
+            or not _frozen_estimator_identity_matches(spec, estimator)
             or contract["dependency_versions"] != _versions(spec)
             or set(estimator.get_params(deep=False)) != set(spec.parameters)):
         raise ContractError("Frozen estimator runtime contract is incompatible; local review is required")
@@ -717,6 +733,22 @@ def fit_ensemble(X, y, inference_X, *, config=None, target_version=TARGET_VERSIO
             if set(np.unique(labels)) != {0, 1}:
                 raise ContractError("Training requires both target classes; no constant model substitution")
             metadata["effective_parameters"] = _encode_parameters(_parameters(spec))
+            if spec.family == "catboost" and importlib.util.find_spec("catboost") is not None:
+                from .catboost_adapter import SingleWorkerCatBoostClassifier
+                recorded = (spec.runtime_contract.get("estimator_class")
+                            if spec.runtime_contract is not None else None)
+                metadata["model_adapter"] = {
+                    "version": "intraday-catboost-single-worker-v1",
+                    "estimator_class": (SingleWorkerCatBoostClassifier.__module__ + "." +
+                                        SingleWorkerCatBoostClassifier.__qualname__),
+                    "frozen_estimator_class": recorded,
+                    "compatibility": ("recorded-native-catboost-single-worker-adapter"
+                                      if recorded == "catboost.core.CatBoostClassifier"
+                                      else "exact-constructor"),
+                    "source_sha256": hashlib.sha256(
+                        Path(__file__).with_name("catboost_adapter.py").read_bytes()).hexdigest(),
+                    "source_hash_basis": "current_disk_bytes",
+                }
             output["version"] = _sha(metadata)
             with _fit_resources() as observed_warnings:
                 estimator, fitting_evidence = fit_calibrated_estimator(spec, features, labels,
