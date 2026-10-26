@@ -923,6 +923,45 @@ class AccountAuthority:
             raise AuthorityError("INTRADAY_CAPACITY_SNAPSHOT_STALE_OR_FUTURE")
         return json.loads(row["payload"])
 
+    @staticmethod
+    def _intraday_broker_order_rows(db):
+        """Transfer the frozen order inventory in one SQLite result row.
+
+        Requests remain opaque and every capacity check still runs below.
+        Unsupported aggregates retain the canonical reader's type semantics.
+        """
+        try:
+            if getattr(db, "text_factory", str) is not str:
+                raise ValueError("Nondefault intraday order text factory")
+            raw = db.execute(
+                "SELECT json_group_array(json_object('id',id,'key',key,"
+                "'native_id',native_id,'forecast_key',forecast_key,'request',request,"
+                "'status',status,'filled',filled,'broker_id',broker_id,"
+                "'created',created,'last_evidence',last_evidence)) "
+                "FROM reservations WHERE broker_id IS NOT NULL").fetchone()[0]
+            rows = json.loads(raw)
+            fields = {"id", "key", "native_id", "forecast_key", "request", "status",
+                      "filled", "broker_id", "created", "last_evidence"}
+            if (not isinstance(rows, list)
+                    or any(not isinstance(row, dict) or set(row) != fields for row in rows)):
+                raise ValueError("Irregular optional intraday order inventory")
+            # JSON's REAL rendering can round an irregular stored quantity.
+            # Only normal SQLite TEXT/INTEGER/NULL rows use this projection;
+            # preserve the canonical values and errors for every other type.
+            text_fields = fields - {"filled", "last_evidence"}
+            if any(type(row["filled"]) is not int
+                    or any(type(row[field]) is not str for field in text_fields)
+                    or (row["last_evidence"] is not None and type(row["last_evidence"]) is not str)
+                    for row in rows):
+                raise ValueError("Irregular optional intraday order storage types")
+            return rows
+        except (sqlite3.Error, TypeError, ValueError, UnicodeError):
+            # A failed optional read must not continue after losing the held
+            # transaction/fence. BLOBs and irregular results use exact old rows.
+            if not getattr(db, "in_transaction", True):
+                raise
+            return db.execute("SELECT * FROM reservations WHERE broker_id IS NOT NULL").fetchall()
+
     def publish_intraday_snapshot(self, token: str, snapshot: IntradayCapacitySnapshot):
         """Publish coherent actual capacity without requiring a Gameplan plan.
 
@@ -949,7 +988,7 @@ class AccountAuthority:
                 raise AuthorityError("COMPLETE_ACCOUNT_SYMBOL_UNION_REQUIRED")
             payload["held_shares"] = {s:_quantity(q) for s,q in snapshot.held_shares.items()}
             pending, ids = [], set()
-            orders = {row["broker_id"]:row for row in db.execute("SELECT * FROM reservations WHERE broker_id IS NOT NULL")}
+            orders = {row["broker_id"]:row for row in self._intraday_broker_order_rows(db)}
             for original in snapshot.broker_pending:
                 item = asdict(original)
                 _name(item["broker_order_id"]); _symbol(item["symbol"])
