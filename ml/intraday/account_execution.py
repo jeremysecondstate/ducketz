@@ -663,6 +663,18 @@ class IntradayAccountExecutor:
                 tuple(Fill(f.fill_id,f.quantity,f.price,f.executed_at) for f in observed.fills), complete=True,
                 fill_time_provenance=observed.fill_time_provenance))
 
+    @staticmethod
+    def _preserve_captured_order_evidence(evidence, required_evidence):
+        current_by_id = {item.reservation_id:item for item in evidence}
+        for prior in required_evidence:
+            current = current_by_id.get(prior.reservation_id)
+            old_fills = {f.fill_id:asdict(f) for f in prior.fills}
+            new_fills = {f.fill_id:asdict(f) for f in current.fills} if current else {}
+            if (current is None or not old_fills.keys() <= new_fills.keys()
+                    or any(new_fills[key] != value for key,value in old_fills.items())
+                    or (prior.status in {"FILLED", "CANCELLED", "REJECTED"} and current.status != prior.status)):
+                raise ContractError("New account capture cannot discard observed order evidence")
+
     def _capture(self, required_evidence=()):
         self._execution_stage("capture_lease_current")
         self._assert_current()
@@ -738,15 +750,7 @@ class IntradayAccountExecutor:
         self._execution_stage("order_evidence_capture")
         evidence = capture_order_evidence(self.broker, owner, account_fingerprint=self.config.account_fingerprint,
                                          as_of=self.clock(), observation_clock=self.clock)
-        current_by_id = {item.reservation_id:item for item in evidence}
-        for prior in required_evidence:
-            current = current_by_id.get(prior.reservation_id)
-            old_fills = {f.fill_id:asdict(f) for f in prior.fills}
-            new_fills = {f.fill_id:asdict(f) for f in current.fills} if current else {}
-            if (current is None or not old_fills.keys() <= new_fills.keys()
-                    or any(new_fills[key] != value for key,value in old_fills.items())
-                    or (prior.status in {"FILLED", "CANCELLED", "REJECTED"} and current.status != prior.status)):
-                raise ContractError("New account capture cannot discard observed order evidence")
+        self._preserve_captured_order_evidence(evidence, required_evidence)
         # Persist exact accepted-order evidence while it is fresh. Portfolio
         # capture and native reconciliation may take longer than the unchanged
         # authority fence. A later native failure leaves a recoverable exact-ID
@@ -755,23 +759,42 @@ class IntradayAccountExecutor:
         self._binding()
         self._lease_keeper.check()
         self._reconcile_captured_authority_orders(evidence, uncertain, captured_records, captured_native_by_id)
-        self._execution_stage("portfolio_capture")
-        portfolio = capture_portfolio_state(self.broker, observed_at=self.clock(), parallel=True,
-            literal_cash_only=True, use_actual_quote_timestamps=True, symbols=self.config.symbols,
-            include_order_identities=True)
-        self._execution_stage("capture_lease_refresh")
-        self._assert_current()
-        self._execution_stage("broker_snapshot_identity")
-        self.broker.verify_read_snapshot(portfolio.broker_identity_fingerprint)
-        self._execution_stage("native_snapshot_prepare")
-        at = instant(self.clock())
-        age_seconds = (at - instant(portfolio.observed_at)).total_seconds()
-        if not 0 <= age_seconds <= self.ledger.maximum_evidence_age_seconds:
-            if self._execution_trace is not None:
-                self._execution_trace.capture_freshness = dict(
-                    checked_at=at.isoformat(), request_started_at=portfolio.observed_at,
-                    age_seconds=age_seconds, maximum_age_seconds=self.ledger.maximum_evidence_age_seconds)
-            raise ContractError("Account snapshot is not fresh")
+        for capture_attempt in range(2):
+            self._execution_stage("portfolio_capture")
+            portfolio = capture_portfolio_state(self.broker, observed_at=self.clock(), parallel=True,
+                literal_cash_only=True, use_actual_quote_timestamps=True, symbols=self.config.symbols,
+                include_order_identities=True)
+            self._execution_stage("capture_lease_refresh")
+            self._assert_current()
+            self._execution_stage("broker_snapshot_identity")
+            self.broker.verify_read_snapshot(portfolio.broker_identity_fingerprint)
+            self._execution_stage("native_snapshot_prepare")
+            at = instant(self.clock())
+            age_seconds = (at - instant(portfolio.observed_at)).total_seconds()
+            if not 0 <= age_seconds <= self.ledger.maximum_evidence_age_seconds:
+                if self._execution_trace is not None:
+                    self._execution_trace.capture_freshness = dict(
+                        checked_at=at.isoformat(), request_started_at=portfolio.observed_at,
+                        age_seconds=age_seconds, maximum_age_seconds=self.ledger.maximum_evidence_age_seconds)
+                raise ContractError("Account snapshot is not fresh")
+            if capture_attempt or not any(item.status in {"WORKING", "PARTIAL"} and item.remaining_quantity
+                    and (at - instant(item.observed_at)).total_seconds() > self.ledger.maximum_evidence_age_seconds
+                    for item in evidence):
+                break
+            # One slow first capture can age otherwise valid working-order
+            # evidence. Recapture the whole ordered pair once, never make the
+            # earlier account/quote observation cover later order progress.
+            # A second slow pair retains the normal native freshness failure.
+            self._execution_stage("aged_order_evidence_recapture")
+            refreshed = capture_order_evidence(self.broker, owner,
+                account_fingerprint=self.config.account_fingerprint,
+                as_of=self.clock(), observation_clock=self.clock)
+            self._preserve_captured_order_evidence(refreshed, (*required_evidence, *evidence))
+            self._binding()
+            self._lease_keeper.check()
+            self._reconcile_captured_authority_orders(refreshed, uncertain,
+                captured_records, captured_native_by_id)
+            evidence = refreshed
         # The existing capture API timestamps request start. Intraday evidence
         # must name actual information readiness, including quote receipt.
         portfolio = replace(portfolio, observed_at=at.isoformat(), source_fingerprint=digest({
