@@ -1,0 +1,60 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261026T190021Z-f1093de299104ac1a8cc91d1f04346d3",
+  "change_id": "source:20261026T190021Z-f1093de299104ac1a8cc91d1f04346d3",
+  "commit_sha": "f1fcdc76636a5d0fd421f2e171a94a9c2a008ee3",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/scout_journal.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/scout_local_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_scout_paired_recovery.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_scout_expiry_during_capacity.py"
+    }
+  ],
+  "limitations": [
+    "Native full audits and effect gates retained; affected live latency and recovery require evidence after manually controlled loading.",
+    "Current main changed thirteen reviewed dependency paths; original strict main prepare rejected before candidate copy. A separately reviewed current-main revision is required."
+  ],
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/405",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source publication is separate from installation and loading. Startup imports require manual reload after authorized local installation. Each PC retains its own model recipe and private operating bindings.",
+  "scope": "shared",
+  "summary": "Shared paired journal recovery reduces redundant complete audits while retaining native order controls",
+  "tests": {
+    "counts_overlap": true,
+    "isolated": [
+      {
+        "completed_at_utc": "2026-10-26T19:10:55.583663Z",
+        "exit_code": 0,
+        "modules": 25,
+        "output_sha256": "70359510fe6813aef7cd733d995b7dceef6b615f5132d2fdfb5ce93348f52886",
+        "passed": 1620,
+        "started_at_utc": "2026-10-26T19:06:23.252089Z"
+      }
+    ],
+    "source": [
+      {
+        "completed_at_utc": "2026-10-26T19:04:39.138161Z",
+        "exit_code": 0,
+        "modules": 25,
+        "output_sha256": "ff30362d98c93dee48b0ddee3b95bad68f15abd81f3f23c8109d270582c61e5c",
+        "passed": 1620,
+        "started_at_utc": "2026-10-26T19:00:22.134610Z"
+      }
+    ]
+  }
+}

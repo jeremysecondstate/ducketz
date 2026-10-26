@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T19:14:05.131831Z",
+  "id": "20261026T191405Z-33a4b8d0d40e4c3b8336a0ca851a32bb",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Shared paired journal recovery reduces redundant complete audits while retaining native order controls"
+}
