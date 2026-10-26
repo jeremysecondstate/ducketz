@@ -1,0 +1,41 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T114812Z-bff400e56fd3417fa4800d2fb5377fff",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/intentions.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_main_ordinary_preflight.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_main_ordinary_preflight.py"
+    }
+  ],
+  "limitations": [
+    "Only ordinary preflight subset composed; grouped recovery and other predecessor work remain separate.",
+    "Existing Atlas preflight already matches corresponding behavior and is preserved; no application transplant or model-policy transfer.",
+    "Source/main availability does not establish peer installation, live loading or original latency recovery."
+  ],
+  "prior_completion_records": [
+    "20261023T225155Z-76f9388b8a1b4c3bb68eef5a64483d2b"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No trader start/restart/order, provider request or new operating prerequisite. All traders and nightly work remain independent.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T114812Z-bff400e56fd3417fa4800d2fb5377fff",
+  "source_sha": "c9fe83509dd7369521f8ffc729d34c6db99b7783",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/commit/c9fe83509dd7369521f8ffc729d34c6db99b7783",
+  "summary": "Move full intention validation before writer reservation",
+  "tests": [
+    "Both real deterministic pre-fix writer-occupancy cases reproduced. Final250offlinecases pass on implementation, immutable sealed snapshot, managed source candidate and fresh main candidate with91exact fingerprints.",
+    "Network/subprocess denied. Full caller equality, changed/absent revision fallback, physical/schema/epoch/generation changes, rollback/retry, resource release and existing frozen direction/order/capacity/chronology rules retained.",
+    "Common main published at9e44ae738305c8d5c58f4257d0f34fa71ce1fc48; both remote SHAs read back."
+  ]
+}
