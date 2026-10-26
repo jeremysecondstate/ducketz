@@ -38,7 +38,7 @@ def native_transport(env, monkeypatch):
     return old
 
 
-@pytest.mark.parametrize('gate_number', [6, 7], ids=['native-authorization', 'native-final'])
+@pytest.mark.parametrize('gate_number', [4, 5], ids=['native-authorization', 'native-final'])
 def test_native_before_post_expiry_has_exact_proof_and_never_replays(env, monkeypatch, gate_number):
     native_transport(env, monkeypatch)
     calls = expire_at(env, monkeypatch, gate_number)
@@ -97,7 +97,7 @@ def test_native_observation_same_error_and_failed_reuse_cannot_mint_another_proo
         adapters.append(value)
         return value
     monkeypatch.setattr(env.executor, '_adapter', capture)
-    expire_at(env, monkeypatch, 7)
+    expire_at(env, monkeypatch, 5)
     env.executor.step(env.forecast)
     old, adapter = record(env), adapters[-1]
     observation = adapter.native_before_post_failure
@@ -118,7 +118,7 @@ def test_native_observation_same_error_and_failed_reuse_cannot_mint_another_proo
 
 def test_native_proof_write_failure_keeps_exact_original_exception_and_block(env, monkeypatch):
     native_transport(env, monkeypatch)
-    expire_at(env, monkeypatch, 7)
+    expire_at(env, monkeypatch, 5)
     monkeypatch.setattr(clearance, '_write_once', lambda *_: (_ for _ in ()).throw(OSError('offline proof failure')))
     result = env.executor.step(env.forecast)
     assert record(env)['state'] == 'UNKNOWN' and env.broker.posts == [] and load(env) is None
@@ -131,7 +131,7 @@ def test_native_proof_write_failure_keeps_exact_original_exception_and_block(env
 @pytest.mark.parametrize('damage', ['sender', 'stage', 'version', 'request', 'journal'])
 def test_native_saved_proof_reaudits_exact_boundary_and_original(env, monkeypatch, damage):
     native_transport(env, monkeypatch)
-    expire_at(env, monkeypatch, 7)
+    expire_at(env, monkeypatch, 5)
     env.executor.step(env.forecast)
     path = clearance._path(env.executor.books, record(env))
     envelope = json.loads(path.read_text())
@@ -151,7 +151,7 @@ def test_native_saved_proof_reaudits_exact_boundary_and_original(env, monkeypatc
 @pytest.mark.parametrize('guard', ['manual_stop', 'target_expiry'])
 def test_native_clearance_keeps_fresh_forecast_control_boundaries(env, monkeypatch, guard):
     native_transport(env, monkeypatch)
-    expire_at(env, monkeypatch, 7)
+    expire_at(env, monkeypatch, 5)
     env.executor.step(env.forecast)
     assert load(env) is not None
     old = record(env)
@@ -171,7 +171,7 @@ def test_native_callback_process_interrupt_never_mints_completion_proof(env, mon
     original, calls = execution._saved_forecast, []
     def interrupt(*args, **kwargs):
         calls.append(1)
-        if len(calls) == 7:
+        if len(calls) == 5:
             raise KeyboardInterrupt('offline interrupted callback')
         return original(*args, **kwargs)
     monkeypatch.setattr(execution, '_saved_forecast', interrupt)

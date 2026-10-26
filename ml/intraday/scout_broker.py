@@ -12,6 +12,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
+from inspect import getattr_static
+from types import GetSetDescriptorType, MethodType
 import math
 import re
 from urllib.parse import urlsplit
@@ -29,6 +31,33 @@ from .scout_protocol import Grant, ProtocolError, Request, canonical_sha256
 # Freeze the reviewed function identity. A wrapper/override may call its gate
 # after a POST and cannot supply this transport-boundary proof.
 _NATIVE_PREPARED_POST = SchwabSession.submit_prepared_order
+_NATIVE_INSTANCE_DICT = getattr_static(SchwabSession, '__dict__')
+
+
+def _exact_native_prepared_sender(broker):
+    # Inspect descriptors without evaluating opaque getters. Generic/overridden
+    # senders retain the original outer-gate-before-getter ordering.
+    if (type(broker) is not SchwabSession
+            or getattr_static(SchwabSession, '__getattribute__') is not object.__getattribute__):
+        return None
+    # Use the frozen built-in dictionary descriptor directly. An instance
+    # function does not bind like a class function, even if its identity matches.
+    # Never evaluate an opaque replacement for the instance's __dict__ getter.
+    if (type(_NATIVE_INSTANCE_DICT) is not GetSetDescriptorType
+            or _NATIVE_INSTANCE_DICT.__objclass__ is not SchwabSession
+            or _NATIVE_INSTANCE_DICT.__name__ != '__dict__'):
+        return None
+    attributes = _NATIVE_INSTANCE_DICT.__get__(broker, SchwabSession)
+    if type(attributes) is not dict or 'submit_prepared_order' in attributes:
+        return None
+    descriptor = getattr_static(broker, 'submit_prepared_order', None)
+    if descriptor is not _NATIVE_PREPARED_POST or 'submit_prepared_order' in attributes:
+        return None
+    sender = MethodType(_NATIVE_PREPARED_POST, broker)
+    if (type(sender) is MethodType and sender.__self__ is broker
+            and sender.__func__ is _NATIVE_PREPARED_POST):
+        return sender
+    return None
 
 
 class ScoutBrokerError(ValueError):
@@ -215,26 +244,29 @@ class ScoutBrokerAdapter:
             if self._current(request, grant).time_in_force != window.time_in_force:
                 raise ScoutBrokerError("Stock execution session changed before POST")
 
-        try:
-            gate()
-        except Exception as error:
-            # Only this outer gate is proven to precede the transport call.
-            # The native callback boundary has its separate observation below;
-            # generic callbacks and transport errors remain ambiguous.
-            # Neither observation ever rearms the original send.
-            self.initial_gate_failure = InitialGateFailure(
-                request.sha256, grant.sha256, canonical_sha256(sending), error)
-            raise
+        native_sender = _exact_native_prepared_sender(self.broker)
+        if native_sender is None:
+            # Opaque senders retain the original outer gate before
+            # any descriptor evaluation or possible transport effect.
+            try:
+                gate()
+            except Exception as error:
+                # Only this outer gate is proven to precede the transport call.
+                # The native callback boundary has its separate observation below;
+                # generic callbacks and transport errors remain ambiguous.
+                # Neither observation ever rearms the original send.
+                self.initial_gate_failure = InitialGateFailure(
+                    request.sha256, grant.sha256, canonical_sha256(sending), error)
+                raise
         native_failure = None
         def observed_before_post_failure(error):
             nonlocal native_failure
             native_failure = NativeBeforePostFailure(
                 request.sha256, grant.sha256, canonical_sha256(sending), error)
 
-        sender = self.broker.submit_prepared_order
-        native = (isinstance(self.broker, SchwabSession)
-            and getattr(sender, '__self__', None) is self.broker
-            and getattr(sender, '__func__', None) is _NATIVE_PREPARED_POST)
+        sender = native_sender if native_sender is not None else self.broker.submit_prepared_order
+        native = (type(sender) is MethodType and isinstance(self.broker, SchwabSession)
+            and sender.__self__ is self.broker and sender.__func__ is _NATIVE_PREPARED_POST)
         try:
             location = sender(payload, context, before_post=gate,
                 **({'on_before_post_failure': observed_before_post_failure} if native else {}))

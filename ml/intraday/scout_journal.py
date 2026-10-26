@@ -78,7 +78,8 @@ def _encoded(value):
 def _checked_json(payload, digest):
     try:
         value = json.loads(payload)
-        if _encoded(value) != payload or canonical_sha256(value) != digest:
+        encoded = _encoded(value)
+        if encoded != payload or hashlib.sha256(encoded.encode("utf-8")).hexdigest() != digest:
             raise JournalCorruptionError("Stored payload hash or canonical bytes differ")
         return value
     except (ValueError, TypeError, UnicodeError, RecursionError) as exc:
