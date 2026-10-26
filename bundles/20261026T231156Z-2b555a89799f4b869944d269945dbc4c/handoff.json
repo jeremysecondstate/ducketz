@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T23:11:56.191617Z",
+  "id": "20261026T231156Z-2b555a89799f4b869944d269945dbc4c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas Stats: eighteen original23UTC hourly outcomes published"
+}
