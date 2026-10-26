@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T17:59:51.953640Z",
+  "id": "20261026T175951Z-6e1957ec7af54980b177c2c6f24ec431",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Recapture aged own orders before portfolio reconciliation"
+}

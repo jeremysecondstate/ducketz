@@ -1,0 +1,38 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T175408Z-a531bae229a3490d80ceaa37018a1b9e",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_capture_order_recapture.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_capture_order_recapture.py"
+    }
+  ],
+  "limitations": [
+    "Running worker loading and naturally affected recovery remain unproved. A second slow ordered pair retains the existing failure.",
+    "The complete cause and recovery of broader latency and original unidentified commitments remain distinct retained limitations."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Shared correctness applies independently on both PCs while preserving symbols, model recipes, original probabilities/targets, separate ledgers, account controls and manual start/stop. Atlas adaptation is installed and offline tested. A future Jeremy-chosen manual15m start loads it. No automatic restart, order, replay or cross-trader/nightly prerequisite is introduced.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261026T175408Z-a531bae229a3490d80ceaa37018a1b9e",
+  "source_sha": "70094bd35257a2a842b16356e8a1972e8e90dde2",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/403",
+  "summary": "Recapture aged own orders before portfolio reconciliation",
+  "tests": [
+    "Final portable, sealed queue, isolated candidate and fresh-main checks each passed 112 offline cases on 120 fingerprints and 117 exact raw base dependencies. Independent source/dependency reviews passed; original baseline reproduced the affected stale-working-order failure.",
+    "Seventeen new regressions cover bounded recapture, real new portfolio after changed fills/status, unchanged inclusive freshness and stale-request rejection, prior fill/terminal preservation, unknown commitment, broker identity, leases and manual stops.",
+    "Local adaptation preserved every raw byte outside the common owned methods. Fresh private and actual installed graphs each passed129cases with118 unchanged import fingerprints; network and subprocess IO denied.",
+    "Verified source70094bd35257a2a842b16356e8a1972e8e90dde2 and common-main906418d1368b197b74bc3bc630dd3bd601f71ff0 through pinned procedures and remote readback."
+  ]
+}
