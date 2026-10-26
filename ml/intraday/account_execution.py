@@ -771,21 +771,24 @@ class IntradayAccountExecutor:
             self._execution_stage("native_snapshot_prepare")
             at = instant(self.clock())
             age_seconds = (at - instant(portfolio.observed_at)).total_seconds()
-            if not 0 <= age_seconds <= self.ledger.maximum_evidence_age_seconds:
+            stale_portfolio = age_seconds > self.ledger.maximum_evidence_age_seconds
+            if age_seconds < 0 or (capture_attempt and stale_portfolio):
                 if self._execution_trace is not None:
                     self._execution_trace.capture_freshness = dict(
                         checked_at=at.isoformat(), request_started_at=portfolio.observed_at,
                         age_seconds=age_seconds, maximum_age_seconds=self.ledger.maximum_evidence_age_seconds)
                 raise ContractError("Account snapshot is not fresh")
-            if capture_attempt or not any(item.status in {"WORKING", "PARTIAL"} and item.remaining_quantity
+            if not stale_portfolio and (capture_attempt or not any(
+                    item.status in {"WORKING", "PARTIAL"} and item.remaining_quantity
                     and (at - instant(item.observed_at)).total_seconds() > self.ledger.maximum_evidence_age_seconds
-                    for item in evidence):
+                    for item in evidence)):
                 break
-            # One slow first capture can age otherwise valid working-order
-            # evidence. Recapture the whole ordered pair once, never make the
-            # earlier account/quote observation cover later order progress.
-            # A second slow pair retains the normal native freshness failure.
-            self._execution_stage("aged_order_evidence_recapture")
+            # One slow first pair can age the actual portfolio request or its
+            # working-order evidence. Share one full ordered-pair retry, never
+            # retimestamp an old capture or give either cause another retry.
+            # Future evidence and a second slow pair retain their normal guards.
+            self._execution_stage("stale_portfolio_evidence_recapture" if stale_portfolio
+                                  else "aged_order_evidence_recapture")
             refreshed = capture_order_evidence(self.broker, owner,
                 account_fingerprint=self.config.account_fingerprint,
                 as_of=self.clock(), observation_clock=self.clock)
