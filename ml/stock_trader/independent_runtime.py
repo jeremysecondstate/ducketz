@@ -201,7 +201,7 @@ def run_independent_stock_trader_once(
     if entries and execute and not session_managed:
         metadata["entry_management_status"] = "ENTRY_REQUIRES_SESSION_MANAGER"
 
-    def finish(status, *, decisions=(), error=None, submitted=0, duplicates=0, publication=None):
+    def finish(status, *, decisions=(), error=None, submitted=0, duplicates=0, publication=None, submission_stop=None):
         output = publication or publish_decision_run(
             root, decisions, decided_at=utc(clock()), activation=activation,
             policy=active_policy, execution_requested=execute, source_files=sources,
@@ -211,6 +211,7 @@ def run_independent_stock_trader_once(
             status, output.run_directory, sum(d.quantity > 0 for d in decisions),
             submitted, duplicates, status.startswith("SUBMISSION_STOPPED"),
             execute, activation.active, error=error, broker_state_capture=broker_state_capture,
+            submission_stop=submission_stop,
         )
 
     with exclusive_runtime_lock(root / "locks/stock-trader-hourly.lock", process_name="stock-trader-hourly"):
@@ -644,6 +645,40 @@ class _SubmissionStopped(RuntimeError):
     pass
 
 
+class _PredictionTargetElapsed(_SubmissionStopped):
+    """The local final guard positively observed an elapsed saved target."""
+
+    def __init__(self, evidence):
+        super().__init__(evidence["reason"])
+        self.evidence = evidence
+
+
+def _submission_safety_stop(reason, decision, *, as_of):
+    """Keep malformed/missing deadlines and every other guard as real failures."""
+    if (reason == "PREDICTION_TARGET_SAFETY_BOUNDARY_REACHED"
+            and decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY):
+        try:
+            prediction = decision.prediction
+            raw = [prediction[key] for key in ("actionable_until", "target_window_start", "target_window_end")]
+            if any(not isinstance(value, str) or not value.strip() for value in raw):
+                raise ValueError("Exact saved target times required")
+            deadline, start, end = (utc(value) for value in raw)
+            observed = utc(as_of)
+            identities = (decision.decision_id, prediction.get("prediction_id"), decision.symbol)
+            if (any(not isinstance(value, str) or not value.strip() for value in identities)
+                    or any(pd.isna(value) for value in (deadline, start, end, observed))
+                    or not start < deadline <= end or not start <= observed
+                    or not observed >= deadline - pd.Timedelta(seconds=5)):
+                raise ValueError("Positive actual target expiry required")
+            return _PredictionTargetElapsed({"reason": reason, "decision_id": decision.decision_id,
+                "prediction_id": prediction["prediction_id"], "symbol": decision.symbol,
+                "actionable_until": prediction["actionable_until"], "observed_at": observed.isoformat(),
+                "execution_lead_seconds": 5})
+        except (KeyError, TypeError, ValueError, OverflowError):
+            pass
+    return _SubmissionStopped(reason)
+
+
 def _cancel_expired_entries(root, broker, ledger, state, portfolio, stable_identity, clock, *, late_opening_date=None, gameplan_entries=False):
     requested = 0
     allocations = {a.allocation_id: a for a in state.allocations}
@@ -735,7 +770,7 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                     allow_target_session_transition=decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY,
                 )
                 if reason:
-                    raise _SubmissionStopped(reason)
+                    raise _submission_safety_stop(reason, decision, as_of=utc(clock()))
 
             final_gate()
             event = reserve_execution_intent(root, decision, submitted_at=utc(clock()), decision_publication=publication)
@@ -785,6 +820,11 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                 record_execution_result(event, status="NOT_SUBMITTED_SAFETY_CHECK", completed_at=utc(clock()), error=type(exc).__name__ + ": " + str(exc))
             if reservation is not None:
                 ledger.mark_submission(reservation.reservation_id, status="REJECTED", observed_at=utc(clock()).isoformat(), evidence_id=decision.decision_id + ":not-submitted")
+            if isinstance(exc, _PredictionTargetElapsed):
+                return finish("PREDICTION_TARGET_ELAPSED", decisions=decisions, submitted=submitted,
+                    duplicates=duplicates, publication=publication,
+                    submission_stop={**exc.evidence, "stage": "BEFORE_INTENT" if event is None else "BEFORE_POST",
+                                     "no_order_posted": True, "cleanup_complete": True})
             return finish("SUBMISSION_STOPPED_SAFETY_CHECK", decisions=decisions, submitted=submitted,
                           duplicates=duplicates, error=type(exc).__name__ + ": " + str(exc), publication=publication)
         try:
@@ -792,6 +832,11 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
         except _SubmissionStopped as exc:
             record_execution_result(event, status="NOT_SUBMITTED_SAFETY_CHECK", completed_at=utc(clock()), error=str(exc))
             ledger.mark_submission(reservation.reservation_id, status="REJECTED", observed_at=utc(clock()).isoformat(), evidence_id=decision.decision_id + ":not-submitted")
+            if isinstance(exc, _PredictionTargetElapsed):
+                return finish("PREDICTION_TARGET_ELAPSED", decisions=decisions, submitted=submitted,
+                    duplicates=duplicates, publication=publication,
+                    submission_stop={**exc.evidence, "stage": "BEFORE_POST",
+                                     "no_order_posted": True, "cleanup_complete": True})
             return finish("SUBMISSION_STOPPED_SAFETY_CHECK", decisions=decisions, submitted=submitted,
                           error=str(exc), publication=publication)
         except Exception as exc:

@@ -19,6 +19,11 @@ def _activity_message(report: Mapping[str, object]) -> tuple[str, str]:
         return "INACTIVE", "Trader is inactive; no new orders are requested."
     if report.get("execution_requested") is False or status.startswith("DRY_RUN"):
         return "DRY RUN", "Execution is disabled for this cycle."
+    if status == "PREDICTION_TARGET_ELAPSED":
+        message = "The saved target expired before submission; the expired instruction is not replayed."
+        if report.get("orders_submitted_this_cycle", 0):
+            return "ORDERS SUBMITTED", "Orders submitted; fills are not confirmed. " + message
+        return "TARGET ELAPSED", message
     if report.get("orders_submitted_this_cycle", 0):
         return "ORDERS SUBMITTED", "Orders submitted; fills are not confirmed."
     if status == "NO_ORDERS_SUBMITTED_RETRY_EXHAUSTED":
@@ -50,7 +55,7 @@ def session_cycle_report(
         "execution_requested": cycle.get("execution_requested"),
         "run_directory": cycle.get("run_directory"),
     }
-    for field in ("error", "stopped_after_error"):
+    for field in ("error", "stopped_after_error", "submission_stop"):
         if field in cycle:
             report[field] = cycle[field]
     report["activity"], report["message"] = _activity_message(report)
