@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import uuid
 
 from datafetching.runtime_lock import exclusive_runtime_lock
@@ -36,16 +37,18 @@ class ScoutBooks:
         return dict(version=VERSION, account_fingerprint=self.account_fingerprint,
                     participant_id=PARTICIPANT_ID, stream=STREAM, sessions={})
 
-    def _read(self):
+    def _read(self, *, with_raw=False):
         with recovery_phase('inventory_validation'):
             _safe_path(self.path)
             if not self.path.exists():
                 journals = self.root / 'journals'
                 if journals.exists() and any(journals.iterdir()):
                     raise JournalError('Journal inventory missing; preserve existing books for repair')
-                return self._empty()
+                value = self._empty()
+                return (value, None) if with_raw else value
             try:
-                envelope = json.loads(self.path.read_text(encoding='utf-8'))
+                raw = self.path.read_bytes()
+                envelope = json.loads(raw.decode('utf-8'))
                 if (set(envelope) != {'inventory', 'sha256'}
                         or canonical_sha256(envelope['inventory']) != envelope['sha256']):
                     raise ValueError('inventory digest differs')
@@ -72,7 +75,7 @@ class ScoutBooks:
                 allowed = paths | {name + '-journal' for name in paths}
                 if not paths <= actual or actual - allowed:
                     raise ValueError('unregistered journal requires explicit repair')
-                return value
+                return (value, raw) if with_raw else value
             except (KeyError, TypeError, ValueError, OSError) as exc:
                 raise JournalError('Scout journal inventory failed validation: ' + str(exc)) from exc
 
@@ -139,6 +142,70 @@ class ScoutBooks:
 
     def sessions(self):
         return tuple(self._read()['sessions'])
+
+    def _scan_files(self, value, selected):
+        """Recheck membership and physical files without rehashing inventory."""
+        # Every member has the same already-validated flat parent directory.
+        # Retain the native ancestor/drive/sidecar guard before inspecting it.
+        _safe_path(self.root / 'journals' / selected['filename'])
+        try:
+            directory = self.root / 'journals'
+            with os.scandir(directory) as entries:
+                actual = {entry.name: entry.path for entry in entries}
+            paths = []
+            for session, item in value['sessions'].items():
+                if item['binding'] != self._binding(session):
+                    raise ValueError('session binding differs')
+                paths.append(item['filename'])
+            for name in paths:
+                if name not in actual:
+                    raise ValueError('registered journal is missing')
+                for suffix in ('', '-journal', '-wal', '-shm'):
+                    path = actual.get(name + suffix)
+                    if path is None:
+                        continue
+                    info = os.stat(path, follow_symlinks=False)
+                    if (stat.S_ISLNK(info.st_mode)
+                            or getattr(info, 'st_file_attributes', 0)
+                            & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400)):
+                        raise JournalError('Journal and its ancestors/sidecars cannot be symlinks or reparse points')
+                    if not suffix and (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1):
+                        raise JournalError('Journal must be a standalone regular file')
+            allowed = set(paths) | {name + '-journal' for name in paths}
+            if set(actual) - allowed:
+                raise ValueError('unregistered journal requires explicit repair')
+        except (KeyError, TypeError, ValueError, OSError) as exc:
+            raise JournalError('Scout journal inventory failed validation: ' + str(exc)) from exc
+
+    def open_sessions(self):
+        """Open the frozen session list with fresh inventory and file guards.
+
+        Only this generator reuses a complete inventory validation. Exact raw
+        bytes are checked before each journal; changed bytes force the original
+        full validation. Membership and physical metadata are always checked,
+        then the native constructor audits that journal's original identity and
+        complete chains. No journal records, lifecycle or broker result is cached.
+        """
+        value, raw = self._read(with_raw=True)
+        selected_sessions = tuple(value['sessions'])
+        for session in selected_sessions:
+            _safe_path(self.path)
+            try:
+                current = self.path.read_bytes()
+            except OSError:
+                value, raw = self._read(with_raw=True)
+            else:
+                expected = self._empty()
+                if (current != raw or set(value) != set(expected)
+                        or any(value[key] != expected[key] for key in expected if key != 'sessions')):
+                    value, raw = self._read(with_raw=True)
+            try:
+                item = value['sessions'][session]
+            except KeyError as exc:
+                raise JournalError('Unknown original manual session') from exc
+            self._scan_files(value, item)
+            with self._open_item(item) as journal:
+                yield journal
 
     def save_receipt(self, *, kind, request_id, payload):
         """Persist exact already-validated service evidence before an effect.
