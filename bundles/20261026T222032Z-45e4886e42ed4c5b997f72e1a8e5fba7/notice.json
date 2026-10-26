@@ -1,0 +1,33 @@
+{
+  "author": "Atlas",
+  "change_id": "20261026T221657Z-f02b107466b1480a8c8b807b7744d2d8",
+  "files": [
+    "ml/intraday/source_aggregation.py",
+    "tests/test_intraday_source_aggregation_latency.py",
+    "tests/check_isolated_intraday_source_aggregation.py",
+    "docs/development/intraday-source-aggregation-adapter.patch",
+    "docs/development/intraday-source-aggregation-adapter.json"
+  ],
+  "limitations": [
+    "Portable offline fixtures exercise the helper; full existing adapter regression and retained-input parity have separate exact local evidence.",
+    "Component timing is an offline measurement and does not establish full startup duration, runtime loading or live recovery.",
+    "Existing verified-source coverage adapters require exact reviewed compatibility application; this source completion does not replace unrelated legacy engines or local model policies."
+  ],
+  "local_installation": "six exact reviewed files installed; original adapter retained privately",
+  "main_remote_verified": true,
+  "main_sha": "6a74c27808b618fdbfd4a0d505e4f43760b3cc8a",
+  "peer_installation": "unverified",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/413",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install the helper and reviewed applicable source adapter; only a future ordinary manual launch can load this change in a trader. No trader control or operating prerequisite is introduced.",
+  "runtime_loading": "new helper not loaded by current manual session",
+  "scope": "shared",
+  "source_remote_verified": true,
+  "source_sha": "58c00632009a51e2593882b439c204b72b34b3ca",
+  "summary": "Atlas intraday: reuse one native row projection per source history",
+  "tests": [
+    "12 portable offline cases passed in sealed, isolated and main candidates",
+    "158 ordinary installed adapter graph cases passed; 20 independent adversarial parity cases passed",
+    "Retained native-input full frame, manifest and evidence bytes equal; aggregation component measured 4.70x faster offline"
+  ]
+}

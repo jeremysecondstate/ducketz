@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-26T22:20:32.883727Z",
+  "id": "20261026T222032Z-45e4886e42ed4c5b997f72e1a8e5fba7",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas intraday: reuse one native row projection per source history"
+}
