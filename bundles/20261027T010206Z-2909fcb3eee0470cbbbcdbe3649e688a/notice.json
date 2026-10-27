@@ -1,0 +1,34 @@
+{
+  "artifact_commit_sha": "7b7f6972f80042024e8b44710d0fbe7605e197ab",
+  "artifact_completion_id": "20261027T005411Z-atlas-stats-direct-scout-075a4fb3",
+  "author": "Atlas",
+  "branch": "main",
+  "change_id": "20261027T005411Z-atlas-stats-direct-scout-075a4fb3",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/7b7f6972f80042024e8b44710d0fbe7605e197ab",
+  "files": [
+    "artifacts/pc-original/20261027T005411Z-atlas-stats-direct-scout-075a4fb3/artifact-manifest.json",
+    "artifacts/pc-original/20261027T005411Z-atlas-stats-direct-scout-075a4fb3/gameplan-stats/20261027T005411Z-atlas-stats-direct-scout-075a4fb3/stats-outcome-revision.json"
+  ],
+  "limitations": [
+    "Scientific Stats-only revision retains all528 frozen originals and every367 prior evaluated score.",
+    "Actual native observations score six original Scout targets; five genuinely lack admissible endpoint pairs after supported alternatives.",
+    "Raw observations, models, account state, execution ledgers, native paths and operating bindings remain private; peer display adoption is unproved."
+  ],
+  "remote_sha": "7b7f6972f80042024e8b44710d0fbe7605e197ab",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scientific output only; no trader source loading, start, restart, order or operating prerequisite.",
+  "scope": "shared-analysis",
+  "summary": "Combined Stats: six original Scout outcomes observed and published by Atlas",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-27T00:58:49.000032+00:00",
+      "description": "Independent exact native observation proof and all frozen original fields, scores and ancestry passed",
+      "output_sha256": "0c25d88dc09612fbfb2bc174fa2fd10c20751f8545a93784c2f747a449e29248"
+    },
+    {
+      "completed_at_utc": "2026-10-27T01:02:03.709678+00:00",
+      "description": "Exact committed output, namespace and remote readback passed",
+      "output_sha256": "5c2b566fbf58fd45b551e3dc47cb482d700b7568b799399fce769b44e24ec912"
+    }
+  ]
+}
