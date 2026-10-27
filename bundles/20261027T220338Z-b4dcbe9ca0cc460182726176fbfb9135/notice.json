@@ -1,0 +1,68 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T215950Z-b138f7b86db843559a7cd6abb1a8799a",
+  "change_id": "20261027T215950Z-b138f7b86db843559a7cd6abb1a8799a",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative. Reuse only the newly decoded owned primary proof tree and canonical text while retaining complete native/source/session verification and final complete evidence/field comparison.",
+    "Generic Mapping normalization and all scientific values, model policy, provenance, targets, order identities, timing and independent manual controls remain unchanged. No persistent cache or caller trust flag.",
+    "Both PCs review exact source hunks against local composition; publication and installation create no operating or peer prerequisite."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_primary_canonical_reuse.py",
+      "sha256": "531c73d939f7174e303fb6d007c3cdc17698fb24001cd4eaecf94893e3469472"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-primary-canonical-reuse.json",
+      "sha256": "2bdaed78f28b2c5a365f6b1b848a750c7ff13cff3a775cbd451b74725aa0675a"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-primary-canonical-reuse.patch",
+      "sha256": "40bd21145ed5d84d9a0a69cb5e2357dfdeeb1f917bb700a2f2119f817cff0684"
+    }
+  ],
+  "limitations": [
+    "Portable proof stubs establish function projection/call preservation;200complete composition and137actual-module checks separately cover actual integration.",
+    "Component repair does not establish sustained whole live sizing recovery, persistence CPU recovery, separate lowCPU metadata stall recovery, or resolution of historical missing original external evidence."
+  ],
+  "local_installation": "Complete531source generation cb7634eeb1e32f199c5ec8e70d58dd16e11738301f01e093615c16d9f6c31112 sealed with full source/runtime validation;530latestparentmembers and frozen runtime retained. Natural own execution loading independently established; no fresh full-sizing exercise at bounded capture.",
+  "main_commit": "1fdb93282414e1d079ddb3b1f4af223929bed429",
+  "performance": "Two opposite-order same-interpreter fixed-dependency pairs: median21.575682s before and20.010992s after (~7.25percent component improvement), small sample and variance. Complete saved result bytes/identity unchanged. Uncontrolled earlier profile timings excluded.",
+  "privacy_review": "Only generic exact-preimage source patch/manifest, offline portable checker and sanitized validation/installation facts. No private bindings/native identities, account data/state, raw observations, models, credentials or operating evidence exported.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/468",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Natural renewal only inside existing manually started sessions after full iterations. No initial unattended start, post-stop restart, lifetime extension, induced live test, broker/provider/order action. Publication, sealing, natural loading and affected recovery remain separate.",
+  "scope": "shared",
+  "source_commit": "c1edb981727375598b8a3bb4e28b7fb3ca3caaaa",
+  "summary": "Atlas 15m primary proof canonical reuse published and installed",
+  "tests": [
+    {
+      "network_attempts": 0,
+      "passed": 200,
+      "scope": "Complete531source composition"
+    },
+    {
+      "network_attempts": 0,
+      "passed": 137,
+      "scope": "Independent actual-module tamper/parity checks"
+    },
+    {
+      "network_attempts": 0,
+      "passed_each": 74,
+      "scope": "Portable function-projection queue/source/main candidates"
+    },
+    {
+      "canonical_payload_and_result_id_matches": 4,
+      "network_attempts": 0,
+      "scope": "Exact saved-input offline reconstruction"
+    },
+    {
+      "network_attempts": 0,
+      "passed": 75,
+      "scope": "Exact sealed source checker"
+    }
+  ]
+}
