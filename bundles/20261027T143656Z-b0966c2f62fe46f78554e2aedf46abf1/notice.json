@@ -1,0 +1,29 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T143002Z-97188592924942df9f2a149eb8b08e59",
+  "files": [
+    "ml/intraday/scout_journal.py",
+    "tests/test_intraday_scout_journal_replay_copy.py"
+  ],
+  "limitations": [
+    "Offline fixtures establish replay equivalence and retained fresh validation. They do not establish live recovery latency, cycle timing, a production lock holder, source coverage, order fills or completed model qualification.",
+    "Complete journal audits remain required. This repair does not resolve every repeated-audit cost. Historical events, original requests, outcomes and orders remain unchanged; private runtime overlays, raw data, recipes, models and account evidence are excluded."
+  ],
+  "main_sha": "5b57210860e2903b0d9ac1efddacd8b7619b1ddb",
+  "privacy_review": "Reviewed shared source and offline test facts only; no private local paths, operating evidence, raw data, models, recipes, account state, credentials or task records.",
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/443"
+  ],
+  "runtime_implications": "Compatible Scout journal code loads through the next safe automatic replacement after a completed full-symbol iteration within an existing authorized run. Installation, actual loaded generation and affected behavior remain separate facts. Preserve manual stop, original deadline, local recipe, durable pending work and order identity.",
+  "scope": "Shared native journal replay processing and offline tests. Each PC retains its private model recipe, symbols, operating bindings and separate order state.",
+  "source_branch": "codex/scout/20261027T143002Z-97188592924942df9f2a149eb8b08e59",
+  "source_record": "20261027T143002Z-97188592924942df9f2a149eb8b08e59",
+  "source_sha": "a18d115f083d2f4e7174eddcb1820e2957fd6b8b",
+  "summary": "Scout removed redundant recursive copying from native journal transition replay while retaining complete fresh validation.",
+  "tests": [
+    "Source, isolated courier and reviewed main candidates each passed 535 tests across 11 whole modules with 0 skips. Stage counts overlap.",
+    "All stages bind 156 exact source and dependency fingerprints; candidate import evidence and final raw Git blobs verify.",
+    "Fixtures compare native transition results and corruption errors with an independent original deep-copy oracle, preserve nested inputs and public-result detachment, detect later corruption, call custom replay overrides and exercise known-order recovery, reservations, projection, local execution and native send gates."
+  ]
+}

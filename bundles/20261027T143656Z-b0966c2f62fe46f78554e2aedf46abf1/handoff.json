@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T14:36:56.330548Z",
+  "id": "20261027T143656Z-b0966c2f62fe46f78554e2aedf46abf1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout removed redundant recursive copying from native journal transition replay while retaining complete fresh validation."
+}
