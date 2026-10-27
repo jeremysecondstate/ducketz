@@ -1,0 +1,55 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-27T17:56:30.000653Z",
+  "completion_id": "20261027T175621Z-atlas-oct26-fourhour-outcomes-28267944",
+  "details": [
+    "Actor Atlas; task Atlas Trader Representative;11 original October26 four-hour16:00 scientific forecasts recovered from actual saved native FMP observations after original targets matured.",
+    "Original forecast ids, exact forecast-file hash, probabilities, targets, saved direction labels and recorded policies retained; all8827 previous scores and10848 original identities preserved.",
+    "Peer applicability: original scientific outcomes for11Atlas symbols only. No raw observations, fitted models, tuning, account state, execution state or native operating bindings exported.",
+    "Existing combined Gameplan and Stats remain exact. CurrentOctober27source-session forecasts excluded until its human17:30Pacific Stats boundary. No source change, acquisition, fitting, orders, trader controls or runtime effects."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261027T175621Z-atlas-oct26-fourhour-outcomes-28267944/gameplan-stats/20261027T175621Z-atlas-oct26-fourhour-outcomes-28267944/original-outcome-supplement.json",
+      "expected_sha256": "95a0179164f6cbaf22e5638ae9af6d553daa7442860fd96496449df00e3faa17",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261027T175621Z-atlas-oct26-fourhour-outcomes-28267944/original-outcome-supplement.json",
+      "published_sha256": "95a0179164f6cbaf22e5638ae9af6d553daa7442860fd96496449df00e3faa17",
+      "published_size": 18206,
+      "sha256": "95a0179164f6cbaf22e5638ae9af6d553daa7442860fd96496449df00e3faa17",
+      "size": 18206,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "95a0179164f6cbaf22e5638ae9af6d553daa7442860fd96496449df00e3faa17",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261027T175621Z-atlas-oct26-fourhour-outcomes-28267944/original-outcome-supplement.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "human-authorized-development",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "symbol-specific",
+  "source_head": "90704d21801f60426493bd6cc650a7fac38d4f61",
+  "summary": "Atlas Trader Representative: publish11 original October26 four-hour outcomes",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "COST",
+    "CROX",
+    "GOOG",
+    "IONQ",
+    "MU",
+    "NVDA",
+    "PATH",
+    "SNDK",
+    "TWST"
+  ]
+}
