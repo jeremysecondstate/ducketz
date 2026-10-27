@@ -203,13 +203,24 @@ class DurableForecastHeaders:
 
     def save(self, identity, signature, projection):
         """Called only with the result of the full source semantic validator."""
+        self.save_many(identity, ((signature, projection),))
+
+    def save_many(self, identity, entries):
+        """Attest one validated inventory with one bounded cache transaction.
+
+        The source reader supplies only fully validated scalar projections.
+        Each inserted tuple still needs its exact authenticated whitelist entry;
+        a cache failure or interrupted batch leaves ordinary source validation
+        authoritative. The cache schema, contract and proofs stay unchanged.
+        """
         db = None
         started = time.monotonic()
         if self._remaining <= 0:
             return
         try:
-            projection = self._projection(projection, signature)
-            if projection is None:
+            entries = [(tuple(signature), checked) for signature, projection in entries
+                       if (checked := self._projection(projection, signature)) is not None]
+            if not entries:
                 return
             secret = self._key_material(create=True)
             if secret is None:
@@ -224,14 +235,24 @@ class DurableForecastHeaders:
             context = self._context(db)
             if context is None:
                 return
-            key = self._key(identity, signature, context)
-            raw = _encoded(dict(contract=_CONTRACT, identity=list(identity), signature=list(signature), context=list(context), projection=projection))
-            if len(raw) > 65536:
+            expected = {}
+            for signature, projection in entries:
+                if time.monotonic() - started >= self._remaining:
+                    return
+                key = self._key(identity, signature, context)
+                raw = _encoded(dict(contract=_CONTRACT, identity=list(identity), signature=list(signature), context=list(context), projection=projection)).encode()
+                if len(raw) > 65536:
+                    continue
+                record = (raw, self._authenticate(secret, raw))
+                if key in expected and expected[key] != record:
+                    return
+                expected[key] = record
+            if not expected:
                 return
-            expected = (key, raw.encode(), self._authenticate(secret, raw))
             db.create_function("forecast_header_cache_write_allowed", 3,
-                lambda cache_key, payload, record_mac: int((cache_key, payload, record_mac) == expected))
-            db.execute("INSERT OR IGNORE INTO forecast_header_cache_rows VALUES(?,?,?)", expected)
+                lambda cache_key, payload, record_mac: int(expected.get(cache_key) == (payload, record_mac)))
+            db.executemany("INSERT OR IGNORE INTO forecast_header_cache_rows VALUES(?,?,?)",
+                           ((key, *record) for key, record in expected.items()))
             db.commit()
         except (sqlite3.Error, OSError, ValueError, TypeError, AttributeError):
             pass

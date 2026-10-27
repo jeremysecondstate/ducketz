@@ -348,6 +348,7 @@ class ShadowStore:
         # retain the same physical/schema/epoch/revision checks above and below.
         durable_headers = (durable.load_many(durable_identity, missing_signatures)
             if cache_source_certain and missing_signatures else {})
+        validated_for_cache = []
         for row in rows:
             if stopped():
                 return []
@@ -372,21 +373,24 @@ class ShadowStore:
                         read_timings.payload("forecast_", original[6])
                     with detail("forecast_payload_validate"):
                         projection, _ = self._forecast_projection(original)
-                    # Separate optional cache writes never escalate the source
-                    # transaction or change original scientific evidence.
                     if cache_source_certain:
-                        try:
-                            current_stat = self.path.stat()
-                        except OSError:
-                            pass
-                        else:
-                            if opened == (current_stat.st_dev, current_stat.st_ino):
-                                durable.save(durable_identity, signature, projection)
+                        validated_for_cache.append((signature, projection))
                 if all(item is None or isinstance(item, str) for item in projection.values()):
                     self._execution_forecast_cache[row[0]] = (signature, tuple(projection.items()))
                     if len(self._execution_forecast_cache) > 4096:
                         self._execution_forecast_cache.popitem(last=False)
             headers.append(projection)
+        # Finish validating the entire source inventory before publishing its
+        # optional proofs. One private cache transaction avoids spending the
+        # bounded budget on a separate commit for every historical original.
+        if validated_for_cache:
+            try:
+                current_stat = self.path.stat()
+            except OSError:
+                pass
+            else:
+                if opened == (current_stat.st_dev, current_stat.st_ino):
+                    durable.save_many(durable_identity, validated_for_cache)
         self._execution_forecast_highwater = generation
         return headers
 
