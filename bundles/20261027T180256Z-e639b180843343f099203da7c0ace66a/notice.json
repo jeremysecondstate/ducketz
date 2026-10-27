@@ -1,0 +1,60 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T175854Z-0aff64419e1649568b6c5927e542280c",
+  "change_id": "20261027T175854Z-0aff64419e1649568b6c5927e542280c",
+  "details": [
+    "Atlas 15m Trader Representative repairs repeated serialization of full immutable sizing evidence. Hash the exact canonical text already produced; preserve complete output bytes, identities, probability, targets, quantities, indicator science and provenance.",
+    "Both PCs may review corresponding exact-preimage consumer hunks. Preserve each local model policy and binding. Both incoming snapshot proofs and payload revalidation remain unchanged.",
+    "Publish only a portable compatibility patch, exact extracts and offline fixtures. Full local composition, installation, loaded code and affected natural latency are separate evidence."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-sizing-encode-once.patch",
+      "sha256": "b7355cf6aeb5691823e2f44578438b8f00ffe5380ced65a226708b3a70ee9d3b"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-sizing-encode-once.json",
+      "sha256": "778bd84cbd5394de3e3e18885e75570abd4d14df145bfb7a2fe3c51cb4799829"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_sizing_encode_once.py",
+      "sha256": "dc7fe0b42de3fe0c89de856d0487be16c2c6cf48a06f40d8fdb0bd2862f87a62"
+    }
+  ],
+  "limitations": [
+    "Portable extracted-source21cases; local complete modules separately passed19parity and56existing sizing cases with0network.",
+    "Synthetic4MB/16MB mechanism improvement does not establish the original live delay cause or sustained recovery."
+  ],
+  "local_installation": "Atlas installed exact reviewed two-module hunks and sealed complete531-source generation ad30d57f9a8225d3a2cc30a04c49fd168a348a2d41e716c00c2531ecde40ec6e. All529otherparentfiles and frozenruntime retained; complete source/runtime verification succeeded.",
+  "main_commit": "a71c7c70ea128c9fe4b68541421dc7da0d1d40c7",
+  "natural_affected_exercise": "Unproved. Small offline fixture improvement does not establish the original live wall-time cause or sustained recovery. No live test was induced.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/450",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Apply reviewed exact-preimage2module local consumer hunks, then seal complete generation with tools/trader_installation.py. Existing manually started session may load at its next completed iteration renewal. No initial start, stop bypass, session extension, order or provider action.",
+  "runtime_loading": "Not established at notice preparation; naturally claimed own-session workers and launch paths are observed separately.",
+  "scope": "shared",
+  "source_commit": "c7b308082e3b3ece4da95d7c02894bca2aa90766",
+  "summary": "Atlas immutable sizing encoding repair published and sealed; affected live latency remains open",
+  "tests": [
+    {
+      "command": "python -B tests/check_intraday_sizing_encode_once.py",
+      "completed_at_utc": "2026-10-27T18:00:35.584635+00:00",
+      "passed_cases_each": 21,
+      "scope": "Immutable queue, isolated source and fresh main candidate"
+    },
+    {
+      "network_calls": 0,
+      "passed_cases": 19,
+      "scope": "Full local two-module baseline/candidate exact bytes and error parity"
+    },
+    {
+      "existing_sizing_cases": 56,
+      "network_calls": 0,
+      "portable_cases": 21,
+      "scope": "Actual sealed source"
+    }
+  ]
+}
