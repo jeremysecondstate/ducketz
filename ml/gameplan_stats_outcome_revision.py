@@ -24,6 +24,18 @@ from ml.independent_stock_targets import STOCK_TARGET_BOUNDARY_TOLERANCE
 from ml.stock_direction_policy import saved_direction_policy_summary
 
 REVISION_VERSION = "cross-pc-gameplan-stats-outcome-revision-v1"
+DIRECT_REVISION_VERSION = "cross-pc-gameplan-stats-outcome-revision-v2"
+_DIRECT_NATIVE_SOURCES = {
+    "databento:XNAS.ITCH:ohlcv-1m": ("XNAS.ITCH", 60),
+    "databento:EQUS.MINI:ohlcv-1m": ("EQUS.MINI", 60),
+    "schwab:pricehistory:1m": ("SCHWAB.PRICEHISTORY", 60),
+    "schwab:pricehistory:5m": ("SCHWAB.PRICEHISTORY", 300),
+    "fmp:historical-chart:5min": ("FMP.HISTORICAL_CHART_5MIN", 300),
+}
+_DIRECT_CONTRACTS = {
+    "observed-multi-source-stock-v1": ("OBSERVED_SOURCE_SELECTION_V1", tuple(_DIRECT_NATIVE_SOURCES)[:4]),
+    "observed-multi-source-stock-v2": ("OBSERVED_SOURCE_SELECTION_V2", tuple(_DIRECT_NATIVE_SOURCES)),
+}
 _OUTCOMES = ("actuals_status", "direction_correct", "model_observed_target", "model_brier_score",
              "actual_return", "actual_start_observed_at", "actual_end_observed_at")
 _EVIDENCE = ("evaluated_at", "target_observation_source", "target_observation_dataset",
@@ -236,8 +248,10 @@ def build_revision(root, *, base_run, expected_base_receipt_sha256, reviewed_at=
 
 
 def _validated_frame(payload, base_frame, parent, now):
-    if (not isinstance(payload, dict) or set(payload) != _TOP
-            or payload.get("schema_version") != REVISION_VERSION
+    direct = isinstance(payload, dict) and payload.get("schema_version") == DIRECT_REVISION_VERSION
+    expected_top = _TOP | {"source_observations"} if direct else _TOP
+    if (not isinstance(payload, dict) or set(payload) != expected_top
+            or payload.get("schema_version") not in {REVISION_VERSION, DIRECT_REVISION_VERSION}
             or payload.get("orders_placed") != 0 or isinstance(payload.get("orders_placed"), bool)
             or payload.get("broker_orders_enabled") is not False):
         raise ValueError("Unsupported or unsanitized original-outcome revision")
@@ -251,7 +265,10 @@ def _validated_frame(payload, base_frame, parent, now):
     reviewed, cutoff = _instant(payload["reviewed_at"]), _instant(payload["outcomes_through"])
     if cutoff != reviewed or reviewed > now:
         raise ValueError("Outcome revision cutoff or review time is invalid")
-    if (set(payload["source_evaluation"]) != {"receipt.json", "manifest.json", "evaluations.parquet"}
+    if direct:
+        _validate_direct_source(payload)
+    elif (not isinstance(payload["source_evaluation"], dict)
+            or set(payload["source_evaluation"]) != {"receipt.json", "manifest.json", "evaluations.parquet"}
             or not all(_digest(x) for x in payload["source_evaluation"].values())):
         raise ValueError("Outcome revision scientific provenance is invalid")
     original_rows = _projection(base_frame)
@@ -321,6 +338,219 @@ def _parse(raw):
     return json.loads(raw, object_pairs_hook=unique, parse_constant=invalid)
 
 
+def _validate_direct_source(payload):
+    """Direct observations name their own provenance, never a peer receipt."""
+    proof = payload.get("source_observations")
+    fields = {"schema_version", "producer", "source_owner", "source_action_date",
+              "source_plan_file_sha256", "source_plan_package_sha256", "source_forecasts_sha256",
+              "source_inputs_sha256", "original_ids", "price_source_contract", "price_dataset",
+              "updates_sha256", "observation_artifact_sha256", "observed_at"}
+    if (payload.get("source_evaluation") is not None or not isinstance(proof, dict)
+            or set(proof) != fields or proof.get("schema_version") != "native-stock-original-outcomes-v1"
+            or proof.get("producer") not in {"Atlas", "Scout"}
+            or proof.get("source_owner") not in {"atlas", "scout"}
+            or not isinstance(proof.get("source_action_date"), str)
+            or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", proof["source_action_date"])):
+        raise ValueError("Direct outcome revision scientific provenance is invalid")
+    for key in ("source_plan_file_sha256", "source_plan_package_sha256", "source_forecasts_sha256", "updates_sha256", "observation_artifact_sha256"):
+        if not _digest(proof[key]):
+            raise ValueError("Direct outcome revision lacks an exact source hash")
+    hashes, identities = proof["source_inputs_sha256"], proof["original_ids"]
+    parent_ids = {row.get("id") for row in payload["rows"] if isinstance(row, dict)}
+    if (not isinstance(hashes, list) or not 1 <= len(hashes) <= 4096
+            or any(not _digest(item) for item in hashes) or hashes != sorted(set(hashes))
+            or not isinstance(identities, list) or not identities
+            or any(not isinstance(item, str) or not item.startswith(proof["source_action_date"]+":")
+                   or item not in parent_ids for item in identities)
+            or identities != sorted(set(identities))):
+        raise ValueError("Direct outcome revision input identities are invalid")
+    contract = proof["price_source_contract"]
+    if contract not in _DIRECT_CONTRACTS or proof["price_dataset"] != _DIRECT_CONTRACTS[contract][0]:
+        raise ValueError("Direct outcome revision price contract differs")
+    if proof["updates_sha256"] != hashlib.sha256(_bytes(payload["updates"])).hexdigest():
+        raise ValueError("Direct outcome revision observed results changed")
+    if _instant(proof["observed_at"]) > _instant(payload["reviewed_at"]):
+        raise ValueError("Direct outcome revision observation proof is newer than its review")
+    allowed_sources = set(_DIRECT_CONTRACTS[contract][1])
+    source_datasets = {"databento:XNAS.ITCH:ohlcv-1m": "XNAS.ITCH",
+        "databento:EQUS.MINI:ohlcv-1m": "EQUS.MINI",
+        "schwab:pricehistory:1m": "SCHWAB.PRICEHISTORY", "schwab:pricehistory:5m": "SCHWAB.PRICEHISTORY",
+        "fmp:historical-chart:5min": "FMP.HISTORICAL_CHART_5MIN"}
+    for update in payload["updates"]:
+        if (not isinstance(update, dict) or update.get("id") not in identities
+                or update.get("target_observation_source") not in allowed_sources
+                or update.get("target_observation_dataset") != source_datasets.get(update.get("target_observation_source"))
+                or any(update.get(key) not in hashes for key in _EVIDENCE[3:])):
+            raise ValueError("Direct outcome revision lacks native endpoint input proof")
+
+
+def _native_observed_point(point, *, source, inputs, proof_clock, close):
+    """Validate a hash-bound admitted native row before deriving its endpoint."""
+    import math
+    fields = {"timestamp", "interval_seconds", "recorded_at", "input_sha256",
+              "open", "high", "low", "close", "volume", "native_flags"}
+    if not isinstance(point, dict) or set(point) != fields:
+        raise ValueError("Direct observation lacks its complete native point proof")
+    flags = point["native_flags"]
+    native_markers = {"synthetic", "is_synthetic", "no_trade", "is_no_trade", "source_empty", "is_source_empty"}
+    if (not isinstance(flags, dict) or not set(flags).issubset(native_markers)
+            or any(type(value) is not bool or value for value in flags.values())):
+        raise ValueError("Direct observation contains synthetic/no-trade or invalid native markers")
+    values = [point[key] for key in ("open", "high", "low", "close", "volume")]
+    if any(type(value) not in (int, float) or not math.isfinite(value) or value <= 0 for value in values):
+        raise ValueError("Direct observation native OHLCV is unavailable or invalid")
+    if point["high"] < max(values[:4]) or point["low"] > min(values[:4]):
+        raise ValueError("Direct observation native OHLC bounds disagree")
+    expected_interval = _DIRECT_NATIVE_SOURCES[source][1]
+    if type(point["interval_seconds"]) is not int or point["interval_seconds"] != expected_interval:
+        raise ValueError("Direct observation native interval differs from its recorded source")
+    if point["input_sha256"] not in inputs:
+        raise ValueError("Direct observation native input hash is not retained")
+    started, recorded = _instant(point["timestamp"]), _instant(point["recorded_at"])
+    ended = started + pd.Timedelta(seconds=expected_interval)
+    if not started < ended <= recorded <= proof_clock:
+        raise ValueError("Direct observation precedes native completion or receipt availability")
+    return (point["close"], ended) if close else (point["open"], started)
+
+
+def export_observed_revision(root, *, base_run, expected_base_receipt_sha256,
+                             source_plan, expected_source_plan_sha256, forecast_ids,
+                             observation_proof, expected_observation_proof_sha256,
+                             producer, destination, reviewed_at=None):
+    """Derive Stats from selected originals and independently retained native proof.
+
+    This reads an exact private scientific observation artifact. It validates
+    native OHLCV, receipt/event clocks, source contracts and hashes, and computes
+    returns and original target scores itself. Native acquisition/parser adapters
+    retain raw receipts separately. No peer or cumulative receipt is invented,
+    and no canonical forecast history, model, account or trader state is changed.
+    """
+    from ml.joint_capital_plan import content_sha256
+    from ml.gameplan_probability_target import observed_probability_target
+    root, source_plan = Path(root).resolve(), Path(source_plan).resolve()
+    observation_proof = Path(observation_proof).resolve()
+    if not _digest(expected_source_plan_sha256) or file_checksum(source_plan) != expected_source_plan_sha256:
+        raise ValueError("Direct outcome revision source plan differs from its exact selected hash")
+    if not _digest(expected_observation_proof_sha256) or file_checksum(observation_proof) != expected_observation_proof_sha256:
+        raise ValueError("Direct outcome revision observation artifact differs from its exact selected hash")
+    package = _parse(source_plan.read_bytes())
+    if (not isinstance(package, dict) or package.get("schema_version") != "joint-capital-owner-package-v1"
+            or package.get("owner_id") not in {"atlas", "scout"}
+            or not isinstance(package.get("forecasts"), list)
+            or not _digest(package.get("package_sha256"))
+            or content_sha256({key: value for key, value in package.items() if key != "package_sha256"}) != package["package_sha256"]
+            or package.get("content_sha256", {}).get("forecasts") != content_sha256(package["forecasts"])
+            or not _digest(package.get("source_hashes", {}).get("forecasts_sha256"))):
+        raise ValueError("Direct outcome revision original source package binding is invalid")
+    proof = _parse(observation_proof.read_bytes())
+    if (not isinstance(proof, dict) or set(proof) != {"schema_version", "source_plan_file_sha256",
+            "observed_at", "source_inputs_sha256", "observations", "missing_original_ids"}
+            or proof.get("schema_version") != "stock-original-native-observations-v1"
+            or proof.get("source_plan_file_sha256") != expected_source_plan_sha256
+            or not isinstance(proof.get("observations"), list)):
+        raise ValueError("Direct outcome revision native observation artifact is invalid")
+    now, proof_clock = _instant(utc_timestamp(reviewed_at)), _instant(proof["observed_at"])
+    if proof_clock > now:
+        raise ValueError("Direct outcome revision observation proof is newer than its review")
+    review, base_frame, _, parent = _base(root, base_run, expected_base_receipt_sha256)
+    if now < _instant(review.reviewed_at) or now < _instant(review.outcomes_through):
+        raise ValueError("Direct outcome revision cannot precede its parent")
+    ids = list(forecast_ids)
+    if not ids or any(not isinstance(item, str) for item in ids) or len(ids) != len(set(ids)):
+        raise ValueError("Direct outcome revision requires unique exact original identities")
+    originals = {row["id"]: row for row in _projection(base_frame)}
+    selected = [row for row in package["forecasts"] if row.get("id") in ids]
+    if (len(selected) != len(ids) or len({row["id"] for row in selected}) != len(ids)
+            or any(item not in originals for item in ids)
+            or any(originals[item]["actuals_status"] == "EVALUATED" for item in ids)):
+        raise ValueError("Direct outcome revision must select existing unscored originals")
+    for row in selected:
+        for key, value in originals[row["id"]].items():
+            if key not in _OUTCOMES and (key not in row or not _row_equal({key: value}, {key: _scalar(row[key])})):
+                raise ValueError("Direct outcome revision source changes a frozen original")
+        if _instant(row["target_window_end"]) > now:
+            raise ValueError("Direct outcome revision original has not matured")
+    contracts = {(row.get("target_price_source_contract"), row.get("target_price_dataset")) for row in selected}
+    if len(contracts) != 1 or next(iter(contracts))[0] not in _DIRECT_CONTRACTS:
+        raise ValueError("Direct outcome revision requires one recorded native price contract")
+    contract, dataset = next(iter(contracts))
+    if dataset != _DIRECT_CONTRACTS[contract][0]:
+        raise ValueError("Direct outcome revision price dataset differs from its original contract")
+    inputs = proof["source_inputs_sha256"]
+    if (not isinstance(inputs, list) or not 1 <= len(inputs) <= 4096
+            or any(not _digest(value) for value in inputs) or inputs != sorted(set(inputs))):
+        raise ValueError("Direct outcome revision native input hashes are invalid")
+    observed = {}
+    for row in proof["observations"]:
+        if (not isinstance(row, dict) or set(row) != {"id", "source", "dataset", "entry", "exit"}
+                or row.get("id") not in ids or row["id"] in observed
+                or row.get("source") not in _DIRECT_CONTRACTS[contract][1]
+                or row.get("dataset") != _DIRECT_NATIVE_SOURCES[row["source"]][0]):
+            raise ValueError("Direct outcome revision native source identity differs")
+        observed[row["id"]] = row
+    if proof["missing_original_ids"] != sorted(set(ids) - set(observed)):
+        raise ValueError("Direct outcome revision missing native observations are not explicit")
+    updates = []
+    for row in selected:
+        if row["id"] not in observed:
+            continue
+        native = observed[row["id"]]
+        gap = row["target_role"] == "OPENING_GAP_RESEARCH"
+        entry, opened = _native_observed_point(native["entry"], source=native["source"], inputs=inputs, proof_clock=proof_clock, close=gap)
+        finish, closed = _native_observed_point(native["exit"], source=native["source"], inputs=inputs, proof_clock=proof_clock, close=not gap)
+        change = finish / entry - 1
+        probability = row["calibrated_probability"]
+        target = observed_probability_target(change, row.get("assumed_round_trip_cost", .001), row["probability_target_contract"])
+        direction = row["direction"]
+        update = dict(id=row["id"], actuals_status="EVALUATED",
+            direction_correct=None if direction == "NO_EDGE" else change > 0 if direction == "BULLISH" else change < 0,
+            model_observed_target=target, model_brier_score=(probability-target)**2,
+            actual_return=change, actual_start_observed_at=opened.isoformat(), actual_end_observed_at=closed.isoformat(),
+            evaluated_at=now.isoformat(), target_observation_source=native["source"], target_observation_dataset=native["dataset"],
+            target_observation_entry_input_sha256=native["entry"]["input_sha256"],
+            target_observation_exit_input_sha256=native["exit"]["input_sha256"])
+        _validate_update(originals[row["id"]], update, now)
+        updates.append(update)
+    by_id = {row["id"]: row for row in updates}
+    rows, mature = [], []
+    for original in _projection(base_frame):
+        if original["id"] in by_id:
+            rows.append(_validate_update(original, by_id[original["id"]], now))
+        elif original["actuals_status"] == "PENDING_MATURITY" and _instant(original["target_window_end"]) <= now:
+            rows.append(dict(original, actuals_status="MATURE_AWAITING_DATA"))
+            mature.append(original["id"])
+        else:
+            rows.append(original)
+    if not updates and not mature:
+        raise ValueError("No new compatible evaluated original outcomes; reuse the saved publication")
+    source = dict(schema_version="native-stock-original-outcomes-v1", producer=producer,
+        source_owner=package["owner_id"], source_action_date=package["action_date"],
+        source_plan_file_sha256=expected_source_plan_sha256, source_plan_package_sha256=package["package_sha256"],
+        source_forecasts_sha256=package["source_hashes"]["forecasts_sha256"],
+        source_inputs_sha256=inputs, original_ids=sorted(ids), price_source_contract=contract, price_dataset=dataset,
+        observation_artifact_sha256=expected_observation_proof_sha256, observed_at=proof_clock.isoformat(),
+        updates_sha256=hashlib.sha256(_bytes(updates)).hexdigest())
+    payload = dict(schema_version=DIRECT_REVISION_VERSION, action_date=review.session,
+        reviewed_at=now.isoformat(), outcomes_through=now.isoformat(), parent=parent,
+        source_evaluation=None, source_observations=source, rows=rows, updates=updates,
+        newly_mature_awaiting_ids=mature, orders_placed=0, broker_orders_enabled=False)
+    _validated_frame(payload, base_frame, parent, now)
+    if (file_checksum(source_plan) != expected_source_plan_sha256
+            or file_checksum(observation_proof) != expected_observation_proof_sha256
+            or _base(root, base_run, expected_base_receipt_sha256)[3] != parent):
+        raise ValueError("Direct outcome revision source changed during derivation")
+    raw = _bytes(payload)
+    destination = Path(destination).resolve()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with destination.open("xb") as stream:
+            stream.write(raw)
+    except FileExistsError:
+        if destination.read_bytes() != raw:
+            raise ValueError("An immutable outcome revision already exists with different bytes") from None
+    return destination
+
+
 def adopt_revision(root, *, package, expected_sha256, base_run, expected_base_receipt_sha256, reviewed_at=None):
     """Adopt one exact reviewed revision into the existing Stats publication shape.
 
@@ -376,6 +606,8 @@ def adopt_revision(root, *, package, expected_sha256, base_run, expected_base_re
             newly_evaluated_original_ids=[row["id"] for row in payload["updates"]],
             newly_mature_awaiting_ids=payload["newly_mature_awaiting_ids"],
             orders_placed=0, broker_orders_enabled=False)
+        if payload["schema_version"] == DIRECT_REVISION_VERSION:
+            report["outcome_revision_source_observations"] = payload["source_observations"]
         report.update(saved_direction_policy_summary(_projection(frame)))
         report["outcome_revision_origin_parent"] = payload["parent"]
         if existing is None:
