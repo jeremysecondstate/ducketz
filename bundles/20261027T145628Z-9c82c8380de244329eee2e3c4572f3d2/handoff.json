@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T14:56:28.782373Z",
+  "id": "20261027T145628Z-9c82c8380de244329eee2e3c4572f3d2",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout removed redundant recursive copying from native journal audit comparison while retaining complete fresh validation."
+}

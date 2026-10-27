@@ -1,0 +1,29 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T145016Z-4f464035c4284a35bd6de055ec8b22cb",
+  "files": [
+    "ml/intraday/scout_journal.py",
+    "tests/test_intraday_scout_journal_audit_copy.py"
+  ],
+  "limitations": [
+    "Offline fixtures establish audit comparison equivalence and retained fresh validation. They do not establish live recovery latency, cycle timing, a production lock holder, source coverage, order fills or completed model qualification.",
+    "Complete journal audits remain required. This repair does not resolve every repeated-audit cost. Historical events, original requests, outcomes and orders remain unchanged; private runtime overlays, raw data, recipes, models and account evidence are excluded."
+  ],
+  "main_sha": "6613702bab85e4755f174c56ecb17c0ee5a042fe",
+  "privacy_review": "Reviewed shared source and offline test facts only; no private local paths, operating evidence, raw data, models, recipes, account state, credentials or task records.",
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/444"
+  ],
+  "runtime_implications": "Compatible Scout journal code loads through the next safe automatic replacement after a completed full-symbol iteration within an existing authorized run. Installation, actual loaded generation and affected behavior remain separate facts. Preserve manual stop, original deadline, local recipe, durable pending work and order identity.",
+  "scope": "Shared native current-record audit comparison and offline tests. Each PC retains its private model recipe, symbols, operating bindings and separate order state.",
+  "source_branch": "codex/scout/20261027T145016Z-4f464035c4284a35bd6de055ec8b22cb",
+  "source_record": "20261027T145016Z-4f464035c4284a35bd6de055ec8b22cb",
+  "source_sha": "d2ec32d4ac9bc620225c76672b2c10819d1fbfe2",
+  "summary": "Scout removed redundant recursive copying from native journal audit comparison while retaining complete fresh validation.",
+  "tests": [
+    "Source, isolated courier and reviewed main candidates each passed 559 tests across 12 whole modules with 0 skips. Stage counts overlap.",
+    "All stages bind 157 exact source and dependency fingerprints; candidate import evidence and final raw Git blobs verify.",
+    "Fixtures compare complete audit results and exact corruption errors with the original detached helper, detect fresh and rehashed tampering, retain custom mapping/scalar/helper fallback, prove unchanged detached append and public results, preserve prior replay-copy behavior and exercise known-order recovery, reservations, projection, local execution and native send gates."
+  ]
+}
