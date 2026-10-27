@@ -328,8 +328,11 @@ class QuarterHourMarketCollector:
         """Decode native immutable bytes outside the lock; fence the final read.
 
         Every operation rereads the exact queue under its original native lock.
-        A concurrent update or a custom reader takes the original locked path
-        once; no state cache, retry loop or optimistic mutation is introduced.
+        A concurrent update gets one original state read under the final lock.
+        For that fresh read, only proven native detached nonempty task maps
+        can use the optional extraction callback; custom, missing or empty state
+        keeps the original callback. No state cache, retry loop or optimistic
+        mutation is introduced.
         """
         native = QuarterHourMarketCollector._native_state_reader
         with self.queue_lock_timing.observe(self.lock, phase):
@@ -343,9 +346,21 @@ class QuarterHourMarketCollector:
             raise ValueError("Unsupported market collection queue version")
         with self.queue_lock_timing.observe(self.lock, phase):
             if (getattr(self._state, "__func__", None) is not native
-                    or not self.state_path.exists()
-                    or self.state_path.read_text(encoding="utf-8") != raw):
+                    or not self.state_path.exists()):
                 return reader(self._state())
+            if self.state_path.read_text(encoding="utf-8") != raw:
+                current_reader = self._state
+                current_value = current_reader()
+                # Keep the stale decoded map alive until after lock release.
+                # A custom reader may restore the native method before return;
+                # require native provenance before and after this fresh read.
+                if (getattr(current_reader, "__func__", None) is not native
+                        or getattr(self._state, "__func__", None) is not native
+                        or type(current_value) is not dict
+                        or type(current_value.get("tasks")) is not dict
+                        or not current_value["tasks"]):
+                    return reader(current_value)
+                return (native_reader or reader)(current_value)
             return (native_reader or reader)(value)
 
     _native_queue_reader = _read_queue

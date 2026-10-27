@@ -1,5 +1,6 @@
 """Native due scans release the queue lock; custom/freshness paths stay original."""
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 import json
 import types
 
@@ -131,7 +132,7 @@ def test_two_argument_read_queue_override_keeps_original_call(tmp_path, monkeypa
     assert calls == ["step_due"] and all(locked for _, locked in locks)
 
 
-def test_changed_queue_during_decode_uses_current_original_locked_due_scan(tmp_path, monkeypatch):
+def test_changed_queue_during_decode_uses_current_native_snapshot_due_scan(tmp_path, monkeypatch):
     col = collector(tmp_path)
     current = state(col)
     key = next(iter(current["tasks"]))
@@ -145,7 +146,8 @@ def test_changed_queue_during_decode_uses_current_original_locked_due_scan(tmp_p
     selected = capture(col, monkeypatch)
     locks = timestamp_locks(col, monkeypatch)
     assert col.step(max_requests=1) == []
-    assert selected[0][0] == [] and all(locked for _, locked in locks)
+    assert selected[0][0] == [] and locks[0] == (NOW, True)
+    assert all(not locked for _, locked in locks[1:])
 
 
 @pytest.mark.parametrize("effect", ["settled", "future", "source_block"])
@@ -292,3 +294,152 @@ def test_native_container_normalization_keeps_original_nested_evidence():
     assert container_canonical(source) == b'{"task":{"nested":[null,{"missing":null}]}}'
     assert source['task']['nested'] is values and values[0] is missing and math.isnan(missing)
     assert math.isinf(values[1]['missing'])
+
+
+def _refine_changing_decode(col,monkeypatch,value,second_effect=None):
+ original=M.json.loads;calls=[]
+ def decode(raw,*args,**kwargs):
+  calls.append(col.lock.is_locked)
+  result=original(raw,*args,**kwargs)
+  if len(calls)==1:publish(col,value)
+  elif second_effect is not None:second_effect()
+  return result
+ monkeypatch.setattr(M.json,'loads',decode)
+ return calls
+
+
+
+def _refine_trace_instant(col,monkeypatch):
+ original=M.instant;calls=[]
+ def traced(value):calls.append((value,col.lock.is_locked));return original(value)
+ monkeypatch.setattr(M,'instant',traced);return calls
+
+
+
+def test_changed_native_reads_exact_current_state_once_then_scans_unlocked(tmp_path,monkeypatch):
+ col=collector(tmp_path);value=state(col);task=next(iter(value['tasks'].values()));value['tasks']['new']={**task,'due_at':(NOW-timedelta(seconds=1)).isoformat()}
+ decodes=_refine_changing_decode(col,monkeypatch,value);timestamps=_refine_trace_instant(col,monkeypatch)
+ selected=[]
+ monkeypatch.setattr(M,'_select_tasks',lambda due,maximum:selected.extend(due) or [])
+ assert col.step(max_requests=1)==[]
+ assert [key for key,_ in selected]==list(value['tasks'])
+ assert decodes==[False,True]
+ assert timestamps[0]==(NOW,True) and all(not lock for _,lock in timestamps[1:])
+
+
+
+@pytest.mark.parametrize('restore',[False,True])
+def test_override_installed_by_final_comparison_keeps_original_reader(tmp_path,monkeypatch,restore):
+ col=collector(tmp_path);value=state(col);value['extra']='changed'
+ decodes=_refine_changing_decode(col,monkeypatch,value);timestamps=_refine_trace_instant(col,monkeypatch)
+ original_read=Path.read_text;native=M.QuarterHourMarketCollector._native_state_reader;reads=[];custom_calls=[]
+ def custom(self):
+  custom_calls.append(self.lock.is_locked)
+  if restore:self._state=types.MethodType(native,self)
+  return value
+ def read(path,*args,**kwargs):
+  result=original_read(path,*args,**kwargs)
+  if path==col.state_path:
+   reads.append(col.lock.is_locked)
+   if len(reads)==2:col._state=types.MethodType(custom,col)
+  return result
+ monkeypatch.setattr(Path,'read_text',read);monkeypatch.setattr(M,'_select_tasks',lambda *args:[])
+ assert col.step(max_requests=1)==[]
+ assert custom_calls==[True] and all(locked for _,locked in timestamps)
+ assert decodes==[False] and reads==[True,True]
+
+
+
+def test_override_installed_during_fresh_native_decode_keeps_original_reader(tmp_path,monkeypatch):
+ col=collector(tmp_path);value=state(col);value['extra']='changed';custom_calls=[]
+ def custom(self):custom_calls.append(True);return value
+ def install():col._state=types.MethodType(custom,col)
+ decodes=_refine_changing_decode(col,monkeypatch,value,install);timestamps=_refine_trace_instant(col,monkeypatch)
+ monkeypatch.setattr(M,'_select_tasks',lambda *args:[])
+ assert col.step(max_requests=1)==[]
+ assert custom_calls==[] and decodes==[False,True]
+ assert all(locked for _,locked in timestamps)
+
+
+
+def test_missing_default_returned_by_fresh_native_read_uses_original_reader(tmp_path,monkeypatch):
+ col=collector(tmp_path);value=state(col);value['extra']='changed'
+ decodes=_refine_changing_decode(col,monkeypatch,value);timestamps=_refine_trace_instant(col,monkeypatch)
+ original_exists=Path.exists;calls=[]
+ def exists(path):
+  if path==col.state_path:
+   calls.append(col.lock.is_locked)
+   if len(calls)==3:return False
+  return original_exists(path)
+ monkeypatch.setattr(Path,'exists',exists);selected=[]
+ monkeypatch.setattr(M,'_select_tasks',lambda due,maximum:selected.extend(due) or [])
+ assert col.step(max_requests=1)==[]
+ assert calls==[True,True,True] and decodes==[False]
+ assert timestamps==[(NOW,True)] and selected==[]
+
+
+
+@pytest.mark.parametrize('container',[None,[],5,'malformed'])
+def test_changed_malformed_task_container_retains_original_error_inside_lock(tmp_path,monkeypatch,container):
+ col=collector(tmp_path);value=state(col);value['tasks']=container
+ decodes=_refine_changing_decode(col,monkeypatch,value);timestamps=_refine_trace_instant(col,monkeypatch)
+ with pytest.raises(AttributeError):col.step(max_requests=1)
+ assert timestamps==[(NOW,True)] and decodes==[False,True]
+ assert not col.lock.is_locked
+
+
+
+def test_changed_missing_task_container_retains_original_keyerror_inside_lock(tmp_path,monkeypatch):
+ col=collector(tmp_path);value=state(col);del value['tasks']
+ decodes=_refine_changing_decode(col,monkeypatch,value);timestamps=_refine_trace_instant(col,monkeypatch)
+ with pytest.raises(KeyError) as error:col.step(max_requests=1)
+ assert error.value.args==('tasks',) and timestamps==[(NOW,True)]
+ assert decodes==[False,True] and not col.lock.is_locked
+
+
+
+def test_changed_native_empty_map_uses_original_reader_without_extra_io(tmp_path,monkeypatch):
+ col=collector(tmp_path);value=state(col);value['tasks']={}
+ decodes=_refine_changing_decode(col,monkeypatch,value);calls=[]
+ original=lambda state:calls.append(('original',col.lock.is_locked)) or state
+ native=lambda state:calls.append(('native',col.lock.is_locked)) or state
+ assert col._read_queue('step_due',original,native_reader=native)==value
+ assert decodes==[False,True] and calls==[('original',True)]
+
+
+
+def test_changed_native_decode_error_identity_precedes_clock_and_callback(tmp_path,monkeypatch):
+ col=collector(tmp_path);value=state(col);value['extra']='changed'
+ error=ValueError('fresh-native-original-error');original=M.json.loads;calls=[]
+ def decode(raw,*args,**kwargs):
+  calls.append(col.lock.is_locked)
+  if len(calls)==1:result=original(raw,*args,**kwargs);publish(col,value);return result
+  raise error
+ monkeypatch.setattr(M.json,'loads',decode);col.clock=lambda:pytest.fail('Decode error reached clock')
+ with pytest.raises(ValueError) as raised:col.step(max_requests=1)
+ assert raised.value is error and calls==[False,True] and not col.lock.is_locked
+
+
+
+
+def test_changed_read_keeps_stale_map_cleanup_after_lock_release(tmp_path, monkeypatch):
+    col = collector(tmp_path)
+    changed = state(col)
+    changed["new-evidence"] = "fixture"
+    original_decode = M.json.loads
+    decodes, released = [], []
+    class StaleMap(dict):
+        def __del__(self):
+            released.append(col.lock.is_locked)
+    def decode(raw, *args, **kwargs):
+        value = original_decode(raw, *args, **kwargs)
+        decodes.append(col.lock.is_locked)
+        if len(decodes) == 1:
+            publish(col, changed)
+            return StaleMap(value)
+        return value
+    monkeypatch.setattr(M.json, "loads", decode)
+    monkeypatch.setattr(M, "_select_tasks", lambda *args: [])
+    assert col.step(max_requests=1) == []
+    assert decodes == [False, True]
+    assert released == [False]
