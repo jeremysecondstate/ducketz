@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T12:42:20.164604Z",
+  "id": "20261027T124220Z-1316a30905674de6af02df182df8b6c9",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas admitted-worker SQLite contention repair locally installed and sealed; runtime exercise remains unknown"
+}
