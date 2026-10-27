@@ -1,0 +1,39 @@
+{
+  "artifact_commit_sha": "7878c5f14cd5fb6172f192b335f9c9b0e4bddc83",
+  "artifact_completion_id": "20261027T175621Z-atlas-oct26-fourhour-outcomes-28267944",
+  "author": "Atlas",
+  "branch": "main",
+  "change_id": "20261027T175621Z-atlas-oct26-fourhour-outcomes-28267944",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/7878c5f14cd5fb6172f192b335f9c9b0e4bddc83",
+  "files": [
+    "artifacts/pc-original/20261027T175621Z-atlas-oct26-fourhour-outcomes-28267944/artifact-manifest.json",
+    "artifacts/pc-original/20261027T175621Z-atlas-oct26-fourhour-outcomes-28267944/gameplan-stats/20261027T175621Z-atlas-oct26-fourhour-outcomes-28267944/original-outcome-supplement.json"
+  ],
+  "limitations": [
+    "Derived original scientific results only; raw observations, fitted models, private account and operating data remain local.",
+    "Original probabilities, target definitions, saved direction labels, policies and exact source editions retained.",
+    "Current combined Gameplan and Stats remain exact; supplemental peer receipt and display adoption not proved."
+  ],
+  "remote_sha": "7878c5f14cd5fb6172f192b335f9c9b0e4bddc83",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scientific output only; no source deployment, acquisition, model fit, trader control, order or operating prerequisite.",
+  "scope": "symbol-specific",
+  "summary": "Atlas Stats:11 original October26 four-hour outcomes recovered and published",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-27T17:55:33.259530+00:00",
+      "description": "Exact11 original scientific outcomes, native endpoint provenance and preserved8827prior scores passed",
+      "output_sha256": "64920aaf375c44cfe0c4153e11b74037c2553dd20e9c5aa99de9a1dca416d1d9"
+    },
+    {
+      "completed_at_utc": "2026-10-27T17:57:21.291804+00:00",
+      "description": "Sanitized scientific allowlist and exact exported fields reviewed",
+      "output_sha256": "ad7032d54cb68d8293472a54fa5b78e8e20a8665f374290fd0f4796cb2bad551"
+    },
+    {
+      "completed_at_utc": "2026-10-27T17:58:32.711981+00:00",
+      "description": "Committed namespace and remote readback verified",
+      "output_sha256": "5473a28ee095ba93a339cb9ccf733658f95d97a3068694ac1483a7370e2f1efc"
+    }
+  ]
+}
