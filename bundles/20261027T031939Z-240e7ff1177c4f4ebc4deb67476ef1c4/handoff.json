@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T03:19:39.962177Z",
+  "id": "20261027T031939Z-240e7ff1177c4f4ebc4deb67476ef1c4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout completed safe per-iteration worker rotation with independent stop/session authority and verified immutable release reload."
+}

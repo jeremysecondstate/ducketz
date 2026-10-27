@@ -1,0 +1,46 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T030626Z-334c4d757709464eb34646cfb9e0fa7c",
+  "files": [
+    "AGENTS.md",
+    "ml/intraday/live_session.py",
+    "ml/intraday/scout_local_execution.py",
+    "docs/development/scout-iteration-restarts.md",
+    "ml/intraday/iteration_boundary.py",
+    "tests/test_intraday_iteration_boundary.py",
+    "tests/test_intraday_iteration_orders.py",
+    "tests/test_scout_iteration_controller.py",
+    "tests/test_scout_iteration_process.py",
+    "tests/test_scout_process.py",
+    "tests/test_scout_release.py",
+    "tools/scout_iteration_controller.py",
+    "tools/scout_process.py",
+    "tools/scout_release.py"
+  ],
+  "fixture_record": "20261027T031650Z-1d76e5c2bd6544a2a33e8e6823ea57f2",
+  "fixture_source_sha": "e71dd4d5aeabf86f47b5571092ca21eee6bf960a",
+  "latest_main_sha": "29ed8e0bf4b361c727986adb83df8fb17fc37a5e",
+  "limitations": [
+    "Offline/private fixture validation only; no live trader control, production provider calls or confirmed live adoption.",
+    "Bootstrap/protocol changes and terminal handoff failures retain a new-authorized-launch boundary.",
+    "The fixture follow-up changes tests only and does not alter the installed application."
+  ],
+  "main_sha": "2cd2630a5100f9927116fa7a2f6cc28dff0bca6e",
+  "privacy_review": "Factual shared-source metadata only. No native task definitions, recipes, model artifacts, account evidence, private data or local memory exported.",
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/423",
+    "https://github.com/jeremysecondstate/ducketz/pull/424"
+  ],
+  "runtime_implications": "The next normal authorized Scout cured-launcher start activates one logical run with planned replacement after every complete iteration. Existing task initial-start behavior is unchanged. Routine compatible installed changes then await the next safe automatic reload and actual loaded-manifest verification. Manual stop and the original deadline remain authoritative; no crash respawn.",
+  "scope": "shared lifecycle correctness; activation installed locally for Scout only. Atlas retains its symbols, models, saved recipe and operating bindings.",
+  "source_record": "20261027T030626Z-334c4d757709464eb34646cfb9e0fa7c",
+  "source_sha": "e3953de9fcde39bef372f50e53a77d421e39bedc",
+  "summary": "Scout completed safe per-iteration worker rotation with independent stop/session authority and verified immutable release reload.",
+  "tests": [
+    "461 exact shared-source offline tests passed; one independently reproduced unchanged-base Atlas-only failure explicitly deselected.",
+    "475 tests passed on the reviewed composed Scout runtime.",
+    "Native fixture follow-up: 11 tests passed in fresh queue, candidate and main checks; prior failed readiness case passed 10 repetitions.",
+    "Native process fixtures cover A-to-B-to-B generations, no-update rotation, overlap protection, controller death, stops, drains, startup and durable order/forecast identity."
+  ]
+}
