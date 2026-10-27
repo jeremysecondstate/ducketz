@@ -1,0 +1,33 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T234132Z-60bb5f267c2d415d923b8218276a9950",
+  "files": [
+    "ml/intraday/local_forecast.py",
+    "tests/test_intraday_forecast_native_busy.py"
+  ],
+  "limitations": [
+    "Offline checks establish only reviewed read and validation behavior. Actual loaded generation and recovery of the affected operation require separate private runtime evidence.",
+    "Configured SQLite timeouts do not establish a hard limit on operating-system scheduling or the complete integrity validation duration.",
+    "An earlier isolated native-WAL stress run still returned SQLITE_BUSY_RECOVERY; its exact timing cause remains unproven. No guarantee is made that every contended read resolves within the existing limits.",
+    "Saved-evidence, scope, recipe, provenance and supersession validation remain authoritative; the timeout change supplies no independent qualification or execution authority.",
+    "Private operating evidence, raw data, fitted models, recipes, credentials, account state, ledgers, task memory and local bindings are excluded from this shared source packet.",
+    "This revision supersedes Completion-Record 20261027T232259Z-f1c7c3fa0bc8409fac35467794db09ef, preserving its source check and failed isolated native-WAL stress run. It was held before source push, main publication, notice or pull request. The regression keeps its strict assertions and adds failure diagnostics."
+  ],
+  "main_sha": "2671d065abcdae3006b103af9658a0c778f9e11d",
+  "privacy_review": "Reviewed shared source and offline test facts only; no private local paths, operating evidence, raw data, models, recipes, account state, credentials or task records.",
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/473"
+  ],
+  "runtime_implications": "Install reviewed compatible source separately. Scout loads compatible worker source at its next safe automatic iteration replacement within an authorized run. Preserve initial activation, manual stop, the original deadline, pending work, local recipes and execution controls. Publication starts no trader.",
+  "scope": "Shared Scout saved-forecast validation correctness; each PC retains its own model recipe, symbols, operating bindings and independent execution.",
+  "source_branch": "codex/scout/20261027T234132Z-60bb5f267c2d415d923b8218276a9950",
+  "source_record": "20261027T234132Z-60bb5f267c2d415d923b8218276a9950",
+  "source_sha": "267d1ae704b10ce2ff24d1ebfbdd40a64266d6aa",
+  "summary": "Scout lets the first native forecast read use its existing bounded contention allowance.",
+  "tests": [
+    "Source, isolated courier and reviewed main candidates each passed 326 tests across 10 whole modules with 0 skips. Stage counts overlap.",
+    "All stages bind 268 exact source and dependency fingerprints; candidate import evidence and final raw Git blobs verify.",
+    "Offline fixtures cover native WAL recovery, bounded busy waits and timeout behavior, unchanged setup and later-statement failures, fixed outer retry limits, original exception chains, custom-helper compatibility and exact evidence validation. Native recovery regressions retain strict success assertions and preserve per-reader failure diagnostics."
+  ]
+}

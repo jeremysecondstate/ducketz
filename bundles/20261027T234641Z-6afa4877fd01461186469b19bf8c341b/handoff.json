@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T23:46:41.256538Z",
+  "id": "20261027T234641Z-6afa4877fd01461186469b19bf8c341b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout lets the first native forecast read use its existing bounded contention allowance."
+}
