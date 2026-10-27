@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T12:38:12.702289Z",
+  "id": "20261027T123812Z-61ca3ff8936646168d21598a465563a4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas 15-minute admitted-worker SQLite setup contention repair published with portable offline evidence"
+}

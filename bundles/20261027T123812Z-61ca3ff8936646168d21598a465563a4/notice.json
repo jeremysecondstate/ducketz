@@ -1,0 +1,59 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T123448Z-e65b6e079f0440f99e4f313296a2dc39",
+  "change_id": "20261027T123448Z-e65b6e079f0440f99e4f313296a2dc39",
+  "details": [
+    "Atlas Trader Representative repairs an admitted renewal worker whose cold local SQLite setup hit native BUSY or LOCKED contention before entering its lane. Applicable common storage correctness for either PC without changing local symbols or model recipes.",
+    "Retry only sqlite3.OperationalError with exact native integer BUSY or LOCKED base or extended codes, repeating the same caller-owned setup action on fresh closed transactions. Other errors propagate unchanged; successful setup is never repeated.",
+    "Recheck the original manual-stop predicate and original lane cutoff before admission and after successful setup. Preserve the existing candles post-close policy, worker/session identity, original deadlines, independent ledgers, order evidence, science, stock policy and one-second stop-aware pause.",
+    "Publish the portable standard-library helper and offline tests directly; consumer compatibility patch records exact installed preimages and narrow hunks for the existing renewal adapter. Canonical main may not contain that adapter, so portable validation is distinct from installed integration."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "ml/intraday/renewal_storage.py",
+      "sha256": "208d02fb0e84ab2e0252054f8a3f771e04998c17bf9431e8d7265462579dd1b8"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_renewal_storage.py",
+      "sha256": "5a3ebeeca9dc75856acb1b0496c6fd6bd690ad2b9032fc0863cb4a951e51d21f"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_renewal_storage.py",
+      "sha256": "c261be5aaf4f3361f3c0995089fc2a27fcffd70838c8b31f8cf3dd7dff52e876"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/intraday-renewal-storage-setup.patch",
+      "sha256": "5dccd4fe5addacda598adbc1821da18d44d416ec890eb1e37cb4aed1a3127643"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/intraday-renewal-storage-setup.json",
+      "sha256": "05fe7e8ff0028b26c1817df676ff2ffe724eba89bf43d5784b9cb6dc588a9be5"
+    }
+  ],
+  "limitations": [
+    "Twenty-four portable offline cases use temporary native SQLite contention and reconstructed extended codes. They do not establish installed adapter integration, loaded generation or naturally exercised recovery.",
+    "The installed consumer differs from canonical main. Apply only reviewed matching compatibility hunks and preserve each installation composition and private bindings; never replace the whole consumer.",
+    "The affected prior session ended terminally. This repair does not restart it. A future ordinary manual start is Jeremy's action; no operating action is induced for evidence."
+  ],
+  "local_installation": "Separate local installation and complete-generation sealing belong to the producing task. This source publication records neither complete local installation nor runtime loading or natural affected recovery.",
+  "main_commit": "d894ad98388b0f81db1c08824d485ba2f1f19b35",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/435",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "After exact reviewed local helper and consumer-hunk installation, seal the complete source and runtime generation using the existing installer. Source publication, local generation installation, future manual loading and natural affected exercise remain separate. No initial start, worker restart, post-stop resume, lifetime extension, broker/provider request or order is performed.",
+  "scope": "shared",
+  "source_commit": "12fa9537e60fb09c85857294b2b5fa4705d811fc",
+  "summary": "Atlas 15-minute admitted-worker SQLite setup contention repair published with portable offline evidence",
+  "tests": [
+    {
+      "command": "python -B tests/check_isolated_intraday_renewal_storage.py",
+      "completed_at_utc": "2026-10-27T12:37:07.981379+00:00",
+      "passed_cases": 24,
+      "scope": "Exact canonical author, immutable queue, isolated source and fresh common-main candidate"
+    }
+  ]
+}
