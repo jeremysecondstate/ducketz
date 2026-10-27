@@ -146,12 +146,51 @@ def configuration_digest(value):
     return _sha({k: v for k, v in value.items() if k != "configuration_sha256"})
 
 
-def _atomic(path: Path, value):
+_NATIVE_PLAIN = _plain
+_NATIVE_CANONICAL = canonical
+_NATIVE_JSON_LOADS = json.loads
+_NATIVE_JSON_DUMPS = json.dumps
+_NATIVE_JSON_DECODER = json._default_decoder
+_NATIVE_JSON_DECODE = type(_NATIVE_JSON_DECODER).decode
+_NATIVE_JSON_RAW_DECODE = type(_NATIVE_JSON_DECODER).raw_decode
+_NATIVE_JSON_SCAN_ONCE = _NATIVE_JSON_DECODER.scan_once
+_NATIVE_JSON_ENCODER = json.JSONEncoder
+_NATIVE_JSON_ENCODE = json.JSONEncoder.encode
+_NATIVE_JSON_ITERENCODE = json.JSONEncoder.iterencode
+
+
+def _native_queue_json_codec():
+    decoder = getattr(json, "_default_decoder", None)
+    encoder = getattr(json, "JSONEncoder", None)
+    return (canonical is _NATIVE_CANONICAL and _plain is _NATIVE_PLAIN
+        and json.loads is _NATIVE_JSON_LOADS and json.dumps is _NATIVE_JSON_DUMPS
+        and decoder is _NATIVE_JSON_DECODER
+        and getattr(type(decoder), "decode", None) is _NATIVE_JSON_DECODE
+        and getattr(type(decoder), "raw_decode", None) is _NATIVE_JSON_RAW_DECODE
+        and getattr(getattr(decoder, "decode", None), "__func__", None) is _NATIVE_JSON_DECODE
+        and getattr(getattr(decoder, "raw_decode", None), "__func__", None) is _NATIVE_JSON_RAW_DECODE
+        and getattr(decoder, "scan_once", None) is _NATIVE_JSON_SCAN_ONCE
+        and encoder is _NATIVE_JSON_ENCODER
+        and getattr(encoder, "encode", None) is _NATIVE_JSON_ENCODE
+        and getattr(encoder, "iterencode", None) is _NATIVE_JSON_ITERENCODE)
+
+
+def _atomic(path: Path, value, *, native_json=False):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
     try:
         with temporary.open("xb") as handle:
-            handle.write(canonical(value))
+            if native_json and _native_queue_json_codec():
+                try:
+                    payload = json.dumps(value, sort_keys=True, separators=(",", ":"),
+                        ensure_ascii=False, allow_nan=False).encode("utf-8")
+                except (TypeError, ValueError):
+                    # Native decoding accepts nonfinite constants; keep the
+                    # original normalization and errors for those rare values.
+                    payload = canonical(value)
+            else:
+                payload = canonical(value)
+            handle.write(payload)
             handle.flush()
             import os
             os.fsync(handle.fileno())
@@ -176,6 +215,9 @@ def _atomic(path: Path, value):
         except OSError:
             pass
         raise
+
+
+_NATIVE_ATOMIC = _atomic
 
 
 @dataclass(frozen=True)
@@ -581,13 +623,36 @@ class QuarterHourMarketCollector:
     def _collect(self, key, task):
         request = SourceRequest(**task["request"])
         started = instant(self.clock())
-        previous = QuarterHourMarketCollector._existing_settled_receipt(self, key, task, request)
+        recovery_reader = QuarterHourMarketCollector._existing_settled_receipt
+        native_recovery = (type(self) is QuarterHourMarketCollector
+            and recovery_reader is QuarterHourMarketCollector._native_recovery_reader
+            and _native_queue_json_codec())
+        previous = recovery_reader(self, key, task, request)
         if previous is not None:
             path, recovered = previous
             with self.queue_lock_timing.observe(self.lock, "orphan_commit"):
-                state = self._state()
-                QuarterHourMarketCollector._apply_collection_transition(self, state, key, path, recovered, recovered=True)
-                _atomic(self.state_path, state)
+                state_reader = self._state
+                native_state = (getattr(state_reader, "__func__", None)
+                    is QuarterHourMarketCollector._native_state_reader
+                    and self.state_path.exists() and _native_queue_json_codec())
+                state = state_reader()
+                transition = QuarterHourMarketCollector._apply_collection_transition
+                transition(self, state, key, path, recovered, recovered=True)
+                # Exact native readers produce builtin JSON trees with string
+                # keys. Recovery adds only decoded receipt values, a native
+                # relative path and the original numeric attempt increment.
+                # Avoid allocating a second full queue tree just to serialize it.
+                if (native_recovery and native_state
+                        and recovery_reader is QuarterHourMarketCollector._native_recovery_reader
+                        and QuarterHourMarketCollector._existing_settled_receipt is recovery_reader
+                        and getattr(self._state, "__func__", None)
+                            is QuarterHourMarketCollector._native_state_reader
+                        and transition is QuarterHourMarketCollector._native_transition
+                        and QuarterHourMarketCollector._apply_collection_transition is transition
+                        and _atomic is _NATIVE_ATOMIC and _native_queue_json_codec()):
+                    _atomic(self.state_path, state, native_json=True)
+                else:
+                    _atomic(self.state_path, state)
             return recovered
         blocked = self._read_queue("source_block", lambda state: state.get("source_blocks", {}).get(request.identity))
         if started - instant(task["quarter_end"]) > timedelta(hours=48):
@@ -631,6 +696,8 @@ class QuarterHourMarketCollector:
             if _settled(recovered) and recovered.get("source_id") == request.source_id:
                 return path, recovered
         return None
+
+    _native_recovery_reader = _existing_settled_receipt
 
     def _write_collection_result(self, key, task, request, started, result):
         receipt = instant(self.clock())
@@ -719,6 +786,8 @@ class QuarterHourMarketCollector:
                     "snapshot": str(path.relative_to(self.root))}
             delay = min(self.maximum_retry_seconds, self.retry_seconds * 2 ** min(saved["attempts"] - 1, 16))
             saved["due_at"] = (receipt + timedelta(seconds=delay)).isoformat()
+
+    _native_transition = _apply_collection_transition
 
     def expire_tasks(self, keys, *, maximum=32, reviewed_tasks=None):
         """Explicit bounded maintenance only; the normal scheduler never calls this.
