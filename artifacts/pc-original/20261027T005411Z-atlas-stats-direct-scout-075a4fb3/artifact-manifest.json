@@ -1,0 +1,44 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-27T00:54:32.253935Z",
+  "completion_id": "20261027T005411Z-atlas-stats-direct-scout-075a4fb3",
+  "details": [
+    "Actor Atlas; task Atlas Trader Representative; six original Scout daily scientific outcomes observed directly from actual public native data. Original source plan probabilities, targets, labels and recorded policy remain exact.",
+    "Shared analysis is the combined Stats revision. Unchanged Atlas and Scout rows, every367previous score, the first midnight revision and original publication ancestry are preserved.",
+    "Explicit direct-observation provenance binds the selected original source plan and native raw input hashes. No peer or cumulative receipt is fabricated and canonical Atlas scientific history is unchanged.",
+    "Peer applicability: same scientific combined Stats output; no transfer of symbol model tuning, raw data, fitted models, account state, execution ledgers, native paths or local bindings.",
+    "Five original Scout outcomes and original Atlas missing outcomes remain genuinely unavailable after supported public scientific alternatives; no synthetic observations, tolerance changes, trader controls, orders or deployment."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261027T005411Z-atlas-stats-direct-scout-075a4fb3/gameplan-stats/20261027T005411Z-atlas-stats-direct-scout-075a4fb3/stats-outcome-revision.json",
+      "expected_sha256": "721fad3d139ab2441ed62c6267a85cb82282e1305adb9d002df42b2ad591312b",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261027T005411Z-atlas-stats-direct-scout-075a4fb3/stats-outcome-revision.json",
+      "published_sha256": "721fad3d139ab2441ed62c6267a85cb82282e1305adb9d002df42b2ad591312b",
+      "published_size": 436787,
+      "sha256": "721fad3d139ab2441ed62c6267a85cb82282e1305adb9d002df42b2ad591312b",
+      "size": 436787,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "721fad3d139ab2441ed62c6267a85cb82282e1305adb9d002df42b2ad591312b",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261027T005411Z-atlas-stats-direct-scout-075a4fb3/stats-outcome-revision.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "human-authorized-development",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "shared-analysis",
+  "source_head": "90704d21801f60426493bd6cc650a7fac38d4f61",
+  "summary": "Atlas Trader Representative: publish direct original Scout scientific outcomes in combined Stats",
+  "symbols": []
+}
