@@ -1,0 +1,33 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T204319Z-06863d82294b4efe836f3c0f7c327e1c",
+  "files": [
+    "ml/intraday/local_forecast.py",
+    "ml/intraday/scout_local_execution.py",
+    "tests/test_intraday_snapshot_witness.py",
+    "tests/test_intraday_snapshot_validation_cache.py"
+  ],
+  "limitations": [
+    "Offline fixtures establish only reviewed snapshot validation and execution behavior. Live cycle duration, queue contention and affected trading recovery require separate loaded-version and session evidence.",
+    "Original source receipt validation, scientific qualification, saved local recipes and models, probabilities, timing gates, reservations and order identities remain authoritative.",
+    "Private operating evidence, raw data, fitted models, saved recipes, credentials, account state, ledgers, task memory and local bindings are excluded from this shared source packet.",
+    "This revision supersedes Completion-Record 20261027T203555Z-9f8bd682dce94f539277ae361e8412b4 and preserves its earlier source push 82c5346cd447b80d1a62289447757b0e718b1965. It adds generic byte-validation regressions with the current false custom-validator witness expectation."
+  ],
+  "main_sha": "de4cba8b11c66e746d0e7906968054ec1e6854af",
+  "privacy_review": "Reviewed shared source and offline test facts only; no private local paths, operating evidence, raw data, models, recipes, account state, credentials or task records.",
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/463"
+  ],
+  "runtime_implications": "Install reviewed compatible source separately. A fresh process starts with an empty bounded snapshot witness cache; the first unchanged snapshot validates normally before later exact-byte reuse. Scout loads compatible worker source at its next safe automatic iteration replacement within an authorized run. Preserve initial activation, manual stop, original deadline, pending work, recipes and order identities. Publication starts no trader.",
+  "scope": "Shared Scout executor processing; Atlas and Scout retain their own model recipes, symbols, saved observations and independent order state.",
+  "source_branch": "codex/scout/20261027T204319Z-06863d82294b4efe836f3c0f7c327e1c",
+  "source_record": "20261027T204319Z-06863d82294b4efe836f3c0f7c327e1c",
+  "source_sha": "0dbfd8055c653fa469fbe7304578df49dcb0b427",
+  "summary": "Scout removes duplicate frozen snapshot validation while preserving fresh raw-byte and execution checks.",
+  "tests": [
+    "Source, isolated courier and reviewed main candidates each passed 402 tests across 10 whole modules with 0 skips. Stage counts overlap.",
+    "All stages bind 153 exact source and dependency fingerprints; candidate import evidence and final raw Git blobs verify.",
+    "The revision also adopts generic byte-validation regressions and records a false custom-validator witness marker so only native validators can enable the optimization. Offline fixtures check exact-byte witness reuse, fresh row changes, malformed and tampered snapshots, detached mutable decoded values, bounded eviction, validator and store overrides, encoding differences and unchanged execution consequences."
+  ]
+}

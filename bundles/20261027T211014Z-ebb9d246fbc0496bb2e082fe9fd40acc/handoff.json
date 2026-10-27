@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T21:10:14.174546Z",
+  "id": "20261027T211014Z-ebb9d246fbc0496bb2e082fe9fd40acc",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout removes duplicate frozen snapshot validation while preserving fresh raw-byte and execution checks."
+}
