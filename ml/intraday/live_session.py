@@ -68,7 +68,8 @@ def eligible_reference(reference):
                     for session in equity_sessions(reference, reference + 3*STEP)))
 
 
-def prepare_market_collection(model_runtime, *, datastore, pc, symbols, clock=utcnow):
+def prepare_market_collection(model_runtime, *, datastore, pc, symbols, clock=utcnow,
+                              stopped=None, pause=None):
     """Latch data-only sources when this PC's private recipe explicitly opts in."""
     contract = getattr(model_runtime.get("dataset_builder"), "market_context_contract", None)
     if contract is None:
@@ -88,7 +89,11 @@ def prepare_market_collection(model_runtime, *, datastore, pc, symbols, clock=ut
         selected = {selection} if isinstance(selection, str) else set(selection)
         if not selected.issubset(available.get(kind, set())):
             raise ContractError("Frozen model context sources differ from this PC's collection configuration")
-    return collector_from_config(config, datastore=datastore, pc=pc, clock=clock)
+    options = {}
+    if pc == "Scout" and (stopped is not None or pause is not None):
+        from .market_collection import QueueInitializationRecovery
+        options["startup_recovery"] = QueueInitializationRecovery(stopped=stopped, pause=pause)
+    return collector_from_config(config, datastore=datastore, pc=pc, clock=clock, **options)
 
 
 def prepare_minute_provider(model_runtime, *, datastore, pc, symbols, source_dataset, clock=utcnow):
@@ -493,8 +498,12 @@ def _market_context_failure_diagnostics(collector, error):
     """Optional collector observations cannot replace the original worker error."""
     diagnostics = _symbol_exception_diagnostics(error)
     try:
-        from .market_collection import collection_failure_diagnostics
-        diagnostics["market_collection"] = collection_failure_diagnostics(collector, error)
+        from .market_collection import collection_failure_diagnostics, queue_initialization_failure_diagnostics
+        initialization = queue_initialization_failure_diagnostics(error)
+        if initialization is not None:
+            diagnostics["market_collection_initialization"] = initialization
+        if collector is not None:
+            diagnostics["market_collection"] = collection_failure_diagnostics(collector, error)
     except BaseException:
         pass
     return diagnostics
@@ -720,7 +729,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 symbols=symbols, source_dataset=config.source_dataset, clock=clock)
             startup_stage = "market_collection"
             market_collector = prepare_market_collection(model_runtime, datastore=root,
-                                                        pc=pc, symbols=symbols, clock=clock)
+                pc=pc, symbols=symbols, clock=clock,
+                **({"stopped": should_stop, "pause": pause} if pc == "Scout" else {}))
             startup_stage = "minute_feed"
             journal = AcquisitionJournal(root / "intraday/acquisition.sqlite3")
             minute_feed = QuarterHourMinuteFeed(provider=provider,store=store,journal=journal,histories=histories,
@@ -741,7 +751,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             scheduled_stop = (isinstance(exc,InterruptedError) and
                               (automatic_stop_requested_at[0] is not None or
                                check_lifecycle() in {"manual_stop", "session_end"}))
-            diagnostics = _symbol_exception_diagnostics(exc)
+            diagnostics = (_market_context_failure_diagnostics(None, exc)
+                           if startup_stage == "market_collection" else _symbol_exception_diagnostics(exc))
             stopped.set()
             status("STOPPED" if isinstance(exc,KeyboardInterrupt) or scheduled_stop else "FAILED",
                    stop_reason=stop_reason() if scheduled_stop else "manual_stop" if isinstance(exc,KeyboardInterrupt) else "startup_failure",

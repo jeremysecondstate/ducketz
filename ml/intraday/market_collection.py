@@ -274,12 +274,47 @@ def classify_error(exc: Exception) -> tuple[str, str]:
     return "ERROR", "Provider request failed (" + type(exc).__name__ + "); no success or coverage inferred"
 
 
+@dataclass(frozen=True)
+class QueueInitializationRecovery:
+    """Explicit same-startup recovery; callers retain stop/deadline authority."""
+    stopped: Callable
+    pause: Callable
+
+    def __post_init__(self):
+        if not callable(self.stopped) or not callable(self.pause):
+            raise ValueError("Startup recovery requires stop-aware callbacks")
+
+
+@dataclass(frozen=True)
+class _QueueInitializationFailure:
+    diagnostics_json: bytes
+
+
+def queue_initialization_failure_diagnostics(error):
+    """Read only our bounded sanitized attachment, detached from the error."""
+    try:
+        saved = getattr(error, "_intraday_queue_initialization_failure", None)
+        if (type(saved) is not _QueueInitializationFailure
+                or type(saved.diagnostics_json) is not bytes
+                or len(saved.diagnostics_json) > 65536):
+            return None
+        value = json.loads(saved.diagnostics_json)
+        if value.get("schema_version") != "intraday-market-queue-initialization-v1":
+            return None
+        return value
+    except BaseException:
+        return None
+
+
 class QuarterHourMarketCollector:
     """Independent resumable source queue; model success cannot gate collection."""
 
     def __init__(self, root: Path | str, *, symbols: Sequence[str], requests=None,
                  adapters=None, clock: Callable = _now, retry_seconds=30,
-                 maximum_retry_seconds=1800, max_records=100_000, configuration_sha256=None):
+                 maximum_retry_seconds=1800, max_records=100_000, configuration_sha256=None,
+                 startup_recovery: QueueInitializationRecovery | None = None):
+        if startup_recovery is not None and type(startup_recovery) is not QueueInitializationRecovery:
+            raise ValueError("Invalid queue initialization recovery contract")
         self.root = Path(root).resolve()
         self.symbols = tuple(str(x).strip().upper() for x in symbols)
         if not self.symbols or len(set(self.symbols)) != len(self.symbols):
@@ -312,7 +347,73 @@ class QuarterHourMarketCollector:
         def check_scope(state):
             if state.get("symbols") != list(self.symbols):
                 raise ValueError("Saved collection scope belongs to another symbol configuration")
-        self._read_queue("initialize", check_scope)
+        self._initialize_queue(check_scope, startup_recovery)
+
+    def _native_initialization_timeout(self, error):
+        """Only the exact native queue-enter failure can repeat initialization."""
+        try:
+            if (type(self) is not QuarterHourMarketCollector
+                    or type(self.lock) is not FileLock
+                    or getattr(self._read_queue, "__func__", None) is not self._native_queue_reader.__func__
+                    or getattr(self._state, "__func__", None) is not self._native_state_reader.__func__):
+                return False
+            from filelock import _api
+            poll = self.lock._poll_until_acquired.__func__
+            if (poll is not getattr(_api.BaseFileLock, "_poll_until_acquired", None)
+                    or poll.__module__ != "filelock._api"
+                    or poll.__name__ != "_poll_until_acquired"):
+                return False
+            native_timeout = poll.__globals__.get("Timeout")
+            if (not isinstance(native_timeout, type) or type(error) is not native_timeout
+                    or type(getattr(error, "lock_file", None)) is not str
+                    or error.lock_file != self.lock.lock_file):
+                return False
+            trace = error.__traceback__
+            if trace is None or trace.tb_frame.f_code is not self._initialize_queue.__func__.__code__:
+                return False
+            trace = trace.tb_next
+            return (trace is not None and trace.tb_frame.f_code is self._native_queue_reader.__func__.__code__
+                    and observed_lock_acquire_trace(trace.tb_next, self.lock))
+        except BaseException:
+            return False
+
+    def _initialize_queue(self, check_scope, recovery):
+        attempts, maximum = 0, 3 if recovery is not None else 1
+        try:
+            for index in range(maximum):
+                if recovery is not None and recovery.stopped():
+                    raise InterruptedError("Manual session stopped before market collection initialized")
+                attempts += 1
+                try:
+                    self._read_queue("initialize", check_scope)
+                except BaseException as error:
+                    if (recovery is None or index + 1 == maximum
+                            or not self._native_initialization_timeout(error)):
+                        raise
+                    if recovery.stopped():
+                        raise InterruptedError("Manual session stopped during market collection initialization") from error
+                    recovery.pause(1.0)
+                    if recovery.stopped():
+                        raise InterruptedError("Manual session stopped during market collection initialization") from error
+                    continue
+                if recovery is not None and recovery.stopped():
+                    raise InterruptedError("Manual session stopped after market collection initialization")
+                return
+        except BaseException as error:
+            # The constructor may never return a collector. Preserve its exact
+            # failure-time observations on the original exception, without
+            # replacing that error or retaining paths, payloads or provider text.
+            try:
+                detail = {"schema_version": "intraday-market-queue-initialization-v1",
+                          "attempts": attempts, "maximum_attempts": maximum,
+                          "recovery_enabled": recovery is not None,
+                          "collection": collection_failure_diagnostics(self, error)}
+                raw = json.dumps(detail, sort_keys=True, allow_nan=False).encode("utf-8")
+                if len(raw) <= 65536:
+                    error._intraday_queue_initialization_failure = _QueueInitializationFailure(raw)
+            except BaseException:
+                pass
+            raise
 
     def _state(self):
         if self.state_path.exists():
