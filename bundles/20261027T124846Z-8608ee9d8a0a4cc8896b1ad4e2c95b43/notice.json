@@ -1,0 +1,60 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T124458Z-aa76d81779b349aeb606f553c3c8ccfd",
+  "change_id": "20261027T124458Z-aa76d81779b349aeb606f553c3c8ccfd",
+  "details": [
+    "Atlas Trader Representative preserves diagnostic-only terminal counters, cursors and known failure context before existing worker cleanup. Applicable to either PC only when its reviewed installed controller has the matching renewal protocol and corresponding consumer hunks.",
+    "An ancestor whose existing ten-second grace expires may attach an exact descendant terminal snapshot reference. Bind original session, token, handoff, host source, owner, controller and parent PID/birth identities; never accept that snapshot as a successful final result or continuation authority.",
+    "Keep original grace, process-handle termination, return codes, unknown-failure behavior, manual-stop-first latch, independent states, science, order identities, deadlines and stock policy. Missing or malformed diagnostic evidence cannot change terminal behavior or start or restart a trader.",
+    "Publish only the narrow compatibility patch, exact source extracts with hashes and standard-library extracted-leaf fixtures. The full locally composed controller is not copied onto canonical main; exact local source installation, whole-consumer tests and complete generation sealing remain separate."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/trader-relay-terminal-evidence.patch",
+      "sha256": "4b3104ad8dd9a24bc398ae5823fd97d2f378b8571544316568a19b85973c354d"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/trader-relay-terminal-evidence.json",
+      "sha256": "72fa0752a3d24deaf35ccaeaadf2c1c2b9ffe5913ab3a0ac10bd1fbb723e40be"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_trader_relay_terminal_evidence.py",
+      "sha256": "f7891446197e4123a793ca696fe732a6e815ad4460b9592e2d99c6a46d89a159"
+    }
+  ],
+  "limitations": [
+    "Nine portable extracted-leaf cases include thirteen forged-identity subcases and cover timeout references, original outcomes, manual stops, unavailable birth and malformed or inaccessible diagnostics. They do not prove composed consumer integration or natural runtime recovery.",
+    "The patch applies only to an existing reviewed renewal consumer with matching source or corresponding reviewed hunks. Preserve each local composition and do not install a whole foreign controller.",
+    "A terminal snapshot is evidence only. It supplies no successful handoff, completion, renewal, initial start, post-stop restart or session lifetime extension. Original historical missing evidence remains missing."
+  ],
+  "local_installation": "Atlas completed exact reviewed local controller-hunk installation and complete531-source generation b51db4ef98fb4a6dc3b23c3b8e9d6deb7d9816fda7bc0bf709f541d74bfdb06b. It preserves530otherparent source members and unchanged runtime. The composed installation has10fullprotocol plus13isolatedrealcontroller cases and35coldsetup cases. Publication, installation, loaded code and natural affected exercise remain separate; the ended15-minute session is not resumed.",
+  "main_commit": "5e7e3669cf4f79001948a4e6a1bb42681bafc7b0",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/437",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "After exact-preimage local consumer-hunk installation, seal the complete reviewed source and runtime generation using the existing installer. Publication, installed generation, loaded code and naturally affected exercise remain separate. A terminally ended session stays ended; Jeremy alone chooses the next ordinary manual start. No broker/provider request or trader control is performed.",
+  "scope": "shared",
+  "source_commit": "2f958f1f4ecef4282e1b684ab0cf34000325074f",
+  "summary": "Atlas controller terminal diagnostics published and installed; ended session remains stopped",
+  "tests": [
+    {
+      "command": "python -B tests/check_trader_relay_terminal_evidence.py",
+      "completed_at_utc": "2026-10-27T12:46:19.191329+00:00",
+      "forged_identity_subcases": 13,
+      "passed_cases": 9,
+      "scope": "Exact canonical author, immutable queue, isolated source and fresh common-main candidate"
+    },
+    {
+      "breakdown": {
+        "cold_storage_setup": 35,
+        "full_controller_protocol": 10,
+        "isolated_controller": 13
+      },
+      "completed_at_utc": "2026-10-27T12:44:27.503718+00:00",
+      "passed_cases": 58,
+      "scope": "Exact installed consumer: separate full protocol, real isolated controller, and composed cold setup checks"
+    }
+  ]
+}

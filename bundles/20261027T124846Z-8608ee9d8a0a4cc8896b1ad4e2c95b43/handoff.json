@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T12:48:46.925308Z",
+  "id": "20261027T124846Z-8608ee9d8a0a4cc8896b1ad4e2c95b43",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas controller terminal diagnostics published and installed; ended session remains stopped"
+}
