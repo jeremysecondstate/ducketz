@@ -1,0 +1,39 @@
+{
+  "artifact_commit_sha": "210e80c03b75131f17c4a49e48842dbb29a11911",
+  "artifact_completion_id": "20261027T014124Z-atlas-legacy-original-outcomes-15aa1547",
+  "author": "Atlas",
+  "branch": "main",
+  "change_id": "20261027T014124Z-atlas-legacy-original-outcomes-15aa1547",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/210e80c03b75131f17c4a49e48842dbb29a11911",
+  "files": [
+    "artifacts/pc-original/20261027T014124Z-atlas-legacy-original-outcomes-15aa1547/artifact-manifest.json",
+    "artifacts/pc-original/20261027T014124Z-atlas-legacy-original-outcomes-15aa1547/gameplan-stats/20261027T014124Z-atlas-legacy-original-outcomes-15aa1547/original-outcome-supplement.json"
+  ],
+  "limitations": [
+    "Only derived original scientific outcomes are exported; all raw native observations, fitted models and private operating data remain local.",
+    "Absent historical price and direction-policy metadata remain unrecorded; original target definitions and every source edition are retained.",
+    "Current combined Gameplan and Stats display are unchanged; peer supplemental adoption remains unproved."
+  ],
+  "remote_sha": "210e80c03b75131f17c4a49e48842dbb29a11911",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scientific output only; no source deployment, trader start or restart, order, or operating prerequisite.",
+  "scope": "symbol-specific",
+  "summary": "Atlas scientific Stats:56 original September outcomes published with exact source editions",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-27T01:45:56.392010+00:00",
+      "description": "Independent native prices, original probability/cost/label math, full prior history and source-edition identities passed",
+      "output_sha256": "2a70498cb06fd399f2df728c8549b24b6a5a12f2c6afcf5dcf60cd3f1791eac2"
+    },
+    {
+      "completed_at_utc": "2026-10-27T01:41:23.792484+00:00",
+      "description": "Exact native cumulative56-original readback and all8771 prior scores preserved",
+      "output_sha256": "62418687d47ca48bf5ff5b7354b08137d82a4adc6270b56312442966eae66907"
+    },
+    {
+      "completed_at_utc": "2026-10-27T01:47:11.989193+00:00",
+      "description": "Committed output, namespace and remote readback passed",
+      "output_sha256": "2a9335e84f2b557b4262dda8f90aca2dd8d9ca5d8c7851a21e1b78227f3fc51c"
+    }
+  ]
+}

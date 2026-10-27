@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T01:47:13.378319Z",
+  "id": "20261027T014713Z-e6bffd8758ae42de84466bd5cbf0b0ec",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas scientific Stats:56 original September outcomes published with exact source editions"
+}
