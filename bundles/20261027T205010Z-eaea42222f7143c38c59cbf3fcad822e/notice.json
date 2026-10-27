@@ -1,0 +1,64 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T204626Z-1b013e7c52f5425e9a1e9e67f8110c18",
+  "change_id": "20261027T204626Z-1b013e7c52f5425e9a1e9e67f8110c18",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative; use a standard-metaclass origin check with the original typing.Mapping fallback for each provenance-copy runtime check while preserving typing annotations and original transformations.",
+    "Full result bytes and identities, frozen proofs, data/session/OHLCV checks, probabilities, targets, quantities and independent manual/order controls remain unchanged.",
+    "Share only exact-preimage patch, extracted function metadata and portable offline checker; both PCs retain local composition and model policy."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_sizing_mapping_dispatch.py",
+      "sha256": "2d52bb8e8183ac77478a3efabcf403f8b0cf277d38436c15040a5018454337bc"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-sizing-mapping-dispatch.json",
+      "sha256": "a7b663d7fda7d88e7e20431be9d74037346750d5c4d27a363294adb1184d3039"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-sizing-mapping-dispatch.patch",
+      "sha256": "9f36b733c5de8c85aa10d60f44d7ceb64e06fcc18b3b2d033c35fef7bbcc5467"
+    }
+  ],
+  "limitations": [
+    "92 portable offline cases; 131 application cases separately recorded against the exact local candidate.",
+    "Twenty large full-result runs and forty-four boundary/exception cases retain exact canonical tested results. A paired synthetic benchmark improves median full-sizing time about thirteen percent; it does not establish original whole wall cause, the separate low-CPU metadata stall, or sustained live recovery.",
+    "Eight paired synthetic runs had substantial variation; five of eight candidate runs faster. Timing is component evidence only."
+  ],
+  "local_installation": "Complete531source generation c60369c723a104924ab313d82a412fba8a16e0362c0f748ec81a486e2b0403f4 sealed after exact single-file local installation;530parentmembers and frozenruntime retained. Full source/runtime seal validation succeeded; all source bytes match131tested composition.",
+  "main_commit": "268c39f629aa95ab788f8d0b76351a633ba26da4",
+  "natural_affected_exercise": "UNPROVED. Broad sizing latency and distinct low-CPU forecast metadata stall remain open. No induced live operation.",
+  "privacy_review": "Only generic shared source patch, extracted function, public hashes, validation and local source installation facts. Private task/chat/process identities, bindings, credentials, account state, raw evidence, data and fitted models excluded. Both PCs preserve local model policy. No peer acceptance or nightly operating prerequisite.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/462",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Review exact-preimage source hunk and seal complete local generation with tools/trader_installation.py. Natural renewal is confined to an existing manually started session. Publication, installation, loading and affected live recovery remain separate. No initial start, post-stop restart, lifetime extension, live test or broker/provider/order operation.",
+  "runtime_loading": "First post-install capture retained an exact older-generation own execution worker in flight. New-generation loading and naturally affected recovery remain separate facts.",
+  "scope": "shared",
+  "source_commit": "171f47418abda97e923f3559f69d5c99fef6159c",
+  "summary": "Atlas 15m reduces sizing provenance-copy dispatch overhead; reviewed shared patch published and complete local generation sealed",
+  "tests": [
+    {
+      "network_attempts": 0,
+      "passed": 131,
+      "scope": "Complete531source composed candidate, exact final source"
+    },
+    {
+      "passed_each": 92,
+      "scope": "Portable extracted-function semantics in queue/source/main"
+    },
+    {
+      "passed": 98,
+      "scope": "Actual sealed target source/manifest plus portable checks"
+    },
+    {
+      "full_large_canonical_payload_and_id_runs": 20,
+      "network_attempts": 0,
+      "scope": "Real module differential fixtures",
+      "small_cases": 44
+    }
+  ]
+}
