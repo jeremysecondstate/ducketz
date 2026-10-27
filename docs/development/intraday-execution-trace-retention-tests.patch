@@ -1,12 +1,63 @@
 --- a/tests/test_intraday_recovery_latency.py
 +++ b/tests/test_intraday_recovery_latency.py
-@@ -343,7 +343,8 @@
+@@ -73,6 +73,9 @@
+         env.forecast(offset=offset)
+     expected = {forecast["forecast_id"] for forecast in required}
+     # Exercise cold referenced-original validation; warm reuse is checked separately.
++    # Clearing process memory alone leaves authenticated cross-worker proofs.
++    from ml.intraday.forecast_header_cache import DurableForecastHeaders
++    monkeypatch.setattr(DurableForecastHeaders, "load_many", lambda *args, **kwargs: {})
+     getattr(env.store, "_forecast_header_cache", {}).clear()
+     env.store._execution_forecast_cache.clear()
+     decoded = []
+@@ -343,7 +346,8 @@
      assert diagnostic["snapshot_observed_at"] == env.executor.portfolio.observed_at
      assert len(diagnostic["execution_phases"]) <= 32
      assert set(diagnostic) == {"execution_stage", "execution_elapsed_seconds",
 -        "execution_stage_elapsed_seconds", "execution_phases", "lease_expires_at", "snapshot_observed_at"}
 +        "execution_stage_elapsed_seconds", "execution_phases", "lease_expires_at", "snapshot_observed_at",
-+        "execution_phase_summary"}
++        "execution_phase_summary", "lease_acquisition"}
      assert env.executor.lease.token not in raw and env.config.account_fingerprint not in raw
      assert "account_equity" not in raw and "quote" not in json.dumps(diagnostic)
+ 
+--- a/tests/test_intraday_submission_diagnostics.py
++++ b/tests/test_intraday_submission_diagnostics.py
+@@ -86,6 +86,12 @@
+     in_final = [False]
+     final_renewals = []
+     failure_clock = []
++    submission_started = []
++    diagnostics_init = execution._SubmissionDiagnostics.__init__
++
++    def observed_diagnostics_init(self):
++        diagnostics_init(self)
++        submission_started.append(self.started)
+ 
+     def delayed_prepare():
+         result = prepare()
+@@ -123,6 +129,7 @@
+             advance(env, 6)
+         env.broker.verify_read_snapshot = delayed_verify
+ 
++    monkeypatch.setattr(execution._SubmissionDiagnostics, "__init__", observed_diagnostics_init)
+     monkeypatch.setattr(env.broker, "prepare_order_submission", delayed_prepare)
+     monkeypatch.setattr(execution.HorizonLedger, "reserve_intraday", delayed_native)
+     monkeypatch.setattr(AccountAuthority, "reserve_intraday", delayed_account)
+@@ -137,10 +144,15 @@
+                            ("reserve_account", 5), ("broker_snapshot_identity", 6),
+                            ("current_manual_session_and_account", 7)):
+         assert any(phase["stage"] == stage and phase["elapsed_seconds"] >= seconds for phase in phases)
+-    assert timings["elapsed_seconds"] == 25
++    assert len(submission_started) == 1
++    expected_elapsed = round(pd.Timestamp(failure_clock[0]).timestamp() - submission_started[0], 6)
++    assert timings["elapsed_seconds"] == expected_elapsed and expected_elapsed >= 25
+     assert evidence["submission_final_gate"]["checked_at"] == failure_clock[0]
+     assert pd.Timestamp(failure_clock[0]) < env.now
+-    assert evidence["submission_final_gate"]["quote_age_seconds"] == 84
++    quote = env.executor.portfolio.quotes[forecast["symbol"]]
++    assert evidence["submission_final_gate"]["quote_observed_at"] == quote.freshness_observed_at
++    assert evidence["submission_final_gate"]["quote_age_seconds"] == (
++        pd.Timestamp(failure_clock[0]) - pd.Timestamp(quote.freshness_observed_at)).total_seconds()
+     assert len(phases) <= 32 and not env.broker.submissions
+ 
  
