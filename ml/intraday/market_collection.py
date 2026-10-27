@@ -417,26 +417,14 @@ class QuarterHourMarketCollector:
     def _collect(self, key, task):
         request = SourceRequest(**task["request"])
         started = instant(self.clock())
-        # Recover a crash after durable receipt creation but before queue commit.
-        folder = self.root / "snapshots" / instant(task["quarter_start"]).date().isoformat() / key
-        for path in sorted(folder.glob("*.json"), reverse=True):
-            recovered = json.loads(path.read_text(encoding="utf-8"))
-            if recovered.get("snapshot_sha256") != snapshot_digest(recovered):
-                raise ValueError("Orphan market receipt failed checksum validation")
-            from .market_collection_index import index_receipt
-            index_receipt(self.root, path, recovered)
-            if _settled(recovered) and recovered.get("source_id") == request.source_id:
-                with self.queue_lock_timing.observe(self.lock, "orphan_commit"):
-                    state = self._state()
-                    saved = state["tasks"][key]
-                    relative = str(path.relative_to(self.root))
-                    if relative not in saved["snapshots"]:
-                        saved["snapshots"].append(relative)
-                        saved["attempts"] += 1
-                    saved["status"] = recovered["status"]
-                    saved["window_finalized"] = recovered.get("window_finalized", False)
-                    _atomic(self.state_path, state)
-                return recovered
+        previous = QuarterHourMarketCollector._existing_settled_receipt(self, key, task, request)
+        if previous is not None:
+            path, recovered = previous
+            with self.queue_lock_timing.observe(self.lock, "orphan_commit"):
+                state = self._state()
+                QuarterHourMarketCollector._apply_collection_transition(self, state, key, path, recovered, recovered=True)
+                _atomic(self.state_path, state)
+            return recovered
         with self.queue_lock_timing.observe(self.lock, "source_block"):
             blocked = self._state().get("source_blocks", {}).get(request.identity)
         if started - instant(task["quarter_end"]) > timedelta(hours=48):
@@ -460,6 +448,28 @@ class QuarterHourMarketCollector:
                 if type(code) is int and 100 <= code <= 599:
                     evidence["http_status"] = code
                 result = CollectionResult([], status, reason, evidence)
+        path, snapshot, receipt = QuarterHourMarketCollector._write_collection_result(self, key, task, request, started, result)
+        with self.queue_lock_timing.observe(self.lock, "receipt_commit"):
+            state = self._state()
+            QuarterHourMarketCollector._apply_collection_transition(self, state, key, path, snapshot,
+                recovered=False, request=request, receipt=receipt)
+            _atomic(self.state_path, state)
+        return snapshot
+
+    def _existing_settled_receipt(self, key, task, request):
+        # Recover a crash after durable receipt creation but before queue commit.
+        folder = self.root / "snapshots" / instant(task["quarter_start"]).date().isoformat() / key
+        for path in sorted(folder.glob("*.json"), reverse=True):
+            recovered = json.loads(path.read_text(encoding="utf-8"))
+            if recovered.get("snapshot_sha256") != snapshot_digest(recovered):
+                raise ValueError("Orphan market receipt failed checksum validation")
+            from .market_collection_index import index_receipt
+            index_receipt(self.root, path, recovered)
+            if _settled(recovered) and recovered.get("source_id") == request.source_id:
+                return path, recovered
+        return None
+
+    def _write_collection_result(self, key, task, request, started, result):
         receipt = instant(self.clock())
         if receipt < started:
             raise ValueError("Collection clock moved backwards")
@@ -524,20 +534,151 @@ class QuarterHourMarketCollector:
             os.fsync(handle.fileno())
         from .market_collection_index import index_receipt
         index_receipt(self.root, path, snapshot)
-        with self.queue_lock_timing.observe(self.lock, "receipt_commit"):
-            state = self._state()
+        return path, snapshot, receipt
+
+    def _apply_collection_transition(self, state, key, path, snapshot, *, recovered, request=None, receipt=None):
+        if recovered:
+            saved = state["tasks"][key]
+            relative = str(path.relative_to(self.root))
+            if relative not in saved["snapshots"]:
+                saved["snapshots"].append(relative)
+                saved["attempts"] += 1
+            saved["status"] = snapshot["status"]
+            saved["window_finalized"] = snapshot.get("window_finalized", False)
+        else:
             saved = state["tasks"][key]
             saved["attempts"] += 1
-            saved["status"] = status
+            saved["status"] = snapshot["status"]
             saved["window_finalized"] = snapshot["window_finalized"]
             saved["snapshots"].append(str(path.relative_to(self.root)))
-            if status == "NOT_AUTHORIZED":
+            if snapshot["status"] == "NOT_AUTHORIZED":
                 state.setdefault("source_blocks", {})[request.identity] = {"observed_at": receipt.isoformat(),
                     "snapshot": str(path.relative_to(self.root))}
             delay = min(self.maximum_retry_seconds, self.retry_seconds * 2 ** min(saved["attempts"] - 1, 16))
             saved["due_at"] = (receipt + timedelta(seconds=delay)).isoformat()
-            _atomic(self.state_path, state)
-        return snapshot
+
+    def expire_tasks(self, keys, *, maximum=32, reviewed_tasks=None):
+        """Explicit bounded maintenance only; the normal scheduler never calls this.
+        Keep task ownership across durable receipts and one fenced queue commit.
+        A failed task cannot prevent other proven successes from committing.
+        """
+        if (type(self) is not QuarterHourMarketCollector
+                or getattr(self._collect, "__func__", None) is not QuarterHourMarketCollector._collect
+                or getattr(self._state, "__func__", None) is not QuarterHourMarketCollector._state):
+            raise TypeError("Expiry maintenance requires the unmodified native collector")
+        if type(maximum) is not int or not 1 <= maximum <= 128:
+            raise ValueError("Expiry maintenance maximum must be between 1 and 128")
+        if (type(keys) not in (list, tuple) or len(keys) > maximum
+                or any(type(key) is not str or not re.fullmatch(r"[0-9]{8}T[0-9]{6}Z-[a-f0-9]{24}", key) for key in keys)
+                or len(set(keys)) != len(keys)):
+            raise ValueError("Expiry maintenance requires unique bounded native task keys")
+        if reviewed_tasks is not None and (
+                type(reviewed_tasks) is not dict or set(reviewed_tasks) != set(keys)
+                or any(type(value) is not str or not re.fullmatch(r"[a-f0-9]{64}", value)
+                       for value in reviewed_tasks.values())):
+            raise ValueError("Expiry maintenance requires exact reviewed task SHA256 bindings")
+        if reviewed_tasks is not None:
+            reviewed_tasks = reviewed_tasks.copy()
+        for key in keys:
+            try:
+                stamp = datetime.strptime(key[:16], "%Y%m%dT%H%M%SZ")
+            except ValueError:
+                raise ValueError("Expiry maintenance requires valid native quarter timestamps") from None
+            if stamp.minute % 15 or stamp.second:
+                raise ValueError("Expiry maintenance requires exact native quarter timestamps")
+        def task_bytes(value):
+            # _state owns decoded JSON trees; a nonfinite value is invalid,
+            # never interchangeable with the null that _plain would produce.
+            return json.dumps(value, sort_keys=True, separators=(",", ":"),
+                ensure_ascii=False, allow_nan=False).encode("utf-8")
+        report = {"prepared": 0, "committed": 0, "recovered": 0, "expired": 0, "committed_keys": [], "skipped_locked": [],
+                  "skipped_ineligible": [], "fenced": [], "receipts": []}
+        if not keys:
+            return report
+        from contextlib import ExitStack
+        prepared, first_failure = [], None
+        with ExitStack() as owned:
+            acquired = []
+            for key in sorted(keys):
+                task_lock = FileLock(str(self.root / (key + ".lock")), timeout=0)
+                try:
+                    owned.enter_context(task_lock)
+                except Timeout as error:
+                    if Path(error.lock_file).resolve() != Path(task_lock.lock_file).resolve():
+                        raise
+                    report["skipped_locked"].append(key)
+                else:
+                    acquired.append(key)
+            if not acquired:
+                return report
+            with self.queue_lock_timing.observe(self.lock, "step_due"):
+                state = self._state()
+                selected = {key: state["tasks"].get(key) for key in acquired}
+            for key in acquired:
+                try:
+                    task = selected[key]
+                    started = instant(self.clock())
+                    if (task is None or _settled(task) or instant(task["due_at"]) > started
+                            or started - instant(task["quarter_end"]) <= timedelta(hours=48)):
+                        report["skipped_ineligible"].append(key)
+                        continue
+                    expected = task_bytes(task)
+                    if (reviewed_tasks is not None
+                            and hashlib.sha256(expected).hexdigest() != reviewed_tasks[key]):
+                        report["fenced"].append(key)
+                        continue
+                    request = SourceRequest(**task["request"])
+                    start = instant(task["quarter_start"])
+                    if (start.minute % 15 or start.second or start.microsecond or start.nanosecond
+                            or instant(task["quarter_end"]) != start + STEP
+                            or key != start.strftime("%Y%m%dT%H%M%SZ") + "-" + request.identity):
+                        raise ValueError("Expiry maintenance task key or native interval binding differs")
+                    previous = QuarterHourMarketCollector._existing_settled_receipt(self, key, task, request)
+                    if previous is not None:
+                        path, snapshot = previous
+                        receipt = None
+                    else:
+                        result = CollectionResult([], "EXPIRED", "Unfinished source window exceeded the bounded 48-hour recovery horizon")
+                        path, snapshot, receipt = QuarterHourMarketCollector._write_collection_result(
+                            self, key, task, request, started, result)
+                    prepared.append((key, expected, path, snapshot, request, receipt))
+                    report["prepared"] += 1
+                except Exception as error:
+                    if first_failure is None:
+                        first_failure = (error, error.__traceback__)
+            if prepared:
+                try:
+                    with self.queue_lock_timing.observe(self.lock, "receipt_commit"):
+                        fresh = self._state()
+                        # Native _atomic normalizes nonfinite numbers. Decline
+                        # the whole publication instead of changing another
+                        # writer's invalid field; durable receipts remain orphans.
+                        task_bytes(fresh)
+                        for key, expected, path, snapshot, request, receipt in prepared:
+                            current = fresh["tasks"].get(key)
+                            try:
+                                unchanged = current is not None and task_bytes(current) == expected
+                            except (TypeError, ValueError):
+                                unchanged = False
+                            if not unchanged:
+                                report["fenced"].append(key)
+                                continue
+                            QuarterHourMarketCollector._apply_collection_transition(
+                                self, fresh, key, path, snapshot, recovered=receipt is None,
+                                request=request, receipt=receipt)
+                            report["committed"] += 1
+                            report["committed_keys"].append(key)
+                            report["recovered" if receipt is None else "expired"] += 1
+                            report["receipts"].append(snapshot)
+                        if report["committed"]:
+                            _atomic(self.state_path, fresh)
+                except Exception as commit_error:
+                    if first_failure is not None:
+                        raise commit_error from first_failure[0]
+                    raise
+            if first_failure is not None:
+                raise first_failure[0].with_traceback(first_failure[1])
+        return report
 
     def capability_manifest(self):
         from .market_collection_adapters import capability_catalog
