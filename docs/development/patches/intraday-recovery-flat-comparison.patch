@@ -1,0 +1,135 @@
+--- a/ml/intraday/recovered_population.py
++++ b/ml/intraday/recovered_population.py
+@@ -54,6 +54,123 @@
+ 
+ def _plain(value):
+     return json.loads(_json(value))
++
++
++def _plain_comparison_roots():
++    return (_plain, _json, _default, json.dumps, json.loads, json.JSONEncoder,
++            json.JSONDecoder, json._default_decoder, json.encoder, json.decoder, json.scanner)
++
++
++def _stdlib_function(value, module, name):
++    return (type(value) is type(_json) and value.__module__ == module.__name__
++            and value.__name__ == name and value.__code__.co_filename == module.__file__)
++
++
++def _native_json_comparison_state():
++    """Enable only ordinary stdlib initialization; otherwise keep normalization."""
++    try:
++        if any(type(module) is not type(json) for module in (json.encoder, json.decoder, json.scanner)):
++            return None
++        encoder, decoder = json.JSONEncoder, json.JSONDecoder
++        if (type(encoder) is not type or type(decoder) is not type
++                or encoder.__module__ != "json.encoder" or encoder.__name__ != "JSONEncoder"
++                or decoder.__module__ != "json.decoder" or decoder.__name__ != "JSONDecoder"
++                or type(json._default_decoder) is not decoder):
++            return None
++        metadata = {"__module__", "__qualname__", "__doc__", "__dict__", "__weakref__",
++                    "__firstlineno__", "__static_attributes__"}
++        methods = ((encoder, json.encoder, ("__init__", "default", "encode", "iterencode"),
++                    {"item_separator", "key_separator"}),
++                   (decoder, json.decoder, ("__init__", "decode", "raw_decode"), set()))
++        for cls, module, names, fields in methods:
++            namespace = cls.__dict__
++            if set(namespace) - metadata - set(names) - fields:
++                return None
++            if any(not _stdlib_function(namespace[name], module, name) for name in names):
++                return None
++        if (not _stdlib_function(json.dumps, json, "dumps")
++                or not _stdlib_function(json.loads, json, "loads")
++                or not _stdlib_function(json.encoder._make_iterencode, json.encoder, "_make_iterencode")
++                or type(json.encoder.encode_basestring_ascii) is not type(len)
++                or json.encoder.encode_basestring_ascii.__module__ != "_json"
++                or json.encoder.encode_basestring_ascii.__name__ != "encode_basestring_ascii"
++                or type(json.encoder.c_make_encoder) is not type
++                or json.encoder.c_make_encoder.__module__ != "_json"
++                or json.encoder.c_make_encoder.__name__ != "Encoder"):
++            return None
++        state = object.__getattribute__(json._default_decoder, "__dict__")
++        if (type(state) is not dict or set(state) != {"object_hook", "parse_float", "parse_int",
++                "parse_constant", "strict", "object_pairs_hook", "parse_object", "parse_array",
++                "parse_string", "memo", "scan_once"}
++                or state["object_hook"] is not None or state["object_pairs_hook"] is not None
++                or state["parse_int"] is not int or state["parse_float"] is not float
++                or state["strict"] is not True or type(state["memo"]) is not dict or state["memo"]
++                or state["parse_object"] is not json.decoder.JSONObject
++                or state["parse_array"] is not json.decoder.JSONArray
++                or state["parse_string"] is not json.decoder.scanstring
++                or type(state["scan_once"]).__module__ != "_json"
++                or type(state["scan_once"]).__name__ != "Scanner"
++                or type(state["parse_constant"]) is not type({}.__getitem__)
++                or state["parse_constant"].__self__ is not json.decoder._CONSTANTS):
++            return None
++        seams = (json.encoder.c_make_encoder, json.encoder.encode_basestring_ascii,
++                 json.encoder._make_iterencode, json.decoder.scanstring, json.scanner.make_scanner)
++        return (_plain_comparison_roots(), dict(encoder.__dict__), dict(decoder.__dict__),
++                dict(state), seams)
++    except (AttributeError, KeyError, TypeError):
++        return None
++
++
++_PLAIN_COMPARISON_STATE = _native_json_comparison_state()
++
++
++def _unchanged_identity_map(current, original):
++    return len(current) == len(original) and all(current.get(key) is value for key, value in original.items())
++
++
++def _flat_native_json_scalars(value):
++    if type(value) is not dict:
++        return False
++    for key, item in value.items():
++        if type(key) is not str or not key.isascii():
++            return False
++        kind = type(item)
++        if item is None or kind is bool or (kind is str and item.isascii()):
++            continue
++        # 1024 bits stays below Python's smallest decimal conversion limit.
++        if (kind is int and item.bit_length() <= 1024) or (kind is float and math.isfinite(item)):
++            continue
++        return False
++    return True
++
++
++def _plain_equal(actual, expected):
++    """Compare scalar JSON mappings without copying their retained proof strings.
++
++    This read-only shortcut retains generic normalization for other values and
++    replaced/instrumented serializers. Native/session/hash checks already ran.
++    Other callers of _plain continue to receive fresh owned JSON copies.
++    """
++    saved = _PLAIN_COMPARISON_STATE
++    if saved is not None:
++        try:
++            roots = _plain_comparison_roots()
++            # Reject replacements before inspecting cached-decoder attributes.
++            if (len(roots) == len(saved[0]) and all(current is native for current, native in zip(roots, saved[0]))
++                    and type(json._default_decoder) is json.JSONDecoder):
++                state = object.__getattribute__(json._default_decoder, "__dict__")
++                seams = (json.encoder.c_make_encoder, json.encoder.encode_basestring_ascii,
++                         json.encoder._make_iterencode, json.decoder.scanstring, json.scanner.make_scanner)
++                if (type(state) is dict
++                        and _unchanged_identity_map(json.JSONEncoder.__dict__, saved[1])
++                        and _unchanged_identity_map(json.JSONDecoder.__dict__, saved[2])
++                        and _unchanged_identity_map(state, saved[3])
++                        and all(current is native for current, native in zip(seams, saved[4]))
++                        and _flat_native_json_scalars(actual) and _flat_native_json_scalars(expected)):
++                    return actual == expected
++        except AttributeError:
++            pass
++    return _plain(actual) == expected
+ 
+ 
+ def _digest(value):
+@@ -300,7 +417,7 @@
+         # Both expected constructors return canonical JSON values;
+         # only canonical clock strings are assigned above. Validate/normalize
+         # the supplied actual value, retaining the same semantic comparison.
+-        return _plain(actual) == expected
++        return _plain_equal(actual, expected)
+     except (KeyError, TypeError, ValueError, OverflowError, ContractError):
+         return False
+ 

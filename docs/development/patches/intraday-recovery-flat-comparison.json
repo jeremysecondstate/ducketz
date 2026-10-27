@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "summary": "Avoid a JSON recopy only for native ASCII scalar comparison; retain all proof validation and normalization fallbacks.",
+  "path": "ml/intraday/recovered_population.py",
+  "before_sha256": "b4332be6731df6cfad346a5805d0522ba50b1bf207a4b20bb3cef7f25948d14b",
+  "after_sha256": "d3fd49563238c6683c38921a031d318570829a1400f71677faf2609683af80c3",
+  "patch_sha256": "c573a25ad7d239a96d9a500215e1f19e63197adb11664826a07cf13a6a784157",
+  "before_projection_sha256": "8bd0890ce6b3b1a9438606f61b9bc4439bc134a09d6a1ded78ddca4d3f919e15",
+  "after_projection_sha256": "1917c486fffb88f0150f5c271319dc9c42eddc454472ba4475731c86aa04fff0",
+  "scope": "shared",
+  "preserved": [
+    "Complete native source, session and retained evidence hash verification",
+    "Original scientific payload values and canonical output bytes",
+    "Generic JSON normalization for nonnative values and replaced serializer seams",
+    "Independent trader state, probabilities, targets, policy and manual/order controls"
+  ],
+  "runtime_implications": "Reviewed exact-preimage local source installation and complete generation sealing required. No trader operation is performed by this package.",
+  "limitations": [
+    "Portable function projection uses explicit unchanged source/session validation and clock adapters; actual full-module and complete-generation integration are separately tested.",
+    "Conservative stdlib metadata/state guards preserve ordinary initialization and later instrumentation; arbitrary deliberate metadata/code spoofing is outside the optimization premise.",
+    "Offline component evidence does not prove sustained live latency recovery."
+  ]
+}
