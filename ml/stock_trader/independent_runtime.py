@@ -44,6 +44,46 @@ CLOSE_EXIT_LEAD_SECONDS = 60
 MAXIMUM_QUOTE_CLOCK_WAIT_SECONDS = 5.
 
 
+class _BrokerReadTargetElapsed(ValueError):
+    """A local callback observed a valid saved cutoff before its first read."""
+
+    def __init__(self, evidence):
+        super().__init__("BROKER_READ_EXECUTION_WINDOW_CLOSED")
+        self.evidence = evidence
+
+
+def _broker_read_target_expiry(signals, *, as_of):
+    """Require original valid identities/windows, rather than exception text."""
+    try:
+        observed = utc(as_of)
+        expired, retained = [], []
+        if pd.isna(observed):
+            return None
+        for signal in signals:
+            raw = (signal.target_window_start, signal.actionable_until, signal.target_window_end)
+            identities = (signal.prediction_id, signal.symbol, signal.primary_horizon)
+            if any(not isinstance(value, str) or not value.strip() for value in (*raw, *identities)):
+                return None
+            start, deadline, end = (utc(value) for value in raw)
+            if any(pd.isna(value) for value in (start, deadline, end)) or not start < deadline <= end:
+                return None
+            if observed >= deadline:
+                expired.append({"prediction_id": signal.prediction_id, "symbol": signal.symbol,
+                    "primary_horizon": signal.primary_horizon, "target_window_start": signal.target_window_start,
+                    "target_window_end": signal.target_window_end, "actionable_until": signal.actionable_until})
+            else:
+                retained.append(signal.prediction_id)
+        if not expired:
+            return None
+        return {"schema_version": "gameplan-target-elapsed-before-broker-capture-v1",
+            "stage": "BEFORE_FIRST_BROKER_READ", "observed_at": observed.isoformat(),
+            "expired_signals": expired, "retained_signal_ids": sorted(retained),
+            "expired_instruction_replayed": False,
+            "continuation": "Next ordinary control pass reloads current due instructions; cadence and targets unchanged."}
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return None
+
+
 def _wait_for_current_quote_timestamps(portfolio, *, clock, sleep, deadline):
     """Let a recently delivered quote reach local time without relabeling it.
 
@@ -293,19 +333,30 @@ def run_independent_stock_trader_once(
         stable_identity = None
         ledger = None
         evidence = ()
+        local_target_expiry = None
         capture_started = utc(clock())
         local_day = capture_started.tz_convert("America/Los_Angeles").normalize()
         read_deadline = local_day + pd.Timedelta(hours=17)
-        if qualified:
-            read_deadline = min(read_deadline, *(utc(signal.actionable_until) for signal in qualified.values()))
+        signal_deadline = min((utc(signal.actionable_until) for signal in qualified.values()), default=None)
+        if signal_deadline is not None:
+            read_deadline = min(read_deadline, signal_deadline)
         maximum_retry_seconds = min(broker_state_retry_max_seconds, max(0.,
             (read_deadline - capture_started).total_seconds() - DEFAULT_BROKER_STATE_EXECUTION_LEAD_SECONDS))
 
         def capture_snapshot(_attempt_timestamp):
-            nonlocal stable_identity, ledger, evidence
+            nonlocal stable_identity, ledger, evidence, local_target_expiry
             if not read_gameplan_stock_activation_intent(root).active:
                 raise ValueError("TRADER_INACTIVE_DURING_BROKER_CAPTURE")
             now = utc(clock())
+            # A proved Gameplan cutoff before the first broker read is normal
+            # expiry. Older strategies and prior read attempts retain failures.
+            if signal_deadline is not None and now >= signal_deadline:
+                if sizing_policy == GAMEPLAN_SIZING_POLICY:
+                    elapsed = _broker_read_target_expiry(qualified.values(), as_of=now)
+                    if elapsed is not None:
+                        local_target_expiry = _BrokerReadTargetElapsed(elapsed)
+                        raise local_target_expiry
+                raise ValueError("BROKER_READ_EXECUTION_WINDOW_CLOSED")
             if now >= read_deadline or not stock_execution_window(now).executable:
                 raise ValueError("BROKER_READ_EXECUTION_WINDOW_CLOSED")
             identity = broker.stable_account_fingerprint()
@@ -370,6 +421,17 @@ def run_independent_stock_trader_once(
             ), order_evidence=evidence)
         except _BrokerStateCaptureFailure as failure:
             broker_state_capture = failure.metadata
+            if (isinstance(failure.cause, _BrokerReadTargetElapsed)
+                    and failure.cause is local_target_expiry
+                    and sizing_policy == GAMEPLAN_SIZING_POLICY
+                    and broker_state_capture["attempts"] == 1
+                    and not broker_state_capture["transient_failures"]
+                    and stable_identity is None and ledger is None):
+                # No broker observation, reservation or submission occurred in
+                # this pass. Expiry is a normal local stop, not capture failure.
+                metadata["target_elapsed_before_broker_capture"] = failure.cause.evidence
+                broker_state_capture = {**broker_state_capture, "status": "INTERRUPTED_PREDICTION_TARGET_ELAPSED"}
+                return finish("PREDICTION_TARGET_ELAPSED")
             return finish("HORIZON_BROKER_RECONCILIATION_UNAVAILABLE",
                           error=f"{type(failure.cause).__name__}: {failure.cause}")
         except Exception as exc:

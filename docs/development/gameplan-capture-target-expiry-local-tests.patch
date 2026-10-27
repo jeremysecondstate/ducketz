@@ -1,0 +1,15 @@
+# {"after_sha256": "9e2dec105be23e780473677520ba326343645c990a1e763fcbb2b79ced7fe25d", "before_sha256": "ca42832dc80e2e1e0ff6b395111d39e6ba547977b2e475b2f21eda6bc3360f88", "operation": "modify", "path": "tests/test_gameplan_initial_state_refresh.py", "reason": "Local fixture absent from common main; narrow expected normal first-read target expiry while retaining no-order/no-reservation assertions.", "schema": "gameplan-capture-target-expiry-local-test-hunk-v1"}
+--- a/tests/test_gameplan_initial_state_refresh.py
++++ b/tests/test_gameplan_initial_state_refresh.py
+@@ -88,8 +88,9 @@
+     first = run(env)
+     assert first.status == 'BROKER_STATE_REFRESH_REQUIRED' and first.error is None
+     second = run(env)
+-    assert second.status == 'HORIZON_BROKER_RECONCILIATION_UNAVAILABLE'
+-    assert second.error == 'ValueError: BROKER_READ_EXECUTION_WINDOW_CLOSED'
++    assert second.status == 'PREDICTION_TARGET_ELAPSED' and second.error is None
++    assert second.broker_state_capture['status'] == 'INTERRUPTED_PREDICTION_TARGET_ELAPSED'
++    assert second.broker_state_capture['attempts'] == 1
+     assert env.broker.submissions == []
+     assert native(env).snapshot().reservations == () and state(env)['reservations'] == []
+ 
