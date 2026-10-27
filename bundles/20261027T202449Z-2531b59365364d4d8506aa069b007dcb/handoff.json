@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T20:24:49.677676Z",
+  "id": "20261027T202449Z-2531b59365364d4d8506aa069b007dcb",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas 15m removes redundant sizing snapshot hashing; shared patch published and complete local generation sealed"
+}

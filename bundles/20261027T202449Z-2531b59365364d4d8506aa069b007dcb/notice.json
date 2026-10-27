@@ -1,0 +1,59 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T201904Z-658f5dad4a1d4854a0b0b20989f064c7",
+  "change_id": "20261027T201904Z-658f5dad4a1d4854a0b0b20989f064c7",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative; remove the redundant starter snapshot digest while retaining the unchanged strict public indicator validation before computation.",
+    "Retain every full proof, digest identity, deep-copy boundary, source/session/OHLCV check, scientific probability/target, quantity and independent order/manual controls. No cache or history truncation.",
+    "Share only exact-preimage patch, complete dependency extraction metadata and portable offline checker; each PC reviews applicable source hunks while preserving local composition/model policy."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-starter-snapshot-validation.patch",
+      "sha256": "74edb78277801f38cc00502e671fea79d65023b313523438f8a625a4f1c3c33e"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-starter-snapshot-validation.json",
+      "sha256": "87e0c249ee930caef9e8207238cb28e3a97ad6012528ed8fea03a158aae7670c"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_starter_snapshot_validation.py",
+      "sha256": "bcf4bf8cc2edc8a41a0f2565d52ef2d59f5d02a23f08a145e1739354536169a3"
+    }
+  ],
+  "limitations": [
+    "43 portable offline cases; 131 application cases separately recorded against the exact local candidate.",
+    "Forty-four real-module differential checks retain exact tested result bytes; invalid corrupted input plus missing forecast keys can change error precedence but still rejects. Bounded primitive timing does not establish original live wall cause or sustained recovery."
+  ],
+  "local_installation": "Complete531source generation 10a31fecc9a2a2e3f9e8862bf058f487f05bb8aaf51c42401ff674e16292c1e7 sealed after exact single-file installation;530parentmembers and frozenruntime preserved. Full source/runtime seal validation succeeded. The complete sealed source inventory equals the131tested staging composition.",
+  "main_commit": "19b164ab09dae5ebbe6acf6f7eccfddbca7e2c23",
+  "natural_affected_exercise": "Broad live sizing latency recovery remains unproved. No induced live exercise.",
+  "privacy_review": "Only static shared patch/applicability, exact hashes and offline/install facts; private task/chat/process identities, bindings, credentials, account state, raw evidence, data and models excluded. Each PC retains its model policy; no peer acceptance or nightly prerequisite.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/460",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Review exact-preimage source hunk and seal complete local generation with tools/trader_installation.py. Natural renewal is confined to an existing manually started session. Publication, installation, loading and affected live recovery remain separate. No initial start, post-stop restart, lifetime extension, live test or broker/provider/order operation.",
+  "runtime_loading": "At first post-install capture an exact older-generation execution worker remained in flight. New-generation loading and naturally affected exercise are separate facts; no process was operated for proof.",
+  "scope": "shared",
+  "source_commit": "1cd2868d58a0a2866b94fbc14cefb61a363efccb",
+  "summary": "Atlas 15m removes redundant sizing snapshot hashing; shared patch published and complete local generation sealed",
+  "tests": [
+    {
+      "passed_cases_each": 43,
+      "scope": "Portable explicit-stub delegation checks in immutable queue, isolated source and fresh main candidates"
+    },
+    {
+      "application_cases_each": 131,
+      "differential_checks": 44,
+      "network_attempts": 0,
+      "scope": "Real composed candidate and complete531source staged generation"
+    },
+    {
+      "application_imports": 0,
+      "passed_cases": 45,
+      "scope": "Actual sealed candidate and unchanged strict indicator function parity plus portable checks"
+    }
+  ]
+}
