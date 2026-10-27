@@ -1,0 +1,61 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T111304Z-347205f003bf468d9df46340a6b68f68",
+  "change_id": "20261027T111304Z-347205f003bf468d9df46340a6b68f68",
+  "details": [
+    "Save each fully validated scalar header inventory in one bounded authenticated optional-cache transaction. This avoids repeated large immutable model-payload decoding in fresh renewal workers when individual commits exhausted the existing cache budget.",
+    "Preserve cache schema, HMAC, physical source identity, epoch, indexed identities, monotonic revisions and full source validation on every miss. Do not flush a stopped, replaced-source or corrupt-original inventory.",
+    "Self-contained offline fixtures and independent adversarial review cover cold reuse, identity changes, forged proofs, lock/key/cache failure, interrupted rollback and no partial publication. Fresh-interpreter fixtures preserve original and output hashes while removing repeated original payload reads.",
+    "Applies to either PC without transplanting symbols, statistical tuning or scientific recipes. Public store installation is one reviewed method replacement; preserve other local composition."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/forecast_header_cache.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_durable_forecast_batch.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_durable_forecast_batch.py"
+    }
+  ],
+  "limitations": [
+    "Publication, common-main integration, exact local installation, loaded source and naturally affected behavior remain separate facts. This source notice makes no live recovery or peer-installation claim.",
+    "Cache failures remain optional full-validation fallback. Offline performance fixtures do not guarantee execution timing or fills."
+  ],
+  "local_installation": "Atlas installed the reviewed local composition, passed fresh21and76checks, and sealed complete530source generation 8d18feef1acb11e82ed2bd53506db6e0785c2c735e33feedf7e68eb8c77ca524 with the existing immutable runtime. Previous generations remain retained.",
+  "main_commit": "1ada6697891f4f011777611089be05d0025364da",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/430",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install the applicable exact source composition and seal a complete reviewed generation through the existing installer. Existing authorized manual sessions load complete generations at their safe planned iteration boundaries. Preserve independent state, original science/orders, cadence, session lifetime and all manual controls. No initial start, forced renewal, post-stop restart or new task is authorized.",
+  "scope": "shared",
+  "source_commit": "e98b80cf9d1a1e9e77107bf0f4124b3d46266489",
+  "summary": "Atlas renewal header-cache batching published and installed as a complete sealed generation",
+  "tests": [
+    {
+      "command": "python -B tests/check_isolated_intraday_durable_forecast_batch.py",
+      "completed_at_utc": "2026-10-27T11:15:23.858576+00:00",
+      "passed_cases": 21,
+      "scope": "canonical author, sealed queue, isolated source and fresh main candidate"
+    },
+    {
+      "command": "python -B tests/check_isolated_intraday_durable_forecast_batch.py",
+      "completed_at_utc": "2026-10-27T11:16:15.041023+00:00",
+      "passed_cases": 21,
+      "scope": "exact installed composition"
+    },
+    {
+      "command": "python -B tests/check_isolated_intraday_durable_forecast_headers.py --focused",
+      "completed_at_utc": "2026-10-27T11:17:11.850096+00:00",
+      "passed_cases": 76,
+      "scope": "exact installed adjacent cache/projection/revision behavior"
+    }
+  ]
+}

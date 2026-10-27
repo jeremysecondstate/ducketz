@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T11:20:39.403499Z",
+  "id": "20261027T112039Z-528a8d83d14b45289b54c1d6604e85a2",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas renewal header-cache batching published and installed as a complete sealed generation"
+}
