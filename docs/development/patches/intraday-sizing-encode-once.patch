@@ -1,0 +1,79 @@
+--- a/ml/intraday/technical_sizing.py
++++ b/ml/intraday/technical_sizing.py
+@@ -10,6 +10,7 @@
+ from dataclasses import asdict, dataclass
+ from datetime import datetime
+ from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP, localcontext
++import hashlib
+ import json
+ import math
+ from numbers import Real
+@@ -221,6 +222,12 @@
+     available_at: str
+     source: str
+     evidence: Mapping[str, object]
++
++
++def _encoded_result(result_type, value):
++    """Hash the exact canonical bytes already encoded for immutable output."""
++    text = encoded(value)
++    return result_type(hashlib.sha256(text.encode()).hexdigest(), text)
+ 
+ 
+ @dataclass(frozen=True)
+@@ -374,7 +381,7 @@
+         frozen = frame if same_candles else admitted(forecast_snapshot["candles"])
+     except (ContractError, ValueError, KeyError) as exc:
+         value["reason"] = "invalid_or_unavailable_modern_candles: " + str(exc)
+-        return IndicatorSnapshot(digest(value), encoded(value))
++        return _encoded_result(IndicatorSnapshot, value)
+     if not same_candles and _records(frame) != _records(frozen):
+         raise ContractError("Sizing candles differ from the original forecast snapshot")
+     scope = forecast_snapshot.get("dataset_scope") or forecast_snapshot.get("manifest", {})
+@@ -388,7 +395,7 @@
+         frame = frame.loc[~frame.synthetic].copy()
+     elif synthetic_policy != "include" and frame.synthetic.any():
+         value["reason"] = "frozen_synthetic_policy_missing"
+-        return IndicatorSnapshot(digest(value), encoded(value))
++        return _encoded_result(IndicatorSnapshot, value)
+     excluded_policy = before_policy - len(frame)
+     if frame.empty or frame.symbol.nunique() != 1 or frame.symbol.iloc[0] != symbol or frame.source_id.nunique() != 1:
+         value["reason"] = "one_symbol_and_source_required"
+@@ -428,7 +435,7 @@
+                         "missing_policy": "no_filling", "synthetic_policy": synthetic_policy or "observed_only_legacy_snapshot",
+                         "derivative_basis": "first_and_second_differences_per_observed_step"})
+         value["candles_hash"] = digest(value["candles"])
+-    return IndicatorSnapshot(digest(value), encoded(value))
++    return _encoded_result(IndicatorSnapshot, value)
+ 
+ 
+ def evaluate_size(forecast, indicators, *, symbol_policy=None, hourly_reference=None,
+@@ -473,7 +480,7 @@
+              "parameter_availability": "supplied_research_configuration_not_verified_historically"}
+     def finish(status, reason):
+         value.update(status=status, reason=reason)
+-        return SizingResult(digest(value), encoded(value))
++        return _encoded_result(SizingResult, value)
+     if side == "HOLD":
+         return finish("unavailable", "neutral_probability_no_direction")
+     if symbol_policy is None:
+--- a/ml/intraday/starter_sizing.py
++++ b/ml/intraday/starter_sizing.py
+@@ -18,7 +18,7 @@
+ from .prediction import ContractError, digest, encoded, identity, instant, number
+ from .technical_sizing import (
+     AvailableInput, IndicatorSpec, ScoreRecipe, ScoreTerm, SymbolReference,
+-    SymbolSizingPolicy, WindowPolicy, evaluate_size, indicator_snapshot,
++    SymbolSizingPolicy, WindowPolicy, evaluate_size, indicator_snapshot, _encoded_result,
+ )
+ 
+ 
+@@ -197,7 +197,7 @@
+                         "quote": asdict(quote) if quote is not None else None,
+                         "maximum_quote_age_seconds": maximum_quote_age_seconds},
+                    reference_failure_reason=reason)
+-    return type(result)(digest(payload), encoded(payload))
++    return _encoded_result(type(result), payload)
+ 
+ 
+ __all__ = ["VERSION", "EQUITY_SCALE", "QuoteObservation", "starter_policy", "independent_reference", "size_forecast"]
