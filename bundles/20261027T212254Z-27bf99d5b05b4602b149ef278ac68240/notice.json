@@ -1,0 +1,68 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T211602Z-a3450fb0a0c0450b890a9d747be6ad7d",
+  "change_id": "20261027T211602Z-a3450fb0a0c0450b890a9d747be6ad7d",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative; exact builtin str/int/bool/float values skip redundant downstream type checks after the unchanged Mapping predicate.",
+    "Five-line source insertion retains Mapping registration and custom-metaclass behavior, scalar subclass fallbacks, canonical result bytes and IDs, original probabilities/targets/model policy, independent orders and manual controls.",
+    "Both PCs review the exact owned hunk and preserve local composition/model policy. Portable source package excludes private full source composition and operating data."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_sizing_scalar_dispatch.py",
+      "sha256": "60a918a3016fe5826db7e7213d5125c2d77f9d7d47ad0fd852dd61e15560e10f"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-sizing-scalar-dispatch.json",
+      "sha256": "af25f5860630a824d7b44d6542f6232e3f7a122fc2e83c4349e62e78fc64e71a"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-sizing-scalar-dispatch.patch",
+      "sha256": "1f925f5ccf0041b9834f8939127550d19b9044c20e35e81765f502ec10835cda"
+    }
+  ],
+  "limitations": [
+    "Six paired synthetic medians2.044404 to2.001194seconds,2.11percent faster,4of6pairs faster with substantial variation. Component evidence only; no original whole live wall cause or sustained recovery established.",
+    "Separate low-CPU forecast metadata stall and historical missing evidence remain open; no induced live test or weakened validation."
+  ],
+  "local_installation": "Complete531source generation 2135a50fd72dc5a26a44b87d541f85cd3166c776e4170a092c8214adcd42a443 sealed with tools/trader_installation.py after latest-parent exact composition and131freshapplicationtests;530parentmembers/runtime retained. Full installer source/runtime validation passed.",
+  "main_commit": "962fe6523b037bfbb2af2cd9df546565e2b76c17",
+  "privacy_review": "Generic shared patch, function extraction, offline checks, public hashes and installation facts only. Native identities, private paths/bindings/credentials, raw evidence/data, account state and fitted models excluded. No peer acceptance or operating prerequisite.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/465",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Seal complete reviewed local generation. Existing manually started sessions may naturally load it after a complete iteration. Publication, installation, loading and naturally affected recovery remain separate facts. No initial start, post-stop restart, lifetime extension, broker/provider/order operation or test trade.",
+  "scope": "shared",
+  "source_commit": "92f3490488535da02933aa66363d2b28f48c3759",
+  "summary": "Atlas 15m reduces scalar provenance dispatch overhead; exact shared patch published and complete local generation sealed",
+  "tests": [
+    {
+      "network_attempts": 0,
+      "passed_each": 131,
+      "scope": "Full complete original and latest-parent composed source"
+    },
+    {
+      "network_attempts": 0,
+      "passed": 38,
+      "scope": "Independent actual function parity"
+    },
+    {
+      "boundary_checks": 23,
+      "large_canonical_result_ID_runs": 16,
+      "network_attempts": 0,
+      "scope": "Real sizing differential"
+    },
+    {
+      "network_attempts": 0,
+      "passed_each": 97,
+      "scope": "Portable queue/source/main checks"
+    },
+    {
+      "network_attempts": 0,
+      "passed": 103,
+      "scope": "Actual sealed function/source/manifest portable checks"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T21:22:54.757362Z",
+  "id": "20261027T212254Z-27bf99d5b05b4602b149ef278ac68240",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas 15m reduces scalar provenance dispatch overhead; exact shared patch published and complete local generation sealed"
+}
