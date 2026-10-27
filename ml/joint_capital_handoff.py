@@ -23,6 +23,8 @@ from ml.joint_capital_plan import build_owner_package, publish_owner_package
 _JSON_LIMIT = 8 * 1024 * 1024
 _PARQUET_LIMIT = 32 * 1024 * 1024
 MAX_NATIVE_PRICE_BYTES = 64 * 1024 * 1024
+# Local source manifests include detailed input provenance, which is not exported.
+MAX_NATIVE_GAMEPLAN_MANIFEST_BYTES = 64 * 1024 * 1024
 _REVISION = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 _FORECAST_FIELDS = frozenset({
     "id", "symbol", "action_date", "model_group", "route", "target_role", "execution_eligible",
@@ -178,7 +180,8 @@ def export_owner_package(datastore_root: Path, *, gameplan_run: Path, trade_plan
         inputs[path] = sha256(data).hexdigest()
         return data
 
-    manifest_bytes, receipt_bytes = saved(game / "manifest.json"), saved(game / "receipt.json")
+    manifest_bytes = saved(game / "manifest.json", maximum=MAX_NATIVE_GAMEPLAN_MANIFEST_BYTES)
+    receipt_bytes = saved(game / "receipt.json")
     manifest, receipt = _manifest(manifest_bytes), _object(receipt_bytes)
     config, day = manifest["configuration"], receipt.get("action_date")
     if (receipt.get("schema_version") != "immutable-overnight-gameplan-receipt-v1"
@@ -269,7 +272,8 @@ def export_owner_package(datastore_root: Path, *, gameplan_run: Path, trade_plan
         price_path=public_prices, cross_horizon_fallback_policy=fallback, source_reference=reference,
         late_publication_at=late_published)
     for path, expected in inputs.items():
-        maximum = (MAX_NATIVE_PRICE_BYTES if path == trade / "planning-price-path.json" else
+        maximum = (MAX_NATIVE_GAMEPLAN_MANIFEST_BYTES if path == game / "manifest.json" else
+                   MAX_NATIVE_PRICE_BYTES if path == trade / "planning-price-path.json" else
                    _PARQUET_LIMIT if path.suffix == ".parquet" else _JSON_LIMIT)
         if sha256(_read(path, root, maximum=maximum)).hexdigest() != expected:
             raise ValueError("Selected handoff input changed during validation")

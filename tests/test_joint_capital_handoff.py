@@ -320,13 +320,67 @@ def test_native_price_file_still_rejects_its_separate_size_limit(saved, monkeypa
     assert list(saved.out.iterdir()) == []
 
 
-def test_metadata_does_not_inherit_larger_native_price_limit(saved, monkeypatch):
-    saved.gm["oversized_metadata_fixture"] = "x" * 17000
+@pytest.mark.parametrize("metadata", ["gr", "tm", "tr"])
+def test_metadata_does_not_inherit_larger_native_limits(saved, monkeypatch, metadata):
+    getattr(saved, metadata)["oversized_metadata_fixture"] = "x" * 17000
     rebind(saved)
     monkeypatch.setattr(handoff, "_JSON_LIMIT", 16000)
     monkeypatch.setattr(handoff, "MAX_NATIVE_PRICE_BYTES", 65536)
+    monkeypatch.setattr(handoff, "MAX_NATIVE_GAMEPLAN_MANIFEST_BYTES", 65536)
     with pytest.raises(ValueError, match="size bound"):
         export(saved)
+    assert list(saved.out.iterdir()) == []
+
+
+def test_native_gameplan_manifest_uses_separate_bound_without_exporting_provenance(saved, monkeypatch):
+    saved.gm["configuration"]["local_provenance_fixture"] = "x" * 30000
+    rebind(saved)
+    monkeypatch.setattr(handoff, "_JSON_LIMIT", 16000)
+    monkeypatch.setattr(handoff, "MAX_NATIVE_GAMEPLAN_MANIFEST_BYTES", 65536)
+    original = handoff._read
+    limits = []
+    def bounded(path, *args, **kwargs):
+        assert Path(path).name != "gameplan.json"
+        if Path(path) == saved.game / "manifest.json":
+            limits.append(kwargs.get("maximum"))
+        return original(path, *args, **kwargs)
+    monkeypatch.setattr(handoff, "_read", bounded)
+    path = export(saved)
+    package = json.loads(path.read_text())
+    assert limits == [65536, 65536]
+    assert "local_provenance_fixture" not in path.read_text()
+    assert package["source_hashes"]["manifest_sha256"] == digest(saved.game / "manifest.json")
+    assert package["source_hashes"]["forecasts_sha256"] == digest(saved.game / "forecasts.parquet")
+    assert {row["id"]: row["calibrated_probability"] for row in package["forecasts"]} == dict(
+        zip(saved.frame.id, saved.frame.calibrated_probability))
+
+
+def test_native_gameplan_manifest_still_rejects_its_separate_size_limit(saved, monkeypatch):
+    saved.gm["configuration"]["local_provenance_fixture"] = "x" * 33000
+    rebind(saved)
+    monkeypatch.setattr(handoff, "_JSON_LIMIT", 16000)
+    monkeypatch.setattr(handoff, "MAX_NATIVE_GAMEPLAN_MANIFEST_BYTES", 32000)
+    assert (saved.game / "manifest.json").stat().st_size > 32000
+    with pytest.raises(ValueError, match="size bound"):
+        export(saved)
+    assert list(saved.out.iterdir()) == []
+
+
+def test_large_native_gameplan_manifest_mutation_is_not_published(saved, monkeypatch):
+    saved.gm["configuration"]["local_provenance_fixture"] = "x" * 30000
+    rebind(saved)
+    monkeypatch.setattr(handoff, "_JSON_LIMIT", 16000)
+    monkeypatch.setattr(handoff, "MAX_NATIVE_GAMEPLAN_MANIFEST_BYTES", 65536)
+    original = handoff.build_owner_package
+    def mutate(**kwargs):
+        package = original(**kwargs)
+        with (saved.game / "manifest.json").open("ab") as stream:
+            stream.write(b" ")
+        return package
+    monkeypatch.setattr(handoff, "build_owner_package", mutate)
+    with pytest.raises(ValueError, match="changed during validation"):
+        export(saved)
+    assert list(saved.out.iterdir()) == []
 
 
 def test_completed_reference_disclosures_survive_without_raw_reference_rows(saved):
