@@ -11,6 +11,7 @@ cache contention can lose that optional optimization, never the derived result.
 from __future__ import annotations
 
 from contextlib import AbstractContextManager
+from dataclasses import dataclass
 import hashlib
 import json
 import math
@@ -23,6 +24,7 @@ from .market_context import (
     _resolved_contract, _owned_context_digest, snapshot_digest,
 )
 from .prediction import ContractError
+from . import market_context as _context_module
 
 # Do not reuse vectors produced before explicit observation-marker/positive-
 # volume admission. Original immutable provider receipts are retained.
@@ -35,6 +37,114 @@ MAX_PENDING_ENTRIES = 4096
 # in each cache key. Repeating them in every vector dominated the staged-byte
 # budget; restore them only from that exact contract and rehash the full context.
 CONTEXT_FORMAT = "fixed-feature-contract-v1"
+
+
+# The optimization applies only to this native canonical serializer. Overrides
+# retain the original helper, including its exceptions and interpretation.
+_NATIVE_CONTEXT_CLASS = MarketContext
+_NATIVE_OWNED_DIGEST = _owned_context_digest
+_NATIVE_CONTEXT_SNAPSHOT = _context_module._context_snapshot
+_NATIVE_HASH, _NATIVE_JSON = _hash, _json
+_NATIVE_DUMPS, _NATIVE_LOADS = json.dumps, json.loads
+_NATIVE_ENCODER = json.JSONEncoder
+_NATIVE_ENCODER_PARTS = (json.JSONEncoder.__init__, json.JSONEncoder.encode, json.JSONEncoder.iterencode,
+    json.JSONEncoder.default, json.encoder.encode_basestring,
+    json.encoder.encode_basestring_ascii, json.encoder.c_make_encoder,
+    json.encoder._make_iterencode)
+
+
+def _native_context_serializer():
+    return (type(_context_module.FEATURE_VERSION) is str
+            and type(_context_module.STATE_POLICY) is str
+            and type(_context_module.FEATURE_POLICY) is str
+            and MarketContext is _NATIVE_CONTEXT_CLASS
+            and _context_module.MarketContext is _NATIVE_CONTEXT_CLASS
+            and _owned_context_digest is _NATIVE_OWNED_DIGEST
+            and _context_module._context_snapshot is _NATIVE_CONTEXT_SNAPSHOT
+            and _hash is _NATIVE_HASH and _context_module._hash is _NATIVE_HASH
+            and _context_module._json is _NATIVE_JSON and _json is _NATIVE_JSON
+            and json.dumps is _NATIVE_DUMPS and json.loads is _NATIVE_LOADS
+            and json.JSONEncoder is _NATIVE_ENCODER
+            and all(current is original for current, original in zip(
+                (json.JSONEncoder.__init__, json.JSONEncoder.encode, json.JSONEncoder.iterencode,
+                 json.JSONEncoder.default, json.encoder.encode_basestring,
+                 json.encoder.encode_basestring_ascii, json.encoder.c_make_encoder,
+                 json.encoder._make_iterencode), _NATIVE_ENCODER_PARTS)))
+
+
+@dataclass(frozen=True)
+class _ContextDigestFragments:
+    """Immutable JSON for the already-validated fixed fields of one contract.
+
+    A decoded hit must still pass every cache validation and be freshly hashed.
+    Reusing these strings avoids encoding thousands of identical feature names
+    for every historical row. Values, source evidence and clocks are encoded on
+    every call; no receipt, vector or final digest is cached by this helper.
+    """
+    names: tuple
+    source_ids: tuple
+    version: str
+    policy: str
+    middle: str
+    source_ids_json: str
+
+    @classmethod
+    def from_contract(cls, contract, selectors):
+        if (not _native_context_serializer() or type(contract) is not dict
+                or type(selectors) is not dict):
+            return None
+        # Resolve only ordinary validated containers. Custom mappings, lists
+        # and text retain the original path without any new callback.
+        names = contract["feature_names"]
+        version = contract["version"]
+        if (type(names) is not list or type(version) is not str
+                or any(type(name) is not str for name in names)
+                or any(type(kind) is not str or type(ids) is not tuple
+                       or any(type(source) is not str for source in ids)
+                       for kind, ids in selectors.items())):
+            return None
+        names = tuple(names)
+        source_ids = tuple(sorted(selectors.items()))
+        policy = (_context_module.STATE_POLICY if version == _context_module.FEATURE_VERSION
+                  else _context_module.FEATURE_POLICY)
+        if type(policy) is not str:
+            return None
+        middle = (',"feature_names":' + _json(list(names))
+                  + ',"feature_policy":' + _json(policy)
+                  + ',"feature_version":' + _json(version) + ',"features":')
+        return cls(names, source_ids, version, policy, middle,
+                   _json({kind: list(ids) for kind, ids in source_ids}))
+
+    def digest(self, context):
+        if (not _native_context_serializer() or type(context) is not MarketContext
+                or type(context.feature_version) is not str
+                or type(context.values) is not tuple or type(context.source_evidence) is not tuple):
+            return _owned_context_digest(context)
+        policy = (_context_module.STATE_POLICY if context.feature_version == _context_module.FEATURE_VERSION
+                  else _context_module.FEATURE_POLICY)
+        if (type(context.cutoff) is not str or type(context.symbol) is not str
+                or type(context.feature_names) is not tuple
+                or any(type(name) is not str for name in context.feature_names)
+                or context.feature_names != self.names
+                or type(context.source_ids) is not tuple
+                or any(type(pair) is not tuple or len(pair) != 2
+                       or type(pair[0]) is not str or type(pair[1]) is not tuple
+                       or any(type(source) is not str for source in pair[1])
+                       for pair in context.source_ids)
+                or context.source_ids != self.source_ids
+                or context.feature_version != self.version
+                or type(policy) is not str or policy != self.policy):
+            return _owned_context_digest(context)
+        # These are precisely _context_snapshot's sorted JSON keys. Static
+        # names/selectors/version have just matched the validated contract;
+        # mutable decoded values and nested evidence are always serialized now.
+        canonical = ('{"cutoff":' + _json(context.cutoff) + self.middle
+                     + _json(list(context.values))
+                     + ',"missing_encoding":"zero_placeholder_plus_per_value_missing_indicator"'
+                     + ',"source_ids":' + self.source_ids_json
+                     + ',"sources":' + _json(list(context.source_evidence))
+                     + ',"symbol":' + _json(context.symbol) + '}')
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def _busy(error):
@@ -61,6 +171,7 @@ class ContextCache(AbstractContextManager):
         self._pending = {}
         self._pending_bytes = 0
         self._contracts = {}
+        self._digest_fragments = {}
         self._lazy_refs = {}
         self.implementation_sha256 = _implementation_digest()
 
@@ -81,6 +192,7 @@ class ContextCache(AbstractContextManager):
         if len(self._contracts) >= 32:
             raise ContractError("Too many context contracts in one dataset transaction")
         self._contracts[key] = (contract, resolved, digest)
+        self._digest_fragments[digest] = _ContextDigestFragments.from_contract(resolved, selectors)
         return resolved, digest
 
     def __enter__(self):
@@ -208,7 +320,10 @@ class ContextCache(AbstractContextManager):
                         or result.feature_version != contract["version"]
                         # json.loads above owns every nested evidence object;
                         # validate it immediately before returning any reference.
-                        or result.snapshot_sha256 != _owned_context_digest(result)):
+                        or result.snapshot_sha256 != (
+                            self._digest_fragments[contract_sha256].digest(result)
+                            if self._digest_fragments[contract_sha256] is not None
+                            else _owned_context_digest(result))):
                     raise ValueError("Cached context contract mismatch")
                 self.hits += 1
                 return result
