@@ -1,0 +1,38 @@
+--- a/ml/intraday/live_session.py
++++ b/ml/intraday/live_session.py
+@@ -18,6 +18,7 @@
+ from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant
+ from .runtime import ResearchConfig, ShadowRunner, LiveHistories, SourceIntervalEmpty, local_symbols, recorded_symbol_failures, with_local_data_policy
+ from .store import ShadowStore, utcnow
++from .renewal_storage import retry_renewal_storage_setup
+ from .candle_collection import collection_loop, market_close_at, _storage_failure_evidence
+ from .scoring_storage import retry_scoring_storage, record_scoring_worker_failure, scoring_failure_evidence
+ 
+@@ -635,8 +636,6 @@
+     if role != "candles" and instant(clock()) >= close_at:
+         return {"status": "COMPLETED", "role": role}
+     load_dotenv(repository / ".env")
+-    store = ShadowStore(root / "intraday/shadow.sqlite3")
+-    queue = ExecutionQueue(store, session["session_id"], actor=pc)
+ 
+     def pause(seconds):
+         end = time.monotonic() + max(0, float(seconds))
+@@ -644,6 +643,18 @@
+             if renewal.stopped():
+                 raise InterruptedError("Manual session stopped; durable work retained")
+             sleep(min(1, max(0, end - time.monotonic())))
++
++    def setup():
++        store = ShadowStore(root / "intraday/shadow.sqlite3")
++        return store, ExecutionQueue(store, session["session_id"], actor=pc)
++
++    try:
++        store, queue = retry_renewal_storage_setup(setup, role=role, stopped=renewal.stopped,
++            permitted=lambda: role == "candles" or instant(clock()) < close_at, pause=pause)
++    except InterruptedError:
++        if not renewal.stopped() and (role == "candles" or instant(clock()) < close_at):
++            raise
++        return {"status": "STOPPED" if renewal.stopped() else "COMPLETED", "role": role}
+ 
+     if role == "execution":
+         from .account_execution import IntradayAccountExecutor

@@ -1,0 +1,12 @@
+{
+  "schema": "intraday-renewal-storage-setup-compatibility-v1",
+  "consumer": "ml/intraday/live_session.py",
+  "before_sha256": "a3ab9de4450417a16091e579f2f346f58ba6f254e7aae66aa986b63f5d4b5d6f",
+  "after_sha256": "0cb85df3c1db15db8bcc6f4484d80b2d698d34020b6bc3d5cea287ee5453d94d",
+  "helper": "ml/intraday/renewal_storage.py",
+  "helper_sha256": "208d02fb0e84ab2e0252054f8a3f771e04998c17bf9431e8d7265462579dd1b8",
+  "patch": "docs/development/intraday-renewal-storage-setup.patch",
+  "patch_sha256": "5dccd4fe5addacda598adbc1821da18d44d416ec890eb1e37cb4aed1a3127643",
+  "scope": "Same admitted worker cold local storage setup only. No broker/provider/process actions, no initial or post-stop start, unchanged original deadlines/schema/SQLite timeout.",
+  "integration": "Apply only reviewed matching consumer hunks, preserve other local composition, run installed adapter fixtures, seal complete exact-byte generation after source installation. Portable helper tests alone do not establish consumer installation, loaded generation or live recovery."
+}
