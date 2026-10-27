@@ -1,0 +1,53 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T113731Z-4b7111adb8894b97bdf3572a1892071d",
+  "change_id": "20261027T113731Z-4b7111adb8894b97bdf3572a1892071d",
+  "details": [
+    "Keep the existing last32 timing intervals and add bounded completed-stage count, elapsed count, total and maximum, discarded-tail count and unknown-stage overflow. An explicit chronology marker covers the existing forecast-header scan.",
+    "Only optional diagnostics change. Execution decisions, leases, quote/order controls, original science, probabilities, independent state, manual controls, cadence and session lifetime remain unchanged.",
+    "The old source reproduced three pre-existing fixture assumptions. Narrow fixture compatibility preserves cold-validation coverage, existing lease evidence and actual frozen-clock origins without weakening no-send, cleanup or final-gate assertions. Exact original-to-final reconstruction preserves each fixture file line endings.",
+    "Peer applicability is common diagnostics. Preserve local composition outside the trace class and optional scan marker, local symbols and each PC statistical/model policy. No operating or peer-acceptance prerequisite is introduced."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_execution_trace_retention.py"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/intraday-execution-trace-retention-tests.patch"
+    }
+  ],
+  "limitations": [
+    "Diagnostic retention is repaired; earlier discarded timing intervals cannot be attributed retrospectively. Source, installation, loaded code and naturally exercised latency recovery remain separate facts.",
+    "The portable fixture patch applies to reviewed existing files absent from the public base. Retain its exact raw bytes and inspect local context; full installed fixture execution was recorded separately. No private operating inputs, raw logs, account state or native task bindings are included."
+  ],
+  "local_installation": "Atlas applied the exact reviewed local composition and sealed complete generation db18d802a3ee44e7c9e0982d65d4f136b9e71e947fc26f476c1f4903b84ac438 with530source members and the unchanged previously installed runtime. Previous generations and original evidence remain retained.",
+  "main_commit": "07e6dacbddc7e7f22c62c1113f72f46235226897",
+  "related_completion_record": "20261027T115739Z-41540fe970444807bed8eec8f13bd88c",
+  "related_main_commit": "e4635feb078ef865f86edfb21120d3daf77d0797",
+  "related_source_commit": "56e5def858b9306e29be34c2518d46606e8acd45",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Use reviewed source-hunk installation and seal a complete generation through the existing installer. Existing manually started sessions may load it only at their authorized safe iteration boundaries. No initial unattended start, forced renewal, post-stop restart, reboot start, lifetime extension or new task is authorized.",
+  "scope": "shared",
+  "source_commit": "f47a5e64b5ab8d917882f49ebb7164bc396e0c71",
+  "summary": "Atlas fifteen-minute execution timing evidence retained through long passes; reviewed source integrated and complete generation sealed",
+  "tests": [
+    {
+      "command": "python -B tests/check_intraday_execution_trace_retention.py",
+      "completed_at_utc": "2026-10-27T12:02:23.606304+00:00",
+      "passed_cases": 12,
+      "scope": "exact-source regression in author, immutable queue, isolated source and main candidates"
+    },
+    {
+      "command": "python -B -m pytest tests/test_intraday_recovery_latency.py tests/test_intraday_operation_diagnostics.py tests/test_intraday_submission_diagnostics.py tests/test_intraday_capture_freshness_diagnostics.py -q -p no:cacheprovider",
+      "completed_at_utc": "2026-10-27T11:48:48.266259+00:00",
+      "passed_cases": 63,
+      "scope": "installed adjacent execution and diagnostic fixtures with injected transports and isolated ledgers"
+    }
+  ]
+}
