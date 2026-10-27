@@ -79,7 +79,7 @@ def _record_local_evidence_freshness_failure(error, *, current, account_at, quot
 class ScoutLocalAccountExecutor:
     def __init__(self, *, repository, profile, datastore, store, broker, local_symbols,
                  session_started_at, session_id, clock, manual_authority, stopped,
-                 authority=None, books=None, maximum_evidence_age_seconds=60):
+                 authority=None, books=None, maximum_evidence_age_seconds=60, resume_session=False):
         if authority is not None:
             raise ContractError('Local execution does not accept a remote authority')
         self.repository, self.root = Path(repository), Path(datastore)
@@ -90,6 +90,9 @@ class ScoutLocalAccountExecutor:
         # client and broker adapter require an aware datetime on every read.
         self.clock = lambda: instant(clock())
         self.manual_authority, self.stopped = manual_authority, stopped
+        if type(resume_session) is not bool:
+            raise ContractError("Explicit logical-session resume flag required")
+        self.resume_session = resume_session
         if type(maximum_evidence_age_seconds) is not int or not 1 <= maximum_evidence_age_seconds <= 300:
             raise ContractError('Explicit bounded quote/account evidence age required')
         self.maximum_evidence_age_seconds = maximum_evidence_age_seconds
@@ -160,7 +163,11 @@ class ScoutLocalAccountExecutor:
             if current_identity != self.account_fingerprint:
                 raise ContractError('Local broker account changed')
             if self.journal is None:
-                self.journal = self.books.create_session(self.session_id)
+                # Only a controller-validated successor reopens this logical
+                # session. Missing/replaced journals fail their original native
+                # inventory and chain audit; never create a replacement journal.
+                self.journal = (self.books.open_session(self.session_id) if self.resume_session
+                                else self.books.create_session(self.session_id))
                 self.evidence_paths['journal'] = str(self.journal.path)
             proof = dict(mode=MODE, session_id=self.session_id, participant_id='pc-new',
                 stream='scout-15m', account_fingerprint=self.account_fingerprint,

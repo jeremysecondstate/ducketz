@@ -1,5 +1,16 @@
 # Ducketz completion and cross-PC coordination
 
+Jeremy's October 26, 2026 authorization permits Scout's application-managed
+worker replacement after every completed full trading iteration within one
+authorized 15-minute run. Preserve initial manual/existing-task activation and
+manual stop, the original day/deadline, Scout order identities and independent
+execution. Follow `docs/development/scout-iteration-restarts.md`. Routine
+installed repairs await the next safe automatic reload and actual loaded
+manifest evidence; do not repeatedly request a manual restart. Controller
+protocol changes and terminal handoff failures retain specific new-launch
+boundaries. This grants no authority to restart another trader or attach a
+controller to an already-running legacy trader.
+
 All development chats and scheduled tasks follow `coordination/contract.json`
 and `docs/development/cross-pc-bootstrap.md` for completed shareable work.
 On an application checkout with an installed coordination release, first read

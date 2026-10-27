@@ -5,6 +5,7 @@ intent. Forecast/model work and serialized broker steps run independently, with
 durable forecast identities, retry times and original targets.
 """
 import argparse
+from contextlib import nullcontext
 from collections.abc import Mapping
 from datetime import datetime, timedelta, timezone
 import json
@@ -227,7 +228,7 @@ def _pending_cycle_passes(store, session_id, now, *, pc="Atlas"):
 
 
 def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
-                     clock=utcnow, pause=time.sleep, history_source=None):
+                     clock=utcnow, pause=time.sleep, history_source=None, on_iteration=None, recovery_first=False):
     """New quarters first; durable acquisition retries get bounded fair passes.
 
     Only missing data prerequisites retry automatically. Already issued model
@@ -237,7 +238,7 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
     pc = getattr(queue, "pc", "Atlas")
     saved = _session_cycles(runner.store, queue.session_id, pc=pc)
     last = max((instant(c["reference_at"]) for _, c in saved), default=None)
-    recovery_turn = False
+    recovery_turn = recovery_first
     while not stopped():
         newest = latest_completed_reference(clock(), publication_offset_seconds=runner.config.publication_offset_seconds)
         retry_symbols = None
@@ -273,6 +274,9 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
                          retry_symbols=retry_symbols,allow_execution=reference == newest)
         if result and result.get("cycle_id"):
             runner.store.update_cycle(result["cycle_id"], {"last_recovery_attempt_at":instant(clock()).isoformat()})
+        if on_iteration is not None and retry_symbols is None:
+            on_iteration(result)
+            return  # One full fresh pass; no next-quarter overlap during handoff.
         pause(1)
 
 
@@ -484,7 +488,7 @@ def _market_context_failure_diagnostics(collector, error):
 
 
 def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcnow, sleep=time.sleep,
-               scout_admission="broker-local", model_recipe=None):
+               scout_admission="broker-local", model_recipe=None, lifecycle=None):
     from .data import AcquisitionJournal, load_local_history
     from .exact_status import retry_delay
     from app.services.schwab import SchwabSession
@@ -496,20 +500,37 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         raise ContractError("Manual execution requires an explicitly bound Atlas or Scout participant")
     if scout_admission not in {"broker-local", "atlas-service"}:
         raise ContractError("Unknown Scout admission mode")
+    if lifecycle is not None and (pc != "Scout" or scout_admission != "broker-local"):
+        raise ContractError("Iteration lifecycle is exclusively Scout broker-local")
     config.validate()
     if config.source_dataset != "EQUS.MINI":
         raise ContractError("Existing single-source live provider binding required")
     if pc == "Atlas":
         from .account_execution import IntradayAccountExecutor
-    started = instant(clock())
-    wake_at = manual_wake_at(started)
-    session_id = "manual-" + pc.lower() + "-15m:" + uuid.uuid4().hex
+    started = instant(lifecycle.started_at) if lifecycle is not None else instant(clock())
+    wake_at = instant(lifecycle.wake_at) if lifecycle is not None else manual_wake_at(started)
+    session_id = lifecycle.session_id if lifecycle is not None else "manual-" + pc.lower() + "-15m:" + uuid.uuid4().hex
     process_create_time = psutil.Process(os.getpid()).create_time()
     stopped = threading.Event()
-    automatic_stop_at = automatic_stop_deadline(max(started, wake_at)) if pc == "Scout" else None
+    automatic_stop_at = (instant(lifecycle.deadline) if lifecycle is not None else
+                         automatic_stop_deadline(max(started, wake_at)) if pc == "Scout" else None)
+    lifecycle_stop = [None]
+    planned_restart = [False]
+    iteration_ready = threading.Event()
+    boundary_cycle = [None]
+    def check_lifecycle():
+        if lifecycle is not None:
+            reason = lifecycle.stop_reason()
+            if reason is not None:
+                lifecycle_stop[0] = reason
+                if reason == "session_end" and automatic_stop_requested_at[0] is None:
+                    automatic_stop_requested_at[0] = instant(clock()).isoformat()
+        return lifecycle_stop[0]
     automatic_stop_requested_at = [None]
     stop_lock = threading.Lock()
     def should_stop():
+        if check_lifecycle() is not None:
+            return True
         if stopped.is_set() or automatic_stop_requested_at[0] is not None:
             return True
         if automatic_stop_at is not None:
@@ -529,8 +550,9 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         return requested
     worker_errors = []
     def stop_reason():
-        return ("worker_failure" if worker_errors else "manual_stop" if manual_stop_requested[0] else "automatic_17_00_pacific"
-                if automatic_stop_requested_at[0] is not None else "manual_stop")
+        return (check_lifecycle() or ("worker_failure" if worker_errors else "manual_stop" if manual_stop_requested[0]
+                else "automatic_17_00_pacific" if automatic_stop_requested_at[0] is not None
+                else "planned_iteration_restart" if planned_restart[0] else "manual_stop"))
     store = ShadowStore(root / "intraday/shadow.sqlite3")
     status_path = root / "intraday/manual-session.json"
     session_root = root / "intraday/sessions" / session_id.replace(":", "-")
@@ -542,7 +564,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
     log_lock = threading.Lock()
     previous_status = [None]
     def emit(value):
-        event = {"recorded_at":instant(clock()).isoformat(),"session_id":session_id,"pc":pc,**value}
+        event = {"recorded_at":instant(clock()).isoformat(),"session_id":session_id,"pc":pc,
+                 **({"generation": lifecycle.generation, "loaded_release": lifecycle.release} if lifecycle is not None else {}), **value}
         with log_lock:
             with log_path.open("a",encoding="utf-8") as log:
                 log.write(encoded(event) + "\n")
@@ -555,10 +578,22 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                      wake_at=wake_at.isoformat(),
                       evidence_paths=evidence_paths,scout_admission=scout_admission if pc == "Scout" else None,
                       automatic_stop_at=automatic_stop_at.isoformat() if automatic_stop_at is not None else None,**extra)
-        for destination in (session_status,status_path):
-            temporary = destination.with_name(destination.name + "." + uuid.uuid4().hex + ".tmp")
-            temporary.write_text(encoded(value),encoding="utf-8")
-            os.replace(temporary,destination)
+        if lifecycle is not None:
+            value.update(generation=lifecycle.generation, loaded_release=lifecycle.release,
+                         logical_run_id=session_id, application_managed_restarts=True)
+        destinations = [session_status, status_path]
+        if lifecycle is not None:
+            destinations.append(session_root / ("generation-%06d.json" % lifecycle.generation))
+        for destination in destinations:
+            if lifecycle is not None:
+                # Windows readers can briefly deny replacement. Retry only the
+                # native sharing errors, with a fixed publication deadline.
+                from tools.scout_release import atomic_json
+                atomic_json(destination, value)
+            else:
+                temporary = destination.with_name(destination.name + "." + uuid.uuid4().hex + ".tmp")
+                temporary.write_text(encoded(value),encoding="utf-8")
+                os.replace(temporary,destination)
         if previous_status[0] != state:
             emit({"event":"session_status","status":state,**extra})
             previous_status[0] = state
@@ -582,9 +617,15 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         pause_with_stop(seconds, should_stop)
     def data_pause(seconds):
         # Preserve the latched day's final native window, published after5pm.
-        pause_with_stop(seconds, stopped.is_set)
-    with exclusive_runtime_lock(root / "locks/intraday-manual-session.lock",process_name="intraday-manual-session"):
-        session_root.mkdir(parents=True,exist_ok=False)
+        # Session end revokes orders immediately, while the original latched
+        # final native window may publish during the bounded data-only drain.
+        pause_with_stop(seconds, lambda: stopped.is_set() or check_lifecycle() not in {None, "session_end"})
+    # The controller retains this native lock across every worker and gap.
+    # A lifecycle worker still checks its controller/generation on every effect.
+    session_lock = (nullcontext() if lifecycle is not None else
+        exclusive_runtime_lock(root / "locks/intraday-manual-session.lock",process_name="intraday-manual-session"))
+    with session_lock:
+        session_root.mkdir(parents=True,exist_ok=lifecycle is not None and lifecycle.generation > 1)
         status("STARTING")
         startup_stage = "wake"
         try:
@@ -608,6 +649,11 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             config, model_runtime = prepare_manual_models(config, datastore=root, pc=pc, symbols=symbols,
                 **({"recipe_path": model_recipe} if model_recipe is not None else {}))
             native_interval_symbols = native_interval_symbols_for_runtime(model_runtime)
+            if lifecycle is not None:
+                from .iteration_boundary import validate_resume
+                validate_resume(store, lifecycle=lifecycle, symbols=symbols, config=config)
+                if should_stop():
+                    raise InterruptedError("Logical trading run authority ended before broker startup")
             startup_stage = "local_configuration"
             load_dotenv(repository / ".env")
             if pc == "Scout":
@@ -622,7 +668,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 startup_stage = "local_executor"
                 executor = executor_type(repository=repository,profile=profile,datastore=root,store=store,
                     broker=broker,local_symbols=symbols,session_started_at=started,session_id=session_id,
-                    clock=clock,manual_authority=manual_authority,stopped=execution_should_stop)
+                    clock=clock,manual_authority=manual_authority,stopped=execution_should_stop,
+                    **({"resume_session": lifecycle.generation > 1} if lifecycle is not None else {}))
                 startup_stage = "broker_preflight"
                 if scout_admission == "broker-local":
                     startup = executor.preflight()
@@ -678,7 +725,9 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                     session_started_at=started,clock=clock,manual_authority=manual_authority,stopped=should_stop,
                     actor=pc,diagnostic_session_id=session_id)
         except BaseException as exc:
-            scheduled_stop = isinstance(exc,InterruptedError) and automatic_stop_requested_at[0] is not None
+            scheduled_stop = (isinstance(exc,InterruptedError) and
+                              (automatic_stop_requested_at[0] is not None or
+                               check_lifecycle() in {"manual_stop", "session_end"}))
             diagnostics = _symbol_exception_diagnostics(exc)
             stopped.set()
             status("STOPPED" if isinstance(exc,KeyboardInterrupt) or scheduled_stop else "FAILED",
@@ -688,14 +737,32 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             store.event(session_id,"manual_startup_stopped",{"error_type":type(exc).__name__,"message":str(exc),
                         "startup_stage":startup_stage,"diagnostics":diagnostics})
             if isinstance(exc,KeyboardInterrupt) or scheduled_stop:
-                return {"session_id":session_id,"status":"STOPPED"}
+                return {"session_id":session_id,"status":"STOPPED", "stop_reason": stop_reason()}
             raise
+        if lifecycle is not None:
+            if should_stop():
+                status("STOPPED", stop_reason=stop_reason())
+                return {"session_id": session_id, "status": "STOPPED", "stop_reason": stop_reason()}
+            lifecycle.ready()
+            if should_stop():
+                status("STOPPED", stop_reason=stop_reason())
+                return {"session_id": session_id, "status": "STOPPED", "stop_reason": stop_reason()}
         status("RUNNING")
+        def iteration_finished(result):
+            from .iteration_boundary import inspect_cycle
+            if not isinstance(result, dict) or not result.get("cycle_id"):
+                raise ContractError("Iteration returned without its durable cycle identity")
+            inspection = inspect_cycle(store, result["cycle_id"], session_id=session_id, symbols=symbols)
+            boundary_cycle[0] = result["cycle_id"]
+            lifecycle.phase("iteration_execution", cycle_id=result["cycle_id"], cycle_status=inspection["status"])
+            iteration_ready.set()
         def forecast_work():
             try:
                 forecasting_loop(runner,histories=histories,provider=provider,journal=journal,queue=queue,
                                  stopped=should_stop,clock=clock,pause=pause,
-                                 history_source=minute_feed.history_source)
+                                 history_source=minute_feed.history_source,
+                                 **({"on_iteration": iteration_finished, "recovery_first": lifecycle.generation > 1}
+                                    if lifecycle is not None else {}))
             except BaseException as exc:
                 store.event(session_id,"forecast_worker_stopped",{"error_type":type(exc).__name__,"message":str(exc)})
                 if not (isinstance(exc,InterruptedError) and should_stop()):
@@ -799,6 +866,15 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                             "message":str(exc),"retry_after_seconds":delay,
                             "diagnostics":_symbol_exception_diagnostics(exc)})
                     next_recovery = instant(clock()) + timedelta(seconds=delay)
+                if (lifecycle is not None and iteration_ready.is_set() and not should_stop()
+                        and not queue.due(clock())):
+                    # All currently eligible steps finished; any wait is already
+                    # durable in the queue/broker-retry tables. Resting/UNKNOWN
+                    # orders retain their broker identities and reservations.
+                    planned_restart[0] = True
+                    lifecycle.phase("draining", cycle_id=boundary_cycle[0])
+                    stopped.set()
+                    break
                 if not should_stop():
                     sleep(1)
         except KeyboardInterrupt:
@@ -817,8 +893,16 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             status("STOPPING",broker_orders_automatically_cancelled=False,
                    stop_reason=stop_reason())
             print("15m order authority stopped. Waiting for active computation to finish; pending broker identities are retained.",flush=True)
+            drain_until = (time.monotonic() + float(lifecycle.drain_timeout_seconds)
+                           if lifecycle is not None else None)
             while (worker.is_alive() or scorer.is_alive() or data_worker.is_alive()
                    or context_worker is not None and context_worker.is_alive()):
+                if lifecycle is not None:
+                    check_lifecycle()
+                    if time.monotonic() >= drain_until:
+                        worker_errors.append({"worker": "drain", "error_type": "TimeoutError",
+                                              "message": "Owned workers did not exit before bounded drain deadline"})
+                        break
                 try:
                     worker.join(timeout=1)
                     scorer.join(timeout=1)
@@ -832,11 +916,34 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                     stopped.set()
                     emit({"event":"manual_stop_requested","during":"worker_drain"})
             stopped.set()
-            status("FAILED" if worker_errors else "STOPPED",broker_orders_automatically_cancelled=False,
+            if lifecycle is not None and not worker_errors:
+                # Close the original journal only after its users drained. The
+                # next generation opens the same native identity and audit.
+                owned_journal = getattr(executor, "journal", None)
+                if owned_journal is not None:
+                    try:
+                        owned_journal.close()
+                    except BaseException as exc:
+                        worker_errors.append({"worker": "journal_close", "error_type": type(exc).__name__, "message": str(exc)})
+            if (lifecycle is not None and planned_restart[0] and not worker_errors
+                    and check_lifecycle() is None and not manual_stop_requested[0]
+                    and automatic_stop_requested_at[0] is None):
+                try:
+                    from .iteration_boundary import capture_checkpoint
+                    checkpoint = capture_checkpoint(store, lifecycle=lifecycle, symbols=symbols,
+                                                    boundary_cycle_id=boundary_cycle[0])
+                    lifecycle.checkpoint(checkpoint)
+                except BaseException as exc:
+                    worker_errors.append({"worker": "checkpoint", "error_type": type(exc).__name__, "message": str(exc)})
+            final_state = ("FAILED" if worker_errors or stop_reason() == "controller_failure" else
+                           "PLANNED_RESTART" if planned_restart[0] and stop_reason() == "planned_iteration_restart"
+                           else "STOPPED")
+            status(final_state,broker_orders_automatically_cancelled=False,
                    stop_reason=stop_reason(),worker_errors=worker_errors)
             store.event(session_id,"manual_session_stopped",{"pending_order_identity_preserved":True,
                         "stop_reason":stop_reason(),"worker_errors":worker_errors})
-        return {"session_id":session_id,"status":"FAILED" if worker_errors else "STOPPED"}
+        return {"session_id":session_id,"status":final_state, "stop_reason":stop_reason(),
+                **({"generation": lifecycle.generation} if lifecycle is not None else {})}
 
 
 def main(argv=None):
