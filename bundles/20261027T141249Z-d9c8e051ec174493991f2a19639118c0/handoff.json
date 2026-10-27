@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T14:12:49.351493Z",
+  "id": "20261027T141249Z-d9c8e051ec174493991f2a19639118c0",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout retained historical synthetic-candle audit notification deduplication across planned scoring-worker generations."
+}

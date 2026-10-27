@@ -1,0 +1,36 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T140547Z-6c2d208a28ee46b987455d487c4bea57",
+  "context_ancestry": "Original published source and successful stages remain preserved. This derived source context carries identical repair files at the reviewed later main base with fresh source, isolated courier and main checks.",
+  "files": [
+    "ml/intraday/live_session.py",
+    "ml/intraday/store.py",
+    "tests/test_intraday_scoring_audit_notifications.py"
+  ],
+  "limitations": [
+    "Offline tests prove retained notification deduplication and fresh original candle validation. They do not establish live recovery latency, cycle timing, a production lock holder, source coverage, order fills or completed model qualification.",
+    "Original candle and forecast/outcome evidence, synthetic exclusions and genuine observation requirements remain unchanged. Other latency causes remain unresolved. Private runtime overlays, recipes, models and operating evidence are not publication payload."
+  ],
+  "main_sha": "27819cc9a7f0d662c706c0fd6f0dd3bb6da514bb",
+  "privacy_review": "Reviewed shared source and offline test facts only; no local paths, private operating evidence, raw data, models, recipes, account state, credentials or task records.",
+  "related_source_records": [
+    "20261027T135046Z-5aa7a1cbd2a94cc5a442a4168743d7bf",
+    "20261027T140547Z-6c2d208a28ee46b987455d487c4bea57"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/441",
+    "https://github.com/jeremysecondstate/ducketz/pull/442"
+  ],
+  "runtime_implications": "Compatible Scout scoring code loads through the next safe automatic replacement after a completed full-symbol iteration in an existing authorized run. Installation, actual loaded generation and affected behavior remain separate evidence. Preserve manual stop, original deadline, local saved recipe, pending work and order identity.",
+  "scope": "Shared scoring diagnostic processing correctness and offline tests. Every PC retains private model recipes, symbols, operating bindings and independent order state.",
+  "source_branch": "codex/scout/20261027T140547Z-6c2d208a28ee46b987455d487c4bea57",
+  "source_record": "20261027T140547Z-6c2d208a28ee46b987455d487c4bea57",
+  "source_sha": "80bdafef6e35735a9384e5acce5b0ccc5ed90ac4",
+  "summary": "Scout retained historical synthetic-candle audit notification deduplication across planned scoring-worker generations.",
+  "tests": [
+    "Source, isolated courier and reviewed current-main candidates each passed 312 tests across 11 whole modules with 0 skips. Stage counts overlap.",
+    "All stages bind 187 exact source and dependency fingerprints; candidate import evidence and final raw Git blobs verify.",
+    "Fixtures verify cold worker replacement, original validation in every generation, distinct session and candle identities, malformed historical notices, preserved duplicate records, changed-original rejection and retained scoring qualification."
+  ]
+}
