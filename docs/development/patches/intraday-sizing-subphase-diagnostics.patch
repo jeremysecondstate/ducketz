@@ -1,0 +1,187 @@
+--- a/ml/intraday/account_execution.py
++++ b/ml/intraday/account_execution.py
+@@ -4,7 +4,7 @@
+ repeatedly invokes one bounded step. Pending recovery returns to that loop so
+ the next attempt can reobserve its own orders and account capacity.
+ """
+-from contextlib import contextmanager
++from contextlib import contextmanager, nullcontext
+ from dataclasses import asdict, replace
+ from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
+ from pathlib import Path
+@@ -132,6 +132,98 @@
+     evidence = _submission_failure_evidence(exc, "unclassified")
+     evidence["execution_stage"] = evidence.pop("submission_stage")
+     return evidence
++
++
++def _execution_loaded_generation(module_file):
++    """Identify this loaded source's sealed layout without IO or active pointers."""
++    try:
++        path = Path(module_file)
++        parts = path.parts
++        if (path.is_absolute() and len(parts) >= 6 and parts[-6] == "generations"
++                and parts[-4:] == ("source", "ml", "intraday", "account_execution.py")
++                and len(parts[-5]) == 64
++                and all(c in "0123456789abcdef" for c in parts[-5])):
++            return parts[-5]
++    except Exception:
++        pass
++    return None
++
++
++_LOADED_EXECUTION_GENERATION = _execution_loaded_generation(__file__)
++
++
++class _SizingTimings:
++    """Bounded inner-sizing clocks; telemetry never changes scientific evidence."""
++    _PHASES = frozenset({"intention_read", "frozen_inputs", "size_calculation", "sizing_persistence"})
++
++    def __init__(self):
++        self.phases = {}
++        self.elapsed_unavailable = self.thread_cpu_unavailable = False
++        self.loaded_generation = _LOADED_EXECUTION_GENERATION
++        self.candle_rows = None
++
++    def _clock(self, name):
++        try:
++            value = getattr(time, name)()
++            if type(value) in (int, float) and math.isfinite(value):
++                return value
++        except Exception:
++            pass
++        setattr(self, "thread_cpu_unavailable" if name == "thread_time" else "elapsed_unavailable", True)
++        return None
++
++    def _thread(self):
++        try:
++            return threading.get_ident()
++        except Exception:
++            self.thread_cpu_unavailable = True
++            return None
++
++    @contextmanager
++    def phase(self, name):
++        wall, cpu, thread = self._clock("monotonic"), self._clock("thread_time"), self._thread()
++        try:
++            yield
++        finally:
++            end, cpu_end, end_thread = self._clock("monotonic"), self._clock("thread_time"), self._thread()
++            try:
++                if name not in self._PHASES:
++                    self.elapsed_unavailable = True
++                    self.thread_cpu_unavailable = True
++                else:
++                    row = self.phases.setdefault(name, {})
++                    row["count"] = row.get("count", 0) + 1
++                    for start, stop, prefix in ((wall, end, ""), (cpu, cpu_end, "thread_cpu_")):
++                        if (start is None or stop is None or stop < start or not math.isfinite(stop - start)
++                                or (prefix and (thread is None or thread != end_thread))):
++                            setattr(self, "thread_cpu_unavailable" if prefix else "elapsed_unavailable", True)
++                            continue
++                        total = row.get(prefix + "total_seconds", 0.) + stop - start
++                        if not math.isfinite(total):
++                            setattr(self, "thread_cpu_unavailable" if prefix else "elapsed_unavailable", True)
++                            continue
++                        count_key = prefix + "count" if prefix else "elapsed_count"
++                        row[count_key] = row.get(count_key, 0) + 1
++                        row[prefix + "total_seconds"] = total
++                        row[prefix + "maximum_seconds"] = max(row.get(prefix + "maximum_seconds", 0.), stop - start)
++            except Exception:
++                self.elapsed_unavailable = self.thread_cpu_unavailable = True
++
++    def frozen(self, value):
++        try:
++            if type(value) is dict and type(value.get("candles")) in (list, tuple):
++                self.candle_rows = len(value["candles"])
++        except Exception:
++            self.elapsed_unavailable = True
++
++    def snapshot(self):
++        return dict(schema_version="intraday-sizing-subphase-diagnostics-v1",
++            phases={name: {key: round(value, 6) if type(value) is float else value
++                           for key, value in row.items()} for name, row in self.phases.items()},
++            candle_rows=self.candle_rows, loaded_generation=self.loaded_generation,
++            source_kind="sealed" if self.loaded_generation is not None else "unsealed",
++            elapsed_unavailable=self.elapsed_unavailable,
++            thread_cpu_unavailable=self.thread_cpu_unavailable, totals_are_inclusive=True)
+ 
+ 
+ class _ExecutionTrace:
+@@ -216,6 +308,7 @@
+         self.phase_totals = {}
+         self.dropped_phase_count = 0
+         self.phase_totals_overflow = False
++        self.sizing_timings = None
+         self.recovery_timings = None
+         self.ordinary_timings = None
+         self.lease_expires_at = self.snapshot_observed_at = None
+@@ -280,6 +373,8 @@
+         """Copy bounded timings for either an exception or a normal result."""
+         now = self._now()
+         result = dict(execution_stage=self.stage,
++            loaded_generation=_LOADED_EXECUTION_GENERATION,
++            source_kind="sealed" if _LOADED_EXECUTION_GENERATION is not None else "unsealed",
+             execution_elapsed_seconds=self._elapsed(now, self.started),
+             execution_stage_elapsed_seconds=self._elapsed(now, self.stage_started),
+             execution_phases=[dict(phase) for phase in self.phases],
+@@ -303,6 +398,11 @@
+                     result["lease_acquisition"]["receipt_recovery_details"] = details
+             except Exception:
+                 result["lease_acquisition"]["diagnostics_unavailable"] = True
++        if self.sizing_timings is not None:
++            try:
++                result["sizing_subphase_timings"] = self.sizing_timings.snapshot()
++            except Exception:
++                result["sizing_diagnostics_unavailable"] = True
+         if self.recovery_timings is not None:
+             result["recovery_phase_timings"] = self.recovery_timings.snapshot()
+         if self.ordinary_timings is not None:
+@@ -1131,12 +1231,20 @@
+                     evidence={"native_reservation_ids":[r.reservation_id for r in newer],
+                               "processed_forecast_ids":processed})
+             self._execution_stage("sizing")
+-            original = self.intents.get(forecast["forecast_id"])
++            sizing_timings = _SizingTimings() if self._execution_trace is not None else None
++            if self._execution_trace is not None:
++                self._execution_trace.sizing_timings = sizing_timings
++            sizing_phase = sizing_timings.phase if sizing_timings is not None else lambda name: nullcontext()
++            with sizing_phase("intention_read"):
++                original = self.intents.get(forecast["forecast_id"])
+             unavailable = None
+             if original is None:
+-                frozen = self.store.inputs(forecast["cycle_id"], forecast["symbol"])
+-                if frozen is None or frozen[0] != forecast["snapshot_hash"]:
+-                    raise ContractError("Original forecasting inputs unavailable")
++                with sizing_phase("frozen_inputs"):
++                    frozen = self.store.inputs(forecast["cycle_id"], forecast["symbol"])
++                    if frozen is None or frozen[0] != forecast["snapshot_hash"]:
++                        raise ContractError("Original forecasting inputs unavailable")
++                if sizing_timings is not None:
++                    sizing_timings.frozen(frozen[1])
+             # Historical scans and frozen input decoding can consume an actual
+             # observation's lifetime. Refresh once after that work, retaining
+             # the real provider clocks and the original desired size, if any.
+@@ -1153,13 +1261,15 @@
+                 self._execution_stage("sizing")
+             if original is None:
+                 quote = self.portfolio.quotes[forecast["symbol"]]
+-                result = size_forecast(forecast, forecast_snapshot=frozen[1],
+-                    account_equity=AvailableInput(self.portfolio.account_equity, self.portfolio.observed_at,
+-                        "schwab-liquidation-equity", {"snapshot_id":self.snapshot_id}),
+-                    quote=QuoteObservation(quote.bid, quote.ask, quote.freshness_observed_at,
+-                        self.portfolio.observed_at, "schwab-current-quote", {"snapshot_id":self.snapshot_id, "quote":asdict(quote)}),
+-                    calculated_at=self.clock(), maximum_quote_age_seconds=self.ledger.maximum_evidence_age_seconds)
+-                original = self.intents.save_sizing(forecast, result)
++                with sizing_phase("size_calculation"):
++                    result = size_forecast(forecast, forecast_snapshot=frozen[1],
++                        account_equity=AvailableInput(self.portfolio.account_equity, self.portfolio.observed_at,
++                            "schwab-liquidation-equity", {"snapshot_id":self.snapshot_id}),
++                        quote=QuoteObservation(quote.bid, quote.ask, quote.freshness_observed_at,
++                            self.portfolio.observed_at, "schwab-current-quote", {"snapshot_id":self.snapshot_id, "quote":asdict(quote)}),
++                        calculated_at=self.clock(), maximum_quote_age_seconds=self.ledger.maximum_evidence_age_seconds)
++                with sizing_phase("sizing_persistence"):
++                    original = self.intents.save_sizing(forecast, result)
+                 if result.status != "sized":
+                     unavailable = original
+                     # Unavailable sizing is a normal result, so exception
