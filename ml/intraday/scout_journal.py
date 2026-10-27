@@ -348,7 +348,7 @@ class ScoutJournal:
                    "NOT_SENT": {"PREPARED", "GRANTED"}}
         if kind not in allowed or previous is None or previous["state"] not in allowed[kind]:
             raise JournalCorruptionError("Invalid transition history")
-        expected = deepcopy(previous)
+        expected = dict(previous)
         expected["state"] = kind
         changed = {"GRANTED": ("grant", "grant_sha256"), "SENDING": ("send_token_sha256",),
                    "UNKNOWN": (), "ACCEPTED": ("broker_order_id",), "NOT_SENT": ("revoke_reason",)}
