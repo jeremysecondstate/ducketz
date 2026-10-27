@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T06:13:16.382744Z",
+  "id": "20261027T061316Z-2bc87b3ae2614952b7c970d350983b91",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas desktop UI freeze repair: lazy workspace startup and asynchronous compact saved-history display"
+}

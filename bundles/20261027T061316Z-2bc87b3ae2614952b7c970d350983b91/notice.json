@@ -1,0 +1,44 @@
+{
+  "atlas_generation": "e8d39b8f706e9867b609fd0a8f653060566040bec12296658a8c3c676195c377",
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T061025Z-e7bd3080c4214b54837fa2834dec2c3c",
+  "change_id": "20261027T061025Z-e7bd3080c4214b54837fa2834dec2c3c",
+  "commit_sha": "9e82445955e48750f4e72697978ae0b0c3b072b1",
+  "files": [
+    "docs/development/patches/ui-responsiveness.json",
+    "docs/development/patches/ui-responsiveness.patch",
+    "docs/development/ui-responsiveness.md",
+    "tests/check_ui_responsiveness_package.py",
+    "tests/test_desktop_responsiveness.py",
+    "tests/test_forecast_responsiveness.py",
+    "tests/test_intraday_responsiveness.py"
+  ],
+  "limitations": [
+    "Public consumers require local adaptation; projection-only package checks do not prove installation.",
+    "Cold historical reads may take time; original scientific records and all score inputs remain intact.",
+    "No real broker/trader operation or full live history scan."
+  ],
+  "main_integrated": false,
+  "peer_installed": false,
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/428",
+  "remote_sha": "9e82445955e48750f4e72697978ae0b0c3b072b1",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas source installed and complete generation sealed; desktop must be reopened to load changed source. Trader controls, schedules, scientific recipes and runtime dependencies unchanged. Main integration and peer installation remain separate.",
+  "scope": "shared UI; applicable to both PCs through reviewed local consumer-hunk adaptation",
+  "summary": "Atlas desktop UI freeze repair: lazy workspace startup and asynchronous compact saved-history display",
+  "tests": [
+    {
+      "kind": "local full integration",
+      "output_sha256": "e754ea631813cf3e9da63eea9b1fed536721ccc9fe59e238818a24180d569b46",
+      "recorded_at_utc": "2026-10-27T06:09:45.371763+00:00",
+      "result": "176 passed in 5.88s"
+    },
+    {
+      "completed_at_utc": "2026-10-27T06:11:44.139305Z",
+      "exit_code": 0,
+      "kind": "isolated portable exact-method and SQLite fixtures",
+      "output_sha256": "19d6bc9256063b13c11553bd72c65fc0392ffd59380e21aff39c516d3cd0e206",
+      "started_at_utc": "2026-10-27T06:11:43.462286Z"
+    }
+  ]
+}
