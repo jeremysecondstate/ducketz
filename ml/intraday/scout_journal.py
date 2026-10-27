@@ -29,7 +29,7 @@ import sqlite3
 import stat
 import uuid
 
-from .scout_protocol import Grant, Request, PARTICIPANT_ID, STREAM, canonical_sha256
+from .scout_protocol import Grant, Request, PARTICIPANT_ID, STREAM, canonical_sha256, _canonical_bytes
 from .dataset_diagnostics import recovery_phase
 
 
@@ -70,7 +70,11 @@ class JournalStateError(JournalError):
 
 
 def _encoded(value):
-    canonical_sha256(value)  # Apply the protocol's bounded canonical JSON rules.
+    plain_mappings = [True]
+    raw = _canonical_bytes(value, _plain_mappings=plain_mappings)
+    if plain_mappings[0]:
+        return raw.decode("utf-8")
+    # Custom mappings retain their original serializer and override behavior.
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
                       allow_nan=False)
 

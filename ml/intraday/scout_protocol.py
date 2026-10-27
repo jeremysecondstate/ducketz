@@ -60,7 +60,7 @@ def _timestamp(value, name):
         raise ProtocolError(f"Invalid timezone-aware {name}") from exc
 
 
-def _json_value(value):
+def _json_value(value, *, _plain_mappings=None):
     if value is None or type(value) in (str, bool):
         return value
     if type(value) is int and -MAX_INTEGER - 1 <= value <= MAX_INTEGER:
@@ -68,12 +68,32 @@ def _json_value(value):
     if type(value) is float and math.isfinite(value):
         return value
     if isinstance(value, Mapping):
+        if _plain_mappings is not None and type(value) is not dict:
+            _plain_mappings[0] = False
         if any(type(key) is not str for key in value):
             raise ProtocolError("Canonical JSON requires string object keys")
-        return {key: _json_value(item) for key, item in value.items()}
+        return {key: _json_value(item, _plain_mappings=_plain_mappings)
+                for key, item in value.items()}
     if type(value) is list:
-        return [_json_value(item) for item in value]
+        return [_json_value(item, _plain_mappings=_plain_mappings) for item in value]
     raise ProtocolError("Canonical JSON requires finite, bounded JSON values")
+
+
+def _canonical_bytes(payload: Mapping, *, _plain_mappings=None) -> bytes:
+    # Keep the public hash's frame depth and hash-error wrapping unchanged.
+    if not isinstance(payload, Mapping):
+        raise ProtocolError("Canonical payload must be an object")
+    try:
+        raw = json.dumps(_json_value(payload, _plain_mappings=_plain_mappings),
+                         sort_keys=True, separators=(",", ":"),
+                         ensure_ascii=False, allow_nan=False).encode("utf-8")
+        if len(raw) > 1024 * 1024:
+            raise ProtocolError("Canonical payload exceeds one MiB")
+        return raw
+    except (TypeError, ValueError, UnicodeError, RecursionError) as exc:
+        if isinstance(exc, ProtocolError):
+            raise
+        raise ProtocolError("Invalid canonical JSON") from exc
 
 
 def canonical_sha256(payload: Mapping) -> str:
