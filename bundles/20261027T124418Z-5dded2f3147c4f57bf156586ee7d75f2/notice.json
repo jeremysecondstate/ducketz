@@ -1,0 +1,65 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T123804Z-df21695b3c474f16bc50f01904be03d5",
+  "change_id": "20261027T123804Z-df21695b3c474f16bc50f01904be03d5",
+  "details": [
+    "Incident atlas-15m-new-forecast-header-proof-latency-20261027: a newly saved scientific forecast had already passed full validation and digesting but supplied no authenticated scalar header proof. A separately running execution reader consequently repeated full original model-tree validation when it first saw the new publication.",
+    "Seed proof from the already validated known INSERT value, binding source physical identity, schema, epoch, original row revision and indexed scalar fields in the same scientific writer transaction. Publish the optional cache only after the source commits. Do not reread, decode or rehash the producer payload for this optimization.",
+    "An exact forecast-only trigger composition requires no optional recovery capability. Additional recovery objects require the existing complete known definitions and singleton metadata; unknown, partial, mutated or unavailable composition disables proof only and retains full original validation. No execution state is initialized or made a scientific publication condition.",
+    "Optional cache failures cannot fail scientific source publication. Original source commit failures, interrupts and SystemExit retain their original behavior. Preserve probabilities, targets, labels, model recipes, local symbols, state, orders, cadence and manual controls.",
+    "Canonical source preimage273c25c4 maps to reviewed publicddb4fc58; Atlas composed source preimage1699f291 maps to localaef3a366. New helpers and two producer hooks are the exact owned change; preserve each peer source composition and existing policy/retry behavior rather than copying a whole Atlas file."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/store.py",
+      "sha256": "ddb4fc58b1139f148c04931a59f815e387f452bb131b80a197c58ceed60a3004"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_forecast_header_publication.py",
+      "sha256": "dc7de1a882f177c9fd358315e0f952a71ee2639b244d83929afab66bce85f7e1"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_forecast_header_publication.py",
+      "sha256": "5d39920e9f2df09cfdd59683851692a9d7d435769e9b80815438232f3d3ac7ae"
+    }
+  ],
+  "limitations": [
+    "Canonical55passes and4skips do not establish the absent recovery capability. Atlas separate21new/59default and38independent cases cover its actual8/16trigger compositions; source graphs and exact bytes remain separately bound.",
+    "Final independent fresh producer/consumer fixtures for both supported compositions recorded zero source-payload SELECTs and zero full scientific validators with unchanged scalar output. This establishes the reproduced mechanism, not attribution of a whole observed execution phase or a guaranteed latency improvement.",
+    "Source publication, common-main integration, complete local installation, loaded generation and naturally affected exercise are separate. No new-generation loading or natural prevention is asserted; peer installation is not inferred."
+  ],
+  "local_installation": "Atlas exact local installation passed59cases without skips, then sealed complete generation 246d81e2594575125251799de7a70880899a5ba46f0c0241f87e7ff7e1d248eb with 531 source members. Existing installed Gameplan and trace repairs, independent initialization changes, runtime and prior complete generations remain retained.",
+  "main_commit": "833ebcffd46f424b484b70a1433ab3f4c00cbbc1",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/436",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Apply the applicable reviewed narrow source changes, preserve local composition, and seal a complete exact-byte generation through the existing installation workflow. Existing manually started sessions may load it only at their authorized safe iteration boundary. No initial start, forced renewal, post-stop restart, session extension, broker/provider request, order or new task is performed.",
+  "scope": "shared",
+  "source_commit": "3d7d8512a42b30dd6fc43e0d28d98a0eddfec20c",
+  "summary": "Atlas scientific forecast publication now seeds optional authenticated scalar proofs; source and complete generation installed",
+  "tests": [
+    {
+      "command": "python -B tests/check_isolated_intraday_forecast_header_publication.py",
+      "completed_at_utc": "2026-10-27T12:41:02.788952+00:00",
+      "passed_cases": 55,
+      "scope": "canonical author, sealed queue, isolated source and fresh main candidate",
+      "skip_reason": "Canonical legacy intentions lack complete optional recovery-schema capability; original forecast-only composition is exercised.",
+      "skipped_cases": 4
+    },
+    {
+      "command": "python -B tests/check_isolated_intraday_forecast_header_publication.py",
+      "completed_at_utc": "2026-10-27T12:36:55.212179+00:00",
+      "passed_cases": 59,
+      "scope": "exact installed local composition",
+      "skipped_cases": 0
+    },
+    {
+      "completed_at_utc": "2026-10-27T12:37:59.024376+00:00",
+      "passed_cases": 38,
+      "scope": "final exact local candidate independent adversarial review",
+      "skipped_cases": 0
+    }
+  ]
+}

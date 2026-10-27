@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T12:44:18.324250Z",
+  "id": "20261027T124418Z-5dded2f3147c4f57bf156586ee7d75f2",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas scientific forecast publication now seeds optional authenticated scalar proofs; source and complete generation installed"
+}
