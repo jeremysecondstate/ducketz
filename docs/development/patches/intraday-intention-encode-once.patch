@@ -1,0 +1,21 @@
+--- a/ml/intraday/intentions.py
++++ b/ml/intraday/intentions.py
+@@ -570,7 +570,8 @@
+         desired = quantity(value["desired_quantity"])
+         payload = {"version": VERSION, "forecast_id": forecast["forecast_id"], "symbol": forecast["symbol"],
+                    "side": side, "desired_quantity": desired, "sizing_id": result.result_id, "sizing": value}
+-        key = digest(payload)
++        canonical = encoded(payload)
++        key = hashlib.sha256(canonical.encode()).hexdigest()
+         with self.store._execution_forecast_lock:
+             marker, original = self._ordinary_forecast_preflight(forecast)
+             with self.store.connect() as db:
+@@ -582,7 +583,7 @@
+                 if old is not None and old != payload:
+                     raise ContractError("Original desired quantity and sizing evidence are immutable")
+                 db.execute("INSERT OR IGNORE INTO intraday_intentions VALUES(?,?,?)",
+-                           (forecast["forecast_id"], key, encoded(payload)))
++                           (forecast["forecast_id"], key, canonical))
+         # Recovery can repeat this after a crash between the two transactions.
+         self.record(forecast, event_key="sized:" + result.result_id, recorded_at=value["calculated_at"],
+                     disposition="awaiting_capacity", evidence={"sizing_id": result.result_id}, kind="sized")
