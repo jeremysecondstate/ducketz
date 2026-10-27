@@ -1,0 +1,60 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T134841Z-5fb157dbd13d4e4eae86da8d86bc6d05",
+  "change_id": "20261027T134841Z-5fb157dbd13d4e4eae86da8d86bc6d05",
+  "details": [
+    "Atlas 15m Trader Representative preserves bounded exception chains and exact claimed-request identity in a diagnostic sidecar when an admitted worker fails. The original exception and exit disposition remain unchanged.",
+    "Diagnostic persistence supplies no response, successful handoff, completion, renewal, broker or trader authority. Planned renewals and terminal manual stops keep their existing behavior.",
+    "Publish only a narrow consumer compatibility patch, exact source extracts with hashes and standard-library offline fixtures. Both PCs review corresponding hunks for their matching manual-session renewal consumer, preserving local composition and bindings."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/trader-worker-failure-evidence.patch",
+      "sha256": "06e9821eef59c93e948c2f0d2bb1b8ae759f442e2e7aa3ed26a94a56351a5573"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/trader-worker-failure-evidence.json",
+      "sha256": "3531e99ecf57555b433c0a206dce68e341c9c2aeeb61b8be9dc0b66cc6a630e5"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_trader_worker_failure_evidence.py",
+      "sha256": "7665ce576adcbafae3a4bc7cdb78a1ad8742d64a18a2b3f13a14bed55ba687a8"
+    }
+  ],
+  "limitations": [
+    "Portable extracted-source cases test diagnostic capture under offline stubs; full locally composed worker/controller checks and exact complete generation sealing are recorded separately.",
+    "Original historical terminal exception remains missing. Source repair, offline results, publication, local installation, loaded code and natural affected exercise are separate facts.",
+    "Metadata and sidecars are evidence only. No automatic start, error restart, post-stop restart, manual-control change or session lifetime extension is authorized."
+  ],
+  "local_installation": "Atlas installed exact reviewed consumer hunks and complete531-source generation 060e994a8543dbbfccff10cafb26fe8c1fe2a5d29c6e664b66a81fce2543b069. Only the worker changed;530parent sources and the existing frozenruntime remain. Full runtime verification succeeded. The ended session remains ended; no live trader was operated.",
+  "main_commit": "60096d5768361d7514dc845bc5924837dfa9c0ce",
+  "natural_affected_exercise": "UNKNOWN; original historical exception remains absent and no live test was induced.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/440",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Apply only reviewed exact-preimage worker hunks to the local consumer, then seal the complete reviewed source and existing runtime using tools/trader_installation.py. Ended sessions remain ended; Jeremy alone chooses the next ordinary manual launch. No broker/provider request or live infrastructure test.",
+  "runtime_loading": "UNKNOWN; source publication and sealed installation do not prove a live worker loaded the diagnostic repair.",
+  "scope": "shared",
+  "source_commit": "cb7da4dee07b8119aa386acf3bd8edc2b868f102",
+  "summary": "Atlas admitted-worker diagnostics published and sealed; live recovery remains unproved",
+  "tests": [
+    {
+      "command": "python -B tests/check_trader_worker_failure_evidence.py",
+      "completed_at_utc": "2026-10-27T13:56:36.392626+00:00",
+      "passed_cases_each": 15,
+      "scope": "Exact immutable queue, isolated source and fresh common-main candidate"
+    },
+    {
+      "completed_at_utc": "2026-10-27T13:33:52.536544+00:00",
+      "passed_cases": 31,
+      "scope": "Whole composed local worker fixtures"
+    },
+    {
+      "completed_at_utc": "2026-10-27T13:48:45.339559+00:00",
+      "passed_cases": 10,
+      "scope": "Actual sealed source and Renewal integration"
+    }
+  ]
+}

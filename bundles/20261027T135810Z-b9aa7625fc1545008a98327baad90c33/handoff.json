@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T13:58:10.328421Z",
+  "id": "20261027T135810Z-b9aa7625fc1545008a98327baad90c33",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas admitted-worker diagnostics published and sealed; live recovery remains unproved"
+}
