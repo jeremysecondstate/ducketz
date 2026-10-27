@@ -1,0 +1,12 @@
+--- a/tests/test_intraday_recovery_latency.py
++++ b/tests/test_intraday_recovery_latency.py
+@@ -343,7 +343,8 @@
+     assert diagnostic["snapshot_observed_at"] == env.executor.portfolio.observed_at
+     assert len(diagnostic["execution_phases"]) <= 32
+     assert set(diagnostic) == {"execution_stage", "execution_elapsed_seconds",
+-        "execution_stage_elapsed_seconds", "execution_phases", "lease_expires_at", "snapshot_observed_at"}
++        "execution_stage_elapsed_seconds", "execution_phases", "lease_expires_at", "snapshot_observed_at",
++        "execution_phase_summary"}
+     assert env.executor.lease.token not in raw and env.config.account_fingerprint not in raw
+     assert "account_equity" not in raw and "quote" not in json.dumps(diagnostic)
+ 
