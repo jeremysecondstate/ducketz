@@ -171,6 +171,33 @@ class ShadowStore:
             db.execute("INSERT INTO events(cycle_id,symbol,recorded_at,kind,payload) VALUES(?,?,?,?,?)",
                        (cycle_id, symbol, instant(recorded_at or utcnow()).isoformat(), kind, encoded(payload)))
 
+    def scoring_audit_notices(self, session_id):
+        """Read exact prior diagnostic notices for this logical session only.
+
+        These identities deduplicate notifications, never candle validation or
+        outcome qualification. Malformed historical rows remain untouched and
+        cannot suppress a valid notice. Stream one scan across worker restarts.
+        """
+        notices = set()
+        with self.connect() as db:
+            for symbol, raw in db.execute(
+                    "SELECT symbol,payload FROM events WHERE cycle_id=? AND kind=?",
+                    (session_id, "unverified_synthetic_outcome_requires_audit")):
+                if type(symbol) is not str or not symbol.strip() or type(raw) is not str or len(raw) > 256:
+                    continue
+                try:
+                    value = json.loads(raw)
+                except (TypeError, ValueError):
+                    continue
+                if type(value) is not dict or set(value) != {"candle_hash", "immutable_original_retained"}:
+                    continue
+                key = value["candle_hash"]
+                if (value["immutable_original_retained"] is True and type(key) is str
+                        and len(key) == 64 and all(char in "0123456789abcdef" for char in key)
+                        and raw == encoded(value)):
+                    notices.add((symbol, key))
+        return notices
+
     def begin_cycle(self, cycle_id, payload):
         payload = dict(payload)
         with self.connect() as db:
