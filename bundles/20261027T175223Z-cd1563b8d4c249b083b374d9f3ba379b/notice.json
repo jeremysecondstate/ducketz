@@ -1,0 +1,33 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T174222Z-95fe659f5e60467e9f98967005af128d",
+  "files": [
+    "ml/intraday/market_collection.py",
+    "ml/intraday/live_session.py",
+    "ml/intraday/prospective_context.py",
+    "tests/test_intraday_market_collection_startup.py",
+    "tests/test_intraday_prospective_queue_noop.py"
+  ],
+  "limitations": [
+    "Three initialization attempts may encompass six original ten-second acquisition contexts plus two one-second pauses and processing. The existing controller startup bound remains unchanged; this is not a crash respawner.",
+    "Offline checks prove fixture behavior only. External holder identity, affected live recovery, overall latency, coverage and fills require separate evidence.",
+    "Private runtime overlays, raw data, fitted models, recipes, account state, ledgers, task memory, bindings and operating evidence are excluded from this shared source publication."
+  ],
+  "main_sha": "d3b78da7864f67ad68bdafc15227bd6a5f3cf3a6",
+  "privacy_review": "Reviewed shared source and offline test facts only; no private local paths, operating evidence, raw data, models, recipes, account state, credentials or task records.",
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/449"
+  ],
+  "runtime_implications": "Compatible source changes require separate reviewed local installation. Preserve initial activation, manual stop, original deadline, saved recipe, pending work and order identity. Routine compatible worker source loads at a safe automatic iteration replacement within an authorized run; terminal startup failure still requires the next normal authorized launch. No monitoring automation starts or restarts a trader.",
+  "scope": "Shared queue and startup correctness; each PC retains its saved local model recipe, symbols, bindings and separate order state. Explicit startup recovery is wired only for Scout.",
+  "source_branch": "codex/scout/20261027T174222Z-95fe659f5e60467e9f98967005af128d",
+  "source_record": "20261027T174222Z-95fe659f5e60467e9f98967005af128d",
+  "source_sha": "86537c7214ac97f0cb79c74702155cbb6a7f708b",
+  "summary": "Scout added bounded native startup queue recovery and removed redundant unchanged-state prospective queue writes.",
+  "tests": [
+    "Source, isolated courier and reviewed main candidates each passed 355 tests across 12 whole modules with 0 skips. Stage counts overlap.",
+    "All stages bind 179 exact source and dependency fingerprints; candidate import evidence and final raw Git blobs verify.",
+    "Offline native-lock fixtures cover recovery, exhaustion, stop and original deadline precedence, error identity, custom and unknown poll fallbacks, constructor diagnostics, typed whole-state equality, real receipt transitions, malformed values, custom readers and downstream queue, recipe and lifecycle behavior."
+  ]
+}
