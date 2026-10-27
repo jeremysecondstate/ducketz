@@ -7,17 +7,12 @@ import pytest
 
 from ml.intraday import scout_journal as journal
 from test_intraday_scout_journal import accepted, observe, order_evidence
+from test_intraday_scout_canonical_encoding import legacy_checked_json
 
 
 def original_checked_json(payload, digest):
-    """Recorded pre-optimization contract, including exception wrapping."""
-    try:
-        value = json.loads(payload)
-        if journal._encoded(value) != payload or journal.canonical_sha256(value) != digest:
-            raise journal.JournalCorruptionError("Stored payload hash or canonical bytes differ")
-        return value
-    except (ValueError, TypeError, UnicodeError, RecursionError) as exc:
-        raise journal.JournalCorruptionError("Invalid stored canonical payload") from exc
+    # Frozen oracle does not call the modified production encoder.
+    return legacy_checked_json(payload, digest)
 
 
 def exception_chain(error):
@@ -79,19 +74,36 @@ def test_one_mib_limit_applies_to_exact_utf8_bytes(size, unicode):
 
 
 def test_each_stored_row_uses_one_complete_protocol_validation(monkeypatch):
-    original = journal.canonical_sha256
-    calls = []
-    def validated(value):
-        calls.append(value)
-        return original(value)
-    monkeypatch.setattr(journal, "canonical_sha256", validated)
+    original = journal._canonical_bytes
+    real_dump, real_hash = json.dumps, hashlib.sha256
+    validated, dumped, hashed = [], [], []
+    def validate(value, **kwargs):
+        validated.append(value)
+        return original(value, **kwargs)
+    def dump(value, **kwargs):
+        result = real_dump(value, **kwargs)
+        dumped.append((value, result))
+        return result
+    def digest(raw):
+        hashed.append(raw)
+        return real_hash(raw)
     payload = '{"nested":[1,{"x":"雪"}]}'
-    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
-    assert journal._checked_json(payload, digest) == {"nested": [1, {"x": "雪"}]}
-    assert len(calls) == 1
-    # Every subsequent row is still validated; there is no digest/payload cache.
-    assert journal._checked_json(payload, digest) == {"nested": [1, {"x": "雪"}]}
-    assert len(calls) == 2
+    expected_bytes = payload.encode("utf-8")
+    expected_digest = real_hash(expected_bytes).hexdigest()
+    monkeypatch.setattr(journal, "_canonical_bytes", validate)
+    monkeypatch.setattr(json, "dumps", dump)
+    monkeypatch.setattr(hashlib, "sha256", digest)
+    for count in (1, 2):
+        value = journal._checked_json(payload, expected_digest)
+        assert value == {"nested": [1, {"x": "雪"}]}
+        assert len(validated) == len(dumped) == len(hashed) == count
+        assert dumped[-1] == (value, payload)
+        assert hashed[-1] == expected_bytes
+    assert validated[0] is not validated[1]
+    with pytest.raises(journal.JournalCorruptionError):
+        journal._checked_json('{"nested":[9223372036854775808]}', expected_digest)
+    assert len(validated) == 3
+    assert len(dumped) == len(hashed) == 2
 
 
 @pytest.mark.parametrize("replacement", [None, b"different bytes"])
