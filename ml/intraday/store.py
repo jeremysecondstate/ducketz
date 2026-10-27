@@ -1,7 +1,9 @@
 """Host-local shadow evidence. Forecasts, inputs and outcome revisions are immutable.
 
-This module deliberately has no broker, account, or execution dependency. Operational
-cycle summaries may advance; every transition also has an append-only event.
+This module opens no broker or account connection. Optional publication proofs
+validate already-existing local revision metadata without initializing execution
+state or making it a condition of scientific publication. Operational cycle
+summaries may advance; every transition also has an append-only event.
 """
 from __future__ import annotations
 
@@ -425,6 +427,75 @@ class ShadowStore:
                               where + " ORDER BY rowid", parameters).fetchall()
         return [self._forecast_value(row) for row in rows]
 
+    def _published_forecast_header_proof(self, db, value):
+        """Bind this producer's already validated INSERT to optional scalars.
+
+        No payload is reread, decoded or hashed here. The canonical scientific
+        value was validated and digested above, then supplied directly to the
+        INSERT. Only the exact known source triggers may have run since then;
+        unfamiliar trigger composition disables this optional optimization.
+        """
+        try:
+            expected = {name: sql for name, sql in _EXECUTION_FORECAST_SCHEMA.items()
+                        if sql.lstrip().startswith("CREATE TRIGGER")}
+            actual = dict(db.execute("SELECT name,sql FROM sqlite_master WHERE type='trigger'"))
+            recovery_objects = db.execute("SELECT 1 FROM sqlite_master WHERE name LIKE 'recovery_%' LIMIT 1").fetchone()
+            if actual != expected or recovery_objects is not None:
+                # Existing installations may also carry independent sizing
+                # revisions. Plain forecast-only stores need no such capability.
+                # Partial or unfamiliar compositions retain the full reader.
+                from . import intentions
+                recovery = getattr(intentions, "_RECOVERY_ROW_SCHEMA", None)
+                owner = getattr(intentions, "IntentionStore", None)
+                schema_reader = getattr(owner, "_row_schema", None)
+                generation_reader = getattr(owner, "_row_generation", None)
+                if (not isinstance(recovery, dict) or not callable(schema_reader)
+                        or not callable(generation_reader) or not schema_reader(db)):
+                    return None
+                generation_reader(db)
+                expected.update({name: sql for name, sql in recovery.items()
+                                 if sql.lstrip().startswith("CREATE TRIGGER")})
+            if actual != expected:
+                return None
+            generation, epoch = self._execution_forecast_generation(db)
+            opened = getattr(self, "_connection_source_identities", {}).get(id(db))
+            stat = self.path.stat()
+            if opened is None or opened != (stat.st_dev, stat.st_ino):
+                return None
+            indexed = db.execute("SELECT f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,r.generation "
+                "FROM forecasts f LEFT JOIN execution_forecast_revisions r ON r.forecast_id=f.id WHERE f.id=?",
+                (value["forecast_id"],)).fetchone()
+            fields = ("forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at")
+            if (indexed is None or tuple(value[field] for field in fields) != indexed[:6]
+                    or any(not isinstance(item, str) for item in indexed[:6])
+                    or type(indexed[6]) is not int or not 0 <= indexed[6] <= generation):
+                return None
+            fields += ("mode", "ensemble_status", "target_open", "target_close",
+                       "population_contract", "source_dataset", "source_id", "reference_open")
+            projection = {field: value[field] for field in fields if field in value}
+            if "reference_open" in projection:
+                projection["reference_open"] = str(projection["reference_open"])
+            if any(item is not None and not isinstance(item, str) for item in projection.values()):
+                return None
+            identity = (str(self.path.resolve()), *opened, db.execute("PRAGMA schema_version").fetchone()[0], epoch)
+            return identity, tuple(indexed), projection
+        except Exception:
+            return None
+
+    def _publish_forecast_header_proof(self, proof):
+        """An unavailable optional cache never fails scientific publication."""
+        if proof is None:
+            return
+        try:
+            identity, signature, projection = proof
+            stat = self.path.stat()
+            if identity[1:3] != (stat.st_dev, stat.st_ino):
+                return
+            from .forecast_header_cache import DurableForecastHeaders
+            DurableForecastHeaders(self.path).save_many(identity, ((signature, projection),))
+        except Exception:
+            pass
+
     def save_forecast(self, payload, *, intent=None):
         # Return exactly the persisted JSON representation. Model metadata can
         # contain tuples; their decoded list form must compare identically on
@@ -492,6 +563,10 @@ class ShadowStore:
             intent_value = self._intent(key, value, intent)
             db.execute("INSERT INTO forecasts VALUES(?,?,?,?,?,?,?)", (key, value["pc"], value["symbol"], value["cycle_id"], value["reference_at"], value["issued_at"], encoded(value)))
             db.execute("INSERT INTO intents VALUES(?,?,?,?)", (digest(intent_value), key, value["issued_at"], encoded(intent_value)))
+            proof = self._published_forecast_header_proof(db, value)
+        # Publish optional proof only after the scientific source commits.
+        # Missing cache proof retains the complete original validation path.
+        self._publish_forecast_header_proof(proof)
         return value
 
     @staticmethod
