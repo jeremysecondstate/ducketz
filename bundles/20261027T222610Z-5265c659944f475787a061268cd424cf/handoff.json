@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T22:26:10.101271Z",
+  "id": "20261027T222610Z-5265c659944f475787a061268cd424cf",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas 15m sizing-save forecast reuse published and sealed"
+}
