@@ -304,10 +304,10 @@ class QuarterHourMarketCollector:
         self.root.mkdir(parents=True, exist_ok=True)
         from .market_collection_index import initialize_receipt_index
         initialize_receipt_index(self.root)
-        with self.queue_lock_timing.observe(self.lock, "initialize"):
-            state = self._state()
+        def check_scope(state):
             if state.get("symbols") != list(self.symbols):
                 raise ValueError("Saved collection scope belongs to another symbol configuration")
+        self._read_queue("initialize", check_scope)
 
     def _state(self):
         if self.state_path.exists():
@@ -316,6 +316,32 @@ class QuarterHourMarketCollector:
                 raise ValueError("Unsupported market collection queue version")
             return value
         return {"schema_version": QUEUE_VERSION, "symbols": list(self.symbols), "tasks": {}, "source_blocks": {}}
+
+    _native_state_reader = _state
+
+    def _read_queue(self, phase, reader):
+        """Decode native immutable bytes outside the lock; fence the final read.
+
+        Every operation rereads the exact queue under its original native lock.
+        A concurrent update or a custom reader takes the original locked path
+        once; no state cache, retry loop or optimistic mutation is introduced.
+        """
+        native = QuarterHourMarketCollector._native_state_reader
+        with self.queue_lock_timing.observe(self.lock, phase):
+            if (type(self) is not QuarterHourMarketCollector
+                    or getattr(self._state, "__func__", None) is not native
+                    or not self.state_path.exists()):
+                return reader(self._state())
+            raw = self.state_path.read_text(encoding="utf-8")
+        value = json.loads(raw)
+        if value.get("schema_version") != QUEUE_VERSION:
+            raise ValueError("Unsupported market collection queue version")
+        with self.queue_lock_timing.observe(self.lock, phase):
+            if (getattr(self._state, "__func__", None) is not native
+                    or not self.state_path.exists()
+                    or self.state_path.read_text(encoding="utf-8") != raw):
+                value = self._state()
+            return reader(value)
 
     def enqueue(self, quarter_start) -> int:
         start, now = instant(quarter_start), instant(self.clock())
@@ -388,11 +414,11 @@ class QuarterHourMarketCollector:
     def step(self, *, max_requests=8) -> list[dict]:
         if isinstance(max_requests, bool) or not isinstance(max_requests, int) or max_requests < 1:
             raise ValueError("max_requests must be a positive integer")
-        with self.queue_lock_timing.observe(self.lock, "step_due"):
-            state = self._state()
+        def read_due(state):
             now = instant(self.clock())
-            due = [(key, task) for key, task in state["tasks"].items()
-                   if not _settled(task) and instant(task["due_at"]) <= now]
+            return [(key, task) for key, task in state["tasks"].items()
+                    if not _settled(task) and instant(task["due_at"]) <= now]
+        due = self._read_queue("step_due", read_due)
         selected = _select_tasks(due, max_requests)
 
         def perform(item):
@@ -400,8 +426,7 @@ class QuarterHourMarketCollector:
             task_lock = FileLock(str(self.root / (key + ".lock")), timeout=0)
             try:
                 with task_lock:
-                    with self.queue_lock_timing.observe(self.lock, "task_recheck"):
-                        task = self._state()["tasks"][key]
+                    task = self._read_queue("task_recheck", lambda state: state["tasks"][key])
                     if _settled(task) or instant(task["due_at"]) > instant(self.clock()):
                         return None
                     with self.provider_limits[_lane(task["request"])]:
@@ -425,8 +450,7 @@ class QuarterHourMarketCollector:
                 QuarterHourMarketCollector._apply_collection_transition(self, state, key, path, recovered, recovered=True)
                 _atomic(self.state_path, state)
             return recovered
-        with self.queue_lock_timing.observe(self.lock, "source_block"):
-            blocked = self._state().get("source_blocks", {}).get(request.identity)
+        blocked = self._read_queue("source_block", lambda state: state.get("source_blocks", {}).get(request.identity))
         if started - instant(task["quarter_end"]) > timedelta(hours=48):
             result = CollectionResult([], "EXPIRED", "Unfinished source window exceeded the bounded 48-hour recovery horizon")
         elif blocked:
@@ -611,9 +635,7 @@ class QuarterHourMarketCollector:
                     acquired.append(key)
             if not acquired:
                 return report
-            with self.queue_lock_timing.observe(self.lock, "step_due"):
-                state = self._state()
-                selected = {key: state["tasks"].get(key) for key in acquired}
+            selected = self._read_queue("step_due", lambda state: {key: state["tasks"].get(key) for key in acquired})
             for key in acquired:
                 try:
                     task = selected[key]
@@ -682,8 +704,7 @@ class QuarterHourMarketCollector:
 
     def capability_manifest(self):
         from .market_collection_adapters import capability_catalog
-        with self.queue_lock_timing.observe(self.lock, "capability_manifest"):
-            tasks = self._state()["tasks"]
+        tasks = self._read_queue("capability_manifest", lambda state: state["tasks"])
         latest = {}
         for task in tasks.values():
             request = SourceRequest(**task["request"])
@@ -842,6 +863,11 @@ def collection_failure_diagnostics(collector, error):
             if name is not None:
                 detail["collector_phase"] = name
                 following = trace.tb_next
+                # The native read snapshot helper retains this caller phase.
+                # Only its exact code may bridge to the original lock chain.
+                if (following is not None
+                        and following.tb_frame.f_code is QuarterHourMarketCollector._read_queue.__code__):
+                    following = following.tb_next
                 if (name in {"enqueue", "step", "_collect"} and following is not None
                         and (Path(following.tb_frame.f_code.co_filename).name == "_api.py"
                              and following.tb_frame.f_code.co_name == "__enter__"
