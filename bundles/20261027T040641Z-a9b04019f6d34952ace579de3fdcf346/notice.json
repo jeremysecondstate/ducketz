@@ -1,0 +1,37 @@
+{
+  "author": "Atlas",
+  "change_id": "20261027T040035Z-928af2e8156d4f238c85c707a6577501",
+  "files": [
+    "docs/development/gameplan-stats-intraday-evidence.md",
+    "docs/development/patches/gameplan-stats-intraday-evidence.patch",
+    "docs/development/patches/gameplan-stats-intraday-evidence.json",
+    "tests/test_gameplan_stats_intraday_patch.py"
+  ],
+  "installation": "Reviewed shared source is installed in the Atlas application checkout. The Stats-only loader explicitly reads retained FMP native five-minute and EQUS native one-minute collector evidence under existing saved source contracts; other callers preserve their existing default populations.",
+  "limitations": [
+    "A complete snapshot does not imply complete observation coverage or mature long-horizon targets.",
+    "Portable task-only patches require matching installed baseline hashes or separately reviewed adaptation; full unrelated modules are not included.",
+    "Native scheduling definitions, raw receipts, private binding details and actual operating results remain local.",
+    "Main integration and peer installation are not claimed. Existing v1 handoff exports remain compatible."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/426",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Stats remains eligible from source-session 17:30 America/Los_Angeles. Same-session evening minimum 21:00, existing dispatcher 21:05 and all later schedules remain unchanged. Later eligible evidence produces immutable revisions and updates saved readers/unfinished feedback. The Stats UI displays actual timing, coverage and recorded provenance. No provider calls, model training or trader operations were used as infrastructure validation. Peer applicability follows local baseline review and existing human authority; this notice supplies evidence, not new operating authority.",
+  "scope": "shared",
+  "source_base": "c52eab0533953569a8910e508459331974e150b1",
+  "source_branch": "codex/atlas/20261027T040035Z-928af2e8156d4f238c85c707a6577501",
+  "source_sha": "2f9ec062cf658f9230ddf8fada131cfac00a431a",
+  "summary": "Atlas Gameplan Stats now reads saved intraday native prices and displays snapshot coverage",
+  "tests": [
+    {
+      "finished_at": "2026-10-26T20:57:48.385731-07:00",
+      "network_access": "disabled",
+      "result": "427 offline checks passed, one conditional Tk skip",
+      "started_at": "2026-10-26T20:56:54.983783-07:00"
+    },
+    {
+      "finished_at": "2026-10-27T04:00:57.712711Z",
+      "result": "All 15 patch members reconstructed exactly from captured originals; fresh isolated package and Git-application checks passed"
+    }
+  ]
+}

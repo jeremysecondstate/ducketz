@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T04:06:41.221360Z",
+  "id": "20261027T040641Z-a9b04019f6d34952ace579de3fdcf346",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas Gameplan Stats now reads saved intraday native prices and displays snapshot coverage"
+}
