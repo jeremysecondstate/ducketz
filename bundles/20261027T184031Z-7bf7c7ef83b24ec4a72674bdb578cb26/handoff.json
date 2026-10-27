@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T18:40:31.727839Z",
+  "id": "20261027T184031Z-7bf7c7ef83b24ec4a72674bdb578cb26",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas primary provenance reuses required canonical proof text; exact semantics preserved, repair published and sealed"
+}

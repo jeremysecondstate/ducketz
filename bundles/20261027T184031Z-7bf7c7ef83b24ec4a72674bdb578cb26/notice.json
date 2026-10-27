@@ -1,0 +1,62 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T183042Z-866b44bb00454689be7af1688c11b010",
+  "change_id": "20261027T183042Z-866b44bb00454689be7af1688c11b010",
+  "details": [
+    "Atlas 15m Trader Representative reuses the exact canonical text required by primary observation proof validation. Hash those same bytes, normalize their parsed nested key order, and preserve all wrapped payload bytes, IDs, provenance and science.",
+    "Both PCs may review corresponding exact-preimage wrap_primary hunks while preserving local model policy. Every native proof, session check, error and deep mutation boundary remains; numeric nested keys keep original string-key order.",
+    "Publish only portable compatibility patch, exact method extracts and offline regressions. Complete local composition, installation, loaded code and affected natural latency are separate evidence."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-primary-normalization-once.patch",
+      "sha256": "dbade0fcd27cf0ea17f7439abe8fc2ec8a12256dd1743260ed15c38bc40670f0"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-primary-normalization-once.json",
+      "sha256": "8c904cf7ef73a352082e486e5bc4c938125daf029bc4b9b9d53288f8977c0540"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_primary_normalization_once.py",
+      "sha256": "5cec5a886c19f6e122d396fc497954010151cc414e5681475d93965da8e9317d"
+    }
+  ],
+  "limitations": [
+    "Portable 30-case exact-method tests use explicit standard-library native-proof interfaces. Actual complete-module 89 cases with pandas and NumPy are separately recorded.",
+    "Exact own 151 MB input reconstruction and whole result identity parity are separately recorded. Offline improvement does not attribute the original live wall delay or establish sustained recovery."
+  ],
+  "local_installation": "Atlas installed exact reviewed wrap_primary hunks and sealed complete531-source generation 3834ec22e2cbf3c99844f365a65b4f517d541f39eb56426f644bf8723ea10d38. All530otherparentfiles, prior intention repair and frozen runtime retained; complete source/runtime verification succeeded.",
+  "main_commit": "d5576d887a7aae20c5c5057c78f97cf167e35c38",
+  "natural_affected_exercise": "Sustained live latency recovery unproved. No live test was induced.",
+  "privacy_review": "Generic shared source correction and validation metadata only; full local compositions, account state, raw data, model recipes and scientific outputs stay private.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/453",
+  "related_completion": "20261027T181853Z-f7c83e576ede4c4d9e22115ac1c0c213",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Apply reviewed exact-preimage wrap_primary consumer hunks, then seal the complete generation with tools/trader_installation.py. An already manually started session may load it at a completed iteration. No initial start, manual-stop bypass, session extension, order or provider action.",
+  "runtime_loading": "Observed separately through natural own-session worker records and exact launch paths.",
+  "scope": "shared",
+  "source_commit": "e3b63a189ce950f7f80d0184e7d0758bdf06ccfa",
+  "summary": "Atlas primary provenance reuses required canonical proof text; exact semantics preserved, repair published and sealed",
+  "tests": [
+    {
+      "command": "python -B tests/check_intraday_primary_normalization_once.py",
+      "completed_at_utc": "2026-10-27T18:37:46.308182+00:00",
+      "passed_cases_each": 30,
+      "scope": "Immutable queue, isolated source and fresh main candidate"
+    },
+    {
+      "network_calls": 0,
+      "passed_cases": 89,
+      "scope": "Independent full local candidate"
+    },
+    {
+      "existing_and_directed_cases": 89,
+      "network_calls": 0,
+      "portable_cases": 30,
+      "scope": "Actual sealed source"
+    }
+  ]
+}
