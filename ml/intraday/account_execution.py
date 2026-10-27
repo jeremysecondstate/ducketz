@@ -136,11 +136,86 @@ def execution_failure_evidence(exc):
 
 class _ExecutionTrace:
     """Bounded monotonic stage timings, without account values or lease tokens."""
+    # Fixed internal names keep accumulated history bounded and private. Unknown
+    # names share one overflow bucket; the existing last-32 tail is unchanged.
+    _PHASE_TOTAL_STAGES = frozenset({
+        'account_entry',
+        'account_work',
+        'authority_accounted_read',
+        'authority_identity_read',
+        'authority_identity_validation',
+        'authority_open',
+        'authority_submission_gate',
+        'authority_submit',
+        'broker_snapshot_identity',
+        'broker_submission',
+        'build_order_payload',
+        'capacity_available_read',
+        'capacity_clip',
+        'capacity_evidence_refresh',
+        'capacity_publish',
+        'capacity_record',
+        'capture_authority_identity_read',
+        'capture_complete',
+        'capture_identity_snapshot',
+        'capture_lease_current',
+        'capture_lease_refresh',
+        'captured_order_authority_reconcile',
+        'current_manual_session_and_account',
+        'execution_after_sizing',
+        'execution_lock',
+        'execution_lock_release',
+        'expired_intention_chronology',
+        'expired_own_order_read',
+        'forecast_eligibility',
+        'late_submission_evidence_refresh',
+        'latest_forecast',
+        'lease_acquire',
+        'lease_keeper_stop',
+        'lease_release',
+        'local_binding',
+        'market_session',
+        'native_identity_snapshot',
+        'native_ledger_open',
+        'native_reconcile',
+        'native_snapshot_prepare',
+        'newer_forecast_scan',
+        'newer_intention_scan',
+        'newer_native_order_scan',
+        'operation_complete',
+        'order_evidence_capture',
+        'own_pending_identity_read',
+        'persist_native_submission',
+        'portfolio_capture',
+        'post_sizing_eligibility',
+        'post_sizing_market_window',
+        'post_sizing_pending_read',
+        'pre_capacity_freshness',
+        'pre_send_repair',
+        'prepare_order_submission',
+        'prepared_context_identity',
+        'quote_freshness',
+        'recovery_complete',
+        'recovery_intention_record',
+        'recovery_native_read',
+        'reserve_account',
+        'reserve_native',
+        'sizing',
+        'sizing_evidence_refresh',
+        'submission_attempts_read',
+        'submission_authority_read',
+        'submission_evidence_freshness',
+        'submission_previous_native_read',
+    })
+
     def __init__(self):
         self.unavailable = False
         self.started = self.stage_started = self._now()
         self.stage = "account_entry"
         self.phases = []
+        self.phase_totals = {}
+        self.dropped_phase_count = 0
+        self.phase_totals_overflow = False
         self.recovery_timings = None
         self.ordinary_timings = None
         self.lease_expires_at = self.snapshot_observed_at = None
@@ -167,8 +242,31 @@ class _ExecutionTrace:
 
     def advance(self, stage):
         now = self._now()
-        self.phases.append({"stage": self.stage, "elapsed_seconds": self._elapsed(now, self.stage_started)})
+        elapsed = self._elapsed(now, self.stage_started)
+        self.phases.append({"stage": self.stage, "elapsed_seconds": elapsed})
+        if len(self.phases) > 32:
+            self.dropped_phase_count += len(self.phases) - 32
         self.phases = self.phases[-32:]
+        # advance() closes sequential, exclusive intervals. Nested lease,
+        # recovery and submission detail clocks are separate and never added.
+        # Only completed intervals enter totals; snapshot() leaves them intact.
+        try:
+            key = self.stage if type(self.stage) is str and self.stage in self._PHASE_TOTAL_STAGES else "other"
+            if key == "other":
+                self.phase_totals_overflow = True
+            summary = self.phase_totals.setdefault(key,
+                dict(count=0, elapsed_count=0, total_seconds=0., maximum_seconds=0.))
+            summary["count"] += 1
+            if elapsed is not None:
+                total = summary["total_seconds"] + elapsed
+                if math.isfinite(total):
+                    summary["elapsed_count"] += 1
+                    summary["total_seconds"] = round(total, 6)
+                    summary["maximum_seconds"] = max(summary["maximum_seconds"], elapsed)
+                else:
+                    self.unavailable = True
+        except Exception:
+            self.unavailable = True
         self.stage, self.stage_started = stage, now
 
     def acquired_lease(self, authority, lease):
@@ -185,6 +283,9 @@ class _ExecutionTrace:
             execution_elapsed_seconds=self._elapsed(now, self.started),
             execution_stage_elapsed_seconds=self._elapsed(now, self.stage_started),
             execution_phases=[dict(phase) for phase in self.phases],
+            execution_phase_summary=dict(schema_version="intraday-execution-phase-summary-v1",
+                completed_stages={stage: dict(value) for stage, value in self.phase_totals.items()},
+                dropped_tail_count=self.dropped_phase_count, stages_overflow=self.phase_totals_overflow),
             lease_expires_at=self.lease_expires_at, snapshot_observed_at=self.snapshot_observed_at)
         if self.unavailable:
             result["execution_diagnostics_unavailable"] = True
@@ -1006,6 +1107,7 @@ class IntradayAccountExecutor:
                 if expired is not None:
                     return expired
             self._capture()
+            self._execution_stage("newer_forecast_scan")
             superseding = self._newer_forecasts(forecast)
             if superseding:
                 return self._record(forecast,"newer_or_same_reference_intention_already_processed",
