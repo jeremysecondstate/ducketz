@@ -1,0 +1,35 @@
+--- a/ml/intraday/recovered_population.py
++++ b/ml/intraday/recovered_population.py
+@@ -113,6 +113,23 @@
+     row = dict(sorted(row.items()))
+     row.update(source_id=SOURCE_ID, source_dataset=SOURCE_DATASET,
+                population_contract=POPULATION_CONTRACT, evidence_json=_json(evidence))
++    return row
++
++
++def _decoded_primary_wrapper(original, native_canonical):
++    """Reuse this call's freshly verified canonical native text once more."""
++    row = dict(original, native_source_id=original["source_id"], native_source_dataset=original["source_dataset"],
++               native_interval_seconds=60, observation_kind="primary_observed")
++    # The verifier computed this exact canonical text from a freshly decoded
++    # owned JSON tree immediately before its hash, native and session checks.
++    # Keep the generic constructor's independently supplied text semantics.
++    evidence_json = ('{"absence_policy":"original_verified_primary_observations_preserved",'
++        '"aggregation":' + _json(POPULATION_CONTRACT) + ',"kind":"primary_observed",'
++        '"native_primary":' + native_canonical + ',"native_primary_sha256":"' +
++        hashlib.sha256(native_canonical.encode()).hexdigest() + '"}')
++    row = dict(sorted(row.items()))
++    row.update(source_id=SOURCE_ID, source_dataset=SOURCE_DATASET,
++               population_contract=POPULATION_CONTRACT, evidence_json=evidence_json)
+     return row
+ 
+ 
+@@ -260,7 +277,7 @@
+                 if not verified_source_observation(original):
+                     raise ContractError("Only a verified genuine primary candle can be wrapped")
+                 _session(original, original["opened_at"])
+-                expected = _primary_wrapper(original, original_canonical)
++                expected = _decoded_primary_wrapper(original, original_canonical)
+             else:
+                 expected = _wrap_primary(original, original_canonical)
+         else:

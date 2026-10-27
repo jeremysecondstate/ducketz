@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "summary": "Reuse freshly verified canonical native proof text in the decoded primary evidence constructor.",
+  "path": "ml/intraday/recovered_population.py",
+  "before_sha256": "345040f8330434d22827ea311eb77ee52eae642d576d0b530f679726c97a8aab",
+  "before_lf_sha256": "264c9c90cea01335b6c4f33164cd0470de0ea2ede8729bf7d2ea1d2640ebed3e",
+  "after_sha256": "b4332be6731df6cfad346a5805d0522ba50b1bf207a4b20bb3cef7f25948d14b",
+  "after_lf_sha256": "d9593cfc8b6f3f6143b766da708c1ed31cf3f5e48e8d3bd715895000ff0036f0",
+  "patch_sha256": "636482d274ea30b9d623b8ab308e09b8d5a8c8ad81b2f4dfe0170305dd770b1f",
+  "before_function_projection_sha256": "4a0e73771052a364987d866f9bca038d70a17ae3167fcaff6c2854026898bd5b",
+  "after_function_projection_sha256": "8a07f8e425536a02e43b1a46560731d995eb1cc2e2b25e1349e4b9fe70c6dd58",
+  "scope": "shared",
+  "preserved": [
+    "Exact original canonical wrapper evidence bytes and field order",
+    "All native, session, hash and complete actual-field comparisons",
+    "Original generic constructor including inconsistent text and exception behavior",
+    "Generic Mapping normalization and original science, model policy, quantities, independent state and manual controls"
+  ],
+  "runtime_implications": "Requires reviewed exact source installation and a complete sealed generation. No initial start, restart, trader operation or provider call is performed by this package.",
+  "limitations": [
+    "Portable checks use explicit dependency stubs and do not establish complete native/session integration.",
+    "Private exact saved-input component experiments found a small serialization saving; no sustained live or whole-sizing latency recovery is claimed."
+  ]
+}
