@@ -175,6 +175,17 @@ def _native_queue_json_codec():
         and getattr(encoder, "iterencode", None) is _NATIVE_JSON_ITERENCODE)
 
 
+def _native_receipt_fragment(value):
+    """Check only newly changed fragments; the remaining queue was decoded JSON."""
+    kind = type(value)
+    if kind is dict:
+        return all(type(key) is str and _native_receipt_fragment(item)
+                   for key, item in value.items())
+    if kind is list:
+        return all(_native_receipt_fragment(item) for item in value)
+    return (value is None or kind is str or kind is int or kind is float or kind is bool)
+
+
 def _atomic(path: Path, value, *, native_json=False):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
@@ -676,12 +687,49 @@ class QuarterHourMarketCollector:
                 if type(code) is int and 100 <= code <= 599:
                     evidence["http_status"] = code
                 result = CollectionResult([], status, reason, evidence)
-        path, snapshot, receipt = QuarterHourMarketCollector._write_collection_result(self, key, task, request, started, result)
+        result_writer = QuarterHourMarketCollector._write_collection_result
+        native_result = (type(self) is QuarterHourMarketCollector
+            and result_writer is QuarterHourMarketCollector._native_result_writer
+            and _native_queue_json_codec())
+        path, snapshot, receipt = result_writer(self, key, task, request, started, result)
         with self.queue_lock_timing.observe(self.lock, "receipt_commit"):
-            state = self._state()
-            QuarterHourMarketCollector._apply_collection_transition(self, state, key, path, snapshot,
+            state_reader = self._state
+            native_state = (getattr(state_reader, "__func__", None)
+                is QuarterHourMarketCollector._native_state_reader
+                and self.state_path.exists() and _native_queue_json_codec())
+            state = state_reader()
+            transition = QuarterHourMarketCollector._apply_collection_transition
+            transition(self, state, key, path, snapshot,
                 recovered=False, request=request, receipt=receipt)
-            _atomic(self.state_path, state)
+            native_commit = (native_result and native_state
+                and result_writer is QuarterHourMarketCollector._native_result_writer
+                and QuarterHourMarketCollector._write_collection_result is result_writer
+                and getattr(self._state, "__func__", None)
+                    is QuarterHourMarketCollector._native_state_reader
+                and transition is QuarterHourMarketCollector._native_transition
+                and QuarterHourMarketCollector._apply_collection_transition is transition
+                and _atomic is _NATIVE_ATOMIC and _native_queue_json_codec())
+            native_fragments = False
+            if native_commit:
+                try:
+                    # Fresh results can contain custom status or clock values.
+                    # Check just the task and source blocks touched by the native
+                    # transition, rather than walking the entire decoded queue.
+                    native_fragments = (_native_receipt_fragment(state["tasks"][key])
+                        and _native_receipt_fragment(state.get("source_blocks", {})))
+                except RecursionError:
+                    pass  # Retain the original canonical encoder/error path.
+            if (native_result and native_state and native_fragments
+                    and result_writer is QuarterHourMarketCollector._native_result_writer
+                    and QuarterHourMarketCollector._write_collection_result is result_writer
+                    and getattr(self._state, "__func__", None)
+                        is QuarterHourMarketCollector._native_state_reader
+                    and transition is QuarterHourMarketCollector._native_transition
+                    and QuarterHourMarketCollector._apply_collection_transition is transition
+                    and _atomic is _NATIVE_ATOMIC and _native_queue_json_codec()):
+                _atomic(self.state_path, state, native_json=True)
+            else:
+                _atomic(self.state_path, state)
         return snapshot
 
     def _existing_settled_receipt(self, key, task, request):
@@ -765,6 +813,8 @@ class QuarterHourMarketCollector:
         from .market_collection_index import index_receipt
         index_receipt(self.root, path, snapshot)
         return path, snapshot, receipt
+
+    _native_result_writer = _write_collection_result
 
     def _apply_collection_transition(self, state, key, path, snapshot, *, recovered, request=None, receipt=None):
         if recovered:
