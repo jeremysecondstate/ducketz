@@ -1,0 +1,56 @@
+{
+  "schema": "trader-relay-terminal-evidence-patch-v1",
+  "source": "tools/trader_session_host.py",
+  "source_operation": "modify",
+  "before_sha256": "0657197a028e379d3b237b93f00fcd7dba681555c3c6a0420e95e23bf2083d1d",
+  "after_sha256": "09c7eb987b571f95ad00d9c794b7e26dbc4bc31ec4f3848ffa4e9abadd0f5e4a",
+  "patch_sha256": "4b3104ad8dd9a24bc398ae5823fd97d2f378b8571544316568a19b85973c354d",
+  "protocol": "manual-trader-renewal-v1",
+  "extraction": "Exact ast.get_source_segment text from the after-source; nested functions retain their original body indentation.",
+  "scope": "Shared standard-library controller diagnostics only.",
+  "change": "Retain bound terminal counters, cursors and known failure evidence before worker cleanup; an ancestor timeout may attach a matching descendant diagnostic reference while keeping its original terminal behavior.",
+  "limits": [
+    "This package is a compatibility patch for an existing reviewed renewal consumer, not a complete runtime installation.",
+    "Source presence, identical or reviewed surrounding bytes and local exact-preimage installation remain applicability facts.",
+    "Portable extracted-leaf checks do not prove a composed consumer or natural live exercise.",
+    "A terminal snapshot never supplies successful handoff, completion, restart or renewal authority.",
+    "Original ten-second grace, process-handle termination, return codes, manual-stop latching and kernel lifetime remain unchanged."
+  ],
+  "extracts": {
+    "_diagnostic_birth": {
+      "source": "def _diagnostic_birth(pid):\n    \"\"\"Optional identity for private evidence; never authorizes a continuation.\"\"\"\n    try:\n        return birth(pid)\n    except (OSError, ValueError, RuntimeError):\n        return None\n",
+      "sha256": "ce01a4027403acee92d5a1905cb3a0721714424607a0964602787e8322be1d4e",
+      "location": "_diagnostic_birth"
+    },
+    "_terminal_reference": {
+      "source": "def _terminal_reference(path, payload, *, controller_pid, controller_birth):\n    \"\"\"Read only an exact relayed controller's diagnostic terminal snapshot.\n\n    A snapshot is evidence, not its final result or permission to renew. Keep\n    the original timeout, exit checks and failure/manual-stop disposition.\n    \"\"\"\n    try:\n        raw = path.read_bytes()\n        value = json.loads(raw)\n        envelope = json.loads(Path(payload[\"envelope\"]).read_text())\n        if not isinstance(value, dict) or not isinstance(envelope, dict):\n            return None\n        expected = (PROTOCOL, payload[\"token\"], payload[\"handoff_id\"],\n                    payload[\"parent_pid\"], payload[\"parent_birth\"], controller_pid,\n                    controller_birth, envelope[\"owner_pid\"], envelope[\"owner_birth\"],\n                    envelope[\"session\"][\"session_id\"], payload[\"host_sha256\"])\n        actual = tuple(value.get(key) for key in (\"protocol\", \"token\", \"handoff_id\",\n            \"parent_pid\", \"parent_birth\", \"controller_pid\", \"controller_birth\",\n            \"owner_pid\", \"owner_birth\", \"session_id\", \"host_sha256\"))\n        if (value.get(\"schema\") != \"trader-controller-terminal-evidence-v1\"\n                or value.get(\"diagnostic_only\") is not True\n                or not controller_birth or actual != expected\n                or value.get(\"disposition\") not in {\"FAILURE\", \"MANUAL_STOP\"}):\n            return None\n        return {\"path\": str(path), \"sha256\": hashlib.sha256(raw).hexdigest(),\n                \"controller_pid\": controller_pid, \"controller_birth\": controller_birth,\n                \"diagnostic_only\": True}\n    except (OSError, ValueError, KeyError, TypeError):\n        return None\n",
+      "sha256": "91f00c41e061c29ef8b385554dcdeb43453713f26bf8db7eb9954348fc816af9",
+      "location": "_terminal_reference"
+    },
+    "wait_for_controller_relay": {
+      "source": "def wait_for_controller_relay(path, payload, command, *, stop, stopping, phase,\n                              terminal_evidence=None):\n    \"\"\"After quiescence the old controller is only a kernel-lifetime relay.\"\"\"\n    stop_path = Path(json.loads(Path(payload[\"envelope\"]).read_text())[\"stop_path\"])\n    child = subprocess.Popen([*command, \"--continue\", str(path)], close_fds=True)\n    child_birth = _diagnostic_birth(child.pid)\n    deadline = None\n    try:\n        phase(\"controller_started\", \"controller\")\n        while child.poll() is None:\n            if stop_path.exists() and not stopping.is_set():\n                stop(read_stop_reason(stop_path))\n            if stopping.is_set():\n                deadline = deadline or time.monotonic() + 10\n                if time.monotonic() >= deadline:\n                    child.terminate()\n                    child.wait()\n                    break\n            time.sleep(.05)\n        phase(\"controller_exited\", \"controller\")\n        result = json.loads(path.with_suffix(\".result.json\").read_text())\n        if (result.get(\"protocol\"), result.get(\"token\"), result.get(\"handoff_id\")) != (\n                PROTOCOL, payload[\"token\"], payload[\"handoff_id\"]):\n            raise ValueError(\"Controller result identity mismatch\")\n        outcome = result[\"outcome\"]\n        if outcome[\"disposition\"] not in {\"SESSION_COMPLETE\", \"MANUAL_STOP\", \"FAILURE\"}:\n            raise ValueError(\"Unknown controller outcome\")\n        if child.returncode != (1 if outcome[\"disposition\"] == \"FAILURE\" else 0):\n            raise ValueError(\"Controller exit differs from its final receipt\")\n        return outcome\n    except BaseException:\n        disposition = stop(\"FAILURE\")\n        if child.poll() is None:\n            child.terminate()\n            child.wait()\n        if terminal_evidence is not None:\n            evidence = _terminal_reference(path.with_suffix(\".terminal.json\"), payload,\n                controller_pid=child.pid, controller_birth=child_birth)\n            if evidence is not None:\n                terminal_evidence[\"descendant\"] = evidence\n        if disposition == \"MANUAL_STOP\":\n            return {\"disposition\": \"MANUAL_STOP\", \"generations\": payload[\"generations\"],\n                    \"completed_roles\": payload[\"done\"], \"session_id\": json.loads(\n                        Path(payload[\"envelope\"]).read_text())[\"session\"][\"session_id\"]}\n        raise\n",
+      "sha256": "16af3b8f928ad7986abeebce071165a3411fc539aab9c55da7027080fff95542",
+      "location": "wait_for_controller_relay"
+    },
+    "write_json": {
+      "source": "def write_json(path, value):\n    path = Path(path)\n    path.parent.mkdir(parents=True, exist_ok=True)\n    temporary = path.with_name(path.name + f\".{os.getpid()}.tmp\")\n    try:\n        with temporary.open(\"w\", encoding=\"utf-8\", newline=\"\\n\") as stream:\n            json.dump(value, stream, sort_keys=True, allow_nan=False)\n            stream.flush()\n            os.fsync(stream.fileno())\n        os.replace(temporary, path)\n    finally:\n        temporary.unlink(missing_ok=True)\n",
+      "sha256": "5587d773954d809b71047de0ddce15511e2185c08eae40bea313009bc9807528",
+      "location": "write_json"
+    },
+    "read_stop_reason": {
+      "source": "def read_stop_reason(path):\n    \"\"\"Preserve a controller failure instead of relabelling it as user input.\"\"\"\n    try:\n        value = json.loads(Path(path).read_text(\"utf-8\"))\n        return \"FAILURE\" if isinstance(value, dict) and value.get(\"reason\") == \"FAILURE\" else \"MANUAL_STOP\"\n    except (OSError, ValueError):\n        return \"MANUAL_STOP\"\n",
+      "sha256": "51d74053f120873023a8a6a0a90271c9a6003cf60a67846453d573030af54f9f",
+      "location": "read_stop_reason"
+    },
+    "record_terminal": {
+      "source": "def record_terminal(why):\n        # Record this controller before its worker cleanup grace. The existing\n        # stop latch is published first. This is private diagnosis, never a\n        # successful handoff, completed lane or renewal authority.\n        value = {\"schema\": \"trader-controller-terminal-evidence-v1\", \"protocol\": PROTOCOL,\n                 \"at\": datetime.now(timezone.utc).isoformat(), \"token\": envelope[\"token\"],\n                 \"host_sha256\": HOST_SHA256,\n                 \"session_id\": envelope[\"session\"][\"session_id\"],\n                 \"owner_pid\": envelope[\"owner_pid\"], \"owner_birth\": envelope[\"owner_birth\"],\n                 \"controller_pid\": os.getpid(), \"controller_birth\": controller_birth,\n                 \"handoff_id\": continuation.get(\"handoff_id\") if continuation else None,\n                 \"parent_pid\": continuation.get(\"parent_pid\") if continuation else None,\n                 \"parent_birth\": continuation.get(\"parent_birth\") if continuation else None,\n                 \"disposition\": why, \"generations\": dict(generations),\n                 \"completed_roles\": sorted(done), \"states\": dict(states), \"failure\": failure,\n                 \"active_workers\": {role: {\"pid\": child.pid, \"turn\": turn,\n                     \"response\": str(response)}\n                     for role, (child, response, turn) in children.items()},\n                 \"diagnostic_only\": True}\n        try:\n            write_json(terminal_path, value)\n            terminal_evidence[\"local\"] = {\"path\": str(terminal_path),\n                \"sha256\": hashlib.sha256(terminal_path.read_bytes()).hexdigest(), \"diagnostic_only\": True}\n        except (OSError, ValueError, TypeError) as exc:\n            # An unavailable diagnostic file cannot change termination behavior.\n            print(f\"Terminal evidence unavailable: {exc}\", flush=True)\n",
+      "sha256": "ad0956305058558a83fbbe67c01df24d34b06ea371eb348d1c8b6cce5085522a",
+      "location": "run_protocol.<locals>.record_terminal"
+    },
+    "stop": {
+      "source": "def stop(why):\n        nonlocal reason\n        if not stopping.is_set():\n            reason = why\n            stopping.set()\n            write_json(stop_path, {\"reason\": why, \"at\": datetime.now(timezone.utc).isoformat()})\n            record_terminal(why)\n        return reason\n",
+      "sha256": "383fc605b03c0c9804130dd2f50cba288b99bd90ac0cd3762d01c57a3587409c",
+      "location": "run_protocol.<locals>.stop"
+    }
+  }
+}
