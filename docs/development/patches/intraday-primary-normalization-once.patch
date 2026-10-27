@@ -1,0 +1,25 @@
+--- a/ml/intraday/recovered_population.py
++++ b/ml/intraday/recovered_population.py
+@@ -86,11 +86,19 @@
+         raise ContractError("Only a verified genuine primary candle can be wrapped")
+     original = _plain(candle)
+     _session(original, original["opened_at"])
++    native_canonical = _json(original)
++    original = json.loads(native_canonical)
+     row = dict(original, native_source_id=original["source_id"], native_source_dataset=original["source_dataset"],
+                native_interval_seconds=60, observation_kind="primary_observed")
+-    return _wrapper(row, {"aggregation": POPULATION_CONTRACT, "kind": "primary_observed",
+-        "native_primary": original, "native_primary_sha256": _digest(original),
+-        "absence_policy": "original_verified_primary_observations_preserved"})
++    evidence = {"aggregation": POPULATION_CONTRACT, "kind": "primary_observed",
++        "native_primary": original, "native_primary_sha256": hashlib.sha256(native_canonical.encode()).hexdigest(),
++        "absence_policy": "original_verified_primary_observations_preserved"}
++    # Native proof encoding already normalizes the complete owned JSON tree.
++    # Preserve wrapper key order without encoding that full row again.
++    row = dict(sorted(row.items()))
++    row.update(source_id=SOURCE_ID, source_dataset=SOURCE_DATASET,
++               population_contract=POPULATION_CONTRACT, evidence_json=_json(evidence))
++    return row
+ 
+ 
+ def _assessment_valid(assessment):
