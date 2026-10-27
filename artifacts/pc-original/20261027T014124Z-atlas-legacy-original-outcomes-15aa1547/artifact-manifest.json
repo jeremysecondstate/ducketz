@@ -1,0 +1,52 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-27T01:41:24.543245Z",
+  "completion_id": "20261027T014124Z-atlas-legacy-original-outcomes-15aa1547",
+  "details": [
+    "Actor Atlas; task Atlas Trader Representative;56 original September4 andSeptember8 daily/weekly scientific forecasts recovered from actual historical native EQUS data.",
+    "Every row binds its unchanged original forecast id to its exact forecast-file SHA256; duplicate ids across source editions remain distinct.",
+    "Original probabilities, targets, saved labels and absent historical policy/price metadata remain unchanged. Existing legacy canonical EQUS default supplies observation identity without relabeling history.",
+    "All8771 prior evaluated outcomes and10848 original identities retained; current combined Gameplan and373-result Stats display remain exact.",
+    "Peer applicability: original scientific results for Atlas symbols only. No raw observations, fitted models, model tuning, account state, execution ledgers or native operating bindings exported."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261027T014124Z-atlas-legacy-original-outcomes-15aa1547/gameplan-stats/20261027T014124Z-atlas-legacy-original-outcomes-15aa1547/original-outcome-supplement.json",
+      "expected_sha256": "4a067b3f5cf321e81d601cf304c03791ab8bd707c30dff32c23be0a87d45b0c6",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261027T014124Z-atlas-legacy-original-outcomes-15aa1547/original-outcome-supplement.json",
+      "published_sha256": "4a067b3f5cf321e81d601cf304c03791ab8bd707c30dff32c23be0a87d45b0c6",
+      "published_size": 84555,
+      "sha256": "4a067b3f5cf321e81d601cf304c03791ab8bd707c30dff32c23be0a87d45b0c6",
+      "size": 84555,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "4a067b3f5cf321e81d601cf304c03791ab8bd707c30dff32c23be0a87d45b0c6",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261027T014124Z-atlas-legacy-original-outcomes-15aa1547/original-outcome-supplement.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "human-authorized-development",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "symbol-specific",
+  "source_head": "90704d21801f60426493bd6cc650a7fac38d4f61",
+  "summary": "Atlas Trader Representative: publish56 original September scientific outcomes from native EQUS",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "COST",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK"
+  ]
+}
