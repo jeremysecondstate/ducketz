@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T15:40:57.111095Z",
+  "id": "20261027T154057Z-f6e4887b60eb4a41a4ca0c44f0127cc2",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout moved proven native due-task filtering outside the global lock and preserved exact built-in JSON normalization with less container dispatch."
+}

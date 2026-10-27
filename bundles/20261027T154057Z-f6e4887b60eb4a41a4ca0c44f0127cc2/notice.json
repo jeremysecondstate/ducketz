@@ -1,0 +1,30 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T153205Z-f0fdf6d3a86945eea70d08d7d0eaa822",
+  "files": [
+    "ml/intraday/market_collection.py",
+    "tests/test_intraday_market_queue_commit.py"
+  ],
+  "limitations": [
+    "The queue lock, final full-text snapshot fence, per-task locks, task recheck, native mutable transition and atomic publication remain in force. These changes do not remove contention or identify an external holder.",
+    "Offline checks and synthetic measurements do not establish live lock latency, whole-cycle timing, provider coverage, model qualification, execution recovery or fills.",
+    "Private runtime overlays, raw data, fitted models, recipes, account state, ledgers, task memory and operating evidence are excluded from shared source publication."
+  ],
+  "main_sha": "5744078b70a521dc8eaaac434a8bea82b3cc47da",
+  "privacy_review": "Reviewed shared source and offline test facts only; no private local paths, operating evidence, raw data, models, recipes, account state, credentials or task records.",
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/446"
+  ],
+  "runtime_implications": "Compatible collection code loads through the next safe automatic worker replacement after a completed full-symbol iteration within an existing authorized run. Local installation, actual loaded manifest and affected operation remain separate evidence. Preserve initial activation, manual stop, original deadline, saved local recipe, durable pending work and order identity. No monitoring automation starts or restarts a trader.",
+  "scope": "Shared native collection correctness and performance source with offline tests. Each PC retains its saved local recipe, symbols, operating bindings and separate order state.",
+  "source_branch": "codex/scout/20261027T153205Z-f0fdf6d3a86945eea70d08d7d0eaa822",
+  "source_record": "20261027T153205Z-f0fdf6d3a86945eea70d08d7d0eaa822",
+  "source_sha": "610eee443c06c407caac1cf6d809f1f12a93e5ff",
+  "summary": "Scout moved proven native due-task filtering outside the global lock and preserved exact built-in JSON normalization with less container dispatch.",
+  "tests": [
+    "Source, isolated courier and reviewed main candidates each passed 606 tests across 19 whole modules with 0 skips. Stage counts overlap.",
+    "All stages bind 189 exact source and dependency fingerprints; candidate import evidence and final raw Git blobs verify.",
+    "Offline fixtures check detached due filtering, original locked custom-reader behavior, concurrent queue changes, saved clocks, fresh per-task settlement and source-block checks, malformed inputs, timeout and error behavior, and equivalent normalized JSON across built-in and custom containers. Whole collection modules cover native receipt, retry, expiry, history, index and input provenance behavior."
+  ]
+}
