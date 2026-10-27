@@ -1,0 +1,64 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T225544Z-3b6a8c88fa1b4b36a11605b8ab1a73eb",
+  "change_id": "20261027T225544Z-3b6a8c88fa1b4b36a11605b8ab1a73eb",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative; shared cause-specific recovery proof serialization repair.",
+    "Reuse freshly verified canonical native proof text only in the decoded-primary constructor; preserve generic constructor/exception behavior and every original source, session, hash and full-field validation.",
+    "Preserve original scientific outputs, local model policy, probability/target definitions, quantities, timing, independent state, orders and manual controls. Both PCs review exact patch applicability against their own source."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_primary_evidence_canonical.py",
+      "sha256": "b111a579f21668b945e6ee68c39a7e97da09ec5f3bfca9786c727083a07607be"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-primary-evidence-canonical.json",
+      "sha256": "04d90ded4e71f57a8fe95ee538f032bed7030e34573a618b8f7c71915283d0fc"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-primary-evidence-canonical.patch",
+      "sha256": "636482d274ea30b9d623b8ab308e09b8d5a8c8ad81b2f4dfe0170305dd770b1f"
+    }
+  ],
+  "limitations": [
+    "91portable offline checks;200full-composition application cases and289independent actual-module checks are separately recorded against final exact bytes.",
+    "Exact saved large-input sizing payload and result identity match. A small constructor component saving does not prove full-validator speedup, sustained whole-operation latency recovery or the separate lowCPUmetadata cause.",
+    "Public source uses a portable exact-preimage delta because each local application composition contains independently owned changes. Private observations, account state, models and native bindings are excluded."
+  ],
+  "local_installation": "Complete531source generation 937e9af4a99ebe08ca1bfa74bacd74816a50fcab76afb0104dd298aebaca38eb sealed after exact-parent/source fences inside actual installer lock. Only recovered_population changes;530otherparentmembers/runtime retained. Natural loading and affected exercise remain separately recorded, not established by sealing.",
+  "main_commit": "bf55f4435b6bbb5fbf1910fc177bf9a82bdc92df",
+  "performance": "Two opposite-order actual constructor pairs across24226primaryrows preserve aggregateevidenceSHA; median0.544055s to0.222641s. Small component/small sample only. Variable full-validator timings do not establish full operation or live speed improvement. Exact24340candle saved sizing replay preserved complete payload/result identity.",
+  "privacy_review": "Only generic shared source patch/hash metadata/synthetic checker and sanitized validation/install facts. No native bindings or task/session identities, credentials, account state, raw inputs, fitted models or operating records exported.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/471",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Apply only the reviewed exact source hunk and seal a complete generation using tools/trader_installation.py. Existing manually started sessions may naturally load it at safe planned renewal. Source publication, local installation, loading and affected exercise remain separate. No initial start, post-stop restart, lifetime extension, provider/broker/order test or trader operation.",
+  "scope": "shared",
+  "source_commit": "fdc68423b8767f93f72f5730844cd0ed77915246",
+  "summary": "Atlas 15m canonical primary evidence reuse published and sealed",
+  "tests": [
+    {
+      "network_attempts": 0,
+      "passed": 200,
+      "scope": "Complete531source staged composition"
+    },
+    {
+      "network_attempts": 0,
+      "passed": 289,
+      "scope": "Independent actual complete-module differential checks"
+    },
+    {
+      "network_attempts": 0,
+      "passed_each": 91,
+      "scope": "Portable queue/source/main checker"
+    },
+    {
+      "network_attempts": 0,
+      "passed": 200,
+      "scope": "Exactsealed531sourcecomposition"
+    }
+  ]
+}

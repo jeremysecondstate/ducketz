@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T22:59:30.567694Z",
+  "id": "20261027T225930Z-74c836f3e4214ffabf4345495ed9e9cb",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas 15m canonical primary evidence reuse published and sealed"
+}
