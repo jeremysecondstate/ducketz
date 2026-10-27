@@ -151,7 +151,8 @@ def test_duration_fields_are_bounded_numbers_and_ring_has_fixed_bound():
             pass
     snap = timing.snapshot()
     assert len(snap["recent"]) == 32
-    assert set(snap["recent"][0]) == {"phase", "outcome", "wait_seconds", "hold_seconds", "thread_cpu_seconds"}
+    assert set(snap["recent"][0]) == {"phase", "outcome", "wait_seconds", "hold_seconds", "thread_cpu_seconds",
+        "event_id", "thread_id", "started_monotonic", "acquired_monotonic", "ended_monotonic"}
     for row in snap["recent"]:
         for field in ("wait_seconds", "hold_seconds", "thread_cpu_seconds"):
             assert row[field] >= 0
@@ -259,3 +260,241 @@ def test_malformed_trace_observer_cannot_raise():
             raise KeyboardInterrupt("observer only")
     assert MOD.observed_lock_acquire_trace(Poison(), object()) is False
 
+
+
+def test_failure_time_holding_sibling_survives_actual_late_retry_callback(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from datetime import datetime, timezone
+    from ml.intraday import market_collection as collection
+    path = str(tmp_path / "private-queue.lock")
+    timing = MOD.QueueLockTiming()
+    holder, contender = FileLock(path, timeout=0), FileLock(path, timeout=0)
+    entered, release = threading.Event(), threading.Event()
+    native_errors, callbacks = [], []
+    collector = collection.QuarterHourMarketCollector.__new__(collection.QuarterHourMarketCollector)
+    collector.lock, collector.queue_lock_timing = contender, timing
+    collector.clock = lambda: datetime(2026, 10, 27, 16, 0, tzinfo=timezone.utc)
+    collector.retry_seconds = 30
+
+    def hold():
+        with timing.observe(holder, "receipt_commit"):
+            entered.set()
+            assert release.wait(3)
+
+    def fail():
+        assert entered.wait(3)
+        try:
+            with timing.observe(contender, "task_recheck"):
+                pytest.fail("Contended native lock entered")
+        except Timeout as error:
+            native_errors.append(error)
+            raise
+        finally:
+            release.set()
+
+    def collect(**kwargs):
+        try:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                holder_future = pool.submit(hold)
+                failed_future = pool.submit(fail)
+                failed_future.result()
+                holder_future.result()
+        except Timeout as error:
+            assert error is native_errors[0]
+            assert timing.snapshot()["active_local"] == []
+            raise
+
+    collector.collect = collect
+    stopped = threading.Event()
+    monkeypatch.setattr(collection, "collection_window_open", lambda now: True)
+    collector.run(stopped.is_set, lambda delay: stopped.set(), on_retry=callbacks.append)
+    assert len(native_errors) == len(callbacks) == 1
+    assert native_errors[0].lock_file == path
+    assert not holder.is_locked and not contender.is_locked
+    snap = callbacks[0]["queue_lock_timing"]
+    assert snap["active_local"] == []
+    failed = next(row for row in snap["recent"] if row["outcome"] == "acquire_error")
+    held = next(row for row in failed["failure_active_local"] if row["state"] == "holding")
+    waiting = next(row for row in failed["failure_active_local"] if row["state"] == "waiting")
+    assert held["phase"] == "receipt_commit" and waiting["phase"] == "task_recheck"
+    assert waiting["event_id"] == failed["event_id"]
+    assert held["thread_id"] != failed["thread_id"] == waiting["thread_id"]
+    assert held["started_monotonic"] <= held["acquired_monotonic"] <= failed["ended_monotonic"]
+    assert waiting["started_monotonic"] == failed["started_monotonic"]
+    assert waiting["acquired_monotonic"] is None
+    assert failed["failure_snapshot_monotonic"] == failed["ended_monotonic"]
+    assert failed["failure_capture_stage"] == "native_acquisition_error_before_pool_drain"
+    assert snap["observer_error"] is False
+    assert str(tmp_path) not in str(snap)
+    assert snap["evidence_version"] == "failure-time-correlation-v1"
+    assert snap["clock_scope"] == "Monotonic clock within this process lifetime only"
+    assert type(snap["process_id"]) is type(snap["collector_id"]) is int
+    assert snap["process_id"] > 0 and snap["collector_id"] > 0
+
+
+def test_fixed_native_intervals_keep_original_wall_and_cpu_meaning():
+    from itertools import chain, repeat
+    monotonic = iter(chain((10, 12, 15), repeat(20)))
+    cpu = iter(chain((1, 2, 4), repeat(5)))
+    timing = MOD.QueueLockTiming(monotonic=lambda: next(monotonic), thread_cpu=lambda: next(cpu))
+    with timing.observe(unlocked(), "enqueue"):
+        pass
+    row = timing.snapshot()["recent"][0]
+    assert row["started_monotonic"] == 10
+    assert row["acquired_monotonic"] == 12
+    assert row["ended_monotonic"] == 15
+    assert row["wait_seconds"] == 2 and row["hold_seconds"] == 3
+    assert row["thread_cpu_seconds"] == 3
+    assert "failure_active_local" not in row
+
+
+def test_failed_native_enter_keeps_identity_and_captures_waiting_interval():
+    from itertools import chain, repeat
+    original = KeyboardInterrupt("private original error")
+    calls = []
+    class Lock:
+        def __enter__(self):
+            calls.append("enter")
+            raise original
+        def __exit__(self, *args):
+            calls.append("exit")
+    monotonic = iter(chain((10, 15), repeat(20)))
+    timing = MOD.QueueLockTiming(monotonic=lambda: next(monotonic), thread_cpu=lambda: 1)
+    with pytest.raises(KeyboardInterrupt) as caught:
+        with timing.observe(Lock(), "source_block"):
+            pytest.fail("Native failing enter yielded")
+    assert caught.value is original and calls == ["enter"]
+    row = timing.snapshot()["recent"][0]
+    assert row["started_monotonic"] == 10 and row["ended_monotonic"] == 15
+    assert row["acquired_monotonic"] is None and row["hold_seconds"] is None
+    assert row["wait_seconds"] == 5
+    assert len(row["failure_active_local"]) == 1
+    waiting = row["failure_active_local"][0]
+    assert waiting["state"] == "waiting" and waiting["elapsed_seconds"] == 5
+    assert waiting["event_id"] == row["event_id"]
+    assert "private original error" not in str(timing.snapshot())
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf"),
+                                  True, "private-clock", object(), 10 ** 1000])
+def test_unsafe_clock_values_are_none_and_never_replace_native_error(value):
+    original = ValueError("native-body")
+    timing = MOD.QueueLockTiming(monotonic=lambda: value, thread_cpu=lambda: value)
+    with pytest.raises(ValueError) as caught:
+        with timing.observe(unlocked(), "enqueue"):
+            raise original
+    assert caught.value is original
+    snap = timing.snapshot()
+    assert snap["observer_error"] is True
+    row = snap["recent"][0]
+    for key in ("started_monotonic", "acquired_monotonic", "ended_monotonic",
+                "wait_seconds", "hold_seconds", "thread_cpu_seconds"):
+        assert row[key] is None
+    import json
+    assert "private-clock" not in json.dumps(snap, allow_nan=False)
+
+
+def test_finite_endpoint_duration_overflow_does_not_publish_infinity():
+    assert MOD._elapsed(-1e308, 1e308) is None
+    assert MOD._elapsed(10 ** 1000, 10 ** 1000 + 1) is None
+
+
+@pytest.mark.parametrize("value", [False, -1, 0, 2 ** 64, "private-id", object()])
+def test_unsafe_process_collector_thread_identity_fails_closed(monkeypatch, value):
+    from types import SimpleNamespace
+    monkeypatch.setattr(MOD, "os", SimpleNamespace(getpid=lambda: value))
+    monkeypatch.setattr(MOD, "threading", SimpleNamespace(get_ident=lambda: value))
+    monkeypatch.setattr(MOD, "id", lambda self: value, raising=False)
+    timing = MOD.QueueLockTiming()
+    with timing.observe(unlocked(), "enqueue"):
+        pass
+    snap = timing.snapshot()
+    assert snap["observer_error"] is True
+    assert snap["process_id"] is snap["collector_id"] is None
+    assert snap["recent"][0]["thread_id"] is None
+    assert "private-id" not in str(snap)
+
+
+def test_identity_observer_baseexception_cannot_change_body_or_release(monkeypatch):
+    from types import SimpleNamespace
+    def broken():
+        raise KeyboardInterrupt("private diagnostic failure")
+    monkeypatch.setattr(MOD, "os", SimpleNamespace(getpid=broken))
+    monkeypatch.setattr(MOD, "threading", SimpleNamespace(get_ident=broken))
+    timing = MOD.QueueLockTiming()
+    calls = []
+    class Lock:
+        def __enter__(self):
+            calls.append("enter")
+            return "native value"
+        def __exit__(self, *args):
+            calls.append("exit")
+    with timing.observe(Lock(), "enqueue") as value:
+        assert value == "native value"
+        calls.append("body")
+    assert calls == ["enter", "body", "exit"]
+    assert timing.snapshot()["observer_error"] is True
+
+
+def test_failure_snapshot_error_cannot_replace_native_error_or_leave_stale_active(monkeypatch):
+    timing = MOD.QueueLockTiming()
+    original = RuntimeError("native acquisition")
+    class Lock:
+        def __enter__(self):
+            raise original
+        def __exit__(self, *args):
+            pytest.fail("Failed native enter must not exit")
+    def broken(now):
+        raise MemoryError("private snapshot failure")
+    with monkeypatch.context() as scoped:
+        scoped.setattr(timing, "_active_rows", broken)
+        with pytest.raises(RuntimeError) as caught:
+            with timing.observe(Lock(), "task_recheck"):
+                pytest.fail("Failed native enter yielded")
+    assert caught.value is original
+    snap = timing.snapshot()
+    assert snap["observer_error"] is True and snap["active_local"] == []
+    assert snap["recent"][0]["failure_active_local"] == []
+
+
+def test_failure_history_nested_rows_and_identities_are_bounded_and_detached():
+    from contextlib import ExitStack
+    original = Timeout("private-only")
+    class Lock:
+        def __enter__(self):
+            raise original
+        def __exit__(self, *args):
+            pytest.fail("Failed enter must not exit")
+    timing = MOD.QueueLockTiming()
+    with ExitStack() as held:
+        for _ in range(40):
+            held.enter_context(timing.observe(unlocked(), "receipt_commit"))
+        for _ in range(40):
+            with pytest.raises(Timeout) as caught:
+                with timing.observe(Lock(), "task_recheck"):
+                    pytest.fail("Contended lock entered")
+            assert caught.value is original
+        snap = timing.snapshot()
+        assert len(snap["recent"]) == len(snap["active_local"]) == 32
+        assert all(len(row["failure_active_local"]) == 32 for row in snap["recent"])
+        assert all(row["event_id"] >= 0 for row in snap["recent"])
+        snap["recent"][0]["failure_active_local"][0]["phase"] = "private mutation"
+        snap["recent"][0]["event_id"] = -99
+        snap["active_local"][0]["phase"] = "private active mutation"
+        fresh = timing.snapshot()
+        assert "private mutation" not in str(fresh)
+        assert "private active mutation" not in str(fresh)
+        assert fresh["recent"][0]["event_id"] >= 0
+    assert timing.snapshot()["active_local"] == []
+
+
+def test_collector_and_event_identity_separate_process_local_observers():
+    left, right = MOD.QueueLockTiming(), MOD.QueueLockTiming()
+    for timing in (left, right):
+        with timing.observe(unlocked(), "enqueue"):
+            pass
+    a, b = left.snapshot(), right.snapshot()
+    assert a["process_id"] == b["process_id"]
+    assert a["collector_id"] != b["collector_id"]
+    assert a["recent"][0]["event_id"] == b["recent"][0]["event_id"] == 0
+    assert a["recent"][0]["thread_id"] == b["recent"][0]["thread_id"]
