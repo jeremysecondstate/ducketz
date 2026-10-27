@@ -1,0 +1,103 @@
+--- a/tools/trader_worker.py
++++ b/tools/trader_worker.py
+@@ -83,6 +83,65 @@
+                            watchlist=watchlist,renewal=renewal)
+ 
+ 
++def _record_failure(renewal, exc, generation):
++    """Retain bounded private cause evidence, never a handoff or recovery claim."""
++    try:
++        import hashlib
++        from datetime import datetime, timezone
++        from ml.trader_renewal import process_birth
++
++        chain, seen, current, relation = [], set(), exc, "raised"
++        while current is not None and len(chain) < 8 and id(current) not in seen:
++            seen.add(id(current))
++            try:
++                message = str(current)[:2000]
++            except BaseException:
++                message = "<unprintable exception>"
++            frames, cursor = [], current.__traceback__
++            while cursor is not None:
++                code = cursor.tb_frame.f_code
++                frames.append({"file": Path(code.co_filename).name[-120:],
++                               "function": code.co_name[:120], "line": cursor.tb_lineno})
++                frames = frames[-8:]
++                cursor = cursor.tb_next
++            item = {"type": (type(current).__module__ + "." + type(current).__qualname__)[:160],
++                    "message": message, "relation": relation, "frames": frames}
++            for name in ("errno", "winerror", "sqlite_errorcode"):
++                value = getattr(current, name, None)
++                if type(value) is int:
++                    item[name] = value
++            value = getattr(current, "sqlite_errorname", None)
++            if type(value) is str:
++                item["sqlite_errorname"] = value[:80]
++            chain.append(item)
++            if current.__cause__ is not None:
++                current, relation = current.__cause__, "cause"
++            elif not current.__suppress_context__:
++                current, relation = current.__context__, "context"
++            else:
++                current = None
++        request = renewal.request
++        value = {"schema": "trader-worker-failure-evidence-v1",
++                 "protocol": "manual-trader-renewal-v1", "diagnostic_only": True,
++                 "at": datetime.now(timezone.utc).isoformat(),
++                 "token": request["token"], "turn": request["turn"], "role": request["role"],
++                 "generation": request["generation"], "sealed_generation": Path(generation).name,
++                 "session_id": renewal.envelope["session"]["session_id"],
++                 "worker_pid": os.getpid(), "worker_birth": process_birth(os.getpid()),
++                 "request_sha256": hashlib.sha256(renewal.request_path.read_bytes()).hexdigest(),
++                 "exception_chain": chain, "chain_cycle": current is not None and id(current) in seen,
++                 "chain_truncated": current is not None and id(current) not in seen}
++        raw = json.dumps(value, sort_keys=True, allow_nan=False) + "\n"
++        # Serialize first and create exclusively: retain any earlier evidence.
++        with renewal.request_path.with_suffix(".failure.json").open("x", encoding="utf-8", newline="\n") as stream:
++            stream.write(raw)
++            stream.flush()
++            os.fsync(stream.fileno())
++    except BaseException:
++        # Diagnostics cannot replace the original exception or its exit status.
++        pass
++
++
+ def main(argv=None):
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("--generation", required=True, type=Path)
+@@ -105,18 +164,22 @@
+     renewal.claim()
+     os.environ["DUCKETZ_TRADER_RENEWAL_REQUEST"] = str(args.request)
+     try:
+-        result = run(renewal)
+-        renewal.finish(result)
+-        return 0
+-    except PlannedRenewal:
+-        # No leases/threads may remain past this boundary. OS process exit is
+-        # acknowledged before the anchor admits the next generation.
+-        return PLANNED_EXIT
+-    except (KeyboardInterrupt, InterruptedError):
+-        if not renewal.stopped():
+-            raise
+-        renewal.finish({"status":"STOPPED"})
+-        return 0
++        try:
++            result = run(renewal)
++            renewal.finish(result)
++            return 0
++        except PlannedRenewal:
++            # No leases/threads may remain past this boundary. OS process exit is
++            # acknowledged before the anchor admits the next generation.
++            return PLANNED_EXIT
++        except (KeyboardInterrupt, InterruptedError):
++            if not renewal.stopped():
++                raise
++            renewal.finish({"status":"STOPPED"})
++            return 0
++    except BaseException as exc:
++        _record_failure(renewal, exc, args.generation)
++        raise
+ 
+ 
+ if __name__ == "__main__":
