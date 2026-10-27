@@ -1,0 +1,40 @@
+{
+  "artifact_commit_sha": "3ceebb0713c3a810a851f7b06328c4656501ed5f",
+  "artifact_completion_id": "20261027T000710Z-atlas-stats-midnight-originals-3af41c67",
+  "author": "Atlas",
+  "branch": "main",
+  "change_id": "20261027T000710Z-atlas-stats-midnight-originals-3af41c67",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/3ceebb0713c3a810a851f7b06328c4656501ed5f",
+  "files": [
+    "artifacts/pc-original/20261027T000710Z-atlas-stats-midnight-originals-3af41c67/artifact-manifest.json",
+    "artifacts/pc-original/20261027T000710Z-atlas-stats-midnight-originals-3af41c67/gameplan-stats/20261027T000710Z-atlas-stats-midnight-originals-3af41c67/original-outcome-supplement.json",
+    "artifacts/pc-original/20261027T000710Z-atlas-stats-midnight-originals-3af41c67/gameplan-stats/20261027T000710Z-atlas-stats-midnight-originals-3af41c67/stats-outcome-revision.json"
+  ],
+  "limitations": [
+    "Derived scientific outcomes and combined Stats retain frozen probabilities, targets, labels and recorded policies.",
+    "No raw observations, fitted models, account state, execution state, ledgers, credentials or bindings exported.",
+    "Genuine missing endpoints remain unscored; peer receipt and display adoption remain unproved."
+  ],
+  "remote_sha": "3ceebb0713c3a810a851f7b06328c4656501ed5f",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scientific output only; no source or model deployment, trader start or restart, order or operating prerequisite.",
+  "scope": "symbol-specific",
+  "summary": "Atlas Stats: original midnight outcomes and combined scientific revision published",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-27T00:20:42.060079+00:00",
+      "description": "Independent raw endpoints, original scoring, combined revision ancestry and privacy review passed",
+      "output_sha256": "499b5875b869434feb39a5997e11acb878e2f376c20399fae66f7e3176ea43f2"
+    },
+    {
+      "completed_at_utc": "2026-10-27T00:19:04.327877+00:00",
+      "description": "Native cumulative checks preserve all prior evaluated outcomes and original identities",
+      "output_sha256": "53c819a3633c125c9aec3af2832731553f7aa3e3a834cc28a66f5232d0d3e8ff"
+    },
+    {
+      "completed_at_utc": "2026-10-27T00:21:30.132812+00:00",
+      "description": "Exact committed bytes, namespaces and remote readback passed",
+      "output_sha256": "426c37332f98de2cbb3934697d74e705abd01c16038173280ca5ff00dbbf1380"
+    }
+  ]
+}
