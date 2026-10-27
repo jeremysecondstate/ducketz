@@ -1,0 +1,31 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T185424Z-59a9a93d58f04a9e9ef136dcf720f2cf",
+  "files": [
+    "ml/intraday/market_collection.py",
+    "tests/test_intraday_market_orphan_encoding.py",
+    "tests/test_intraday_market_receipt_encoding.py"
+  ],
+  "limitations": [
+    "Offline tests establish the reviewed fixture behavior; overall live queue latency, provider coverage and affected trading recovery require separate loaded-version and session evidence.",
+    "Unchanged receipt, task, source, locking, error, retry, reservation and order controls remain authoritative.",
+    "Private operating evidence, raw data, fitted models, saved recipes, credentials, account state, ledgers, task memory and local bindings are excluded from this shared source packet."
+  ],
+  "main_sha": "df67fe0e5bc7c29c006c5b912c68e400599e5903",
+  "privacy_review": "Reviewed shared source and offline test facts only; no private local paths, operating evidence, raw data, models, recipes, account state, credentials or task records.",
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/454"
+  ],
+  "runtime_implications": "Install reviewed compatible source separately. Scout loads compatible worker source at its next safe automatic iteration replacement within an authorized run. Preserve initial activation, manual stop, original deadline, pending work, saved recipes and order identities; this publication starts no trader and grants no runtime activation.",
+  "scope": "Shared native queue correctness; both PCs preserve their local symbols, saved model recipes, bindings and independent order state.",
+  "source_branch": "codex/scout/20261027T185424Z-59a9a93d58f04a9e9ef136dcf720f2cf",
+  "source_record": "20261027T185424Z-59a9a93d58f04a9e9ef136dcf720f2cf",
+  "source_sha": "58f0286c1dad7e071bce4cd9e354961f722731ad",
+  "summary": "Scout preserves native receipt queue bytes while removing redundant normalization under the queue lock.",
+  "tests": [
+    "Source, isolated courier and reviewed main candidates each passed 438 tests across 13 whole modules with 0 skips. Stage counts overlap.",
+    "All stages bind 178 exact source and dependency fingerprints; candidate import evidence and final raw Git blobs verify.",
+    "Offline fixtures cover byte equivalence, real fresh receipt transitions, terminal and pending outcomes, source blocks, malformed and custom values, changed native readers and codec hooks, atomic publication, durable receipt and index, expiry, lock timing and saved local recipe behavior."
+  ]
+}

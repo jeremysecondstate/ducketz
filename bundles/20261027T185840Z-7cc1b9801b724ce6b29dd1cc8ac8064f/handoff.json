@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T18:58:40.441565Z",
+  "id": "20261027T185840Z-7cc1b9801b724ce6b29dd1cc8ac8064f",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout preserves native receipt queue bytes while removing redundant normalization under the queue lock."
+}
