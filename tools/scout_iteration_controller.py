@@ -21,9 +21,11 @@ import uuid
 import psutil
 
 if __package__:
+    from .scout_console import ConsoleStatus
     from .scout_release import PROTOCOL, atomic_json, resolve_selection, validate_release, sha256, read_bytes
     from .scout_process import ManagedWorker, inspect_job, process_in_job
 else:
+    from scout_console import ConsoleStatus
     from scout_release import PROTOCOL, atomic_json, resolve_selection, validate_release, sha256, read_bytes
     from scout_process import ManagedWorker, inspect_job, process_in_job
 
@@ -75,11 +77,12 @@ class Controller:
     def __init__(self, *, selector, repository, datastore, wake_at, deadline,
                  clock=utcnow, sleep=time.sleep, worker_factory=ManagedWorker,
                  select=resolve_selection, startup_timeout=300, drain_timeout=120,
-                 backoff_seconds=0.25):
+                 backoff_seconds=0.25, console=None):
         self.selector, self.repository, self.datastore = Path(selector), Path(repository), Path(datastore)
         self.clock, self.sleep, self.worker_factory, self.select = clock, sleep, worker_factory, select
         self.startup_timeout, self.drain_timeout = startup_timeout, drain_timeout
         self.backoff_seconds = backoff_seconds
+        self.console = console
         self.run_id = "manual-scout-15m:" + uuid.uuid4().hex
         self.root = self.datastore / "intraday/scout/runs" / self.run_id.replace(":", "-")
         self.active_path = self.datastore / "intraday/scout/controller.json"
@@ -96,6 +99,15 @@ class Controller:
         self.state.update(status=status, updated_at=instant(self.clock()).isoformat(), **extra)
         atomic_json(self.root / "run.json", self.state)
         atomic_json(self.active_path, self.state)
+        self.report()
+
+    def report(self, phase=None):
+        if self.console is not None:
+            try:
+                self.console.update(self.state, self.root, phase=phase)
+            except Exception:
+                # Observability is never execution or stop authority.
+                pass
 
     def stop_reason(self):
         if self.stop_path.exists():
@@ -131,6 +143,7 @@ class Controller:
             checkpoint = None
             try:
                 while instant(self.clock()) < instant(self.state["wake_at"]):
+                    self.report()
                     if reason := self.stop_reason():
                         self.save("STOPPED", stop_reason=reason)
                         return 0
@@ -183,6 +196,9 @@ class Controller:
                                 ready = True
                             if phase["phase"] in {"draining", "checkpointed"} and drain_at is None:
                                 drain_at = time.monotonic()
+                            self.report(phase["phase"])
+                        else:
+                            self.report()
                         elapsed = time.monotonic() - start
                         if not ready and elapsed >= self.startup_timeout:
                             raise TimeoutError("Scout worker startup timed out; generation not replaced")
@@ -196,6 +212,7 @@ class Controller:
                         "exit_code": exit_code, "observed_at": instant(self.clock()).isoformat()})
                     exited_at = time.monotonic()
                     while not self.worker.job_empty():
+                        self.report("awaiting_worker_tree_exit")
                         if time.monotonic() - exited_at >= self.drain_timeout:
                             raise RuntimeError("Scout worker exited with owned child workers still running")
                         self.sleep(0.05)
@@ -427,6 +444,8 @@ def main(argv=None):
     parser.add_argument("--selector", type=Path)
     parser.add_argument("--repository", type=Path)
     parser.add_argument("--datastore", type=Path)
+    parser.add_argument("--hold-console", action="store_true",
+                        help="Keep an interactive manual console open after cleanup; never wait with redirected IO")
     args = parser.parse_args(argv)
     if args.worker:
         return worker_main(args.worker)
@@ -443,18 +462,52 @@ def main(argv=None):
         return 0
     if args.selector is None or args.repository is None:
         parser.error("--selector and --repository are required")
-    selected = resolve_selection(args.selector)
-    prepared = probe(selected, args.datastore, args.repository / "scratch/scout-iteration-probes")
-    if args.check:
-        print(json.dumps(prepared, sort_keys=True))
-        return 0
-    controller = Controller(selector=args.selector, repository=args.repository, datastore=args.datastore,
-                            wake_at=prepared["wake_at"], deadline=prepared["deadline"])
-    def signal_stop(*_):
-        controller.request_stop()
-    signal.signal(signal.SIGINT, signal_stop)
-    signal.signal(signal.SIGTERM, signal_stop)
-    return controller.run()
+    console = ConsoleStatus() if args.live else None
+    controller = None
+    try:
+        if console:
+            console.write("STARTING | Validating the selected release and saved recipe/calendar (up to 2 minutes).")
+            console.write("Press Ctrl+C to stop. Heartbeats show controller activity, not completed trades.")
+        selected = resolve_selection(args.selector)
+        prepared = probe(selected, args.datastore, args.repository / "scratch/scout-iteration-probes")
+        if args.check:
+            print(json.dumps(prepared, sort_keys=True))
+            return 0
+        controller = Controller(selector=args.selector, repository=args.repository, datastore=args.datastore,
+                                wake_at=prepared["wake_at"], deadline=prepared["deadline"], console=console)
+        console.write("Session deadline: " + console.local_time(controller.state["deadline"]))
+        console.write("Run records: " + str(controller.root))
+        def signal_stop(*_):
+            # Keep console writes outside the signal handler (TextIO is not reentrant).
+            # The loop observes this durable latch and reports the stopping state.
+            controller.request_stop()
+        previous = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
+        try:
+            for sig in previous:
+                signal.signal(sig, signal_stop)
+            result = controller.run()
+        finally:
+            for sig, handler in previous.items():
+                signal.signal(sig, handler)
+        # run() has completed its finally block and released worker/lock ownership.
+        console.write("STOPPED | " + str(controller.state.get("stop_reason", "run ended"))
+                      + " | Owned worker cleanup complete. No automatic restart.")
+        return result
+    except KeyboardInterrupt:
+        if console:
+            console.write("INTERRUPTED | Ctrl+C received. No replacement will be started.")
+        return 130
+    except Exception as exc:
+        if console is None:
+            raise
+        console.write(f"FAILED | {type(exc).__name__}: {exc}")
+        if controller is not None:
+            console.write("Inspect run records and the worker log: " + str(controller.root))
+        console.write("No automatic retry. Cleanup errors, if any, are shown above.")
+        return 1
+    finally:
+        if console and args.hold_console:
+            console.hold()
 
 
 if __name__ == "__main__":
