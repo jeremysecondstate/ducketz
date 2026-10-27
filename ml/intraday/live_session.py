@@ -326,6 +326,8 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
     if pc not in {"Atlas", "Scout"}:
         raise ContractError("Explicit Atlas or Scout scoring participant required")
     audited = set()
+    prior_notices = getattr(store, "scoring_audit_notices", None)
+    notified = prior_notices(session_id) if callable(prior_notices) else set()
     forecasts = ScoringForecastReader(store, pc=pc)
     session_forecasts = ScoringForecastReader(store, pc=pc, session_id=session_id)
     candles = ScoringCandleReader(store, stopped=stopped)
@@ -383,8 +385,13 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                     candles.original(selection)
                     if stopped():
                         return
-                    store.event(session_id,"unverified_synthetic_outcome_requires_audit",
-                                {"candle_hash":key,"immutable_original_retained":True},symbol=candle["symbol"])
+                    # Revalidate the original in every worker generation;
+                    # only an identical session diagnostic may be omitted.
+                    notice = (candle["symbol"], key)
+                    if notice not in notified:
+                        store.event(session_id,"unverified_synthetic_outcome_requires_audit",
+                                    {"candle_hash":key,"immutable_original_retained":True},symbol=candle["symbol"])
+                        notified.add(notice)
                     audited.add(key)
                 continue
             if not selection['completed'] or instant(candle["available_at"]) > instant(clock()):
