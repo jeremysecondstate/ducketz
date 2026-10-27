@@ -1,0 +1,69 @@
+--- a/ml/intraday/intentions.py
++++ b/ml/intraday/intentions.py
+@@ -630,15 +630,25 @@
+-        with self.store._execution_forecast_lock:
+-            marker, original = self._ordinary_forecast_preflight(forecast)
+-            with self.store.connect() as db:
+-                db.execute("BEGIN IMMEDIATE")
+-                self._ordinary_forecast_recheck(db, forecast, marker, original)
+-                del original  # Release the full tree before reading sizing research.
+-                old = self._value(db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
+-                                            (forecast["forecast_id"],)).fetchone())
+-                if old is not None and old != payload:
+-                    raise ContractError("Original desired quantity and sizing evidence are immutable")
+-                db.execute("INSERT OR IGNORE INTO intraday_intentions VALUES(?,?,?)",
+-                           (forecast["forecast_id"], key, canonical))
+-        # Recovery can repeat this after a crash between the two transactions.
+-        self.record(forecast, event_key="sized:" + result.result_id, recorded_at=value["calculated_at"],
+-                    disposition="awaiting_capacity", evidence={"sizing_id": result.result_id}, kind="sized")
++        # Native first insertion can reuse its independently validated forecast
++        # for the immediate projection. Custom callbacks retain their original
++        # reads; existing/cold sizing clears the proof before decoding research.
++        reuse_forecast = _sizing_save_forecast_reuse(self)
++        with (_forecast_record_scope(self) if reuse_forecast else nullcontext()):
++            with self.store._execution_forecast_lock:
++                marker, original = self._ordinary_forecast_preflight(forecast)
++                with self.store.connect() as db:
++                    db.execute("BEGIN IMMEDIATE")
++                    self._ordinary_forecast_recheck(db, forecast, marker, original)
++                    del original  # Release the full tree before reading sizing research.
++                    old_row = db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
++                                         (forecast["forecast_id"],)).fetchone()
++                    if reuse_forecast and (old_row is not None or not _sizing_save_forecast_reuse(self)):
++                        _clear_forecast_record_scope(self)
++                    old = self._value(old_row)
++                    if old is not None and old != payload:
++                        raise ContractError("Original desired quantity and sizing evidence are immutable")
++                    db.execute("INSERT OR IGNORE INTO intraday_intentions VALUES(?,?,?)",
++                               (forecast["forecast_id"], key, canonical))
++            # Recovery can repeat this after a crash between the two transactions.
++            if reuse_forecast and not _sizing_save_forecast_reuse(self):
++                _clear_forecast_record_scope(self)
++            self.record(forecast, event_key="sized:" + result.result_id, recorded_at=value["calculated_at"],
++                        disposition="awaiting_capacity", evidence={"sizing_id": result.result_id}, kind="sized")
+@@ -935,0 +946,25 @@
++
++
++# Capture the original descriptors once; comparing with mutable class attributes
++# would mistake a later callback replacement for native validation.
++from .store import ShadowStore as _SizingSaveShadowStore
++
++_SIZING_SAVE_INTENTION_CLASS = IntentionStore
++_SIZING_SAVE_INTENTION_METHODS = {name: IntentionStore.__dict__[name] for name in (
++    "get", "_value", "record", "_forecast", "_ordinary_forecast_marker",
++    "_ordinary_forecast_preflight", "_ordinary_forecast_recheck", "save_sizing",
++    "_revision_sizing", "_recovery_sizing_reader", "_revision_sizing_row")}
++_SIZING_SAVE_STORE_METHODS = {name: _SizingSaveShadowStore.__dict__[name] for name in (
++    "connect", "_forecast_value", "_execution_forecast_generation", "_execution_forecast_schema")}
++
++
++def _sizing_save_forecast_reuse(owner):
++    """Custom validation and connection callbacks keep their original reads."""
++    if type(owner) is not _SIZING_SAVE_INTENTION_CLASS or type(owner.store) is not _SizingSaveShadowStore:
++        return False
++    for instance, expected in ((owner, _SIZING_SAVE_INTENTION_METHODS),
++                               (owner.store, _SIZING_SAVE_STORE_METHODS)):
++        if any(name in instance.__dict__ or type(instance).__dict__.get(name) is not native
++               for name, native in expected.items()):
++            return False
++    return True
