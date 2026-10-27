@@ -811,6 +811,21 @@ class ScoutJournal:
             rid, record = self._reservation_request(records, reservation_id)
             return self._project_reservation(record, states.get(rid, self._empty_lifecycle()))
 
+    def lookup_reservation_with_order_state(self, reservation_id, *, expected_request_id):
+        """Project one exact accepted reservation and lifecycle from a fresh audit.
+
+        No result survives this call. Keep the original transaction, complete
+        replay and unique accepted-reservation check, and bind both views to
+        the request being projected before returning detached values.
+        """
+        with self._transaction() as db:
+            _, records, _, _, (_, states, _) = self._audit(db, include_lifecycle=True)
+            rid, record = self._reservation_request(records, reservation_id)
+            if rid != expected_request_id:
+                raise JournalStateError("Accepted reservation belongs to another request")
+            state = states.get(rid, self._empty_lifecycle())
+            return self._project_reservation(record, state), deepcopy(state)
+
     def reservation_stream(self, reservation_id):
         self.lookup_reservation(reservation_id)
         return STREAM
