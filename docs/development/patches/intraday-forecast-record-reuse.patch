@@ -1,0 +1,101 @@
+--- a/ml/intraday/intentions.py
++++ b/ml/intraday/intentions.py
+@@ -8,0 +9,2 @@
++from contextvars import ContextVar
++from threading import get_ident
+@@ -22,0 +25,27 @@
++
++# This private scope exists only for the final capacity/submission part of one
++# step, after scientific sizing. It never survives a step or enters a store
++# cache. Every reuse still needs the fresh source marker and full caller equality.
++_FORECAST_RECORD_SCOPE = ContextVar("intraday_forecast_record_scope", default=None)
++
++
++@contextmanager
++def _forecast_record_scope(owner):
++    previous = _FORECAST_RECORD_SCOPE.get()
++    if previous is not None:
++        previous[1].clear()  # Nested work cannot retain another large proof.
++    proofs, active = {}, [True]
++    token = _FORECAST_RECORD_SCOPE.set((owner, proofs, get_ident(), active))
++    try:
++        yield
++    finally:
++        active[0] = False  # Copied contexts cannot extend this call's lifetime.
++        proofs.clear()
++        _FORECAST_RECORD_SCOPE.reset(token)
++
++
++def _clear_forecast_record_scope(owner):
++    scope = _FORECAST_RECORD_SCOPE.get()
++    if scope is not None and scope[0] is owner and scope[2] == get_ident() and scope[3][0]:
++        scope[1].clear()
++
+@@ -375,0 +405,4 @@
++                # A cold sizing validator can decode a large research tree.
++                # Preserve the existing no-overlap boundary; only scalar sizing
++                # proofs may keep the step's optional forecast reuse alive.
++                _clear_forecast_record_scope(self)
+@@ -463 +496,4 @@
+-        The independent tree is local to that operation, never a store cache.
++        Normally the independent tree belongs only to this record. A private
++        final capacity/submission scope may retain one unchanged original until
++        that step returns; fresh markers and full caller equality still apply.
++        Cold sizing reads discard the proof before decoding research evidence.
+@@ -470,8 +506,19 @@
+-            with _ordinary.phase("preflight_payload_read"):
+-                row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+-                                 "FROM forecasts WHERE id=?", (forecast["forecast_id"],)).fetchone()
+-            if row is None:
+-                raise ContractError("Intention requires the original saved forecast")
+-            _ordinary.payload(row[6])
+-            with _ordinary.phase("preflight_payload_validate"):
+-                original = self.store._forecast_value(row)
++            scope = _FORECAST_RECORD_SCOPE.get()
++            proofs = (scope[1] if scope is not None and scope[0] is self
++                      and scope[2] == get_ident() and scope[3][0] else None)
++            previous = proofs.get(forecast["forecast_id"]) if proofs is not None else None
++            if marker is not None and previous is not None and previous[0] == marker:
++                original = previous[1]
++            else:
++                # Drop the old independent tree before decoding a changed one.
++                if proofs is not None:
++                    proofs.clear()
++                previous = None
++                with _ordinary.phase("preflight_payload_read"):
++                    row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
++                                     "FROM forecasts WHERE id=?", (forecast["forecast_id"],)).fetchone()
++                if row is None:
++                    raise ContractError("Intention requires the original saved forecast")
++                _ordinary.payload(row[6])
++                with _ordinary.phase("preflight_payload_validate"):
++                    original = self.store._forecast_value(row)
+@@ -480,0 +528,7 @@
++            if (proofs is not None and scope[3][0]
++                    and _FORECAST_RECORD_SCOPE.get() is scope):
++                # Retain one independently decoded original, never the caller's
++                # mutable tree. An uncertain source cannot authorize reuse.
++                proofs.clear()
++                if marker is not None:
++                    proofs[forecast["forecast_id"]] = (marker, original)
+@@ -488,0 +543 @@
++            _clear_forecast_record_scope(self)
+--- a/ml/intraday/account_execution.py
++++ b/ml/intraday/account_execution.py
+@@ -32 +32 @@
+-from .intentions import IntentionStore, _RecoveryTimings
++from .intentions import IntentionStore, _RecoveryTimings, _forecast_record_scope
+@@ -1239,5 +1239,8 @@
+-            capacity, quote = self._submission_capacity(forecast, original)
+-            if not capacity.adjusted_quantity:
+-                return self._record(forecast, capacity.disposition, capacity=capacity,
+-                                     evidence={"snapshot_id":self.snapshot_id})
+-            return self._submit(forecast, capacity, quote, window, original)
++            # Keep one private validated forecast only during this final
++            # capacity/submission path; scientific sizing has already finished.
++            with _forecast_record_scope(self.intents):
++                capacity, quote = self._submission_capacity(forecast, original)
++                if not capacity.adjusted_quantity:
++                    return self._record(forecast, capacity.disposition, capacity=capacity,
++                                         evidence={"snapshot_id":self.snapshot_id})
++                return self._submit(forecast, capacity, quote, window, original)
