@@ -1,0 +1,180 @@
+--- a/tools/trader_session_host.py
++++ b/tools/trader_session_host.py
+@@ -340,10 +340,51 @@
+     return type(pid) is int and pid > 0 and isinstance(recorded, str) and bool(recorded) and birth(pid) == recorded
+ 
+ 
+-def wait_for_controller_relay(path, payload, command, *, stop, stopping, phase):
++def _diagnostic_birth(pid):
++    """Optional identity for private evidence; never authorizes a continuation."""
++    try:
++        return birth(pid)
++    except (OSError, ValueError, RuntimeError):
++        return None
++
++
++def _terminal_reference(path, payload, *, controller_pid, controller_birth):
++    """Read only an exact relayed controller's diagnostic terminal snapshot.
++
++    A snapshot is evidence, not its final result or permission to renew. Keep
++    the original timeout, exit checks and failure/manual-stop disposition.
++    """
++    try:
++        raw = path.read_bytes()
++        value = json.loads(raw)
++        envelope = json.loads(Path(payload["envelope"]).read_text())
++        if not isinstance(value, dict) or not isinstance(envelope, dict):
++            return None
++        expected = (PROTOCOL, payload["token"], payload["handoff_id"],
++                    payload["parent_pid"], payload["parent_birth"], controller_pid,
++                    controller_birth, envelope["owner_pid"], envelope["owner_birth"],
++                    envelope["session"]["session_id"], payload["host_sha256"])
++        actual = tuple(value.get(key) for key in ("protocol", "token", "handoff_id",
++            "parent_pid", "parent_birth", "controller_pid", "controller_birth",
++            "owner_pid", "owner_birth", "session_id", "host_sha256"))
++        if (value.get("schema") != "trader-controller-terminal-evidence-v1"
++                or value.get("diagnostic_only") is not True
++                or not controller_birth or actual != expected
++                or value.get("disposition") not in {"FAILURE", "MANUAL_STOP"}):
++            return None
++        return {"path": str(path), "sha256": hashlib.sha256(raw).hexdigest(),
++                "controller_pid": controller_pid, "controller_birth": controller_birth,
++                "diagnostic_only": True}
++    except (OSError, ValueError, KeyError, TypeError):
++        return None
++
++
++def wait_for_controller_relay(path, payload, command, *, stop, stopping, phase,
++                              terminal_evidence=None):
+     """After quiescence the old controller is only a kernel-lifetime relay."""
+     stop_path = Path(json.loads(Path(payload["envelope"]).read_text())["stop_path"])
+     child = subprocess.Popen([*command, "--continue", str(path)], close_fds=True)
++    child_birth = _diagnostic_birth(child.pid)
+     deadline = None
+     try:
+         phase("controller_started", "controller")
+@@ -373,6 +414,11 @@
+         if child.poll() is None:
+             child.terminate()
+             child.wait()
++        if terminal_evidence is not None:
++            evidence = _terminal_reference(path.with_suffix(".terminal.json"), payload,
++                controller_pid=child.pid, controller_birth=child_birth)
++            if evidence is not None:
++                terminal_evidence["descendant"] = evidence
+         if disposition == "MANUAL_STOP":
+             return {"disposition": "MANUAL_STOP", "generations": payload["generations"],
+                     "completed_roles": payload["done"], "session_id": json.loads(
+@@ -409,7 +455,8 @@
+             os.fsync(stream.fileno())
+         command, relay_selector = commands(envelope)
+         code = run_protocol(directory=directory, envelope=envelope, command=command,
+-                            initialize=False, continuation=payload, relay_selector=relay_selector, phase=phase)
++                            initialize=False, continuation=payload, relay_selector=relay_selector, phase=phase,
++                            terminal_path=path.with_suffix(".terminal.json"))
+         outcome = json.loads((directory / "outcome.json").read_text())
+         write_json(path.with_suffix(".result.json"), {"protocol": PROTOCOL, "token": payload["token"],
+                    "handoff_id": payload["handoff_id"], "outcome": outcome})
+@@ -417,7 +464,7 @@
+ 
+ 
+ def run_protocol(*, directory, envelope, command, initialize=True, phase=lambda *a: None,
+-                 continuation=None, relay_selector=None):
++                 continuation=None, relay_selector=None, terminal_path=None):
+     """Run exact, acknowledged handoffs. Used unchanged by subprocess fixtures.
+ 
+     command(role, request) selects a complete installed generation and returns
+@@ -455,6 +502,38 @@
+     relay_target = None
+     final_execution_started = False
+     previous = {}
++    terminal_evidence = {}
++    failure = None
++    controller_birth = _diagnostic_birth(os.getpid())
++    terminal_path = (Path(terminal_path) if terminal_path is not None else
++                     directory / f"controller-terminal-{os.getpid()}-{controller_birth}.json")
++
++    def record_terminal(why):
++        # Record this controller before its worker cleanup grace. The existing
++        # stop latch is published first. This is private diagnosis, never a
++        # successful handoff, completed lane or renewal authority.
++        value = {"schema": "trader-controller-terminal-evidence-v1", "protocol": PROTOCOL,
++                 "at": datetime.now(timezone.utc).isoformat(), "token": envelope["token"],
++                 "host_sha256": HOST_SHA256,
++                 "session_id": envelope["session"]["session_id"],
++                 "owner_pid": envelope["owner_pid"], "owner_birth": envelope["owner_birth"],
++                 "controller_pid": os.getpid(), "controller_birth": controller_birth,
++                 "handoff_id": continuation.get("handoff_id") if continuation else None,
++                 "parent_pid": continuation.get("parent_pid") if continuation else None,
++                 "parent_birth": continuation.get("parent_birth") if continuation else None,
++                 "disposition": why, "generations": dict(generations),
++                 "completed_roles": sorted(done), "states": dict(states), "failure": failure,
++                 "active_workers": {role: {"pid": child.pid, "turn": turn,
++                     "response": str(response)}
++                     for role, (child, response, turn) in children.items()},
++                 "diagnostic_only": True}
++        try:
++            write_json(terminal_path, value)
++            terminal_evidence["local"] = {"path": str(terminal_path),
++                "sha256": hashlib.sha256(terminal_path.read_bytes()).hexdigest(), "diagnostic_only": True}
++        except (OSError, ValueError, TypeError) as exc:
++            # An unavailable diagnostic file cannot change termination behavior.
++            print(f"Terminal evidence unavailable: {exc}", flush=True)
+ 
+     def stop(why):
+         nonlocal reason
+@@ -462,6 +541,7 @@
+             reason = why
+             stopping.set()
+             write_json(stop_path, {"reason": why, "at": datetime.now(timezone.utc).isoformat()})
++            record_terminal(why)
+         return reason
+ 
+     def signal_stop(*args):
+@@ -570,6 +650,9 @@
+                                                allow_nan=False).encode("utf-8")):
+                                     stop("MANUAL_STOP")
+                         elif result.get("result", {}).get("status") in {"FAILED", "SESSION_FINISHED_WITH_ERRORS", "NOOP_STOCK_FORECASTS_NOT_QUALIFIED", "NOOP_ENRICHMENT_NOT_QUALIFIED"}:
++                            failure = {"role": role, "worker_pid": child.pid, "exit_code": code,
++                                       "turn": turn, "response": str(response),
++                                       "result_status": result["result"]["status"]}
+                             stop("FAILURE")
+                     else:
+                         raise RuntimeError(f"Unacknowledged worker exit {code}")
+@@ -581,6 +664,9 @@
+                                    controller_pid=os.getpid(), heartbeat_at=datetime.now(timezone.utc).isoformat(),
+                                    execution_generation=generations[role]))
+                 except (OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:
++                    failure = {"role": role, "worker_pid": child.pid, "exit_code": code,
++                               "turn": turn, "response": str(response),
++                               "exception_type": type(exc).__name__, "exception": str(exc)}
+                     print(f"{role}: {exc}; session will not restart.", flush=True)
+                     stop("FAILURE")
+             if stopping.is_set():
+@@ -626,12 +712,14 @@
+                     stop(read_stop_reason(stop_path))
+                     continue
+                 outcome = wait_for_controller_relay(handoff, payload, relay_target["command"],
+-                                                    stop=stop, stopping=stopping, phase=phase)
++                                                    stop=stop, stopping=stopping, phase=phase,
++                                                    terminal_evidence=terminal_evidence)
+                 reason = outcome["disposition"]
+                 generations, done = outcome["generations"], set(outcome["completed_roles"])
+                 break
+             time.sleep(0.05)
+-    except BaseException:
++    except BaseException as exc:
++        failure = {"exception_type": type(exc).__name__, "exception": str(exc)}
+         stop("FAILURE")
+         for child, _, _ in children.values():
+             if child.poll() is None:
+@@ -642,7 +730,8 @@
+         for sig, handler in previous.items():
+             signal.signal(sig, handler)
+         write_json(directory / "outcome.json", {"disposition": reason or "FAILURE", "generations": generations,
+-                   "session_id": envelope["session"]["session_id"], "completed_roles": sorted(done)})
++                   "session_id": envelope["session"]["session_id"], "completed_roles": sorted(done),
++                   **({"terminal_evidence": terminal_evidence} if terminal_evidence else {})})
+         try:
+             current = json.loads(active_path.read_text("utf-8"))
+             if current.get("token") == envelope["token"]:
