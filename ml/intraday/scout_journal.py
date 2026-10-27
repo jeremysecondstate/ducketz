@@ -14,6 +14,7 @@ current manual authority, freshness and broker effects remain caller-owned.
 """
 from __future__ import annotations
 
+from collections import OrderedDict
 from collections.abc import Mapping
 from contextlib import contextmanager
 from copy import deepcopy
@@ -23,10 +24,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from types import BuiltinFunctionType, FunctionType
 import re
 import secrets
 import sqlite3
 import stat
+import sys
+import threading
 import uuid
 
 from .scout_protocol import Grant, Request, PARTICIPANT_ID, STREAM, canonical_sha256, _canonical_bytes
@@ -80,12 +84,149 @@ def _encoded(value):
                       allow_nan=False)
 
 
+# Witnesses contain exact immutable raw text and its checked digest, never a
+# decoded record, journal state or audit result. Every call still freshly parses
+# its current SQL value; every audit still validates/replays all current rows.
+_CANONICAL_WITNESS_ENTRIES = 512
+_CANONICAL_WITNESS_BYTES = 4 * 1024 * 1024
+_CANONICAL_WITNESS_ROW_BYTES = 64 * 1024
+_canonical_witnesses = OrderedDict()
+_canonical_witness_lock = threading.Lock()
+_canonical_witness_bytes = 0
+_NATIVE_JSON_MODULE, _NATIVE_HASH_MODULE = json, hashlib
+_NATIVE_PROTOCOL_MODULE = _scout_protocol
+_NATIVE_DECODER = json._default_decoder
+_NATIVE_DECODER_CLASS = type(_NATIVE_DECODER)
+
+
+def _stdlib_json_function(value, name):
+    return (type(value) is FunctionType and value.__globals__ is vars(json)
+            and value.__name__ == name
+            and value.__code__.co_filename == json.__file__)
+
+
+_NATIVE_CANONICAL_BASELINE_SAFE = (
+    _stdlib_json_function(json.loads, "loads") and _stdlib_json_function(json.dumps, "dumps")
+    and type(hashlib.sha256) is BuiltinFunctionType
+    and hashlib.sha256.__module__ in {"_hashlib", "_sha256"})
+
+
+def _canonical_validation_contract():
+    # A replaced decoder/encoder/normalizer keeps its original calls and errors.
+    if (not _NATIVE_CANONICAL_BASELINE_SAFE
+            or json is not _NATIVE_JSON_MODULE or hashlib is not _NATIVE_HASH_MODULE
+            or _scout_protocol is not _NATIVE_PROTOCOL_MODULE
+            or json._default_decoder is not _NATIVE_DECODER
+            or type(_NATIVE_DECODER) is not _NATIVE_DECODER_CLASS):
+        return None
+    decoder = vars(_NATIVE_DECODER)
+    if (type(_NATIVE_DECODER) is not json.JSONDecoder
+            or decoder.get("object_hook") is not None or decoder.get("object_pairs_hook") is not None
+            or decoder.get("parse_int") is not int or decoder.get("parse_float") is not float
+            or decoder.get("strict") is not True or "decode" in decoder or "raw_decode" in decoder):
+        return None
+    scanner = decoder.get("scan_once")
+    scanner_type = getattr(json.scanner, "c_make_scanner", None)
+    if (scanner_type is None or type(scanner) is not scanner_type
+            or scanner.object_hook is not None or scanner.object_pairs_hook is not None
+            or scanner.parse_int is not int or scanner.parse_float is not float
+            or scanner.strict is not True):
+        return None
+    return (_encoded, _canonical_bytes, hashlib.sha256, json.loads, json.dumps,
+            json.JSONDecoder, json.JSONDecoder.decode, json.JSONDecoder.raw_decode,
+            json.JSONEncoder, json.JSONEncoder.__init__, json.JSONEncoder.encode,
+            json.JSONEncoder.iterencode, json.JSONEncoder.default,
+            *(decoder.get(key) for key in ('object_hook', 'object_pairs_hook', 'parse_float',
+                                          'parse_int', 'parse_constant', 'strict', 'scan_once',
+                                          'decode', 'raw_decode')),
+            json.encoder.c_make_encoder, json.encoder._make_iterencode,
+            json.encoder.encode_basestring, json.encoder.encode_basestring_ascii,
+            *(_scout_protocol.__dict__.get(key) for key in
+              ('_canonical_bytes', '_json_value', 'MAX_INTEGER', 'Mapping', 'ProtocolError')),
+            _scout_protocol.math.isfinite, sys.getrecursionlimit, sys._getframe)
+
+
+_NATIVE_CANONICAL_VALIDATION = _canonical_validation_contract()
+
+
+def _native_canonical_validation():
+    current = _canonical_validation_contract()
+    return (_NATIVE_CANONICAL_VALIDATION is not None and current is not None
+            and len(current) == len(_NATIVE_CANONICAL_VALIDATION)
+            and all(actual is native for actual, native in zip(current, _NATIVE_CANONICAL_VALIDATION)))
+
+
+def _canonical_witness_eligible(payload, digest):
+    if (type(payload) is not str or type(digest) is not str or len(digest) != 64
+            or len(payload) > _CANONICAL_WITNESS_ROW_BYTES):
+        return False
+    if not _native_canonical_validation() or sys.getrecursionlimit() < 512:
+        return False
+    # Only shallow decoded trees are remembered below. Near the caller's stack
+    # boundary keep the original recursive canonical validator and its errors.
+    frame = sys._getframe()
+    try:
+        for _ in range(64):
+            frame = frame.f_back
+            if frame is None:
+                return True
+        return False
+    finally:
+        del frame
+
+
+def _canonical_witness_shallow(value):
+    pending = [(value, 0)]
+    count = 0
+    while pending:
+        item, depth = pending.pop()
+        count += 1
+        if depth > 16 or count > 4096:
+            return False
+        if type(item) is dict:
+            pending.extend((child, depth + 1) for child in item.values())
+        elif type(item) is list:
+            pending.extend((child, depth + 1) for child in item)
+    return True
+
+
 def _checked_json(payload, digest):
+    global _canonical_witness_bytes
+    try:
+        native_at_decode = _native_canonical_validation()
+    except Exception:
+        native_at_decode = False
     try:
         value = json.loads(payload)
+        # Recheck after decoding: a custom decoder can alter a later validator.
+        try:
+            eligible = native_at_decode and _canonical_witness_eligible(payload, digest)
+            key = (payload, digest) if eligible else None
+            if eligible:
+                with _canonical_witness_lock:
+                    if key in _canonical_witnesses:
+                        _canonical_witnesses.move_to_end(key)
+                        return value
+        except Exception:
+            eligible = False
         encoded = _encoded(value)
         if encoded != payload or hashlib.sha256(encoded.encode("utf-8")).hexdigest() != digest:
             raise JournalCorruptionError("Stored payload hash or canonical bytes differ")
+        try:
+            if (eligible and _canonical_witness_eligible(payload, digest)
+                    and _canonical_witness_shallow(value)):
+                cost = len(encoded.encode("utf-8")) + len(digest)
+                if cost <= _CANONICAL_WITNESS_ROW_BYTES:
+                    with _canonical_witness_lock:
+                        if key not in _canonical_witnesses:
+                            _canonical_witnesses[key] = cost
+                            _canonical_witness_bytes += cost
+                        while (len(_canonical_witnesses) > _CANONICAL_WITNESS_ENTRIES
+                               or _canonical_witness_bytes > _CANONICAL_WITNESS_BYTES):
+                            _, removed = _canonical_witnesses.popitem(last=False)
+                            _canonical_witness_bytes -= removed
+        except Exception:
+            pass  # Optional reuse never changes a successfully checked row.
         return value
     except (ValueError, TypeError, UnicodeError, RecursionError) as exc:
         raise JournalCorruptionError("Invalid stored canonical payload") from exc
@@ -391,8 +532,9 @@ class ScoutJournal:
     def _audit(self, db, *, legacy=False, include_lifecycle=False):
         with recovery_phase('journal_full_audit', journal=self):
             # Local to this exact audit, including concurrent/reentrant calls.
-            # Every stored row still gets its fresh canonical/hash check and
-            # complete replay. No state survives the transaction or broker IO.
+            # Every stored row is freshly decoded and matched to checked exact
+            # canonical bytes; every current row/chain/lifecycle is replayed.
+            # Raw canonical witnesses contain no decoded or execution state.
             validation_memo = ({}, {})
 
             def validate(record, *, event=False):
