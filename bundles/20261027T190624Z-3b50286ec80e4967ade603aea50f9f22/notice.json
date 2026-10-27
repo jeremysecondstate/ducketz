@@ -1,0 +1,56 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T190334Z-788d1602f5014a3bb79015489d4cde61",
+  "change_id": "20261027T190334Z-788d1602f5014a3bb79015489d4cde61",
+  "details": [
+    "Atlas 15m Trader Representative removes one duplicate primary-candle encoding from proof validation. Reuse canonical text already required for the native hash when normalizing the immediate owned copy, retaining every full native proof/session check and the second normalization.",
+    "Both PCs may review this exact-preimage helper/verifier hunk while retaining local source composition and model policy. Public wrapper API, full hashes/evidence, numeric nested-key ordering, deep ownership, science, manual controls and execution state remain unchanged.",
+    "Publish only portable patch, exact extracted JSON/wrapper/verifier/native-proof/session methods and 34 standard-library tests. Source publication, complete generation installation, loaded code and naturally affected live timing remain separate facts."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-primary-verification-encoding.patch",
+      "sha256": "086ab3adedf424cd2ef7abe1ca91dfbd394d74e8af87308e25310005ee5d224e"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-primary-verification-encoding.json",
+      "sha256": "14896005d1f50db410a783ecc2293a341f0b71835e0e241bb1babd08d32f9f32"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_primary_verification_encoding.py",
+      "sha256": "977f60f3f10cdc9cdb067c5a460747124863b60c6af520b43af3b49154c9a159"
+    }
+  ],
+  "limitations": [
+    "Portable 34-case exact-method tests use explicit standard-library interfaces. Complete local module 89-case pandas/NumPy suite and exact retained input reconstruction are separately recorded.",
+    "The exact input removes 23606 per-row encodings while preserving all 23606 native proofs and 23744 session checks. Separate offline timing measurements do not establish live cause or sustained recovery."
+  ],
+  "local_installation": "Complete531-source generation a74b3371acf4c1b3818bb0113779cac4ace8a22f6f158e6023a5dcb3b3435d50 sealed after exact source installation. Only reviewed primary verifier/helper source changed;530otherparentmembers and frozen runtime retained. Full source/runtime verification succeeded.",
+  "main_commit": "27aa12bc6c6f0bac6202c82247a9d1107476d552",
+  "natural_affected_exercise": "Sustained live latency recovery remains unproved. No live test induced.",
+  "privacy_review": "Generic source repair, shared applicability and validation/install/loading facts only. Private composition, session/process identities, bindings, account state, raw data, models and task memory remain local. Local model policy remains unchanged; no peer acceptance or nightly prerequisite.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/455",
+  "related_completion": "20261027T183042Z-866b44bb00454689be7af1688c11b010",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Review corresponding exact-preimage wrapper/verifier hunks, then seal the complete generation with tools/trader_installation.py. Only an existing manually started session may naturally load a complete installed generation after an iteration. No initial start, manual-stop bypass, session extension, order or provider action.",
+  "runtime_loading": "Natural own-session execution launched selected complete generation and returned matching planned-renewal receipt; exact private process/session evidence retained locally.",
+  "scope": "shared",
+  "source_commit": "1ed16437c29c67db3ccac244b42de4e203eed695",
+  "summary": "Atlas primary verifier reuses required canonical encoding; shared repair published, sealed and naturally loaded",
+  "tests": [
+    {
+      "command": "python -B tests/check_intraday_primary_verification_encoding.py",
+      "passed_cases_each": 34,
+      "scope": "Immutable queue, isolated source and fresh common-main candidate"
+    },
+    {
+      "application_cases": 89,
+      "network_calls": 0,
+      "portable_cases": 34,
+      "scope": "Actual sealed source"
+    }
+  ]
+}

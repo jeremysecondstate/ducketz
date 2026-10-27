@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T19:06:24.163131Z",
+  "id": "20261027T190624Z-3b50286ec80e4967ade603aea50f9f22",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas primary verifier reuses required canonical encoding; shared repair published, sealed and naturally loaded"
+}
