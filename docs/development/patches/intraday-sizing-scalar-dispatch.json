@@ -1,0 +1,31 @@
+{
+  "schema": "intraday-sizing-scalar-dispatch-v1",
+  "target": "ml/intraday/technical_sizing.py",
+  "scope": "Shared exact-builtin dispatch after original Mapping proof; preserve local model policy and complete source composition.",
+  "before_sha256": "c72075e2fc814c11abd1a7f2f8633e52a36f9c8430a33b3857657de2ad7c39eb",
+  "after_sha256": "4faaeea92dde7b03008dd5cfe9b60868b89adc1137354dc2dedb1f7a25726ca5",
+  "before_bytes": 32840,
+  "after_bytes": 33047,
+  "patch_sha256": "1f925f5ccf0041b9834f8939127550d19b9044c20e35e81765f502ec10835cda",
+  "expected_hunks": 1,
+  "clean_before": {
+    "source": "def _clean(value):\n    \"\"\"JSON copies preserve all row provenance; optional missing fields are null.\"\"\"\n    if (issubclass(type(value), _Mapping) if type(type(value)) is type else isinstance(value, Mapping)):\n        return {str(key): _clean(item) for key, item in value.items()}\n    if isinstance(value, (list, tuple)):\n        return [_clean(item) for item in value]\n    if isinstance(value, (pd.Timestamp, datetime)):\n        return instant(value.to_pydatetime() if isinstance(value, pd.Timestamp) else value).isoformat()\n    if isinstance(value, np.generic):\n        return _clean(value.item())\n    if value is None or value is pd.NA or value is pd.NaT:\n        return None\n    if isinstance(value, float) and not math.isfinite(value):\n        return None\n    return value\n",
+    "sha256": "16682c640c9587548d2cc25a1fa3754472bfdeb86acc7ec10395809cfaedd74b"
+  },
+  "clean_after": {
+    "source": "def _clean(value):\n    \"\"\"JSON copies preserve all row provenance; optional missing fields are null.\"\"\"\n    if (issubclass(type(value), _Mapping) if type(type(value)) is type else isinstance(value, Mapping)):\n        return {str(key): _clean(item) for key, item in value.items()}\n    scalar_type = type(value)\n    if scalar_type is str or scalar_type is int or scalar_type is bool:\n        return value\n    if scalar_type is float:\n        return value if math.isfinite(value) else None\n    if isinstance(value, (list, tuple)):\n        return [_clean(item) for item in value]\n    if isinstance(value, (pd.Timestamp, datetime)):\n        return instant(value.to_pydatetime() if isinstance(value, pd.Timestamp) else value).isoformat()\n    if isinstance(value, np.generic):\n        return _clean(value.item())\n    if value is None or value is pd.NA or value is pd.NaT:\n        return None\n    if isinstance(value, float) and not math.isfinite(value):\n        return None\n    return value\n",
+    "sha256": "5061038bbb9968963d05e2fe00515e7f3d3444290cb5c614eb8cfdeea95c9eb4"
+  },
+  "imports": {
+    "retain": [
+      "from collections.abc import Mapping as _Mapping",
+      "from typing import Mapping, Sequence"
+    ]
+  },
+  "limitations": [
+    "Exact builtin str/int/bool/float fast paths occur after unchanged original Mapping predicate; registered builtins and custom metaclasses retain original Mapping behavior.",
+    "Scalar subclasses retain the original checks; portable stubs validate dispatch/transform behavior while separate real-module tests validate pandas/NumPy sizing composition.",
+    "Private synthetic timing does not establish original whole live latency cause, separate low-CPU metadata stall, or sustained recovery.",
+    "Exact source hashes bind Atlas composition; peers apply owned hunk after local review, preserving local model policy."
+  ]
+}

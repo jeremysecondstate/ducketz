@@ -1,0 +1,14 @@
+--- a/ml/intraday/technical_sizing.py
++++ b/ml/intraday/technical_sizing.py
+@@ -53,6 +53,11 @@
+     """JSON copies preserve all row provenance; optional missing fields are null."""
+     if (issubclass(type(value), _Mapping) if type(type(value)) is type else isinstance(value, Mapping)):
+         return {str(key): _clean(item) for key, item in value.items()}
++    scalar_type = type(value)
++    if scalar_type is str or scalar_type is int or scalar_type is bool:
++        return value
++    if scalar_type is float:
++        return value if math.isfinite(value) else None
+     if isinstance(value, (list, tuple)):
+         return [_clean(item) for item in value]
+     if isinstance(value, (pd.Timestamp, datetime)):
