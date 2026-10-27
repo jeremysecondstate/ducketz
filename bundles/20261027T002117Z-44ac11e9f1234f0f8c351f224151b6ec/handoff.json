@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T00:21:17.997870Z",
+  "id": "20261027T002117Z-44ac11e9f1234f0f8c351f224151b6ec",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout canonical protocol and journal bytes validated with redundant encoding removed"
+}

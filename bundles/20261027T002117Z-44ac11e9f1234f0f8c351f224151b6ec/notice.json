@@ -1,0 +1,335 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261027T001018Z-e29d0a4728b34d6fbc4f3827b2044217",
+  "change_details": [
+    "Actor Scout; task independent fifteen-minute canonical protocol and journal encoding correctness repair. Shared source applies where these protocol and journal helpers are used; each PC retains its scientific recipe and private operating bindings.",
+    "Normalize ordinary builtin JSON trees with one complete strict walk, then serialize the validated tree once for bounded private canonical bytes. Every custom Mapping retains the original serializer path, including nested custom objects, key rules, errors, Unicode and size/depth bounds.",
+    "Journal encoding consumes the fully validated canonical bytes directly, removing an unused SHA and second JSON serialization. Public canonical_sha256 and journal _checked_json function bytes remain identical; complete history, identity, event, lifecycle, transaction and idempotency checks remain intact.",
+    "Preserve integrated empty-native UTC and inventory repairs, exact native sender, original freshness fixture phases, periodic known-order recovery, original probabilities/directions and local model recipes.",
+    "Portable public tests use synthetic fixtures and frozen original function oracles. Authentic stored payload comparisons and full-audit profiling remain private; their historical results do not replace fresh source, isolated or main checks.",
+    "Run seventeen complete canonical modules across four fresh commands, binding the complete dependency closure and every imported application or fixture byte. Cover strict protocol/custom mappings, canonical wire bytes, corruption/full audits, books inventory, known-order and UNKNOWN recovery, manual expiry/freshness controls and exact stock policy."
+  ],
+  "change_id": "20261027T001018Z-e29d0a4728b34d6fbc4f3827b2044217",
+  "checks": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_canonical_encoding.py",
+        "tests/test_intraday_scout_checked_json_bytes.py",
+        "tests/test_intraday_scout_protocol.py",
+        "tests/test_intraday_scout_journal.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-27T00:10:34.201100Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "4df6bfa0bc1b911bd47656c65cfef3bcc43dbf3e82f66f0f42f6014c902e7f86",
+      "output_sha256": "51700e19ff7f1f18beb11ee5dca3d0df4a06924b85791ea9fc57ae2ceaf05086",
+      "passed": 322,
+      "skipped": 0,
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-27T00:10:18.697966Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_session_books.py",
+        "tests/test_intraday_scout_inventory_scan.py",
+        "tests/test_intraday_scout_paired_recovery.py",
+        "tests/test_intraday_scout_periodic_paired_recovery.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-27T00:10:49.594499Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "ba061df93cb3c02288bd688da41864b96e9ee7fb9ed948c00239fff0f9eacaa4",
+      "output_sha256": "15723d8bce03a1441e63ef8efbdf89f74c8fe1749ab7ad5792dd1e0de325b7f4",
+      "passed": 117,
+      "skipped": 2,
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-27T00:10:34.491531Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_native_send_gate.py",
+        "tests/test_intraday_scout_broker.py",
+        "tests/test_intraday_scout_client.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "tests/test_intraday_scout_initial_local_window.py",
+        "tests/test_intraday_local_evidence_freshness_diagnostics.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-27T00:11:47.449222Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "de17d9db42e578f5bdc8eff6dc6fe05ff77b2d821adc37932a54bb833cbe1b10",
+      "output_sha256": "311916cedcde92409157237c04bf9a52a086c81dc8eec772a97c6db3eaaa0ae8",
+      "passed": 360,
+      "skipped": 0,
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-27T00:10:49.897748Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_stock_direction_policy.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-27T00:11:55.762524Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "f9913393333b71ed400fe9ce009bead6919e6b49407b35d3cbec0abd32087f6a",
+      "output_sha256": "1fc52520a4a5b7c991a50e56ccad3ecc4071b963467809f3f926fe3c39b54d8f",
+      "passed": 50,
+      "skipped": 0,
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-27T00:11:47.716784Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_canonical_encoding.py",
+        "tests/test_intraday_scout_checked_json_bytes.py",
+        "tests/test_intraday_scout_protocol.py",
+        "tests/test_intraday_scout_journal.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-27T00:14:52.404422Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "4df6bfa0bc1b911bd47656c65cfef3bcc43dbf3e82f66f0f42f6014c902e7f86",
+      "output_sha256": "4a20f60368962e0e455a7d01807efdf2ff1384108b3a26c3f627de007417d444",
+      "passed": 322,
+      "skipped": 0,
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-27T00:14:39.209252Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_session_books.py",
+        "tests/test_intraday_scout_inventory_scan.py",
+        "tests/test_intraday_scout_paired_recovery.py",
+        "tests/test_intraday_scout_periodic_paired_recovery.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-27T00:15:07.553278Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "ba061df93cb3c02288bd688da41864b96e9ee7fb9ed948c00239fff0f9eacaa4",
+      "output_sha256": "5ecc35c253a13ffa9a107703a955f96bd6a4cb507594c8d7a66599dfa946c8b5",
+      "passed": 117,
+      "skipped": 2,
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-27T00:14:52.642333Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_native_send_gate.py",
+        "tests/test_intraday_scout_broker.py",
+        "tests/test_intraday_scout_client.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "tests/test_intraday_scout_initial_local_window.py",
+        "tests/test_intraday_local_evidence_freshness_diagnostics.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-27T00:16:04.701569Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "de17d9db42e578f5bdc8eff6dc6fe05ff77b2d821adc37932a54bb833cbe1b10",
+      "output_sha256": "57adc7d8c973f860f162f51ae93583a0715bfc31e5d9fa71d81f659766a3bc5c",
+      "passed": 360,
+      "skipped": 0,
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-27T00:15:07.792630Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_stock_direction_policy.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-27T00:16:12.337567Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "f9913393333b71ed400fe9ce009bead6919e6b49407b35d3cbec0abd32087f6a",
+      "output_sha256": "932549302affcd485fc3519cf38db1181b895656bfe533dcaa8dc85394907371",
+      "passed": 50,
+      "skipped": 0,
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-27T00:16:04.949433Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_canonical_encoding.py",
+        "tests/test_intraday_scout_checked_json_bytes.py",
+        "tests/test_intraday_scout_protocol.py",
+        "tests/test_intraday_scout_journal.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-27T00:18:26.404894Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "4df6bfa0bc1b911bd47656c65cfef3bcc43dbf3e82f66f0f42f6014c902e7f86",
+      "output_sha256": "f2ae4800897315904af64fa658fb74290473f87840801bdf66f5c064b77aef18",
+      "passed": 322,
+      "skipped": 0,
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-27T00:18:11.861590Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_session_books.py",
+        "tests/test_intraday_scout_inventory_scan.py",
+        "tests/test_intraday_scout_paired_recovery.py",
+        "tests/test_intraday_scout_periodic_paired_recovery.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-27T00:18:42.927274Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "ba061df93cb3c02288bd688da41864b96e9ee7fb9ed948c00239fff0f9eacaa4",
+      "output_sha256": "e0ba55de500fc47ebe0afb7e326f9b7f60aadef1a3b2fd359f792227c00b2f95",
+      "passed": 117,
+      "skipped": 2,
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-27T00:18:26.686113Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_scout_native_send_gate.py",
+        "tests/test_intraday_scout_broker.py",
+        "tests/test_intraday_scout_client.py",
+        "tests/test_intraday_scout_local_execution.py",
+        "tests/test_intraday_scout_cancellation_final_expiry.py",
+        "tests/test_intraday_scout_initial_local_window.py",
+        "tests/test_intraday_local_evidence_freshness_diagnostics.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-27T00:19:43.306518Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "de17d9db42e578f5bdc8eff6dc6fe05ff77b2d821adc37932a54bb833cbe1b10",
+      "output_sha256": "213ac8581efb320513504af07238d42870fd2e8cb351c702ec92c784074ef0fe",
+      "passed": 360,
+      "skipped": 0,
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-27T00:18:43.204959Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_stock_direction_policy.py",
+        "tests/test_intraday_scout_expiry_during_capacity.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-27T00:19:51.216228Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "f9913393333b71ed400fe9ce009bead6919e6b49407b35d3cbec0abd32087f6a",
+      "output_sha256": "5fc3f12e934e503c807eecc5144cd3c33f5a6d3696d1b4a53b74504e01155357",
+      "passed": 50,
+      "skipped": 0,
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-27T00:19:43.554516Z"
+    }
+  ],
+  "file_sha256": {
+    "ml/intraday/scout_journal.py": "cfac48433e40f5993f68c34f846851d4b6e2003f75e16a9e7e2da3d96432cb64",
+    "ml/intraday/scout_protocol.py": "20b670ef75af6d433e3dffbc22baad23957bb6a29dc92813b2ce0b685bfc3549",
+    "tests/test_intraday_scout_canonical_encoding.py": "865fcc19d82b06d4d240e45489129a68c121b8319556772f0082956438c41a4d",
+    "tests/test_intraday_scout_checked_json_bytes.py": "ab99c2f06c52e18bb3265ca983c2ebcbd9f2291d49a0324e34ebdf699c7da354"
+  },
+  "files": [
+    "ml/intraday/scout_journal.py",
+    "ml/intraday/scout_protocol.py",
+    "tests/test_intraday_scout_canonical_encoding.py",
+    "tests/test_intraday_scout_checked_json_bytes.py"
+  ],
+  "limitations": [
+    "Offline serialization and audit comparisons do not establish production latency or full-cycle recovery. Complete history replay and audit complexity remain; relevant runtime behavior needs operation-specific evidence.",
+    "Two native symbolic-link cases skipped because Windows denied creation with privilege error 1314. Hardlink, mocked reparse, metadata, corruption and full-audit controls passed."
+  ],
+  "main_integration": {
+    "main_before": "ee2128dc8759ad311168f4e3175f2a89116a4a62",
+    "main_sha": "dc3db7511ea9e549303cffca82f16456925eb315",
+    "record_id": "20261027T001018Z-e29d0a4728b34d6fbc4f3827b2044217",
+    "stage": "main_integrated",
+    "verified_remote_sha": "dc3db7511ea9e549303cffca82f16456925eb315"
+  },
+  "operations": {
+    "ml/intraday/scout_journal.py": "modify",
+    "ml/intraday/scout_protocol.py": "modify",
+    "tests/test_intraday_scout_canonical_encoding.py": "add",
+    "tests/test_intraday_scout_checked_json_bytes.py": "modify"
+  },
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/420",
+  "pull_request_created_as_draft": true,
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Protocol and journal modules are imported at process startup. Reviewed local installation, actual loading and affected runtime behavior are separate facts. Jeremy controls any manual reload needed for newly selected bytes. Preserve private recipes, native IDs, orders, reservations, fill attribution, UNKNOWN identities and idempotency; inspect affected own-session audit/recovery and full-cycle evidence after actual loading.",
+  "scope": "shared",
+  "source_sha": "58942390ca384270e450ee2621bdec623f136c67",
+  "summary": "Scout canonical protocol and journal bytes validated with redundant encoding removed",
+  "tests": [
+    "Fresh source, isolated candidate and main candidate each passed 849 tests with two skips across seventeen complete canonical modules, four commands and 204 exact fingerprints. Stage counts overlap.",
+    "Protocol/custom mappings, canonical JSON/wire values, full audits/corruption, books inventory, paired/periodic and known-order recovery, native broker/client behavior, manual expiry/freshness controls and exact stock direction were exercised.",
+    "Public canonical_sha256 and journal _checked_json function bytes are identical to the reviewed base. Public fixtures are synthetic and use frozen original function oracles; authentic operating inputs remain private."
+  ]
+}
