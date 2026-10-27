@@ -1,0 +1,31 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T225151Z-ca1a8dddd14f43dc8e2bc04e80e40f19",
+  "files": [
+    "ml/intraday/scout_journal.py",
+    "tests/test_intraday_journal_canonical_witness.py"
+  ],
+  "limitations": [
+    "Offline checks establish reviewed processing and corruption behavior only. Actual loaded generation, affected journal timing and full-cycle or trading recovery require separate session evidence.",
+    "Original local recipes, scientific qualification, saved probabilities, timing rules, UNKNOWN send fences, order identities, reservations and actual fill attribution remain authoritative.",
+    "Private operating evidence, raw data, fitted models, recipes, credentials, account state, ledgers, task memory and local bindings are excluded from this shared source packet.",
+    "This revision supersedes Completion-Record 20261027T223728Z-6ed60b9ca2e0405ca65b01c89bb48c3a (validated but unpushed) and Completion-Record 20261027T215946Z-7371737e6a8c4b7cadcd8ae3479a078f, preserving the latter source push 93151ee876a39713ca45dfe0c563775f6d8b927d. Both predecessors were held before main publication and have no notice or pull request."
+  ],
+  "main_sha": "5d5b419b1bffd7e13f6876a9d28344bb3206968c",
+  "privacy_review": "Reviewed shared source and offline test facts only; no private local paths, operating evidence, raw data, models, recipes, account state, credentials or task records.",
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/470"
+  ],
+  "runtime_implications": "Install reviewed compatible source separately. A fresh process begins with empty bounded validation witnesses and performs original validation before exact native text reuse. Scout loads compatible worker source at its next safe automatic iteration replacement within an authorized run. Preserve initial activation, manual stop, original deadline and pending work. Publication starts no trader.",
+  "scope": "Shared Scout journal correctness-preserving processing; each PC retains its model recipe, symbols, operating bindings and independent order state.",
+  "source_branch": "codex/scout/20261027T225151Z-ca1a8dddd14f43dc8e2bc04e80e40f19",
+  "source_record": "20261027T225151Z-ca1a8dddd14f43dc8e2bc04e80e40f19",
+  "source_sha": "f16087a686dfba4b5d89c9c0ef4e5301f4c02fac",
+  "summary": "Scout reduces duplicate journal canonical validation while preserving fresh decode and complete audits.",
+  "tests": [
+    "Source, isolated courier and reviewed main candidates each passed 551 tests across 11 whole modules with 0 skips. Stage counts overlap.",
+    "All stages bind 155 exact source and dependency fingerprints; candidate import evidence and final raw Git blobs verify.",
+    "Offline fixtures exercise unchanged native validation, changed and malformed bytes, digest mismatches, detached decoded values, bounded eviction and concurrency. Pre-import and later decoder, normalizer, canonical encoder, finite-number, protocol module alias and serializer wrappers retain their original calls and errors; only a known native baseline enables witnesses. Complete audit and replay results remain unchanged."
+  ]
+}

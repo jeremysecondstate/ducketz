@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T22:57:47.245358Z",
+  "id": "20261027T225747Z-2576b55ba0d74aa08833703de914157b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout reduces duplicate journal canonical validation while preserving fresh decode and complete audits."
+}
