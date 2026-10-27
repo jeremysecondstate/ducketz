@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T19:57:20.507911Z",
+  "id": "20261027T195720Z-f1f1128f86f94541a1884338e28ad9bd",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout controller console feedback installed for the next manual launch; shared source published with draft PR 458."
+}

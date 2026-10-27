@@ -1,0 +1,48 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261027T195247Z-aea2c0794eb1471489a7f717e752a66f",
+  "change_id": "20261027T195247Z-aea2c0794eb1471489a7f717e752a66f",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tools/scout_console.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tools/scout_iteration_controller.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_scout_console.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/scout-iteration-restarts.md"
+    }
+  ],
+  "limitations": [
+    "No live trader, broker or private operating data used for verification.",
+    "Main advanced after the first integration verification. The pinned helper rejected the subsequent candidate because its parent matched the prior integration receipt. Source remains published and draft PR 458 retains the reviewable change; main integration is pending.",
+    "Peer installation and live loaded behavior are unverified."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/458",
+  "remote_sha": "0334d16ac9c2ff333678cc7b66acd33c354e7378",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout installed a new immutable console bootstrap and manual launcher binding. It activates on the next operator launch; the existing process was untouched. Worker protocol, selected application release, model recipes, symbols and order state remain unchanged.",
+  "scope": "shared",
+  "source_commit": "0334d16ac9c2ff333678cc7b66acd33c354e7378",
+  "summary": "Scout controller console feedback installed for the next manual launch; shared source published with draft PR 458.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-27T19:53:52.197069Z",
+      "output_sha256": "2c7aef3a9748bf3b3d5dde83ab305895e96ac9844f34f2ab5612b56b3de1860e",
+      "result": "145 passed",
+      "started_at_utc": "2026-10-27T19:53:31.718373Z",
+      "suite": "Scout console, controller, Windows process and release offline tests"
+    }
+  ]
+}
