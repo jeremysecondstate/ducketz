@@ -1406,3 +1406,58 @@ def test_ctrl_c_during_automatic_data_drain_still_joins_workers_and_records_manu
     assert any(row["event"] == "automatic_stop_requested" for row in logs)
     assert any(row["event"] == "manual_stop_requested" for row in logs)
     assert not any(row["event"] == "minute_data_day_complete" for row in logs)
+
+
+@pytest.mark.parametrize("scope,rotates", [
+    ("all", True), ("reordered", True), ("subset", False),
+    ("duplicate", False), ("foreign", False), ("reused", False),
+])
+def test_recovery_boundary_requires_exact_attempt_scope(tmp_path, monkeypatch, scope, rotates):
+    symbols = tuple("TEST" + str(i) for i in range(11))
+    store = ShadowStore(tmp_path / "boundary.sqlite3")
+    reference = instant("2026-10-12T17:00:00Z")
+    cycle = dict(pc="Scout", symbols=list(symbols), mode="live", experiment="manual",
+                 reference_at=reference.isoformat(), started_at=reference.isoformat(), status="partial_failure")
+    store.begin_cycle("old", cycle)
+    retry = list(symbols)
+    if scope == "reordered": retry.reverse()
+    if scope == "subset": retry.pop()
+    if scope == "duplicate": retry[-1] = retry[0]
+    if scope == "foreign": retry[-1] = "FOREIGN"
+    monkeypatch.setattr(live_session, "_pending_cycle_passes", lambda *a, **k: [("old", cycle, retry)])
+    now, calls, boundaries, pauses = [instant("2026-10-12T17:31:00Z")], [], [], []
+    def run(inputs, **kw):
+        calls.append(kw)
+        now[0] += timedelta(minutes=37)  # Another quarter is due on return.
+        return {"cycle_id": "old", "recovered_existing": scope == "reused"}
+    runner = SimpleNamespace(store=store, symbols=symbols,
+        config=SimpleNamespace(publication_offset_seconds=30), run_cycle=run)
+    live_session.forecasting_loop(runner, histories={}, provider=None, journal=None,
+        queue=SimpleNamespace(session_id="manual", pc="Scout", enqueue=lambda _: None),
+        stopped=lambda: bool(calls), clock=lambda: now[0], pause=pauses.append,
+        history_source=lambda _: object(), on_iteration=boundaries.append, recovery_first=True)
+    assert len(calls) == 1 and calls[0]["retry_symbols"] == retry
+    assert not calls[0]["allow_execution"]
+    assert len(boundaries) == int(rotates)
+    assert pauses == ([] if rotates else [1])
+
+
+def test_same_quarter_full_recovery_remains_due_with_fresh_priority(tmp_path):
+    symbols = tuple("TEST" + str(i) for i in range(11))
+    store = ShadowStore(tmp_path / "same-quarter.sqlite3")
+    reference = instant("2026-10-12T17:00:00Z")
+    failure = dict(type="AcquisitionPending", recorded_at="2026-10-12T17:15:30Z",
+                   retryable=True, reason="real_input_missing", retry_at="2026-10-12T17:15:31Z")
+    store.begin_cycle("old", dict(pc="Scout", symbols=list(symbols), mode="live", experiment="manual",
+        reference_at=reference.isoformat(), started_at=reference.isoformat(), status="partial_failure",
+        failures={s: dict(failure) for s in symbols}))
+    calls, boundaries = [], []
+    runner = SimpleNamespace(store=store, symbols=symbols, config=SimpleNamespace(publication_offset_seconds=30),
+        run_cycle=lambda inputs, **kw: calls.append(kw) or {"cycle_id": "old"})
+    live_session.forecasting_loop(runner, histories={}, provider=None, journal=None,
+        queue=SimpleNamespace(session_id="manual", pc="Scout", enqueue=lambda _: None),
+        stopped=lambda: bool(calls), clock=lambda: "2026-10-12T17:16:00Z",
+        pause=lambda _: pytest.fail("Due recovery must not wait for the next quarter"),
+        history_source=lambda _: object(), on_iteration=boundaries.append, recovery_first=False)
+    assert len(calls) == len(boundaries) == 1
+    assert calls[0]["retry_symbols"] == list(symbols) and calls[0]["allow_execution"]

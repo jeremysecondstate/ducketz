@@ -20,6 +20,15 @@ configured symbol must have its immutable forecast or an existing durable
 failure/deferral record. Partial populations keep `partial_failure`; the restart
 mechanism never changes a missing result to a successful forecast. A polling
 tick, a three-second order recovery pass or a single symbol is not a boundary.
+An exact full-scope recovery attempt is also a boundary, even when every symbol
+retains a durable input deferral. A subset retry or reuse of a completed cycle
+is not a full iteration. The checkpoint preserves the scheduler next turn:
+a fresh attempt gives one due recovery pass priority; a full recovery attempt
+lets a newer due quarter run first. With no new quarter, existing due retries
+remain eligible. The saved Boolean is checked against the durable measured
+attempt count before broker construction; historical first-attempt checkpoints
+retain their original recovery-first meaning.
+
 The forecast thread stops after that attempt, due execution receives its normal
 disposition or durable retry, and all owned data/context/scoring threads drain.
 Only then is a checkpoint written and exit code 75 (`PLANNED_RESTART`) returned.
