@@ -83,11 +83,11 @@ def test_terminal_periodic_pass_keeps_full_audits_and_rereads_each_next_pass(tmp
     audits = count_audits(monkeypatch, case.journal)
     before = case.journal.path.read_bytes()
     first = case.executor.recover()
-    assert len(audits) == 1 + 3 * count
+    assert len(audits) == 1 + 2 * count
     assert len(case.lookups) == 1 and len(case.controls) == count and case.polls == []
     audits.clear()
     second = case.executor.recover()
-    assert first == second and len(audits) == 1 + 3 * count
+    assert first == second and len(audits) == 1 + 2 * count
     assert len(case.lookups) == 2 and len(case.controls) == count * 2
     assert case.journal.path.read_bytes() == before
     assert all(row['order']['status'] == 'FILLED' and row['order']['filled_quantity'] == 2 for row in first)
@@ -97,7 +97,7 @@ def test_working_periodic_pass_closes_pair_before_status_and_reaudits_after_io(t
     case = fixture(tmp_path, status='WORKING')
     audits = count_audits(monkeypatch, case.journal)
     result = case.executor.recover()
-    assert len(audits) == 6  # records + before pair + observation + after pair + two projection reads
+    assert len(audits) == 5  # records + before pair + observation + after pair + fresh projection pair
     assert case.polls == case.ids and result[0]['order']['status'] == 'WORKING'
     assert result[0]['evidence']['order_evidence']['evidence_id'] == 'poll-0'
 
