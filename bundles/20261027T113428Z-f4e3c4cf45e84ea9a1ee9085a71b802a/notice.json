@@ -1,0 +1,44 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T112307Z-46d05cd1ff564f448e694f79f24d497d",
+  "files": [
+    "ml/intraday/scout_journal.py",
+    "ml/intraday/scout_local_execution.py",
+    "tests/test_intraday_scout_projection_pair.py",
+    "tests/test_intraday_scout_periodic_paired_recovery.py"
+  ],
+  "limitations": [
+    "Duplicate accepted-projection history replay is removed; full history replay and overall audit complexity remain. Offline checks do not establish live latency or full-cycle recovery.",
+    "The queue timeout holder and original historical incidents remain unresolved until operation-specific evidence addresses each failure.",
+    "Private operating evidence, raw data, models, recipes, credentials and task state remain local."
+  ],
+  "main_sha": "e7236edbbaa8573073653c1123387dc3d8c8eebe",
+  "privacy_review": "Reviewed source-only notice. Exact source operations, factual offline test summaries and publication identities only.",
+  "related_sources": [
+    {
+      "record_id": "20261027T111405Z-0e09197dd66041008a2b5b7ae6345321",
+      "review_url": "https://github.com/jeremysecondstate/ducketz/pull/431",
+      "source_sha": "b25414cb3bbb03e23b7e0eca5699995a7841e3be"
+    },
+    {
+      "record_id": "20261027T112307Z-46d05cd1ff564f448e694f79f24d497d",
+      "review_url": "https://github.com/jeremysecondstate/ducketz/pull/432",
+      "source_sha": "fc18393d8a8fc4fcc0b031f37a45f5d98661e473"
+    }
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/431",
+    "https://github.com/jeremysecondstate/ducketz/pull/432"
+  ],
+  "runtime_implications": "Local installation and actual loading are separate from source integration. A compatible reviewed Scout release loads at the next safe automatic worker replacement after a completed authorized eleven-symbol iteration; verify the loaded manifest and affected operation independently. Manual stop and the original session deadline remain authoritative.",
+  "scope": "Shared journal and execution-helper processing correctness; Scout independent trader repair. Atlas retains its own symbols, scientific recipe, private operating bindings and runtime adoption.",
+  "source_record": "20261027T112307Z-46d05cd1ff564f448e694f79f24d497d",
+  "source_sha": "fc18393d8a8fc4fcc0b031f37a45f5d98661e473",
+  "summary": "Scout completed fresh paired order projection audits with exact request binding and preserved native order recovery.",
+  "tests": [
+    "Compatible source, isolated candidate and current-main checks each passed 930 tests with two native link-fixture skips across twenty whole modules and four commands. Stage counts overlap.",
+    "Original reviewed-base source and isolated checks each passed 909 tests with two native link-fixture skips across nineteen modules; those successful records remain preserved.",
+    "All stages bind final exact owned bytes and full imported dependencies with zero import violations. Fixtures cover fresh audit replay, exact accepted identity, corruption, lifecycle/fills, rollback, expiry, overrides and iteration orders."
+  ]
+}

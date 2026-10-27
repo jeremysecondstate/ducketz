@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T11:34:28.458349Z",
+  "id": "20261027T113428Z-f4e3c4cf45e84ea9a1ee9085a71b802a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout completed fresh paired order projection audits with exact request binding and preserved native order recovery."
+}
