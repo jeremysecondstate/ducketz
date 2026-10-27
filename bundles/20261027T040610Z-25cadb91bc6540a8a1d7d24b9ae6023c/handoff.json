@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T04:06:10.018543Z",
+  "id": "20261027T040610Z-25cadb91bc6540a8a1d7d24b9ae6023c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed safe per-iteration process renewal for manually started traders"
+}

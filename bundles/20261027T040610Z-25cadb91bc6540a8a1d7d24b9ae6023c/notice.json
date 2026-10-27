@@ -1,0 +1,72 @@
+{
+  "author": "Atlas",
+  "automation_instructions": {
+    "active": 10,
+    "existing_tasks_updated": 12,
+    "identities_schedules_bindings_memory_preserved": true,
+    "new_tasks": 0,
+    "paused": 2
+  },
+  "branch": "codex/atlas/20261027T035603Z-140772fa70b14223a6c2b481bd06bdb0",
+  "change_id": "20261027T035603Z-140772fa70b14223a6c2b481bd06bdb0",
+  "commit_sha": "5890d5ad1115683fb2b6ef84a89fe901b9cdbddb",
+  "files": [
+    "docs/development/patches/trader-process-renewal.json",
+    "docs/development/patches/trader-process-renewal.patch",
+    "docs/development/trader-process-renewal.md",
+    "ml/intraday/candle_runtime.py",
+    "ml/intraday/market_input_runtime.py",
+    "ml/trader_renewal.py",
+    "tests/check_trader_renewal_package.py",
+    "tests/intraday_renewal_subprocess.py",
+    "tests/test_gameplan_process_renewal.py",
+    "tests/test_intraday_process_renewal.py",
+    "tests/test_trader_controller_handoff.py",
+    "tests/test_trader_installation.py",
+    "tests/test_trader_manual_stop.py",
+    "tests/test_trader_session_host.py",
+    "tests/test_trader_worker.py",
+    "tests/trader_controller_handoff_fixture.py",
+    "tests/trader_renewal_subprocess_fixture.py",
+    "tools/trader_installation.py",
+    "tools/trader_session_host.py",
+    "tools/trader_worker.py"
+  ],
+  "limitations": [
+    "Offline simulated brokers and isolated real Windows subprocesses only; no live broker, provider, trader operation or live natural exercise.",
+    "Portable candidate checks do not prove unadapted common-main consumers; full Atlas adapter integration and exact original reconstruction are recorded separately.",
+    "Integrated checks skip symlink and historical group-owner fixtures because this Windows token lacks the required privileges; portable checks skip symlink only; fresh interpreter setup adds wall-clock overhead and optional stream subscriptions reconnect at quarter renewal.",
+    "Historical native-cutover and native-exchange integration fixtures have an unchanged baseline native-ledger schema incompatibility. Dedicated isolated tests cover the changed first-use, binding and inherited-lock paths; no accounting migration behavior is changed.",
+    "Concurrent unowned application source was preserved; the selected generation is the complete reviewed composition, not partially installed mutable edits."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/425"
+  ],
+  "local_installation": {
+    "frozen_offline_imports_passed": true,
+    "full_verification_passed": true,
+    "generation": "38ec4f80f1a92bb05379986802ddf6face6c4b4285bd397780d48971fde064e1",
+    "live_architecture_started": false,
+    "naturally_exercised_live": false,
+    "owned_files": 34,
+    "runtime": "14a239f36a42c55ba084d2c4699764b92086a33ea4172c38e26d46ba68e3d224",
+    "source_resource_files": 526
+  },
+  "remote_sha": "5890d5ad1115683fb2b6ef84a89fe901b9cdbddb",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Local adoption seals a complete immutable source and dependency generation. Existing live workers remain unchanged until the human performs one manual relaunch. Automatic continuation then renews after full iterations, including fresh controller relay, until manual stop, normal existing session completion or terminal failure; no unattended initial start or resurrection.",
+  "scope": "shared lifecycle source; Atlas local installation and operating authorization only",
+  "summary": "Atlas installed safe per-iteration process renewal for manually started traders",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-27T03:43:55.228452+00:00",
+      "description": "532 passed, 2 Windows privilege skips (symlink creation and historical elevated group-owner fixture), 148.61 seconds. Final affected launcher/host checks: 45 passed in 12.52 seconds, including 16 real atomic launcher replacements; self-contained fixture checks: 62 passed in 30.62 seconds. Historical native-cutover/exchange suites have a verified unchanged baseline ledger-schema fixture incompatibility; dedicated tests cover the changed binding, first-use and inherited-lock paths",
+      "exit_code": 0,
+      "started_at_utc": "2026-10-27T03:41:23.404737+00:00"
+    },
+    {
+      "description": "Exact isolated publication candidate:65 passed,1 symlink privilege skip",
+      "exit_code": 0
+    }
+  ]
+}
