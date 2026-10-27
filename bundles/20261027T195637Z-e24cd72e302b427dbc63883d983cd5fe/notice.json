@@ -1,0 +1,58 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T195236Z-010a1fe7eab644fba69421345ccbe403",
+  "change_id": "20261027T195236Z-010a1fe7eab644fba69421345ccbe403",
+  "details": [
+    "Actor Atlas; task ATLAS Trader Representative; shared session-clock repair. Parse each validated UTC recovered quarter once and reuse the fixed fifteen-minute offset, preserving independent session containment before the unchanged alignment check.",
+    "Preserve every native/source/session proof, mapping construction, error text, normalized output bound, scientific forecast/model recipe, threshold, independent execution state and manual control. No proof cache or history truncation.",
+    "Publish exactly the reviewed preimage patch, complete extracted source/dependency metadata and self-contained real-pandas parity checker. Both PCs review matching hunks while retaining their local source composition and scientific policy."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-recovery-session-clock.json",
+      "sha256": "bcb7d5acb8094b0a7ce80a91b6a67cb4de0b9e587ece6b8e5b402ef74343e502"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-recovery-session-clock.patch",
+      "sha256": "216cea6baf11980abf2de76959a1f1b73903c1b5ff86187af033cbe135969cc4"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_recovery_session_clock.py",
+      "sha256": "e890c654e0131a7221ae9700acd12486effd2d36f12ec6da3c9efb7111eea2d3"
+    }
+  ],
+  "limitations": [
+    "114 real-pandas portable parity checks;325 actual composed candidate checks with network denied are retained separately and do not establish installed or natural live behavior.",
+    "Exact frozen full sizing preserves all139119095 canonical result bytes,23606 native proofs and23744 session checks. Baseline24.894514seconds versus candidate24.953853seconds; whole-sizing wall time slightly worsened. A bounded helper mechanism improved about52.8percent; no whole-sizing speedup or sustained latency recovery claim."
+  ],
+  "local_installation": "Complete531-source generation f14af3ee7fd7f33cb10c7e429cb545f4a4743307bf4f2ec262869baff90ddb98 sealed after exact preimage installation and full source/runtime verification. Only recovered_population.py changed;530parent source members and frozen runtime retained. Actual sealed source passed325offlinechecks.",
+  "main_commit": "20f39b731328e57852d9068c80b5fa15afe9c810",
+  "natural_affected_exercise": "Broad latency remains open. Full retained sizing preserves original139119095canonical result bytes,23606native proofs and23744session checks. Baseline24.894514seconds versus candidate24.953853seconds; no whole-sizing speedup or sustained live recovery claim. Bounded helper mechanism improved about52.8percent.",
+  "privacy_review": "Only generic source, applicability and actual check/install facts. Private full source composition, inputs, accounts, fitted models, operating state, process/session identities, native bindings and task memory remain local. No peer acceptance or nightly prerequisite.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/457",
+  "related_completion": "20261027T192242Z-b26385b9d1074e1c9c39a1acba9ea0e5",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Apply only matching reviewed source hunks and seal the complete exact-byte locally installed generation with tools/trader_installation.py. Natural renewal is authorized only inside an existing manually started session. No initial start, post-stop restart, lifetime extension, live infrastructure exercise, broker/provider call or order. Installation, launch/loading and sustained affected exercise remain separate.",
+  "runtime_loading": "Publication and actual sealed checks do not establish loaded in-memory code or affected natural behavior. Observe only ordinary own-session planned renewal; no induced runtime action.",
+  "scope": "shared",
+  "source_commit": "86366bdc965e9db0c188a0667b020900e41ca1ff",
+  "summary": "Atlas recovered session quarter clocks reused; narrow shared repair published and installed",
+  "tests": [
+    {
+      "command": "python -B tests/check_intraday_recovery_session_clock.py",
+      "network_calls": 0,
+      "passed_cases_each": 114,
+      "scope": "Immutable queue, isolated source and fresh common main"
+    },
+    {
+      "adjacent_pytest_cases": 211,
+      "direct_parity_cases": 114,
+      "network_calls": 0,
+      "passed_cases": 325,
+      "scope": "Actual complete sealed local source"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T19:56:37.300306Z",
+  "id": "20261027T195637Z-e24cd72e302b427dbc63883d983cd5fe",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas recovered session quarter clocks reused; narrow shared repair published and installed"
+}
