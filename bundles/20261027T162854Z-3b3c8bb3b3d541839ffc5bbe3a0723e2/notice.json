@@ -1,0 +1,30 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T162214Z-e0e9dfb92baf4ccd9d5f8a8061dee734",
+  "files": [
+    "ml/intraday/market_collection_timing.py",
+    "tests/test_intraday_market_queue_timing.py"
+  ],
+  "limitations": [
+    "This repairs diagnostic evidence retention and correlation. It does not identify an external holder or claim to repair the underlying contention, provider coverage, model qualification, trading latency or fills.",
+    "Offline checks establish fixture behavior only. Local installation, actual loaded release and affected live operation require separate evidence.",
+    "Private runtime overlays, raw data, fitted models, recipes, account state, ledgers, task memory and operating evidence are excluded from shared source publication."
+  ],
+  "main_sha": "22d8ed4f4af98d04d3c28b718ec70b4668150a8b",
+  "privacy_review": "Reviewed shared source and offline test facts only; no private local paths, operating evidence, raw data, models, recipes, account state, credentials or task records.",
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/448"
+  ],
+  "runtime_implications": "Compatible collector diagnostics load through the next safe automatic worker replacement after a completed full-symbol iteration within an existing authorized run. Preserve initial activation, manual stop, original deadline, saved local recipe, durable pending work and order identity. No monitoring automation starts or restarts a trader.",
+  "scope": "Shared queue diagnostic correctness with offline tests. Each PC retains its saved local recipe, symbols, operating bindings and separate order state.",
+  "source_branch": "codex/scout/20261027T162214Z-e0e9dfb92baf4ccd9d5f8a8061dee734",
+  "source_record": "20261027T162214Z-e0e9dfb92baf4ccd9d5f8a8061dee734",
+  "source_sha": "f7f6f9e3813172e2f89fd0b89fe39da1ded6a58e",
+  "summary": "Scout repaired bounded acquisition-failure diagnostic retention before worker drain and added local process, thread and interval correlation.",
+  "tests": [
+    "Source, isolated courier and reviewed main candidates each passed 134 tests across 5 whole modules with 0 skips. Stage counts overlap.",
+    "All stages bind 169 exact source and dependency fingerprints; candidate import evidence and final raw Git blobs verify.",
+    "Offline fixtures cover bounded acquisition-failure snapshot retention before worker drain, local process and thread correlation, interval timing, cross-thread overlap, snapshot detachment, observer failures and native exception identity. Whole collection regression modules retain queue acquisition, retry, error classification, receipt and source validation behavior."
+  ]
+}

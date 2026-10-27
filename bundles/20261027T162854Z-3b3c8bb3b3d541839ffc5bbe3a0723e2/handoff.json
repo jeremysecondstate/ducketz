@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T16:28:54.229016Z",
+  "id": "20261027T162854Z-3b3c8bb3b3d541839ffc5bbe3a0723e2",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout repaired bounded acquisition-failure diagnostic retention before worker drain and added local process, thread and interval correlation."
+}
