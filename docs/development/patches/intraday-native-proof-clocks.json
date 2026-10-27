@@ -1,0 +1,120 @@
+{
+  "schema": "intraday-native-proof-clocks-package-v1",
+  "scope": "Shared native source-proof clock arithmetic; retain local scientific policy and complete source composition.",
+  "change": "Use exact UTC integer nanosecond native interval and availability comparisons inside the complete existing proof. Preserve the original pandas path when clocks are outside nanosecond representation.",
+  "patch_sha256": "f37fe78a63e37f34df99488aac53dbe9cd6242b5a3438658deb9da7a174d7ce8",
+  "patch_encoding": "UTF-8 LF unified diff; raw source identities recorded separately.",
+  "sources": {
+    "ml/intraday/coverage.py": {
+      "operation": "modify",
+      "before_sha256": "a9dffd9d967712b1746ac53c20df236b7d4eaadb3ea47ba13f16ac72c0d2f818",
+      "after_sha256": "7dce37cea42b3cb9a0adf20442c0921f2225e2338e6fe6b8ae9cb1b8eb747cdb",
+      "before_normalized_sha256": "bf395efe15074b29007fa2f3959e1f301691c075d83902508abd3a021fa2667b",
+      "after_normalized_sha256": "5c6542d7578bf27eda1af44faf33fe318c629c0012c5f677721c70d46d9ad65d",
+      "before_line_endings": "CRLF",
+      "after_line_endings": "CRLF",
+      "extracts_before": {
+        "_utc": {
+          "source": "def _utc(value):\n    return pd.Timestamp(instant(value))\n",
+          "sha256": "1cdddade408c7b4a06b6e8d9ca6538b5b841befea04559727b98b024d0bfc16a",
+          "line": 35,
+          "end_line": 36
+        },
+        "verified_source_observation": {
+          "source": "def verified_source_observation(candle: Mapping) -> bool:\n    \"\"\"Structural identity and coverage proof for one nonempty source quarter.\"\"\"\n    try:\n        if candle.get(\"population_contract\") != POPULATION_CONTRACT:\n            return False\n        if any(not isinstance(candle.get(key), (bool, np.bool_)) or bool(candle[key])\n               for key in (\"synthetic\", \"no_trade\")):\n            return False\n        prices = [float(candle[key]) for key in (\"open\", \"high\", \"low\", \"close\", \"volume\")]\n        op_price, high, low, close, volume = prices\n        if (not all(math.isfinite(v) for v in prices) or min(prices[:4]) <= 0 or volume < 0\n                or high < max(op_price, close, low) or low > min(op_price, close)):\n            return False\n        if candle.get(\"interval_seconds\") != 900 or candle.get(\"synthetic_constituents\") != 0:\n            return False\n        observed, empty = candle[\"observed_constituents\"], candle[\"source_empty_constituents\"]\n        if (isinstance(observed, (bool, np.bool_)) or isinstance(empty, (bool, np.bool_))\n                or not float(observed).is_integer() or not float(empty).is_integer()\n                or not 1 <= observed <= 15 or empty != 15-observed):\n            return False\n        op, av = _utc(candle[\"opened_at\"]), _utc(candle[\"available_at\"])\n        if op != op.floor(_SOURCE_QUARTER) or av < op+STEP:\n            return False\n        evidence = candle[\"evidence_json\"]\n        evidence = evidence if isinstance(evidence, Mapping) else json.loads(evidence)\n        if evidence.get(\"aggregation\") != POPULATION_CONTRACT or evidence.get(\"source_id\") != candle[\"source_id\"] or evidence.get(\"source_dataset\") != candle[\"source_dataset\"]:\n            return False\n        coverage = evidence[\"source_coverage\"]\n        if not coverage.get(\"basis\") or _utc(coverage[\"opened_at\"]) > op or _utc(coverage[\"closed_at\"]) < op+STEP:\n            return False\n        from .data import _require_native_observations\n        _require_native_observations([candle, *evidence[\"observations\"]])\n        native_step = pd.Timedelta(minutes=1)\n        times = [_utc(row[\"opened_at\"]) for row in evidence[\"observations\"]]\n        if (len(times) != observed or len(set(times)) != len(times) or times != sorted(times)\n                or any(t < op or t+native_step > op+STEP or t != t.floor(_NATIVE_MINUTE) for t in times)):\n            return False\n        if _utc(candle[\"native_first_opened_at\"]) != times[0] or _utc(candle[\"native_last_opened_at\"]) != times[-1]:\n            return False\n        for row, opened in zip(evidence[\"observations\"], times):\n            if row.get(\"source_id\") != candle[\"source_id\"] or row.get(\"synthetic\") is not False:\n                return False\n            available = _utc(row[\"available_at\"])\n            if available > av or available < opened+native_step:\n                return False\n            vals = [float(row[key]) for key in (\"open\",\"high\",\"low\",\"close\",\"volume\")]\n            a,h,l,c,v = vals\n            if not all(math.isfinite(x) for x in vals) or min(vals[:4])<=0 or v<0 or h<max(a,c,l) or l>min(a,c):\n                return False\n        native = evidence[\"observations\"]\n        aggregates = {\"open\": native[0][\"open\"], \"high\": max(row[\"high\"] for row in native),\n                      \"low\": min(row[\"low\"] for row in native), \"close\": native[-1][\"close\"],\n                      \"volume\": sum(row[\"volume\"] for row in native)}\n        if any(not math.isclose(float(candle[key]), float(value), rel_tol=1e-12, abs_tol=1e-12)\n               for key, value in aggregates.items()):\n            return False\n        return True\n    except (KeyError, TypeError, ValueError, OverflowError, ContractError):\n        return False\n",
+          "sha256": "961e7154a46fe55bc20a16035689b5ea51fc759aa28688fdeb87a23f99f4a9a0",
+          "line": 110,
+          "end_line": 168
+        }
+      },
+      "extracts_after": {
+        "_utc": {
+          "source": "def _utc(value):\n    return pd.Timestamp(instant(value))\n",
+          "sha256": "1cdddade408c7b4a06b6e8d9ca6538b5b841befea04559727b98b024d0bfc16a",
+          "line": 35,
+          "end_line": 36
+        },
+        "verified_source_observation": {
+          "source": "def verified_source_observation(candle: Mapping) -> bool:\n    \"\"\"Structural identity and coverage proof for one nonempty source quarter.\"\"\"\n    try:\n        if candle.get(\"population_contract\") != POPULATION_CONTRACT:\n            return False\n        if any(not isinstance(candle.get(key), (bool, np.bool_)) or bool(candle[key])\n               for key in (\"synthetic\", \"no_trade\")):\n            return False\n        prices = [float(candle[key]) for key in (\"open\", \"high\", \"low\", \"close\", \"volume\")]\n        op_price, high, low, close, volume = prices\n        if (not all(math.isfinite(v) for v in prices) or min(prices[:4]) <= 0 or volume < 0\n                or high < max(op_price, close, low) or low > min(op_price, close)):\n            return False\n        if candle.get(\"interval_seconds\") != 900 or candle.get(\"synthetic_constituents\") != 0:\n            return False\n        observed, empty = candle[\"observed_constituents\"], candle[\"source_empty_constituents\"]\n        if (isinstance(observed, (bool, np.bool_)) or isinstance(empty, (bool, np.bool_))\n                or not float(observed).is_integer() or not float(empty).is_integer()\n                or not 1 <= observed <= 15 or empty != 15-observed):\n            return False\n        op, av = _utc(candle[\"opened_at\"]), _utc(candle[\"available_at\"])\n        if op != op.floor(_SOURCE_QUARTER) or av < op+STEP:\n            return False\n        evidence = candle[\"evidence_json\"]\n        evidence = evidence if isinstance(evidence, Mapping) else json.loads(evidence)\n        if evidence.get(\"aggregation\") != POPULATION_CONTRACT or evidence.get(\"source_id\") != candle[\"source_id\"] or evidence.get(\"source_dataset\") != candle[\"source_dataset\"]:\n            return False\n        coverage = evidence[\"source_coverage\"]\n        if not coverage.get(\"basis\") or _utc(coverage[\"opened_at\"]) > op or _utc(coverage[\"closed_at\"]) < op+STEP:\n            return False\n        from .data import _require_native_observations\n        _require_native_observations([candle, *evidence[\"observations\"]])\n        native_step = pd.Timedelta(minutes=1)\n        times = [_utc(row[\"opened_at\"]) for row in evidence[\"observations\"]]\n        if len(times) != observed or len(set(times)) != len(times) or times != sorted(times):\n            return False\n        # UTC integer clocks retain exact nanoseconds without repeated scalar\n        # Timestamp arithmetic. Preserve pandas' original path for dates that\n        # it represents outside its nanosecond range.\n        native_closes = None\n        try:\n            first_ns, end_ns = op.value, (op+STEP).value\n            native_ns = [opened.value for opened in times]\n        except OverflowError:\n            if any(t < op or t+native_step > op+STEP or t != t.floor(_NATIVE_MINUTE) for t in times):\n                return False\n        else:\n            if any(t < first_ns or t+60_000_000_000 > end_ns or t % 60_000_000_000 for t in native_ns):\n                return False\n            native_closes = [t+60_000_000_000 for t in native_ns]\n        if _utc(candle[\"native_first_opened_at\"]) != times[0] or _utc(candle[\"native_last_opened_at\"]) != times[-1]:\n            return False\n        for index, (row, opened) in enumerate(zip(evidence[\"observations\"], times)):\n            if row.get(\"source_id\") != candle[\"source_id\"] or row.get(\"synthetic\") is not False:\n                return False\n            available = _utc(row[\"available_at\"])\n            if available > av:\n                return False\n            if native_closes is None:\n                too_early = available < opened+native_step\n            else:\n                try:\n                    too_early = available.value < native_closes[index]\n                except OverflowError:\n                    too_early = available < opened+native_step\n            if too_early:\n                return False\n            vals = [float(row[key]) for key in (\"open\",\"high\",\"low\",\"close\",\"volume\")]\n            a,h,l,c,v = vals\n            if not all(math.isfinite(x) for x in vals) or min(vals[:4])<=0 or v<0 or h<max(a,c,l) or l>min(a,c):\n                return False\n        native = evidence[\"observations\"]\n        aggregates = {\"open\": native[0][\"open\"], \"high\": max(row[\"high\"] for row in native),\n                      \"low\": min(row[\"low\"] for row in native), \"close\": native[-1][\"close\"],\n                      \"volume\": sum(row[\"volume\"] for row in native)}\n        if any(not math.isclose(float(candle[key]), float(value), rel_tol=1e-12, abs_tol=1e-12)\n               for key, value in aggregates.items()):\n            return False\n        return True\n    except (KeyError, TypeError, ValueError, OverflowError, ContractError):\n        return False\n",
+          "sha256": "e95d9272c4153bd81432d208d6a6caa7fb4ee7281baeee6629b4db41783b214d",
+          "line": 110,
+          "end_line": 190
+        }
+      },
+      "constants": {
+        "POPULATION_CONTRACT": {
+          "source": "POPULATION_CONTRACT = \"intraday-verified-source-observations-v1\"\n",
+          "sha256": "87ea8fb95878d6f4d69e7f2f3b291eee8d31e2918d690ee7c7081b0ddcc11ded",
+          "line": 20,
+          "end_line": 20
+        },
+        "_NATIVE_MINUTE": {
+          "source": "_NATIVE_MINUTE = pd.offsets.Minute(1)\n",
+          "sha256": "9f22bd052e6ecfcdcab6b147ca27d3cd2446e43c029460959a7ea37051a792f0",
+          "line": 25,
+          "end_line": 25
+        },
+        "_SOURCE_QUARTER": {
+          "source": "_SOURCE_QUARTER = pd.offsets.Minute(15)\n",
+          "sha256": "dee6d0df29cbe938a6f60298d2cc17451c3bc7176ecebd8b55bdc74c182151d8",
+          "line": 26,
+          "end_line": 26
+        }
+      }
+    }
+  },
+  "unchanged_dependencies": {
+    "ml/intraday/prediction.py": {
+      "sha256": "37e3c7d9c16fea801625e2231ab34d5fc4e18ca78cef768f22db565dd4dfa95c",
+      "normalized_sha256": "37e3c7d9c16fea801625e2231ab34d5fc4e18ca78cef768f22db565dd4dfa95c",
+      "extracts": {
+        "STEP": {
+          "source": "STEP = timedelta(minutes=15)\n",
+          "sha256": "9d095414a288ead1945b5b84bb276e7525779f155292de9caf04473344b85445",
+          "line": 14,
+          "end_line": 14
+        },
+        "ContractError": {
+          "source": "class ContractError(ValueError):\n    pass\n",
+          "sha256": "5f8c35f8faefbad6e386ec436b0ff13e11e5e7899e12c2ff90c1bd1da67a27bb",
+          "line": 18,
+          "end_line": 19
+        },
+        "instant": {
+          "source": "def instant(value: str | datetime) -> datetime:\n    try:\n        result = value if isinstance(value, datetime) else datetime.fromisoformat(value.replace(\"Z\", \"+00:00\"))\n    except (ValueError, TypeError, AttributeError) as exc:\n        raise ContractError(\"Timezone-aware timestamp required\") from exc\n    if result.tzinfo is None or result.utcoffset() is None:\n        raise ContractError(\"Timezone-aware timestamp required\")\n    return result.astimezone(timezone.utc)\n",
+          "sha256": "d690bd3ea45ac5b4d1351126e23b7c20cf6aae84a7d19dea80b6aca2423b6679",
+          "line": 26,
+          "end_line": 33
+        }
+      }
+    },
+    "ml/intraday/data.py": {
+      "sha256": "7bf155050d80405b07fd6b6e6475cdd8cb352db888e3bea7e401b160f249e06f",
+      "normalized_sha256": "db76cb5b82ce6f7fcbfea3563bfc61f1b0c15d91773c476451d999f1ae77e96d",
+      "extracts": {
+        "_require_native_observations": {
+          "source": "def _require_native_observations(rows):\n    \"\"\"Never erase explicit synthetic provenance while normalizing native rows.\"\"\"\n    from ml.market_gap_evidence import MARKERS as markers\n    def valid_flag(value):\n        return isinstance(value, (bool, np.bool_)) and not bool(value)\n    def valid_count(value):\n        return (not isinstance(value, (bool, np.bool_))\n                and isinstance(value, (int, float, np.integer, np.floating))\n                and math.isfinite(float(value)) and float(value) == 0)\n    if isinstance(rows, pd.DataFrame):\n        invalid = any(not rows[key].map(valid_flag).all() for key in markers if key in rows)\n        invalid |= (\"synthetic_constituents\" in rows\n                    and not rows.synthetic_constituents.map(valid_count).all())\n    else:\n        invalid = any(any(key in row and not valid_flag(row[key]) for key in markers)\n            or (\"synthetic_constituents\" in row and not valid_count(row[\"synthetic_constituents\"]))\n            for row in rows)\n    if invalid:\n        raise ContractError(\"Native source observations cannot contain synthetic or no-trade markers\")\n",
+          "sha256": "f1d7850b8265f7489e4b810a639ca8355e52cd3aac1e46bf87e9f3dcbc31f431",
+          "line": 129,
+          "end_line": 147
+        }
+      }
+    },
+    "ml/market_gap_evidence.py": {
+      "sha256": "2118519bc9530f0c6a4b0198326224a29909161c8b64dfe8bc87b25457a0d531",
+      "normalized_sha256": "2118519bc9530f0c6a4b0198326224a29909161c8b64dfe8bc87b25457a0d531",
+      "extracts": {
+        "MARKERS": {
+          "source": "MARKERS = (\"synthetic\", \"is_synthetic\", \"is_derived\", \"no_trade\", \"is_no_trade\",\n           \"source_empty\", \"is_source_empty\", \"synthetic_open\", \"synthetic_close\")\n",
+          "sha256": "af48c28471cc9f061397275ad31dd43c2a01ee21549d1a202cd18cbc3592e8f0",
+          "line": 19,
+          "end_line": 20
+        }
+      }
+    }
+  },
+  "limits": [
+    "Portable extracted-function tests exercise real pandas and NumPy; they do not establish a full installed composition or affected live recovery.",
+    "Apply only to a reviewed compatible local proof. Preserve every unrelated function, local binding, probability, target, session, native marker and original evidence."
+  ]
+}
