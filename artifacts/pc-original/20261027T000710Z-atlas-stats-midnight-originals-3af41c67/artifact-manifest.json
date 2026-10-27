@@ -1,0 +1,74 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-27T00:19:31.209413Z",
+  "completion_id": "20261027T000710Z-atlas-stats-midnight-originals-3af41c67",
+  "details": [
+    "Actor Atlas; task Atlas Trader Representative; original scientific targets matured at midnight UTC and scored from genuine completed same-source observations. Original probabilities, targets, labels and policy identities remain exact.",
+    "Preserves all8708previous evaluated outcomes and10848original identities; original combined Gameplan, Stats publications and revision ancestry remain immutable.",
+    "Peer applicability: original Atlas symbol outcomes plus the same combined Stats revision preserving original Atlas and Scout scientific rows. No peer model tuning, raw observations, fitted models, account state, execution state or bindings exported.",
+    "Scientific-only outcome publication and exact portable Stats revision; no source change, model fit, synthesis rerun, trader control, order or deployment. Missing original endpoints remain unavailable; no synthetic outcome or tolerance relaxation."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261027T000710Z-atlas-stats-midnight-originals-3af41c67/gameplan-stats/20261027T000710Z-atlas-stats-midnight-originals-3af41c67/original-outcome-supplement.json",
+      "expected_sha256": "4264b9587c2c32abb0a61cb4c9b51768f067459468989cd5d327984fadb0e61c",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261027T000710Z-atlas-stats-midnight-originals-3af41c67/original-outcome-supplement.json",
+      "published_sha256": "4264b9587c2c32abb0a61cb4c9b51768f067459468989cd5d327984fadb0e61c",
+      "published_size": 78335,
+      "sha256": "4264b9587c2c32abb0a61cb4c9b51768f067459468989cd5d327984fadb0e61c",
+      "size": 78335,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261027T000710Z-atlas-stats-midnight-originals-3af41c67/gameplan-stats/20261027T000710Z-atlas-stats-midnight-originals-3af41c67/stats-outcome-revision.json",
+      "expected_sha256": "db28e7ff596b1a8dbd2d722a6d67adb449863011c0dacecb849463043bf7b084",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261027T000710Z-atlas-stats-midnight-originals-3af41c67/stats-outcome-revision.json",
+      "published_sha256": "db28e7ff596b1a8dbd2d722a6d67adb449863011c0dacecb849463043bf7b084",
+      "published_size": 435856,
+      "sha256": "db28e7ff596b1a8dbd2d722a6d67adb449863011c0dacecb849463043bf7b084",
+      "size": 435856,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "4264b9587c2c32abb0a61cb4c9b51768f067459468989cd5d327984fadb0e61c",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261027T000710Z-atlas-stats-midnight-originals-3af41c67/original-outcome-supplement.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "db28e7ff596b1a8dbd2d722a6d67adb449863011c0dacecb849463043bf7b084",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/gameplan-stats/20261027T000710Z-atlas-stats-midnight-originals-3af41c67/stats-outcome-revision.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "human-authorized-development",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "symbol-specific",
+  "source_head": "90704d21801f60426493bd6cc650a7fac38d4f61",
+  "summary": "Atlas Trader Representative: publish original midnight outcomes and combined Stats revision",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "COST",
+    "GOOG",
+    "IONQ",
+    "MU",
+    "NVDA",
+    "PATH",
+    "SNDK"
+  ]
+}
