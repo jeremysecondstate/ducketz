@@ -1,0 +1,29 @@
+{
+  "schema": "intraday-sizing-mapping-dispatch-v1",
+  "target": "ml/intraday/technical_sizing.py",
+  "scope": "Shared guarded dispatch optimization; preserve local scientific policy and full composition.",
+  "before_sha256": "a1a3d933d20a43edaf746cdb5038af0db8c9c000e54c12a7da33ea5e69eca81a",
+  "after_sha256": "c72075e2fc814c11abd1a7f2f8633e52a36f9c8430a33b3857657de2ad7c39eb",
+  "patch_sha256": "9f36b733c5de8c85aa10d60f44d7ceb64e06fcc18b3b2d033c35fef7bbcc5467",
+  "before_bytes": 32722,
+  "after_bytes": 32840,
+  "clean_before": {
+    "source": "def _clean(value):\n    \"\"\"JSON copies preserve all row provenance; optional missing fields are null.\"\"\"\n    if isinstance(value, Mapping):\n        return {str(key): _clean(item) for key, item in value.items()}\n    if isinstance(value, (list, tuple)):\n        return [_clean(item) for item in value]\n    if isinstance(value, (pd.Timestamp, datetime)):\n        return instant(value.to_pydatetime() if isinstance(value, pd.Timestamp) else value).isoformat()\n    if isinstance(value, np.generic):\n        return _clean(value.item())\n    if value is None or value is pd.NA or value is pd.NaT:\n        return None\n    if isinstance(value, float) and not math.isfinite(value):\n        return None\n    return value\n",
+    "sha256": "62ee9911a2412da66ee2e74f9543cf3cf7d05e846fe1538c6ce91c0020f58c03"
+  },
+  "clean_after": {
+    "source": "def _clean(value):\n    \"\"\"JSON copies preserve all row provenance; optional missing fields are null.\"\"\"\n    if (issubclass(type(value), _Mapping) if type(type(value)) is type else isinstance(value, Mapping)):\n        return {str(key): _clean(item) for key, item in value.items()}\n    if isinstance(value, (list, tuple)):\n        return [_clean(item) for item in value]\n    if isinstance(value, (pd.Timestamp, datetime)):\n        return instant(value.to_pydatetime() if isinstance(value, pd.Timestamp) else value).isoformat()\n    if isinstance(value, np.generic):\n        return _clean(value.item())\n    if value is None or value is pd.NA or value is pd.NaT:\n        return None\n    if isinstance(value, float) and not math.isfinite(value):\n        return None\n    return value\n",
+    "sha256": "16682c640c9587548d2cc25a1fa3754472bfdeb86acc7ec10395809cfaedd74b"
+  },
+  "imports": {
+    "add": "from collections.abc import Mapping as _Mapping",
+    "retain": "from typing import Mapping, Sequence"
+  },
+  "expected_hunks": 2,
+  "limitations": [
+    "Portable extracted-function tests exercise only guarded _clean mapping dispatch and preserve stubbed timestamp/scalar transforms. They do not prove whole-module or live timing.",
+    "Fast path uses actual classes with exact built-in type metaclass; custom metaclasses retain original typing.Mapping dispatch including alias-shaped and raising __class__ behavior.",
+    "Raw full-source hashes bind Atlas reviewed local composition; peer source must apply only reviewed owned hunks while preserving its local model policy.",
+    "No provider, broker, training, trading, runtime deployment or manual control authority."
+  ]
+}
