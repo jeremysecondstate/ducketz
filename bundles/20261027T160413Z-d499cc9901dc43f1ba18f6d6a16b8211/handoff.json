@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T16:04:13.083701Z",
+  "id": "20261027T160413Z-d499cc9901dc43f1ba18f6d6a16b8211",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout extended detached due-task filtering to proven fresh changed native queue snapshots while preserving original reader and commit behavior."
+}

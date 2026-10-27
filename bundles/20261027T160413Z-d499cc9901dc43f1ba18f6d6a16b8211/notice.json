@@ -1,0 +1,30 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T155457Z-954cc0038b364c33a08e1768f348a666",
+  "files": [
+    "ml/intraday/market_collection.py",
+    "tests/test_intraday_market_queue_commit.py"
+  ],
+  "limitations": [
+    "Only proven fresh native task maps use detached filtering. Native JSON decoding, full queue transitions and atomic commits retain their original lock behavior. No external lock holder is identified and contention can remain.",
+    "Offline checks do not establish live lock latency, whole-cycle timing, provider coverage, model qualification, execution recovery or fills.",
+    "Private runtime overlays, raw data, fitted models, recipes, account state, ledgers, task memory and operating evidence are excluded from shared source publication."
+  ],
+  "main_sha": "4109ce29a1cef60c0cc3add7d67ef7ddf1bd0014",
+  "privacy_review": "Reviewed shared source and offline test facts only; no private local paths, operating evidence, raw data, models, recipes, account state, credentials or task records.",
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/447"
+  ],
+  "runtime_implications": "Compatible collection code loads through the next safe automatic worker replacement after a completed full-symbol iteration within an existing authorized run. Local installation, actual loaded manifest and affected operation remain separate evidence. Preserve initial activation, manual stop, original deadline, saved local recipe, durable pending work and order identity. No monitoring automation starts or restarts a trader.",
+  "scope": "Shared native collection queue behavior with offline tests. Each PC retains its saved local recipe, symbols, operating bindings and separate order state.",
+  "source_branch": "codex/scout/20261027T155457Z-954cc0038b364c33a08e1768f348a666",
+  "source_record": "20261027T155457Z-954cc0038b364c33a08e1768f348a666",
+  "source_sha": "c42f81fb57c3ade391e46ad3abf7719cf362172e",
+  "summary": "Scout extended detached due-task filtering to proven fresh changed native queue snapshots while preserving original reader and commit behavior.",
+  "tests": [
+    "Source, isolated courier and reviewed main candidates each passed 619 tests across 19 whole modules with 0 skips. Stage counts overlap.",
+    "All stages bind 189 exact source and dependency fingerprints; candidate import evidence and final raw Git blobs verify.",
+    "Offline fixtures cover changed native source bytes, fresh reader provenance, before and after overrides including restoration, exact read counts, original snapshot lifetime and destructor lock boundaries, clock and error precedence, missing and empty queues, detached due scans, and current task and source-block rechecks. Whole collection modules retain receipt, retry, expiry, history, index and input provenance checks."
+  ]
+}
