@@ -1,0 +1,52 @@
+{
+  "schema": "intraday-sizing-payload-proof-package-v1",
+  "scope": "Shared immutable sizing payload validation only; preserve source/science/order/manual controls and local composition.",
+  "change": "After original semantic digest validation succeeds, retain an instance-owned exact-string proof. Every read still decodes a fresh tree. Missing, changed, mistyped or absent proofs retain full original validation.",
+  "limitations": [
+    "No producer-only bypass: numeric mapping keys may normalize into a different canonical order.",
+    "No global cache or retained decoded research tree. Private proof is local integrity evidence, not authorization or a security boundary against arbitrary in-process code.",
+    "Installation, generation loading and affected latency recovery remain separate."
+  ],
+  "patch_sha256": "e3266bd44bbecc1a52b14ab444609434d260871392c3aa588fda3acba015165b",
+  "patch_encoding": "UTF-8 LF zero-context unified diff; git apply --unidiff-zero after exact-preimage review.",
+  "sources": {
+    "ml/intraday/technical_sizing.py": {
+      "operation": "modify",
+      "before_sha256": "4faaeea92dde7b03008dd5cfe9b60868b89adc1137354dc2dedb1f7a25726ca5",
+      "after_sha256": "efd32feac4afa45b4c46ccff4b5c969e44ec52c173ae03a4849c7b77eacc36b9",
+      "before_normalized_sha256": "4faaeea92dde7b03008dd5cfe9b60868b89adc1137354dc2dedb1f7a25726ca5",
+      "after_normalized_sha256": "efd32feac4afa45b4c46ccff4b5c969e44ec52c173ae03a4849c7b77eacc36b9",
+      "region_before": {
+        "line": 233,
+        "end_line": 274,
+        "source": "def _encoded_result(result_type, value):\n    \"\"\"Hash the exact canonical bytes already encoded for immutable output.\"\"\"\n    text = encoded(value)\n    return result_type(hashlib.sha256(text.encode()).hexdigest(), text)\n\n\n@dataclass(frozen=True)\nclass IndicatorSnapshot:\n    snapshot_id: str\n    payload_json: str\n\n    def payload(self):\n        value = json.loads(self.payload_json)\n        if digest(value) != self.snapshot_id:\n            raise ContractError(\"Indicator snapshot evidence changed\")\n        return value\n\n\n@dataclass(frozen=True)\nclass SizingResult:\n    result_id: str\n    payload_json: str\n\n    def payload(self):\n        value = json.loads(self.payload_json)\n        if digest(value) != self.result_id:\n            raise ContractError(\"Sizing result evidence changed\")\n        return value\n\n    @property\n    def status(self):\n        return self.payload()[\"status\"]\n\n    @property\n    def desired_quantity(self):\n        return self.payload()[\"desired_quantity\"]\n\n    @property\n    def adjusted_quantity(self):\n        return None\n\n\n",
+        "sha256": "acebe0ac443de8f137d2d22630b786e22928c2289ced12c938885fe4c70ccae7"
+      },
+      "region_after": {
+        "line": 233,
+        "end_line": 290,
+        "source": "def _encoded_result(result_type, value):\n    \"\"\"Hash the exact canonical bytes already encoded for immutable output.\"\"\"\n    text = encoded(value)\n    return result_type(hashlib.sha256(text.encode()).hexdigest(), text)\n\n\n_PAYLOAD_PROOF_TOKEN = object()\n\n\ndef _validated_payload(owner, identifier_name, error):\n    \"\"\"Freshly decode immutable bytes; reuse only their successful validation.\"\"\"\n    text = owner.payload_json\n    value = json.loads(text)\n    identifier = getattr(owner, identifier_name)\n    eligible = (type(owner) in (IndicatorSnapshot, SizingResult)\n                and type(text) is str and type(identifier) is str)\n    proof = owner.__dict__.get(\"_validated_payload_proof\") if eligible else None\n    if not (type(proof) is tuple and len(proof) == 3\n            and proof[0] is _PAYLOAD_PROOF_TOKEN\n            and proof[1] is text and proof[2] is identifier):\n        if digest(value) != identifier:\n            raise ContractError(error)\n        if eligible:\n            object.__setattr__(owner, \"_validated_payload_proof\",\n                               (_PAYLOAD_PROOF_TOKEN, text, identifier))\n    return value\n\n\n@dataclass(frozen=True)\nclass IndicatorSnapshot:\n    snapshot_id: str\n    payload_json: str\n\n    def payload(self):\n        return _validated_payload(self, \"snapshot_id\", \"Indicator snapshot evidence changed\")\n\n\n@dataclass(frozen=True)\nclass SizingResult:\n    result_id: str\n    payload_json: str\n\n    def payload(self):\n        return _validated_payload(self, \"result_id\", \"Sizing result evidence changed\")\n\n    @property\n    def status(self):\n        return self.payload()[\"status\"]\n\n    @property\n    def desired_quantity(self):\n        return self.payload()[\"desired_quantity\"]\n\n    @property\n    def adjusted_quantity(self):\n        return None\n\n\n",
+        "sha256": "8efa9d4eb7866a1634cc2bcd4a80953998672fffdcd695372d579d570808054a"
+      }
+    }
+  },
+  "unchanged_dependencies": {
+    "ml/intraday/prediction.py": {
+      "sha256": "37e3c7d9c16fea801625e2231ab34d5fc4e18ca78cef768f22db565dd4dfa95c",
+      "extracts": {
+        "ContractError": {
+          "source": "class ContractError(ValueError):\n    pass\n\n",
+          "sha256": "bd0375c245a0edc48958ce4fb047afe694f3883ba47096736fe65ca34d037a5f"
+        },
+        "encoded": {
+          "source": "def encoded(value) -> str:\n    return json.dumps(value, sort_keys=True, separators=(\",\", \":\"), allow_nan=False)\n\n",
+          "sha256": "5d66dae0f77022dcdc729132f5425e5e4e1d635a898d6cae0b79e949c5575a34"
+        },
+        "digest": {
+          "source": "def digest(value) -> str:\n    return hashlib.sha256(encoded(value).encode()).hexdigest()\n\n",
+          "sha256": "4cfe1352758da00810abf908e4f3b2bcc13ad1a2735e54029c71ead876ae77e6"
+        }
+      }
+    }
+  }
+}
