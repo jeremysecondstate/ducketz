@@ -1,0 +1,35 @@
+{
+  "author": "Atlas",
+  "change_id": "20261027T042804Z-538640259ada468d9ae02dcd9abd58e5",
+  "files": [
+    "docs/development/patches/gameplan-stats-intraday-evidence.patch",
+    "docs/development/patches/gameplan-stats-intraday-evidence.json"
+  ],
+  "installation": "Atlas installed a narrow Stats calculation repair: validate original source identity, retain full inventory for publication and coverage, and use compact metadata through repeated pandas selections. Observations, saved targets, provenance columns, missing/maturity status and evidence clocks remain unchanged. This cumulative package supersedes the source package in PR426.",
+  "limitations": [
+    "A complete snapshot does not imply complete observation coverage or mature long-horizon targets.",
+    "Portable task-only patches require matching installed baseline hashes or separately reviewed adaptation; full unrelated modules are not included.",
+    "Native scheduling definitions, raw receipts, private binding details and actual operating results remain local.",
+    "Main integration and peer installation are not claimed. Existing v1 handoff exports remain compatible."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/427",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Stats remains eligible from source-session 17:30 America/Los_Angeles. Same-session evening minimum 21:00, existing dispatcher 21:05 and all later schedules remain unchanged. Later eligible evidence produces immutable revisions and updates saved readers/unfinished feedback. The Stats UI displays actual timing, coverage and recorded provenance. No provider calls, model training or trader operations were used as infrastructure validation. Peer applicability follows local baseline review and existing human authority; this notice supplies evidence, not new operating authority.",
+  "scope": "shared",
+  "source_base": "2f9ec062cf658f9230ddf8fada131cfac00a431a",
+  "source_branch": "codex/atlas/20261027T042804Z-538640259ada468d9ae02dcd9abd58e5",
+  "source_sha": "d7705820ff5d34c4da62a1e49a96cf8f2631e711",
+  "summary": "Atlas Gameplan Stats removes repeated receipt-inventory copying while retaining exact evidence",
+  "tests": [
+    {
+      "finished_at": "2026-10-26T21:25:34.230007-07:00",
+      "network_access": "disabled",
+      "result": "429 final offline tests passed",
+      "started_at": "2026-10-26T21:24:32.830544-07:00"
+    },
+    {
+      "finished_at": "2026-10-27T04:29:51.931012Z",
+      "result": "Exact results for 72 forecasts and 42 price points with zero full-inventory copies; all 15 cumulative patch members reconstructed exactly; fresh isolated package checks passed"
+    }
+  ]
+}

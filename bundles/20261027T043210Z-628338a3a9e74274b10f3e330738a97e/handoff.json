@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T04:32:10.978694Z",
+  "id": "20261027T043210Z-628338a3a9e74274b10f3e330738a97e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas Gameplan Stats removes repeated receipt-inventory copying while retaining exact evidence"
+}
