@@ -1,0 +1,56 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T192242Z-b26385b9d1074e1c9c39a1acba9ea0e5",
+  "change_id": "20261027T192242Z-b26385b9d1074e1c9c39a1acba9ea0e5",
+  "details": [
+    "Atlas 15m Trader Representative replaces repeated native Timestamp arithmetic with exact UTC nanosecond bounds within the existing full source proof. Retain the original pandas path outside nanosecond range.",
+    "Every original source, marker, synthetic, count, ordering, first-last, availability, OHLCV, aggregate and session check remains. No proof cache, history truncation, scientific model change, threshold change or execution-state/control change.",
+    "Publish only exact-preimage patch, complete extracted dependency metadata and 445 real pandas/NumPy offline tests. Both PCs review corresponding hunks while retaining local source composition and model policy."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-native-proof-clocks.patch",
+      "sha256": "f37fe78a63e37f34df99488aac53dbe9cd6242b5a3438658deb9da7a174d7ce8"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-native-proof-clocks.json",
+      "sha256": "750ce3ce4c6ee7f37f91d950aec8f33edcbb24fd0c66fd5f4e550d34d3e8d3c1"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_native_proof_clocks.py",
+      "sha256": "7cfbdf1681dcb850cd825879c0111f6426a01977caee697dcc6de145ad529cd0"
+    }
+  ],
+  "limitations": [
+    "445 self-contained real pandas/NumPy proof/parity cases; full composed source370-case suite and exact retained-input replay separately recorded.",
+    "Both exact full replays preserve original result and all23606nativeproofs/23744sessionchecks. Sequential full replay worsened30.270 to39.607seconds; interleaved complete-proof primitive improved about49percent. No whole-sizing or live recovery claim."
+  ],
+  "local_installation": "Complete531-source generation 0e44de7ef84b8a37f06426068cb41b72deff9e75d94ddbd35c862596990c46a1 sealed with full source/runtime verification. Only reviewed native clock proof source changed;530othermembers/frozenruntime retained.",
+  "main_commit": "e3d9e4e4295ff5cb6afe7e5251289d4b3fd18bd7",
+  "natural_affected_exercise": "Broad live latency remains open. Exact original result and all23606nativeproofs/23744sessionchecks retained. Interleaved full-proof primitive improved about49percent; sequential full replay worsened30.270 to39.607seconds. No whole-sizing or sustained live recovery claim.",
+  "privacy_review": "Only generic source, applicability and test/install/loading facts. Private full composition, account/session/process identities, native bindings, raw data, models, state and task memory remain local. No peer acceptance or nightly prerequisite.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/456",
+  "related_completion": "20261027T190334Z-788d1602f5014a3bb79015489d4cde61",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Review exact-preimage source hunk and seal complete local generation with tools/trader_installation.py. Natural renewal only inside an existing manually started session; no initial start, post-stop restart, extension, live test, broker/provider call or order. Loading and sustained affected recovery remain separate.",
+  "runtime_loading": "Natural own-session execution launch matches selected complete generation. Matching request/claim/token/turn/parent/birth/source-path assertions passed; response in flight at capture.",
+  "scope": "shared",
+  "source_commit": "42426ab1e4591ab2eae4ce51eb9ae3a2880da098",
+  "summary": "Atlas native source proofs reuse exact UTC clocks; shared repair published, sealed and naturally loaded",
+  "tests": [
+    {
+      "command": "python -B tests/check_intraday_native_proof_clocks.py",
+      "passed_cases_each": 445,
+      "scope": "Immutable queue, isolated source and fresh common main"
+    },
+    {
+      "application_cases": 370,
+      "network_calls": 0,
+      "portable_cases": 445,
+      "scope": "Actual sealed source and exact extracted portable package"
+    }
+  ]
+}

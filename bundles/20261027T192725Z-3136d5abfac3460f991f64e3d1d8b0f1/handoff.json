@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T19:27:25.095843Z",
+  "id": "20261027T192725Z-3136d5abfac3460f991f64e3d1d8b0f1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas native source proofs reuse exact UTC clocks; shared repair published, sealed and naturally loaded"
+}
