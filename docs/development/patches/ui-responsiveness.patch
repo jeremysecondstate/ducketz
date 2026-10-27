@@ -1,0 +1,965 @@
+--- a/app/ui/ducket_bucket.py
++++ b/app/ui/ducket_bucket.py
+@@ -502,87 +502,101 @@
+             ],
+             selectforeground=[
+                 ("readonly", FIELD_TEXT),
+                 ("active", FIELD_TEXT),
+             ],
+             bordercolor=[("focus", ACCENT), ("active", ACCENT)],
+             arrowcolor=[("disabled", MUTED_TEXT)],
+         )
+         style.configure(
+             "TScrollbar",
+             background=SURFACE_ALT,
+             troughcolor=TABLE_FIELD,
+             bordercolor=BACKGROUND,
+             darkcolor=SURFACE_ALT,
+             lightcolor=SURFACE_ALT,
+             arrowcolor=MUTED_TEXT,
+         )
+ 
+     def _build_layout(self) -> None:
+         notebook = ttk.Notebook(self.root)
++        self.notebook = notebook
+         notebook.pack(fill=tk.BOTH, expand=True)
+ 
+         forecasts_frame = ttk.Frame(notebook)
+         strategies_frame = ttk.Frame(notebook)
+         schwab_frame = ttk.Frame(notebook)
+         hyperliquid_frame = ttk.Frame(notebook)
+         hyper_frame = ttk.Frame(notebook)
+         stats_frame = ttk.Frame(notebook)
+         gameplan_frame = ttk.Frame(notebook)
+         intraday_frame = ttk.Frame(notebook)
+ 
+         notebook.add(forecasts_frame, text="Rolling Forecasts")
+         notebook.add(strategies_frame, text="Options Strategies")
+         notebook.add(schwab_frame, text="Schwab Duckets")
+         notebook.add(hyperliquid_frame, text="Hyperliquid Duckets")
+         notebook.add(hyper_frame, text="H.Y.P.E.R.")
+         notebook.add(stats_frame, text="Gameplan Stats")
+         notebook.add(gameplan_frame, text="Gameplan")
+         notebook.add(intraday_frame, text="15-Minute Duckets")
+ 
+-        RollingForecastTab(
+-            root=self.root,
+-            parent=forecasts_frame,
+-        )
+-
+-        OptionsStrategiesTab(
+-            root=self.root,
+-            parent=strategies_frame,
+-        )
+-
+-        SchwabDucketsTab(
+-            root=self.root,
+-            parent=schwab_frame,
+-        )
+-
+-        account_history = HyperliquidAccountHistoryService()
+-        HyperliquidDucketsTab(
+-            root=self.root,
+-            parent=hyperliquid_frame,
+-            account_history=account_history,
+-        )
+-
+-        HyperWorkspace(root=self.root, parent=hyper_frame, account_history=account_history)
+-
+-        GameplanStatsTab(root=self.root, parent=stats_frame)
+-        GameplanTab(root=self.root, parent=gameplan_frame)
+-        IntradayTab(root=self.root, parent=intraday_frame)
++        # Hidden workspaces must not read their stores or start refresh timers
++        # during launch. Keep every tab available, and construct it once on use.
++        self._account_history = None
++        self._workspace_factories = {
++            str(frame): (frame, factory, uses_history)
++            for frame, factory, uses_history in (
++                (forecasts_frame, RollingForecastTab, False),
++                (strategies_frame, OptionsStrategiesTab, False),
++                (schwab_frame, SchwabDucketsTab, False),
++                (hyperliquid_frame, HyperliquidDucketsTab, True),
++                (hyper_frame, HyperWorkspace, True),
++                (stats_frame, GameplanStatsTab, False),
++                (gameplan_frame, GameplanTab, False),
++                (intraday_frame, IntradayTab, False),
++            )
++        }
++        self._workspaces = {}
++        notebook.bind("<<NotebookTabChanged>>", self._show_selected_workspace, add="+")
++        self.root.after_idle(self._show_selected_workspace)
++
++    def _show_selected_workspace(self, _event: object | None = None) -> None:
++        selected = self.notebook.select()
++        if selected in self._workspaces or selected not in self._workspace_factories:
++            return
++        parent, factory, uses_history = self._workspace_factories[selected]
++        # Mark before constructing: a widget's idle geometry processing can
++        # deliver a second selection event while its constructor is active.
++        self._workspaces[selected] = None
++        try:
++            kwargs = {"root": self.root, "parent": parent}
++            if uses_history:
++                if self._account_history is None:
++                    self._account_history = HyperliquidAccountHistoryService()
++                kwargs["account_history"] = self._account_history
++            self._workspaces[selected] = factory(**kwargs)
++        except Exception:
++            del self._workspaces[selected]
++            for child in parent.winfo_children():
++                child.destroy()
++            raise
+ 
+ 
+ class DucketsTab:
+     def __init__(
+         self,
+         root: tk.Tk,
+         parent: ttk.Frame,
+         title: str,
+         sync_button_text: str,
+         sync_snapshots: Callable[[], list[PortfolioSnapshot]],
+     ) -> None:
+         self.root = root
+         self.sync_snapshots = sync_snapshots
+ 
+         self.cash_value = tk.StringVar(value="Cash: --")
+         self.holdings_value = tk.StringVar(value="Holdings: --")
+         self.total_value = tk.StringVar(value="Total: --")
+         self.unrealized_pnl = tk.StringVar(value="Unrealized PnL: --")
+         self.day_pnl = tk.StringVar(value="Day PnL: --")
+         self.status_icon = tk.StringVar(value="❌")
+--- a/app/ui/intraday.py
++++ b/app/ui/intraday.py
+@@ -1,42 +1,75 @@
+ """15-Minute Duckets: a read-only view of persisted forecasts and outcomes."""
+ from __future__ import annotations
+ 
+ import json
++import queue
++import threading
+ import tkinter as tk
+ from datetime import datetime, timezone
+ from pathlib import Path
+ from tkinter import ttk
+ from typing import Mapping
+ 
+ from app.ui.intraday_data import (
+     PACIFIC, WINDOWS, FORECAST_MODES, DEFAULT_FORECAST_MODE, DEFAULT_METRIC_SCOPE, METRIC_SCOPES,
+     IntradaySnapshot, configured_actor, default_databases, error_correlations,
+     filter_forecasts, forecast_metrics, latest_matrix, load_intraday_snapshot,
+     metric_rows, model_metrics, prediction_timing, probability, probability_geometry, regime_metrics, source_dataset_label, timestamp,
+     reference_input_label, reference_input_provenance,
+     window_rows,
+ )
+ from app.ui.intraday_models import load_model_research, research_choices, research_view
+ from app.ui.theme import BACKGROUND, BORDER, DANGER, MUTED_TEXT, SUCCESS, SURFACE, SURFACE_ALT, TEXT, WARNING
+ 
+ AUTO_REFRESH_MS = 15 * 60 * 1000
++POLL_MS = 40
++
++
++def _prepare_metrics(snapshot, selection, database_paths=None):
++    """Compute saved-history statistics without touching Tk or live services."""
++    filters = {key: selection[key] for key in
++               ("pc", "symbol", "session", "mode", "reference_slot", "source_dataset")}
++    rows = filter_forecasts(snapshot, **filters)
++    cohort = metric_rows(rows, scope=selection["metric_scope"])
++    current = window_rows(cohort, selection["metric_window"], snapshot.loaded_at)
++    metrics = model_metrics(current)
++    detailed = list(metrics.items())
++    for name, scoped in (
++        ("Full ensemble", [row for row in current if row.get("ensemble_status") == "full"]),
++        ("Incomplete ensemble", [row for row in current if row.get("ensemble_status") == "incomplete"]),
++        ("Issued before target close", [row for row in current if timestamp(row.get("issued_at")) and timestamp(row.get("target_close"))
++                                       and timestamp(row["issued_at"]) < timestamp(row["target_close"])]),
++        ("Issued at/after target", [row for row in current if timestamp(row.get("issued_at")) and timestamp(row.get("target_close"))
++                                    and timestamp(row["issued_at"]) >= timestamp(row["target_close"])]),
++    ):
++        detailed.append((name, forecast_metrics(scoped)))
++    for dimension in ("pc", "symbol"):
++        for value in sorted({str(row.get(dimension)) for row in current}):
++            detailed.append((f"{dimension}: {value}", forecast_metrics([row for row in current if row.get(dimension) == value])))
++    newest = latest_matrix(rows)
++    provenance = {row.get("forecast_id"): reference_input_provenance(
++        row, database_path=(database_paths or {}).get(row.get("source_label", "Local"))) for row in newest}
++    return dict(selection=selection, rows=rows, newest=newest, provenance=provenance, cohort=cohort,
++                windows=[(window, forecast_metrics(window_rows(cohort, window, snapshot.loaded_at))) for window in WINDOWS],
++                detailed=detailed, ensemble=metrics["Ensemble"], correlations=error_correlations(current),
++                regimes=regime_metrics(current))
+ 
+ 
+ def percent(value):
+     return "—" if value is None else f"{value * 100:.1f}%"
+ 
+ 
+ def numeric(value, places=3):
+     return "—" if value is None else f"{value:.{places}f}"
+ 
+ 
+ def clock(value):
+     parsed = timestamp(value)
+     return parsed.astimezone(PACIFIC).strftime("%b %d %H:%M:%S %Z") if parsed else "—"
+ 
+ 
+ def age(value, now):
+     parsed = timestamp(value)
+     if parsed is None:
+         return "unknown"
+     seconds = (now - parsed).total_seconds()
+@@ -83,43 +116,50 @@
+         self.database_paths = dict(database_paths if database_paths is not None else default_databases(datastore_root))
+         self.local_pc = local_pc or configured_actor()
+         local_database = self.database_paths.get("Local")
+         self.model_research_directory = model_research_directory
+         if self.model_research_directory is None and local_database and self.local_pc in {"Atlas", "Scout"}:
+             suffix = "supervision" if self.local_pc == "Scout" else "model-supervision/logs"
+             self.model_research_directory = Path(local_database).parent / suffix
+         self.model_research = {"status": "missing", "message": "Refresh to load local model research."}
+         self.snapshot = IntradaySnapshot(datetime.now(timezone.utc))
+         self.pc = tk.StringVar(master=root, value="All")
+         self.symbol = tk.StringVar(master=root, value="All")
+         self.session = tk.StringVar(master=root, value="All")
+         self.reference_slot = tk.StringVar(master=root, value="All")
+         self.source_dataset = tk.StringVar(master=root, value="All")
+         self.mode = tk.StringVar(master=root, value=DEFAULT_FORECAST_MODE)
+         self.metric_window = tk.StringVar(master=root, value="Cumulative")
+         self.metric_scope = tk.StringVar(master=root, value=DEFAULT_METRIC_SCOPE)
+         self.status = tk.StringVar(master=root, value="Read-only saved forecasts · no store loaded")
+         self.consensus_choice = tk.StringVar(master=root)
+         self._closed, self._auto_job = False, None
++        self._auto_enabled = auto_load
++        self._loading = self._render_loading = False
++        self._render_again = False
++        self._messages = queue.Queue()
++        self._stopped = threading.Event()
++        self._view_revision = 0
+         self.visible_rows = ()
+         self._build()
+         parent.bind("<Destroy>", self._destroy, add="+")
++        self._poll_job = parent.after(POLL_MS, self._poll)
+         if auto_load:
+             parent.after_idle(self.refresh)
+             self._auto_job = parent.after(AUTO_REFRESH_MS, self._auto_refresh)
+ 
+     def _build(self):
+         self.page = tk.Frame(self.parent, bg=BACKGROUND)
+         self.page.pack(fill="both", expand=True, padx=16, pady=12)
+         _label(self.page, "15-Minute Duckets", size=21, bold=True).pack(anchor="w")
+         _label(self.page, "Persisted probabilities and final target outcomes · times Pacific · classification ≥50% is not-down",
+                color=MUTED_TEXT).pack(anchor="w", pady=(2, 7))
+         _label(self.page, "Live identifies a manual-session forecast. Submission and fill evidence remain separate; monitoring never enables trading.",
+                color=MUTED_TEXT, size=9).pack(anchor="w", pady=(0, 7))
+         controls = tk.Frame(self.page, bg=BACKGROUND)
+         controls.pack(fill="x")
+         self.boxes = {}
+         for title, key, variable, choices, width in (
+             ("PC", "pc", self.pc, ("All",), 11), ("Symbol", "symbol", self.symbol, ("All",), 10),
+             ("Session", "session", self.session, ("All",), 13),
+             ("Mode", "mode", self.mode, FORECAST_MODES, 19),
+             ("Metrics", "window", self.metric_window, WINDOWS, 13),
+@@ -220,125 +260,195 @@
+             ("accuracy", "Accuracy", 110), ("brier", "Brier", 100), ("loss", "Log loss", 100)])
+         self.research_status = _label(pages["research"], color=MUTED_TEXT, wraplength=1400, justify="left")
+         self.research_status.pack(anchor="w", padx=10, pady=8)
+         self.research_table = _table(pages["research"], [
+             ("family", "Model family", 180), ("name", "Configuration", 230),
+             ("status", "Research result", 120), ("selected", "Selected specs", 110),
+             ("reason", "Selection / exclusion reason", 340), ("brier", "Validation Brier", 130),
+             ("balanced", "Validation balanced", 140), ("advantage", "Brier advantage", 130),
+             ("holdout", "Saved holdout Brier", 180), ("seconds", "Research seconds", 130)])
+         self.operation_status = _label(pages["operations"], color=MUTED_TEXT, wraplength=1200, justify="left")
+         self.operation_status.pack(anchor="w", padx=10, pady=8)
+         self.cycle_table = _table(pages["operations"], [("pc", "PC", 80), ("cycle", "Cycle", 190),
+             ("start", "Start Pacific", 170), ("status", "Status", 100), ("latency", "Saved timing/resource evidence", 620)], height=7)
+         _label(pages["operations"], "Intended actions are recorded independently of forecast scoring. Quantities and disposition below are saved evidence; no submitted orders, fills or P&L are inferred.",
+                color=MUTED_TEXT, wraplength=1200).pack(anchor="w", padx=10, pady=5)
+         self.intent_table = _table(pages["operations"], [("pc", "PC", 70), ("symbol", "Symbol", 75),
+             ("forecast", "Forecast", 250), ("direction", "Intended direction", 120), ("desired", "Desired", 80),
+             ("adjusted", "Adjusted", 80), ("disposition", "Disposition", 330)], height=9)
+ 
+     def refresh(self):
++        if self._closed or self._loading:
++            return
++        self._loading = True
++        self.status.set("Loading saved results… You can keep using the other tabs.")
++        directory, actor, paths = self.model_research_directory, self.local_pc, dict(self.database_paths)
++        messages, stopped, selection = self._messages, self._stopped, self._selection()
++        # Capture plain data only. Workers never keep a Tk owner alive or call
++        # after()/StringVar, even when the window closes during a slow read.
++        def work():
++            try:
++                research = load_model_research(directory, actor=actor)
++                snapshot = load_intraday_snapshot(paths, local_pc=actor, stopped=stopped.is_set)
++                if any(source.get("status") == "unreadable" for source in snapshot.sources) and not any(
++                        source.get("status") == "read" for source in snapshot.sources):
++                    raise ValueError(" | ".join(snapshot.warnings) or "Saved source could not be read")
++                prepared = None if stopped.is_set() else _prepare_metrics(snapshot, selection, paths)
++                if not stopped.is_set():
++                    messages.put(("loaded", (research, snapshot, prepared)))
++            except Exception as exc:
++                if not stopped.is_set():
++                    messages.put(("load_error", str(exc) or type(exc).__name__))
++        threading.Thread(target=work, name="intraday-ui-read", daemon=True).start()
++
++    def _selection(self):
++        return {key: getattr(self, key).get() for key in
++                ("pc", "symbol", "session", "mode", "reference_slot", "source_dataset", "metric_scope", "metric_window")}
++
++    def _poll(self):
++        self._poll_job = None
+         if self._closed:
+             return
+-        self.model_research = load_model_research(self.model_research_directory, actor=self.local_pc)
+-        self.set_snapshot(load_intraday_snapshot(self.database_paths, local_pc=self.local_pc))
+-
+-    def set_snapshot(self, snapshot: IntradaySnapshot):
++        try:
++            while True:
++                kind, value = self._messages.get_nowait()
++                if kind == "loaded":
++                    self._loading = False
++                    self.model_research, snapshot, prepared = value
++                    self.set_snapshot(snapshot, _prepared=prepared)
++                elif kind == "load_error":
++                    self._loading = False
++                    self.status.set(f"Refresh failed; previous saved results retained: {value}")
++                elif kind == "rendered":
++                    self._render_loading = False
++                    revision, prepared = value
++                    if revision == self._view_revision and prepared["selection"] == self._selection():
++                        self.render(_prepared=prepared)
++                    else:
++                        self._render_again = True
++                    if self._render_again:
++                        self._render_again = False
++                        self.render()
++                elif kind == "render_error":
++                    self._render_loading = False
++                    self.status.set(f"Saved-result display failed; previous view retained: {value}")
++        except queue.Empty:
++            pass
++        except Exception as exc:
++            if not self._closed:
++                self.status.set(f"Saved-result display failed: {str(exc) or type(exc).__name__}")
++        finally:
++            if not self._closed:
++                self._poll_job = self.parent.after(POLL_MS, self._poll)
++
++    def set_snapshot(self, snapshot: IntradaySnapshot, *, _prepared=None):
++        if self._closed:
++            return
++        self._view_revision += 1
+         self.snapshot = snapshot
+         research = research_choices(self.model_research)
+         choices = {
+             "pc": ["All", *sorted({str(row.get("pc")) for row in snapshot.forecasts} | set(research["pcs"]))],
+             "symbol": ["All", *sorted({str(row.get("symbol")) for row in snapshot.forecasts} | set(research["symbols"]))],
+             "source_dataset": ["All", *sorted({source_dataset_label(row) for row in snapshot.forecasts} | set(research["datasets"]))],
+             "session": ["All", *sorted({timestamp(row.get("issued_at")).astimezone(PACIFIC).date().isoformat()
+                          for row in snapshot.forecasts if timestamp(row.get("issued_at"))}, reverse=True)],
+             "reference_slot": ["All", *sorted({timestamp(row.get("reference_at")).astimezone(PACIFIC).strftime("%H:%M")
+                                for row in snapshot.forecasts if timestamp(row.get("reference_at"))})],
+         }
+         for key, values in choices.items():
+             self.boxes[key].configure(values=values)
+             variable = getattr(self, key)
+             if variable.get() not in values:
+                 variable.set("All")
+         sources = "; ".join(f"{item['label']}: {item['status']} {item.get('telemetry_status', '')} (newest saved issue {age(item.get('latest_issue'), snapshot.loaded_at)})"
+                             for item in snapshot.sources)
+         self.status.set(f"Loaded {clock(snapshot.loaded_at)} · {len(snapshot.forecasts)} saved issues · {sources or 'No sources configured'}"
+                         + (" · " + " | ".join(snapshot.warnings) if snapshot.warnings else ""))
+-        self.render()
+-
+-    def render(self):
+-        self.visible_rows = filter_forecasts(self.snapshot, pc=self.pc.get(), symbol=self.symbol.get(),
+-                                            session=self.session.get(), mode=self.mode.get(), reference_slot=self.reference_slot.get(),
+-                                            source_dataset=self.source_dataset.get())
+-        newest = latest_matrix(self.visible_rows)
++        self.render(_prepared=_prepared)
++
++    def render(self, *, _prepared=None):
++        if self._closed:
++            return
++        selection = self._selection()
++        if _prepared is not None and _prepared["selection"] != selection:
++            _prepared = None
++        if _prepared is None and (len(self.snapshot.forecasts) > 100 or self._auto_enabled):
++            if self._render_loading:
++                self._render_again = True
++                return
++            self._render_loading = True
++            snapshot, revision = self.snapshot, self._view_revision
++            paths = dict(self.database_paths)
++            messages, stopped = self._messages, self._stopped
++            def work():
++                try:
++                    prepared = _prepare_metrics(snapshot, selection, paths)
++                    if not stopped.is_set():
++                        messages.put(("rendered", (revision, prepared)))
++                except Exception as exc:
++                    if not stopped.is_set():
++                        messages.put(("render_error", str(exc) or type(exc).__name__))
++            threading.Thread(target=work, name="intraday-ui-metrics", daemon=True).start()
++            return
++        prepared = _prepared if _prepared is not None else _prepare_metrics(self.snapshot, selection)
++        self.visible_rows = prepared["rows"]
++        self._reference_provenance = prepared["provenance"]
++        newest = prepared["newest"]
+         self.consensus_rows = {f"{row.get('pc')} · {row.get('symbol')} · {source_dataset_label(row)} · {row.get('mode', 'shadow')}": row
+                                for row in newest}
+         self.consensus_box.configure(values=list(self.consensus_rows))
+         if self.consensus_choice.get() not in self.consensus_rows:
+             self.consensus_choice.set(next(iter(self.consensus_rows), ""))
+         self._render_consensus()
+         matrix = []
+         for row in newest:
+             p = probability(row.get("probability_not_down"))
+             classification = "not-down" if p is not None and p >= .5 else "down" if p is not None else "unavailable"
+             issued = timestamp(row.get("issued_at"))
+             age_text = age(issued, self.snapshot.loaded_at)
+             if issued and (self.snapshot.loaded_at-issued).total_seconds() >= 15*60:
+                 age_text += " · no newer issue in 15m"
+             if p is not None and abs(p-.5) <= .01:
+                 classification += " · ±1pp"
+             matrix.append(((row.get("pc"), row.get("symbol"), source_dataset_label(row), percent(p), classification,
+                             f"{row.get('successful_count', 0)}/{row.get('configured_count', 0)}", row.get("ensemble_status", "unknown"),
+                             row["outcome_status"], clock(row.get("issued_at")), clock(row.get("target_close")), age_text,
+                             row.get("availability_basis", "unknown"), row.get("mode", "shadow"), prediction_timing(row)),
+                            (classification.split(" · ")[0],)))
+         _replace(self.matrix, matrix)
+-        cohort = metric_rows(self.visible_rows, scope=self.metric_scope.get())
+-        current = window_rows(cohort, self.metric_window.get(), self.snapshot.loaded_at)
++        cohort = prepared["cohort"]
+         self.metric_status.configure(text=f"Scores: {self.metric_scope.get()} · {len(cohort)} of {len(self.visible_rows)} saved issues in this cohort"
+             f" · before target open {sum(prediction_timing(row) == 'Before target open' for row in self.visible_rows)}"
+             f" · during target {sum(prediction_timing(row) == 'During target' for row in self.visible_rows)}"
+             f" · at/after close {sum(prediction_timing(row) == 'At or after target close' for row in self.visible_rows)}."
+             " Consensus and matrix retain all saved issues.")
+-        _replace(self.window_table, [(self._metric_values(window, forecast_metrics(window_rows(cohort, window, self.snapshot.loaded_at))), ()) for window in WINDOWS])
+-        metrics = model_metrics(current)
+-        detailed = [(self._metric_values(name, values), ()) for name, values in metrics.items()]
+-        for name, scoped in (
+-            ("Full ensemble", [row for row in current if row.get("ensemble_status") == "full"]),
+-            ("Incomplete ensemble", [row for row in current if row.get("ensemble_status") == "incomplete"]),
+-            ("Issued before target close", [row for row in current if timestamp(row.get("issued_at")) and timestamp(row.get("target_close"))
+-                                     and timestamp(row["issued_at"]) < timestamp(row["target_close"])]),
+-            ("Issued at/after target", [row for row in current if timestamp(row.get("issued_at")) and timestamp(row.get("target_close"))
+-                                       and timestamp(row["issued_at"]) >= timestamp(row["target_close"])]),
+-        ):
+-            detailed.append((self._metric_values(name, forecast_metrics(scoped)), ()))
+-        for dimension in ("pc", "symbol"):
+-            for value in sorted({str(row.get(dimension)) for row in current}):
+-                detailed.append((self._metric_values(f"{dimension}: {value}", forecast_metrics([row for row in current if row.get(dimension) == value])), ()))
++        _replace(self.window_table, [(self._metric_values(window, values), ()) for window, values in prepared["windows"]])
++        detailed = [(self._metric_values(name, values), ()) for name, values in prepared["detailed"]]
+         _replace(self.model_table, detailed)
+-        ensemble = metrics["Ensemble"]
++        ensemble = prepared["ensemble"]
+         self.disagreement_label.configure(text=f"{self.metric_scope.get()} · {self.metric_window.get()} · Mean per-issue probability standard deviation {percent(ensemble['mean_disagreement'])}"
+                                           f" · n={ensemble['disagreement_denominator']} issues with ≥2 successful outputs. Balanced accuracy needs both target classes.")
+         _replace(self.calibration_table, [((entry["range"], entry["count"], percent(entry["mean_probability"]), percent(entry["observed_not_down"])), ()) for entry in ensemble["calibration"]])
+-        _replace(self.correlation_table, [((entry["left"], entry["right"], entry["count"], numeric(entry["correlation"])), ()) for entry in error_correlations(current)])
++        _replace(self.correlation_table, [((entry["left"], entry["right"], entry["count"], numeric(entry["correlation"])), ()) for entry in prepared["correlations"]])
+         _replace(self.regime_table, [((entry["dimension"], entry["bucket"], entry["denominator"], entry["observed_denominator"],
+-                                     entry["synthetic_denominator"], percent(entry["accuracy"]), numeric(entry["brier"]), numeric(entry["log_loss"])), ()) for entry in regime_metrics(current)])
++                                     entry["synthetic_denominator"], percent(entry["accuracy"]), numeric(entry["brier"]), numeric(entry["log_loss"])), ()) for entry in prepared["regimes"]])
+         self._render_operations()
+ 
+     @staticmethod
+     def _metric_values(name, values):
+         counts = values["counts"]
+         return (name, values["issued"], values["denominator"], percent(values["accuracy"]),
+                 f"{percent(values['observed_accuracy'])} / {values['observed_denominator']}",
+                 f"{percent(values['synthetic_accuracy'])} / {values['synthetic_denominator']}",
+                 f"{percent(values['equality_accuracy'])} / {values['equality_denominator']} ({values['observed_equality_denominator']} / {values['synthetic_equality_denominator']})",
+                 percent(values["balanced_accuracy"]),
+                 numeric(values["brier"]), numeric(values["log_loss"]), counts["pending"], counts["missing"], counts["synthetic"], counts["unscorable"],
+                 percent(values["majority_class_baseline_accuracy"]), percent(values["positive_label_fraction"]))
+ 
+     def _render_consensus(self):
+         for child in self.models_frame.winfo_children():
+             child.destroy()
+         row = getattr(self, "consensus_rows", {}).get(self.consensus_choice.get())
+         # The research view remains usable before a manual trader has produced
+         # a forecast. Explicit PC/source filters still apply in that case.
+         pc = row.get("pc") if row else self.pc.get()
+@@ -348,42 +458,44 @@
+                              source_dataset=None if source == "All" else source)
+         self.research_status.configure(text=view["summary"])
+         if view.get("holdout_label"):
+             self.research_table.heading("holdout", text=view["holdout_label"])
+         _replace(self.research_table, [((item.get("family"), item.get("name"), item.get("status"),
+             "Yes" if item.get("selected") else "No", item.get("reason"), numeric(item.get("validation_brier")),
+             percent(item.get("validation_balanced_accuracy")), numeric(item.get("baseline_improvement")),
+             numeric(item.get("holdout_brier")), numeric(item.get("seconds"))), ()) for item in view["rows"]])
+         if row is None:
+             self.consensus_value.configure(text="No saved predictions in these filters", fg=MUTED_TEXT)
+             self.consensus_meta.configure(text="The display will populate when a trained ensemble persists its issue. Historical replay is selectable separately.")
+             return
+         p = probability(row.get("probability_not_down"))
+         classification = "not-down" if p is not None and p >= .5 else "down" if p is not None else "unavailable"
+         color = SUCCESS if classification == "not-down" else DANGER if classification == "down" else MUTED_TEXT
+         self.consensus_value.configure(text=f"{percent(p)} ensemble probability · {classification}", fg=color)
+         try:
+             reference = f"${float(row.get('reference_open')):,.4f}"
+         except (TypeError, ValueError):
+             reference = "unavailable"
+-        database = getattr(self, "database_paths", {}).get(row.get("source_label", "Local"))
+-        input_label = reference_input_label(reference_input_provenance(row, database_path=database))
++        provenance = getattr(self, "_reference_provenance", {}).get(row.get("forecast_id"))
++        # Missing legacy input provenance is resolved only by the reader
++        # worker. Selecting a consensus never opens a database on Tk's thread.
++        input_label = reference_input_label(provenance or reference_input_provenance(row))
+         self.consensus_meta.configure(text=(f"{row.get('successful_count', 0)}/{row.get('configured_count', 0)} enabled models succeeded · {row.get('ensemble_status', 'unknown')} ensemble · outcome {row['outcome_status']}\n"
+             f"{input_label}\n"
+             f"Source dataset {source_dataset_label(row)} · source {row.get('source_id') or 'Unrecorded'}\n"
+             f"Reference OPEN {reference} at {clock(row.get('reference_at'))} · target candle opens {clock(row.get('target_open'))}, closes {clock(row.get('target_close'))}\n"
+             f"Issued {clock(row.get('issued_at'))} · data through {clock(row.get('data_through'))} · information available {clock(row.get('information_available_at'))}\n"
+             f"Training completed {clock(row.get('training_completed_at'))} · {prediction_timing(row)}"
+             f" · execution {row.get('execution_blocked_reason') or row.get('execution_eligibility') or 'not recorded'}\n"
+             f"Stage seconds: preprocessing {numeric(row.get('preprocessing_seconds'))} · training {numeric(row.get('training_seconds'))} · inference {numeric(row.get('inference_seconds'))} · persistence {numeric(row.get('persistence_evidence', {}).get('persistence_seconds'))}\n"
+             f"Target {row.get('target_version', 'unknown')} · {row.get('mode', 'shadow')} · receipt availability {row.get('availability_basis', 'unknown')} · forecast {row.get('forecast_id')}"))
+         for output in row.get("models", []):
+             frame = tk.Frame(self.models_frame, bg=SURFACE)
+             frame.pack(fill="x", pady=6)
+             _label(frame, str(output.get("name", "Unnamed model")), bold=True, width=23, anchor="w").pack(side="left")
+             value = probability(output.get("probability_not_down"))
+             bar = tk.Canvas(frame, width=390, height=34, bg=SURFACE_ALT, highlightthickness=1, highlightbackground=BORDER)
+             bar.pack(side="left", fill="x", expand=True, padx=8)
+             def draw(event=None, canvas=bar, model_probability=value):
+                 canvas.delete("all")
+                 width = max(1, canvas.winfo_width())
+                 fill, midpoint = probability_geometry(model_probability, width)
+@@ -392,42 +504,45 @@
+                 canvas.create_line(midpoint, 0, midpoint, 34, fill=TEXT, dash=(3, 2))
+                 canvas.create_text(midpoint + 3, 3, text="50%", anchor="nw", fill=TEXT, font=("Segoe UI", 7))
+                 canvas.create_text(3, 32, text="0", anchor="sw", fill=MUTED_TEXT, font=("Segoe UI", 7))
+                 canvas.create_text(width-3, 32, text="100%", anchor="se", fill=MUTED_TEXT, font=("Segoe UI", 7))
+             bar.bind("<Configure>", draw)
+             _label(frame, percent(value), width=8, bold=True).pack(side="left")
+             status = str(output.get("status", "unknown"))
+             version = str(output.get("version") or "no version")
+             visible_version = version[:12] + "…" if len(version) > 16 else version
+             detail = f"{status} · version {visible_version}"
+             if output.get("error"):
+                 detail += f" · {output['error']}"
+             timings = " / ".join(f"{key.replace('_seconds', '')} {float(output[key]):.3f}s" for key in ("training_seconds", "inference_seconds") if isinstance(output.get(key), (int, float)))
+             model_detail = _label(frame, detail + (f" · {timings}" if timings else ""), color=MUTED_TEXT if status == "success" else WARNING,
+                                   size=9, wraplength=280, justify="left", width=42, anchor="w", cursor="hand2")
+             model_detail.pack(side="left", padx=(8, 0))
+             model_detail.bind("<Button-1>", lambda _e, saved=output: self._show_model(saved))
+ 
+     def _show_model(self, output):
+         window = tk.Toplevel(self.root)
+-        window.title(f"Saved model evidence · {output.get('name', 'unknown')}")
++        window.title(f"Saved model summary · {output.get('name', 'unknown')}")
+         window.geometry("900x650")
++        if output.get("saved_evidence_source"):
++            _label(window, "Display fields only. Full scientific metadata remains in the original database; the source locator below identifies the saved record.",
++                   color=MUTED_TEXT, wraplength=860, justify="left").pack(fill="x", padx=10, pady=8)
+         text = tk.Text(window, bg=SURFACE, fg=TEXT, wrap="word", font=("Consolas", 10))
+         text.pack(fill="both", expand=True)
+         text.insert("1.0", json.dumps(output, indent=2, ensure_ascii=False, sort_keys=True))
+         text.configure(state="disabled")
+ 
+     def _render_operations(self):
+         lines = []
+         for source in self.snapshot.sources:
+             line = f"{source['label']}: saved store {source['status']}; latest saved issue {age(source.get('latest_issue'), self.snapshot.loaded_at)}."
+             if source.get("produced_at"):
+                 line += f" Producer {source.get('producer_pc')} exported {clock(source['produced_at'])}; first received {clock(source.get('received_at'))}; telemetry {source.get('telemetry_status')} (15m freshness interval; newest observed mode {source.get('latest_forecast_mode') or 'none'}). Private remote intention/order quantities are unavailable."
+             lines.append(line + " Receipt freshness is not a live PC heartbeat.")
+         self.operation_status.configure(text="\n".join(lines) or "No telemetry source configured. Remote monitoring requires an explicitly supplied, received read-only store path.")
+         selected_cycles = {row.get("cycle_id") for row in self.visible_rows}
+         cycles = [row for row in self.snapshot.cycles if (self.pc.get() == "All" or row.get("pc") == self.pc.get())
+                   and (self.mode.get() == "All" or row.get("mode", "shadow") == self.mode.get())
+                   and (self.source_dataset.get() == "All" or row.get("id", row.get("cycle_id")) in selected_cycles)]
+         latest = {}
+         # Local stores and peer packets return opposite cycle orders. Select by
+         # saved start time so receipt order cannot replace the newest evidence.
+@@ -446,23 +561,27 @@
+             return json.dumps(values, ensure_ascii=False, sort_keys=True) if values else "No cycle timing evidence saved"
+         _replace(self.cycle_table, [((row.get("pc"), row.get("id"), clock(row.get("started_at")), row.get("status", "unknown"), evidence(row)), ()) for row in latest.values()])
+         intents = []
+         for row in reversed(self.visible_rows):
+             for intent in row.get("intents", []):
+                 intents.append(((row.get("pc"), row.get("symbol"), row.get("forecast_id"),
+                     intent.get("intended_direction", intent.get("direction", intent.get("side", "unrecorded"))),
+                     intent.get("desired_quantity", "unrecorded"), intent.get("adjusted_quantity", intent.get("capacity_adjusted_quantity", "unrecorded")),
+                     intent.get("disposition", intent.get("execution_disposition", "unrecorded"))), ()))
+         _replace(self.intent_table, intents)
+ 
+     def _auto_refresh(self):
+         if not self._closed:
+             self.refresh()
+             self._auto_job = self.parent.after(AUTO_REFRESH_MS, self._auto_refresh)
+ 
+     def _destroy(self, event):
+         if event.widget is not self.parent:
+             return
+         self._closed = True
++        self._stopped.set()
++        if self._poll_job is not None:
++            self.parent.after_cancel(self._poll_job)
++            self._poll_job = None
+         if self._auto_job is not None:
+             self.parent.after_cancel(self._auto_job)
+             self._auto_job = None
+--- a/app/ui/rolling_forecasts.py
++++ b/app/ui/rolling_forecasts.py
+@@ -683,40 +683,41 @@
+         self.content_frame: ttk.Frame | None = None
+         self.source_label: ttk.Label | None = None
+         self._prediction_pulse_frame: ttk.Frame | None = None
+         self._prediction_pulse_symbols: tuple[
+             tuple[str, tuple[tuple[str, float | None], ...]], ...
+         ] = ()
+         self._prediction_pulse_pending_symbols: set[str] = set()
+         self._prediction_pulse_forecast_only_symbols: set[str] = set()
+         self._prediction_pulse_raw_scores: set[tuple[str, str]] = set()
+         self._summary_cards: list[ttk.Frame] = []
+         self._summary_labels: list[tuple[ttk.Label, ttk.Label]] = []
+         self._symbol_sections: list[_SymbolSectionWidgets] = []
+         self._symbol_expanded: dict[str, bool] = {}
+         self._weekly_layouts: list[_WeeklyLayoutWidgets] = []
+         self._weekly_details: list[_WeeklyDetailsWidgets] = []
+         self._weekly_details_expanded: dict[str, bool] = {}
+         self._layout_columns: int | None = None
+         self._layout_signature: tuple[int, int, int, int, int] | None = None
+         self._width = 1180
+         self._hourly_refresh_job: str | None = None
++        self._scroll_region_job: str | None = None
+ 
+         self._apply_styles()
+         self._build(parent)
+         self.root.after_idle(self.refresh)
+         self._schedule_hourly_refresh()
+ 
+     def _apply_styles(self) -> None:
+         style = ttk.Style(self.root)
+         style.configure("Forecast.TFrame", background=BACKGROUND)
+         style.configure("ForecastToolbar.TFrame", background=BACKGROUND)
+         style.configure(
+             "ForecastSurface.TFrame",
+             background=SURFACE,
+             bordercolor=BORDER,
+             borderwidth=1,
+             relief=tk.SOLID,
+         )
+         style.configure(
+             "ForecastSymbolSection.TFrame",
+             background=SURFACE_ALT,
+@@ -2473,44 +2474,48 @@
+     def _set_all_symbols_expanded(self, expanded: bool) -> None:
+         for widgets in self._symbol_sections:
+             self._set_symbol_expanded(
+                 widgets.symbol,
+                 expanded,
+                 refresh_layout=False,
+             )
+         self._apply_responsive_layout(force=True)
+ 
+     def _update_symbol_header(self, widgets: _SymbolSectionWidgets) -> None:
+         expanded = self._symbol_expanded.get(widgets.symbol, True)
+         widgets.header.configure(
+             text=forecast_symbol_header_text(
+                 widgets.symbol,
+                 expanded=expanded,
+                 collapsed_summary=widgets.collapsed_summary,
+             )
+         )
+ 
+     def _refresh_scroll_region(self) -> None:
+-        if self.content_frame is not None:
+-            self.content_frame.update_idletasks()
++        # Let Tk finish geometry naturally. Draining idle callbacks here can
++        # re-enter tab construction/refresh from inside a Configure callback.
++        if self._scroll_region_job is None:
++            self._scroll_region_job = self.root.after_idle(self._finish_scroll_region)
++
++    def _finish_scroll_region(self) -> None:
++        self._scroll_region_job = None
+         self._update_scroll_region()
+-        self.root.after_idle(self._update_scroll_region)
+ 
+     def _on_resize(self, event: tk.Event[tk.Misc]) -> None:
+         self._width = max(1, int(event.width))
+         self._apply_responsive_layout()
+ 
+     def _on_canvas_resize(self, event: tk.Event[tk.Canvas]) -> None:
+         if self.canvas is not None and self.canvas_window is not None:
+             self.canvas.itemconfigure(
+                 self.canvas_window,
+                 width=max(1, int(event.width)),
+             )
+         self._refresh_scroll_region()
+ 
+     def _apply_responsive_layout(self, *, force: bool = False) -> None:
+         columns = dashboard_layout(self._width)
+         health_columns = 4 if self._width >= 1080 else (2 if self._width >= 520 else 1)
+         weekly_mode = 3 if self._width >= 1220 else (2 if self._width >= 760 else 1)
+         pulse_columns = prediction_pulse_columns(self._width, len(self._prediction_pulse_symbols))
+         signature = (
+             columns,
+--- a/tests/test_ducket_bucket_app.py
++++ b/tests/test_ducket_bucket_app.py
+@@ -5,16 +5,20 @@
+ import app.ui.ducket_bucket as ducket_bucket_ui
+ 
+ 
+-def test_desktop_app_mounts_the_eight_active_workspaces(monkeypatch) -> None:
++def test_desktop_app_mounts_workspaces_once_when_selected(monkeypatch) -> None:
+     mounted_tabs: list[str] = []
+     mounted_views: list[str] = []
+     tab_frames: dict[str, object] = {}
+     view_frames: dict[str, object] = {}
+-    root = object()
++    class FakeRoot:
++        def after_idle(self, callback):
++            self.pending = callback
++
++    root = FakeRoot()
+ 
+     class FakeNotebook:
+         def __init__(self, _root: object) -> None:
+-            pass
++            self.selected = ""
+ 
+         def pack(self, **_kwargs: object) -> None:
+             pass
+@@ -22,6 +26,15 @@
+         def add(self, _frame: object, *, text: str) -> None:
+             mounted_tabs.append(text)
+             tab_frames[text] = _frame
++            if not self.selected:
++                self.selected = str(_frame)
++
++        def bind(self, event, callback, **kwargs):
++            assert event == "<<NotebookTabChanged>>"
++            self.callback = callback
++
++        def select(self):
++            return self.selected
+ 
+     class FakeFrame:
+         def __init__(self, _parent: object) -> None:
+@@ -79,6 +92,46 @@
+         "15-Minute Duckets",
+     ]
+     assert mounted_tabs == expected
++    assert mounted_views == []
++    assert app._account_history is None
++    root.pending()
++    assert mounted_views == ["Rolling Forecasts"]
++    for name in expected:
++        app.notebook.selected = str(tab_frames[name])
++        app.notebook.callback(None)
++        app.notebook.callback(None)
+     assert mounted_views == expected
+     assert view_frames == tab_frames
+     assert len({id(frame) for frame in tab_frames.values()}) == len(expected)
++
++
++def test_workspace_constructor_reentrancy_and_failure_retry():
++    app = ducket_bucket_ui.DucketBucketApp.__new__(ducket_bucket_ui.DucketBucketApp)
++    calls = []
++
++    class Parent:
++        def winfo_children(self):
++            return []
++
++    class Notebook:
++        def select(self):
++            return "frame"
++
++    def factory(**kwargs):
++        calls.append(kwargs)
++        app._show_selected_workspace()
++        if len(calls) == 1:
++            raise ValueError("fixture failure")
++        return "mounted"
++
++    app.root = object()
++    app.notebook = Notebook()
++    app._workspaces = {}
++    app._workspace_factories = {"frame": (Parent(), factory, False)}
++    import pytest
++    with pytest.raises(ValueError, match="fixture failure"):
++        app._show_selected_workspace()
++    assert not app._workspaces
++    app._show_selected_workspace()
++    assert len(calls) == 2
++    assert app._workspaces == {"frame": "mounted"}
+--- a/tests/test_intraday_ui.py
++++ b/tests/test_intraday_ui.py
+@@ -292,13 +292,13 @@
+     assert snapshot.sources[0]["telemetry_status"] == "stale"
+ 
+ 
+-def test_ui_modules_have_no_broker_provider_thread_or_training_imports():
++def test_ui_modules_have_no_broker_provider_or_training_imports():
+     for name in ("intraday.py", "intraday_data.py"):
+         module = Path(__file__).parents[1] / "app" / "ui" / name
+         tree = ast.parse(module.read_text(encoding="utf-8"))
+         imports = [node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)]
+         imports += [item.name for node in ast.walk(tree) if isinstance(node, ast.Import) for item in node.names]
+-        assert not any(any(forbidden in item for forbidden in ("broker", "schwab", "hyperliquid", "databento", "threading", "ml."))
++        assert not any(any(forbidden in item for forbidden in ("broker", "schwab", "hyperliquid", "databento", "ml."))
+                        for item in imports if item != "ml.intraday.telemetry")
+ 
+ 
+--- a/app/ui/intraday_data.py
++++ b/app/ui/intraday_data.py
+@@ -36,6 +36,74 @@
+     "Timing unknown · all outcomes",
+     "All saved outcomes",
+ )
++
++# Forecast originals can contain hundreds of megabytes of training metadata.
++# Project only fields consumed by this read-only display inside SQLite, before
++# Python sees a row. All issues and original score inputs remain represented;
++# this is not a history limit or a replacement of the scientific evidence.
++DISPLAY_FORECAST_FIELDS = (
++    "availability_basis", "classification", "configured_count", "cycle_id", "data_through",
++    "direction", "direction_down_threshold", "direction_policy_version", "direction_up_threshold",
++    "ensemble_status", "execution_blocked_reason", "execution_eligibility", "forecast_id",
++    "inference_seconds", "information_available_at", "issued_at", "mode", "pc", "population_contract",
++    "preprocessing_seconds", "probability_not_down", "reference_at", "reference_open", "reference_provenance",
++    "regime", "regime_measurements", "snapshot_hash", "source_dataset", "source_id", "successful_count", "symbol",
++    "target_close", "target_open", "target_version", "training_completed_at", "training_seconds",
++)
++DISPLAY_MODEL_FIELDS = (
++    "name", "family", "probability_not_down", "status", "version", "error",
++    "artifact_path", "artifact_sha256", "artifact_persisted_at", "artifact_persistence_seconds",
++    "training_started_at", "training_completed_at", "training_seconds", "failed_at",
++    "inference_started_at", "inference_completed_at", "inference_seconds",
++)
++DISPLAY_INTENT_FIELDS = (
++    "intended_direction", "direction", "side", "desired_quantity", "adjusted_quantity",
++    "capacity_adjusted_quantity", "disposition", "execution_disposition",
++)
++DISPLAY_CYCLE_FIELDS = (
++    "mode", "status", "timings", "latency", "resources", "resources_before", "resources_after", "acquisition",
++    "failures", "finished_at", "completed_at", "workload", "successful_symbols", "failed_symbols",
++    "total_cycle_seconds", "compute_cycle_seconds", "compute_persist_seconds", "acquisition_seconds",
++    "process_cpu_seconds", "exceeds_15m", "overrun_seconds", "measurement_scope",
++    "cumulative_attempt_seconds", "wall_elapsed_seconds", "wall_exceeds_15m", "wall_overrun_seconds",
++    "attempt_count", "latest_attempt",
++)
++
++
++def _json_projection(column, fields):
++    keys = ",".join("'" + field + "'" for field in fields)
++    # json_each retains presence, unlike a multi-path json_extract array that
++    # conflates missing fields with explicitly saved JSON null. Preserve null
++    # and boolean types too, including malformed-present provenance evidence.
++    return ("(SELECT json_group_object(j.key, CASE "
++            "WHEN j.type IN ('object','array') THEN json(j.value) "
++            "WHEN j.type IN ('true','false','null') THEN json(j.type) ELSE j.value END) "
++            "FROM json_each(" + column + ") AS j WHERE j.key IN (" + keys + "))")
++
++
++def _display_payload(raw, fields):
++    values = json.loads(raw)
++    if not isinstance(values, dict) or set(values) - set(fields):
++        raise ValueError("Saved display projection is malformed")
++    return values
++
++
++def _display_forecasts(connection):
++    scalars = _json_projection("f.payload", DISPLAY_FORECAST_FIELDS)
++    models = _json_projection("m.value", DISPLAY_MODEL_FIELDS)
++    # The scalar projection and each model summary exclude their original
++    # feature matrices, selection trees and nested model metadata entirely.
++    query = ("SELECT f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,json_type(f.payload) AS payload_type," + scalars + " AS display,"
++             "(SELECT json_group_array(json(" + models + ")) FROM json_each(f.payload,'$.models') AS m) AS models "
++             "FROM forecasts AS f ORDER BY f.issued_at,f.id")
++    for row in connection.execute(query):
++        if row["payload_type"] != "object":
++            raise ValueError("Saved payload must be a JSON object")
++        value = _display_payload(row["display"], DISPLAY_FORECAST_FIELDS)
++        value["models"] = [dict(_display_payload(json.dumps(model), DISPLAY_MODEL_FIELDS),
++                                saved_evidence_note="Display summary; full original model evidence is retained in the source database.")
++                           for model in json.loads(row["models"])]
++        yield row, value
+ 
+ 
+ @dataclass(frozen=True)
+@@ -224,13 +292,16 @@
+ 
+ 
+ def load_intraday_snapshot(database_paths: Mapping[str, Path] | None = None, *,
+-                           now: datetime | None = None, local_pc: str | None = None) -> IntradaySnapshot:
++                           now: datetime | None = None, local_pc: str | None = None,
++                           stopped=lambda: False) -> IntradaySnapshot:
+     now = timestamp(now or datetime.now(UTC))
+     if now is None:
+         raise ValueError("A timezone-aware now is required")
+     local_pc = local_pc or configured_actor()
+     forecasts, cycles, sources, warnings = [], [], [], []
+     for label, raw_path in (database_paths if database_paths is not None else default_databases()).items():
++        if stopped():
++            break
+         requested_path = Path(raw_path).expanduser()
+         path = requested_path.resolve()
+         source = {"label": label, "path": str(path), "status": "missing", "latest_issue": None}
+@@ -275,6 +346,7 @@
+             with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=1)) as connection:
+                 connection.row_factory = sqlite3.Row
+                 connection.execute("PRAGMA query_only=ON")
++                connection.set_progress_handler(lambda: int(stopped()), 1000)
+                 connection.execute("BEGIN")
+                 tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                 if "forecasts" not in tables:
+@@ -288,19 +360,25 @@
+                         outcomes[str(row["forecast_id"])] = value
+                 intents: dict[str, list[dict[str, Any]]] = defaultdict(list)
+                 if "intents" in tables:
+-                    for row in connection.execute("SELECT * FROM intents ORDER BY rowid"):
+-                        value = _payload(row)
++                    query = ("SELECT forecast_id,recorded_at," + _json_projection("payload", DISPLAY_INTENT_FIELDS)
++                             + " AS display FROM intents ORDER BY rowid")
++                    for row in connection.execute(query):
++                        value = _display_payload(row["display"], DISPLAY_INTENT_FIELDS)
+                         value["recorded_at"] = row["recorded_at"]
+                         intents[str(row["forecast_id"])].append(value)
+                 persistence = {}
+                 if "events" in tables:
+-                    for row in connection.execute("SELECT * FROM events WHERE kind='forecast_persisted' ORDER BY rowid"):
+-                        value = _payload(row)
++                    fields = ("forecast_id", "persistence_seconds")
++                    query = ("SELECT " + _json_projection("payload", fields)
++                             + " AS display FROM events WHERE kind='forecast_persisted' ORDER BY rowid")
++                    for row in connection.execute(query):
++                        value = _display_payload(row["display"], fields)
+                         if value.get("forecast_id"):
+                             persistence[str(value["forecast_id"])] = value
+                 saved = []
+-                for row in connection.execute("SELECT * FROM forecasts ORDER BY issued_at, id"):
+-                    value = _payload(row)
++                for row, value in _display_forecasts(connection):
++                    if stopped():
++                        break
+                     for key in ("pc", "symbol", "cycle_id", "reference_at", "issued_at"):
+                         value[key] = row[key]
+                     value["forecast_id"] = str(row["id"])
+@@ -308,11 +386,15 @@
+                     value["intents"] = intents.get(value["forecast_id"], [])
+                     value["persistence_evidence"] = persistence.get(value["forecast_id"], {})
+                     value["source_label"] = label
++                    for index, model in enumerate(value["models"]):
++                        model["saved_evidence_source"] = dict(database=str(path), forecast_id=value["forecast_id"], model_index=index)
+                     value["outcome_status"] = outcome_status(value, now)
+                     saved.append(value)
+                 if "cycles" in tables:
+-                    for row in connection.execute("SELECT * FROM cycles ORDER BY started_at, rowid"):
+-                        value = _payload(row)
++                    query = ("SELECT id,pc,started_at," + _json_projection("payload", DISPLAY_CYCLE_FIELDS)
++                             + " AS display FROM cycles ORDER BY started_at,rowid")
++                    for row in connection.execute(query):
++                        value = _display_payload(row["display"], DISPLAY_CYCLE_FIELDS)
+                         value.update(id=row["id"], pc=row["pc"], started_at=row["started_at"], source_label=label)
+                         cycles.append(value)
+                 connection.rollback()
