@@ -1,0 +1,63 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T213734Z-69655d77657544d19d620f1a4172747d",
+  "change_id": "20261027T213734Z-69655d77657544d19d620f1a4172747d",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative. Four inner sizing phases separate intention reads, frozen input retrieval, calculation and persistence with wall and same-thread CPU observations.",
+    "Every execution diagnostic also records its own loaded sealed-source generation using module source layout; no active-pointer inference or additional filesystem IO. Bounded diagnostics preserve original science, exceptions, immutable results, validation, manual controls and order identities.",
+    "Both PCs review exact source hunk against local composition while retaining local model policy. No other trader dependency or operational prerequisite."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_sizing_subphase_diagnostics.py",
+      "sha256": "8a90023438f8e7dabd893aaff83b6663f0dab794d434b9949521a5fcd0f484b4"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-sizing-subphase-diagnostics.json",
+      "sha256": "7c83682513b25867abab8c3bb5075f92216ff0f5f6ec517342d21b8e7fbfa5d1"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-sizing-subphase-diagnostics.patch",
+      "sha256": "788d8438cf5473aa4184f0576f54bf4327f3e3cead9fbf9f0abad5a3c0ab57e7"
+    }
+  ],
+  "limitations": [
+    "Five existing recovery-timing expected-count assertions reproduce on the unchanged installed parent; their23othercases pass. Only those five assertions were explicitly deselected. Original evidence retained, no unrelated source or test rewrite.",
+    "Added diagnostics investigate unknown sizing wall time and separate lowCPU metadata stalls. They do not establish cause, affected recovery or loaded code in an existing live worker. Historical missing exact evidence remains open."
+  ],
+  "local_installation": "Complete531source generation d909ef73365ebdb7bde410afffac1e4b54fac390eafe68a5ae25fab33c989bb3 sealed with tools/trader_installation.py under exact latest-parent installer lock.530parentmembers and frozen runtime retained; full source/runtime validation passed.",
+  "main_commit": "1cbb0777ba725b88527a629423d0afb43294bfb3",
+  "privacy_review": "Generic source patch, extracted helper metadata, offline checker and sanitized test/install facts only. No native identity, private paths/bindings/credentials, account state, data, fitted models or operating records exported.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/466",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Natural renewal only within existing manually started sessions after complete iteration. Source publication, main integration, local sealing, loading and affected recovery remain separate. No initial start, post-stop restart, lifetime extension, live test, broker/provider/order operation.",
+  "scope": "shared",
+  "source_commit": "db2db224c1e97b4285052b9ad87c7aad95868e48",
+  "summary": "Atlas 15m adds bounded sizing wall/CPU subphase and loaded-source diagnostics; shared package published and complete local generation sealed",
+  "tests": [
+    {
+      "deselected_proven_preexisting": 5,
+      "network_attempts": 0,
+      "passed": 247,
+      "scope": "Complete exact531-source application composition"
+    },
+    {
+      "network_attempts": 0,
+      "passed": 8,
+      "scope": "Independent actual fullmodule integration"
+    },
+    {
+      "network_attempts": 0,
+      "passed": 64,
+      "scope": "Full patch reconstruction/helper checks"
+    },
+    {
+      "network_attempts": 0,
+      "passed_each": 58,
+      "scope": "Portable queue/source/main candidates"
+    }
+  ]
+}

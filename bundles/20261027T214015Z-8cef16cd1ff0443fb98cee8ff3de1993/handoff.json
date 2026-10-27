@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T21:40:15.968934Z",
+  "id": "20261027T214015Z-8cef16cd1ff0443fb98cee8ff3de1993",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas 15m adds bounded sizing wall/CPU subphase and loaded-source diagnostics; shared package published and complete local generation sealed"
+}
