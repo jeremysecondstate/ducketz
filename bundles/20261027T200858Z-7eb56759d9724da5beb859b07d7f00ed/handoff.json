@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T20:08:58.507361Z",
+  "id": "20261027T200858Z-7eb56759d9724da5beb859b07d7f00ed",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout removes repeated fixed-contract serialization while preserving exact context hashes and validation."
+}

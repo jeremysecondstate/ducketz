@@ -1,0 +1,30 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T200323Z-ec4666f8d3b2443ba3f9bfd9589cb1dc",
+  "files": [
+    "ml/intraday/market_context_cache.py",
+    "tests/test_intraday_context_digest_fragments.py"
+  ],
+  "limitations": [
+    "Offline fixtures establish only the reviewed processing and hash behavior. Live cycle duration, queue contention and affected trading recovery require separate loaded-version and session evidence.",
+    "Original source receipt validation, feature and label qualification, saved recipes, probabilities, execution controls, reservations and order identities remain authoritative.",
+    "Private operating evidence, raw data, fitted models, saved recipes, credentials, account state, ledgers, task memory and local bindings are excluded from this shared source packet."
+  ],
+  "main_sha": "0f167c781a99dd0499c2f91d911fd0b9bdf8c059",
+  "privacy_review": "Reviewed shared source and offline test facts only; no private local paths, operating evidence, raw data, models, recipes, account state, credentials or task records.",
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/459"
+  ],
+  "runtime_implications": "Install reviewed compatible source separately. Exact implementation fingerprints invalidate prior disposable context cache keys, so the first naturally loaded dataset rebuilds derived vectors from preserved genuine receipts before later hits benefit. Scout loads compatible worker source at its next safe automatic iteration replacement within an authorized run; preserve initial activation, manual stop, original deadline, pending work, recipes and order identities. Publication starts no trader.",
+  "scope": "Shared context cache processing; Atlas and Scout retain their own model recipes, local symbols, source observations and independent order state.",
+  "source_branch": "codex/scout/20261027T200323Z-ec4666f8d3b2443ba3f9bfd9589cb1dc",
+  "source_record": "20261027T200323Z-ec4666f8d3b2443ba3f9bfd9589cb1dc",
+  "source_sha": "f99c02aa6ead582bd81c5f1b619490c4072c9430",
+  "summary": "Scout removes repeated fixed-contract serialization while preserving exact context hashes and validation.",
+  "tests": [
+    "Source, isolated courier and reviewed main candidates each passed 150 tests across 3 whole modules with 0 skips. Stage counts overlap.",
+    "All stages bind 113 exact source and dependency fingerprints; candidate import evidence and final raw Git blobs verify.",
+    "Offline fixtures check exact original context hashes, legacy and current feature contracts, Unicode and escaped text, nested evidence and value mutations, tampered cache entries, bounded contracts, helper and serializer overrides, cold construction and repeated hits."
+  ]
+}
