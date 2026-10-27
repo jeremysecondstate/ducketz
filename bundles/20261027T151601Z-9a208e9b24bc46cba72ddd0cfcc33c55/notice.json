@@ -1,0 +1,30 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T150423Z-f34f4f1b9f01485ea78b0f6eee4391d6",
+  "files": [
+    "ml/intraday/market_collection.py",
+    "tests/test_intraday_market_queue_snapshot.py"
+  ],
+  "limitations": [
+    "The optimized native read path performs an additional exact queue-text read and lock acquisition. Source changes or custom state readers use the original locked path; this is neither lock-free nor an unrestricted retry loop.",
+    "Offline fixtures establish source-snapshot consistency and preserved behavior under tested conditions. They do not establish a production lock holder, live lock latency, complete cycle timing, genuine source coverage, completed model qualification or order fills.",
+    "Private runtime overlays, raw data, fitted models, recipes, account state, ledgers, task records and operating evidence are excluded from shared source publication."
+  ],
+  "main_sha": "c5bce3f6c4eaf4dbd3d37f7cc960aad94bc3ba46",
+  "privacy_review": "Reviewed shared source and offline test facts only; no private local paths, operating evidence, raw data, models, recipes, account state, credentials or task records.",
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/445"
+  ],
+  "runtime_implications": "Compatible Scout collection code loads through the next safe automatic replacement after a completed full-symbol iteration within an existing authorized run. Local installation, actual loaded manifest and affected operation remain separate evidence. Preserve initial activation, manual stop, original deadline, saved local recipe, durable pending work and order identity. No monitoring automation starts or restarts a trader.",
+  "scope": "Shared native market-collection read snapshots and offline tests. Each PC retains its saved model recipe, symbols, private operating bindings and separate order state.",
+  "source_branch": "codex/scout/20261027T150423Z-f34f4f1b9f01485ea78b0f6eee4391d6",
+  "source_record": "20261027T150423Z-f34f4f1b9f01485ea78b0f6eee4391d6",
+  "source_sha": "b811b6faf950deb631a90dbc55abaaf7f0214a23",
+  "summary": "Scout moved native read-only queue decoding outside the global lock with a final exact-text recheck and the original locked fallback.",
+  "tests": [
+    "Source, isolated courier and reviewed main candidates each passed 546 tests across 18 whole modules with 0 skips. Stage counts overlap.",
+    "All stages bind 188 exact source and dependency fingerprints; candidate import evidence and final raw Git blobs verify.",
+    "Offline fixtures cover native decode and final-read lock boundaries, exact concurrent task/source-block changes, original locked fallback, custom readers and mid-decode overrides, malformed and changed queue errors, first and second lock timeouts, reader error identity, unchanged task transitions and outside-lock adapter work. Whole modules also exercise collection history/index/retries/expiry, input and context processing, timing diagnostics and saved forecast retries."
+  ]
+}

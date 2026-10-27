@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T15:16:01.551498Z",
+  "id": "20261027T151601Z-9a208e9b24bc46cba72ddd0cfcc33c55",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout moved native read-only queue decoding outside the global lock with a final exact-text recheck and the original locked fallback."
+}
