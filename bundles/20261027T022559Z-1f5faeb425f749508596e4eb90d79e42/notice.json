@@ -1,0 +1,45 @@
+{
+  "actual_runtime": "A Stats-only snapshot completed successfully using available local evidence; an explicit catch-up retained the same single attempt. No evening stage launched. Precise private coverage and receipts remain local.",
+  "author": "Atlas",
+  "change_id": "20261027T022359Z-7563643fb8bb4a65a66868cfac844780",
+  "files": [
+    "docs/development/gameplan-stats-timing.md",
+    "docs/development/patches/gameplan-stats-1730.patch",
+    "docs/development/patches/gameplan-stats-1730.json",
+    "tests/test_gameplan_stats_1730_patch.py",
+    "tests/test_register_nightly_watchdog.py",
+    "tools/register_nightly_watchdog.ps1",
+    "tests/check_gameplan_stats_1730_publication.py"
+  ],
+  "installation": "Atlas installed the reviewed source and exact daily 17:30 Windows trigger. Original 21:05, recurring and logon triggers and unrelated task settings retained. Six native prompt descriptions matched saved Markdown, with schedule and metadata retained.",
+  "limitations": [
+    "A completed snapshot does not prove complete observation coverage; post-fetch reconciliation remains due.",
+    "Source is an exact portable patch package for matching installed baselines, not a complete baseline. Divergent peer source requires local reviewed adaptation.",
+    "Peer installation, main integration and later evening production are not claimed."
+  ],
+  "original_completion_record": "20261027T022139Z-c354139d5012475a8baa9f62cda513b9",
+  "original_source_sha": "659298c40f6c92e81b8079b76b7197e5a972284b",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/422",
+  "repository": "jeremysecondstate/ducketz",
+  "reviewed_main_base": "210e80c03b75131f17c4a49e48842dbb29a11911",
+  "runtime_implications": "Use source-session America/Los_Angeles release times: Stats 17:30, evening minimum 21:00, retained dispatcher 21:05 and later schedules. Preserve prior-night continuation, independent traders and manual controls. Applicable peer review follows existing standing human authority; this notice is evidence only.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261027T022359Z-7563643fb8bb4a65a66868cfac844780",
+  "source_sha": "c52eab0533953569a8910e508459331974e150b1",
+  "summary": "Atlas installed Stats-only 17:30 Pacific scheduling; evening boundaries preserved",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-27T02:19:50.897356Z",
+      "result": "492 offline behavioral tests passed",
+      "started_at_utc": "2026-10-27T02:18:33.586753Z"
+    },
+    {
+      "result": "All 12 patch members reconstructed exactly from captured originals; synthetic Git application passed"
+    },
+    {
+      "completed_at_utc": "2026-10-27T02:24:23.043348Z",
+      "result": "Fresh isolated package and four mocked scheduler-preservation checks passed",
+      "started_at_utc": "2026-10-27T02:24:20.240126Z"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T02:25:59.425587Z",
+  "id": "20261027T022559Z-1f5faeb425f749508596e4eb90d79e42",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed Stats-only 17:30 Pacific scheduling; evening boundaries preserved"
+}
