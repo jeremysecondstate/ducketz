@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "summary": "Reuse the owned decoded primary proof while retaining full native/session and wrapper verification.",
+  "path": "ml/intraday/recovered_population.py",
+  "before_sha256": "72758ddfa4455085dee62de8216b489778c51e8b5e0df6ac2f97c1f2f4aa3fe9",
+  "after_sha256": "345040f8330434d22827ea311eb77ee52eae642d576d0b530f679726c97a8aab",
+  "patch_sha256": "40bd21145ed5d84d9a0a69cb5e2357dfdeeb1f917bb700a2f2119f817cff0684",
+  "scope": "shared",
+  "preserved": [
+    "Exact normalized wrapper bytes and canonical evidence",
+    "All native source and session verification",
+    "Generic Mapping evidence normalization",
+    "Scientific values/provenance/policies and independent execution controls"
+  ],
+  "runtime_implications": "Requires reviewed source installation and complete sealed generation; no live trader operation by this package.",
+  "limitations": [
+    "Offline parity and saved-input reconstruction do not prove sustained live latency recovery."
+  ]
+}

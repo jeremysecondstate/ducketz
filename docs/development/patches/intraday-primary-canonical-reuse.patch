@@ -1,0 +1,44 @@
+--- a/ml/intraday/recovered_population.py
++++ b/ml/intraday/recovered_population.py
+@@ -98,6 +98,11 @@
+     _session(original, original["opened_at"])
+     native_canonical = _json(original)
+     original = json.loads(native_canonical)
++    return _primary_wrapper(original, native_canonical)
++
++
++def _primary_wrapper(original, native_canonical):
++    """Build the same wrapper from an owned, normalized native JSON tree."""
+     row = dict(original, native_source_id=original["source_id"], native_source_dataset=original["source_dataset"],
+                native_interval_seconds=60, observation_kind="primary_observed")
+     evidence = {"aggregation": POPULATION_CONTRACT, "kind": "primary_observed",
+@@ -238,7 +243,8 @@
+             if isinstance(number, (bool, np.bool_)) or not isinstance(number, (int, float, np.integer, np.floating)) or not math.isfinite(float(number)):
+                 return False
+         evidence = candle["evidence_json"]
+-        evidence = evidence if isinstance(evidence, Mapping) else json.loads(evidence)
++        decoded_evidence = not isinstance(evidence, Mapping)
++        evidence = json.loads(evidence) if decoded_evidence else evidence
+         if evidence.get("aggregation") != POPULATION_CONTRACT:
+             return False
+         if evidence.get("kind") == "primary_observed":
+@@ -246,8 +252,17 @@
+             original_canonical = _json(original)
+             if hashlib.sha256(original_canonical.encode()).hexdigest() != evidence["native_primary_sha256"]:
+                 return False
+-            # Preserve the full native/session proof while reusing its canonical text.
+-            expected = _wrap_primary(original, original_canonical)
++            # A freshly decoded proof already owns a plain JSON tree. Retain
++            # every native/session check while avoiding a second JSON roundtrip.
++            # Mapping evidence keeps the generic normalization path, including
++            # its handling of custom mappings and non-JSON Python values.
++            if decoded_evidence:
++                if not verified_source_observation(original):
++                    raise ContractError("Only a verified genuine primary candle can be wrapped")
++                _session(original, original["opened_at"])
++                expected = _primary_wrapper(original, original_canonical)
++            else:
++                expected = _wrap_primary(original, original_canonical)
+         else:
+             expected = recovery_candle(evidence["assessment"], evidence["session"])
+             if expected is None:
