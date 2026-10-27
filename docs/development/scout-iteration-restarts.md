@@ -88,6 +88,17 @@ identity. Unattended replacements have NUL input, per-generation logs and no new
 console or interactive pause. The existing Windows task identity, initial
 trigger, principal, logging, working directory and settings are preserved.
 
+The live controller prints startup validation, lifecycle and worker-phase
+changes, the current worker log path, and a heartbeat every 30 seconds while
+its polling loop is active. A heartbeat means the controller is responsive;
+it does not certify broker health or a completed trade. Ctrl-C records the
+existing stop latch, then the loop reports stopping. Final shutdown confirmation
+appears only after worker cleanup returns successfully. Output errors do not
+change execution authority. The manual launcher can pass `--hold-console` to
+leave the final message visible until Enter; redirected or noninteractive task
+IO never waits. This controller update requires a new immutable bootstrap and
+the next operator launch; it does not change the worker lifecycle protocol.
+
 The Representative reports routine installed repairs as awaiting the next safe
 automatic reload, then checks the generation's actual loaded manifest and the
 affected behavior. Installation, loading and confirmed behavior are separate.
