@@ -14,6 +14,7 @@ current manual authority, freshness and broker effects remain caller-owned.
 """
 from __future__ import annotations
 
+from collections import OrderedDict
 from collections.abc import Mapping
 from contextlib import contextmanager
 from copy import deepcopy
@@ -21,12 +22,17 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
+from operator import is_ as _same_identity
+from types import BuiltinFunctionType, FunctionType, GetSetDescriptorType, ModuleType
 import re
 import secrets
 import sqlite3
 import stat
+import sys
+import threading
 import uuid
 
 from .scout_protocol import Grant, Request, PARTICIPANT_ID, STREAM, canonical_sha256, _canonical_bytes
@@ -80,12 +86,333 @@ def _encoded(value):
                       allow_nan=False)
 
 
+# Witnesses contain exact immutable raw text and its checked digest, never a
+# decoded record, journal state or audit result. Every call still freshly parses
+# its current SQL value; every audit still validates/replays all current rows.
+_CANONICAL_WITNESS_ENTRIES = 512
+_CANONICAL_WITNESS_BYTES = 4 * 1024 * 1024
+_CANONICAL_WITNESS_ROW_BYTES = 64 * 1024
+_canonical_witnesses = OrderedDict()
+_canonical_witness_lock = threading.Lock()
+_canonical_witness_bytes = 0
+def _pure_module_dict(module):
+    if type(module) is not ModuleType:
+        return None
+    values = vars(module)
+    if (type(values) is not dict or "__getattr__" in values
+            or type(values.get("__name__")) is not str
+            or "__file__" in values and type(values["__file__"]) is not str):
+        return None
+    return values
+
+
+def _initial_canonical_modules():
+    modules = (json, hashlib, sys, math, _scout_protocol)
+    dictionaries = tuple(_pure_module_dict(module) for module in modules)
+    if any(values is None for values in dictionaries):
+        return None
+    public_json, protocol = dictionaries[0], dictionaries[4]
+    if protocol.get("json") is not json or protocol.get("math") is not math:
+        return None
+    submodules = (public_json.get("encoder"), public_json.get("decoder"), public_json.get("scanner"))
+    subdictionaries = tuple(_pure_module_dict(module) for module in submodules)
+    if any(values is None for values in subdictionaries):
+        return None
+    return modules + submodules, dictionaries + subdictionaries
+
+
+_NATIVE_JSON_MODULE, _NATIVE_HASH_MODULE = json, hashlib
+_NATIVE_SYS_MODULE, _NATIVE_MATH_MODULE = sys, math
+_NATIVE_PROTOCOL_MODULE = _scout_protocol
+_INITIAL_JSON_DICT = _pure_module_dict(json)
+_NATIVE_DECODER = (_INITIAL_JSON_DICT.get("_default_decoder") if _INITIAL_JSON_DICT is not None else None)
+_NATIVE_DECODER_CLASS = type(_NATIVE_DECODER)
+_NATIVE_IDENTITY_TEST = _same_identity
+_NATIVE_CANONICAL_MODULE_STATE = _initial_canonical_modules()
+_NATIVE_CANONICAL_MODULE_TYPES = ((ModuleType,) * 8 if _NATIVE_CANONICAL_MODULE_STATE is not None else None)
+
+
+def _canonical_modules_current():
+    if _same_identity is not _NATIVE_IDENTITY_TEST or _NATIVE_CANONICAL_MODULE_STATE is None:
+        return False
+    modules, dictionaries = _NATIVE_CANONICAL_MODULE_STATE
+    if not all(map(_same_identity, map(type, modules), _NATIVE_CANONICAL_MODULE_TYPES)):
+        return False
+    # Exact ModuleType dictionaries cannot be replaced through the Python API.
+    # Keep their native references; check PEP 562 hooks before any field reads.
+    if any("__getattr__" in values for values in dictionaries):
+        return False
+    public_json, protocol = dictionaries[0], dictionaries[4]
+    return (protocol.get("json") is json and protocol.get("math") is math
+            and public_json.get("encoder") is modules[5]
+            and public_json.get("decoder") is modules[6]
+            and public_json.get("scanner") is modules[7])
+
+
+def _python_function_origin(value, name, module):
+    try:
+        return (type(value) is FunctionType and value.__globals__ is vars(module)
+                and value.__name__ == name
+                and value.__code__.co_filename == module.__file__)
+    except Exception:
+        return False
+
+
+def _plain_json_codec_class(value, name, module):
+    if type(value) is not type or value is not vars(module).get(name):
+        return False
+    bases, mro = value.__bases__, value.__mro__
+    if (type(bases) is not tuple or len(bases) != 1 or bases[0] is not object
+            or type(mro) is not tuple or len(mro) != 2 or mro[0] is not value or mro[1] is not object):
+        return False
+    if value.__name__ != name or value.__module__ != module.__name__:
+        return False
+    methods = (("__init__", "decode", "raw_decode") if name == "JSONDecoder" else
+               ("__init__", "default", "encode", "iterencode"))
+    members = vars(value)
+    keys = tuple(members)
+    if any(type(key) is not str for key in keys):
+        return False
+    required = {"__module__", "__doc__", "__dict__", "__weakref__", *methods}
+    optional = {"__firstlineno__", "__static_attributes__", "__qualname__"}
+    if name == "JSONEncoder":
+        required |= {"item_separator", "key_separator"}
+        if (type(members.get("item_separator")) is not str or members["item_separator"] != ", "
+                or type(members.get("key_separator")) is not str or members["key_separator"] != ": "):
+            return False
+    if not required <= set(keys) or not set(keys) <= required | optional:
+        return False
+    if type(members["__module__"]) is not str or members["__module__"] != module.__name__:
+        return False
+    if members["__doc__"] is not None and type(members["__doc__"]) is not str:
+        return False
+    if "__firstlineno__" in members and type(members["__firstlineno__"]) is not int:
+        return False
+    if "__qualname__" in members and (type(members["__qualname__"]) is not str or members["__qualname__"] != name):
+        return False
+    if "__static_attributes__" in members:
+        attributes = members["__static_attributes__"]
+        if type(attributes) is not tuple or any(type(item) is not str for item in attributes):
+            return False
+    for field in ("__dict__", "__weakref__"):
+        descriptor = members[field]
+        if (type(descriptor) is not GetSetDescriptorType or descriptor.__objclass__ is not value
+                or descriptor.__name__ != field):
+            return False
+    return all(_python_function_origin(members.get(method), method, module) for method in methods)
+
+
+# Initial callbacks must not be blessed merely because they existed at import.
+# These origin checks admit the byte-reviewed protocol and ordinary stdlib
+# implementation. Unverifiable/Python fallbacks retain uncached validation.
+def _canonical_baseline_safe():
+    try:
+        if _NATIVE_CANONICAL_MODULE_STATE is None:
+            return False
+        return (
+            _python_function_origin(json.loads, "loads", json)
+            and _python_function_origin(json.dumps, "dumps", json)
+            and _python_function_origin(_canonical_bytes, "_canonical_bytes", _scout_protocol)
+            and _python_function_origin(_scout_protocol._json_value, "_json_value", _scout_protocol)
+            and _scout_protocol.Mapping is Mapping
+            and type(_scout_protocol.math.isfinite) is BuiltinFunctionType
+            and _scout_protocol.math.isfinite.__module__ == "math"
+            and _scout_protocol.math.isfinite.__name__ == "isfinite"
+            and _plain_json_codec_class(json.JSONDecoder, "JSONDecoder", json.decoder)
+            and all(_python_function_origin(vars(json.JSONDecoder).get(name), name, json.decoder)
+                    for name in ("__init__", "decode", "raw_decode"))
+            and _plain_json_codec_class(json.JSONEncoder, "JSONEncoder", json.encoder)
+            and all(_python_function_origin(vars(json.JSONEncoder).get(name), name, json.encoder)
+                    for name in ("__init__", "encode", "iterencode", "default"))
+            and _python_function_origin(json.encoder._make_iterencode, "_make_iterencode", json.encoder)
+            and type(json.encoder.c_make_encoder) is type
+            and json.encoder.c_make_encoder.__module__ == "_json"
+            and json.encoder.c_make_encoder.__name__ == "Encoder"
+            and all(type(getattr(json.encoder, name)) is BuiltinFunctionType
+                    and getattr(json.encoder, name).__module__ == "_json"
+                    and getattr(json.encoder, name).__name__ == name
+                    for name in ("encode_basestring", "encode_basestring_ascii"))
+            and type(hashlib.sha256) is BuiltinFunctionType
+            and hashlib.sha256.__module__ in {"_hashlib", "_sha256"}
+            and type(sys._getframe) is BuiltinFunctionType
+            and sys._getframe.__module__ == "sys" and sys._getframe.__name__ == "_getframe"
+            and type(sys.getrecursionlimit) is BuiltinFunctionType
+            and sys.getrecursionlimit.__module__ == "sys" and sys.getrecursionlimit.__name__ == "getrecursionlimit"
+            and type(_same_identity) is BuiltinFunctionType
+            and _same_identity.__module__ == "_operator" and _same_identity.__name__ == "is_")
+    except Exception:
+        return False
+
+
+_NATIVE_CANONICAL_BASELINE_SAFE = _canonical_baseline_safe()
+_NATIVE_CODEC_CLASSES = ((json.JSONDecoder, json.JSONEncoder)
+                         if _NATIVE_CANONICAL_BASELINE_SAFE else None)
+_NATIVE_CODEC_KEYS = (tuple(tuple(vars(kind)) for kind in _NATIVE_CODEC_CLASSES)
+                      if _NATIVE_CANONICAL_BASELINE_SAFE else None)
+_NATIVE_CODEC_VALUES = (tuple(tuple(vars(kind).values()) for kind in _NATIVE_CODEC_CLASSES)
+                        if _NATIVE_CANONICAL_BASELINE_SAFE else None)
+_NATIVE_CODEC_BASES = (tuple(kind.__bases__ for kind in _NATIVE_CODEC_CLASSES)
+                       if _NATIVE_CANONICAL_BASELINE_SAFE else None)
+_NATIVE_CODEC_MROS = (tuple(kind.__mro__ for kind in _NATIVE_CODEC_CLASSES)
+                      if _NATIVE_CANONICAL_BASELINE_SAFE else None)
+
+
+def _canonical_validation_contract():
+    # A replaced decoder/encoder/normalizer keeps its original calls and errors.
+    if (_same_identity is not _NATIVE_IDENTITY_TEST or not _NATIVE_CANONICAL_BASELINE_SAFE
+            or json is not _NATIVE_JSON_MODULE or hashlib is not _NATIVE_HASH_MODULE
+            or sys is not _NATIVE_SYS_MODULE or math is not _NATIVE_MATH_MODULE
+            or _scout_protocol is not _NATIVE_PROTOCOL_MODULE
+            or not _canonical_modules_current()
+            or json._default_decoder is not _NATIVE_DECODER
+            or type(_NATIVE_DECODER) is not _NATIVE_DECODER_CLASS
+            or type(_NATIVE_DECODER) is not json.JSONDecoder):
+        return None
+    # Check class dictionaries before inspecting an instance: a later custom
+    # __getattribute__ must receive only the original decoder's business reads.
+    if (json.JSONDecoder is not _NATIVE_CODEC_CLASSES[0] or type(json.JSONDecoder) is not type
+            or json.JSONEncoder is not _NATIVE_CODEC_CLASSES[1] or type(json.JSONEncoder) is not type):
+        return None
+    if (json.JSONDecoder.__bases__ is not _NATIVE_CODEC_BASES[0]
+            or json.JSONDecoder.__mro__ is not _NATIVE_CODEC_MROS[0]
+            or json.JSONEncoder.__bases__ is not _NATIVE_CODEC_BASES[1]
+            or json.JSONEncoder.__mro__ is not _NATIVE_CODEC_MROS[1]):
+        return None
+    decoder_class, encoder_class = vars(json.JSONDecoder), vars(json.JSONEncoder)
+    # Native mapping iterators and strict identities call no custom descriptors,
+    # key hash/equality methods or instance hooks. Any new field is uncached.
+    if (len(decoder_class) != len(_NATIVE_CODEC_KEYS[0])
+            or not all(map(_same_identity, decoder_class, _NATIVE_CODEC_KEYS[0]))
+            or not all(map(_same_identity, decoder_class.values(), _NATIVE_CODEC_VALUES[0]))
+            or len(encoder_class) != len(_NATIVE_CODEC_KEYS[1])
+            or not all(map(_same_identity, encoder_class, _NATIVE_CODEC_KEYS[1]))
+            or not all(map(_same_identity, encoder_class.values(), _NATIVE_CODEC_VALUES[1]))):
+        return None
+    decoder = vars(_NATIVE_DECODER)
+    if type(decoder) is not dict:
+        return None
+    if (type(_NATIVE_DECODER) is not json.JSONDecoder
+            or decoder.get("object_hook") is not None or decoder.get("object_pairs_hook") is not None
+            or decoder.get("parse_int") is not int or decoder.get("parse_float") is not float
+            or decoder.get("strict") is not True or "decode" in decoder or "raw_decode" in decoder):
+        return None
+    scanner = decoder.get("scan_once")
+    scanner_type = getattr(json.scanner, "c_make_scanner", None)
+    if (scanner_type is None or type(scanner) is not scanner_type
+            or scanner.object_hook is not None or scanner.object_pairs_hook is not None
+            or scanner.parse_int is not int or scanner.parse_float is not float
+            or scanner.strict is not True):
+        return None
+    protocol = vars(_scout_protocol)
+    return (_encoded, _canonical_bytes, hashlib.sha256, json.loads, json.dumps,
+            json.JSONDecoder, json.JSONEncoder,
+            decoder.get("object_hook"), decoder.get("object_pairs_hook"), decoder.get("parse_float"),
+            decoder.get("parse_int"), decoder.get("parse_constant"), decoder.get("strict"),
+            decoder.get("scan_once"), decoder.get("decode"), decoder.get("raw_decode"),
+            json.encoder.c_make_encoder, json.encoder._make_iterencode,
+            json.encoder.encode_basestring, json.encoder.encode_basestring_ascii,
+            protocol.get("_canonical_bytes"), protocol.get("_json_value"), protocol.get("MAX_INTEGER"),
+            protocol.get("Mapping"), protocol.get("ProtocolError"),
+            _scout_protocol.math.isfinite, sys.getrecursionlimit, sys._getframe)
+
+
+try:
+    _NATIVE_CANONICAL_VALIDATION = _canonical_validation_contract()
+except Exception:
+    _NATIVE_CANONICAL_VALIDATION = None
+
+
+def _native_canonical_validation():
+    if _same_identity is not _NATIVE_IDENTITY_TEST:
+        return False
+    try:
+        current = _canonical_validation_contract()
+    except Exception:
+        return False
+    return (_NATIVE_CANONICAL_VALIDATION is not None and current is not None
+            and len(current) == len(_NATIVE_CANONICAL_VALIDATION)
+            and all(map(_same_identity, current, _NATIVE_CANONICAL_VALIDATION)))
+
+
+def _canonical_witness_eligible(payload, digest):
+    if (type(payload) is not str or type(digest) is not str or len(digest) != 64
+            or len(payload) > _CANONICAL_WITNESS_ROW_BYTES):
+        return False
+    if not _native_canonical_validation() or sys.getrecursionlimit() < 512:
+        return False
+    # Only shallow decoded trees are remembered below. Near the caller's stack
+    # boundary keep the original recursive canonical validator and its errors.
+    frame = sys._getframe()
+    try:
+        for _ in range(64):
+            frame = frame.f_back
+            if frame is None:
+                return True
+        return False
+    finally:
+        del frame
+
+
+def _canonical_witness_shallow(value):
+    pending = [(value, 0)]
+    count = 0
+    while pending:
+        item, depth = pending.pop()
+        count += 1
+        if depth > 16 or count > 4096:
+            return False
+        if type(item) is dict:
+            pending.extend((child, depth + 1) for child in item.values())
+        elif type(item) is list:
+            pending.extend((child, depth + 1) for child in item)
+    return True
+
+
 def _checked_json(payload, digest):
+    global _canonical_witness_bytes
+    try:
+        native_at_decode = _native_canonical_validation()
+    except Exception:
+        native_at_decode = False
     try:
         value = json.loads(payload)
+        # Recheck after decoding: a custom decoder can alter a later validator.
+        try:
+            eligible = native_at_decode and _canonical_witness_eligible(payload, digest)
+            key = (payload, digest) if eligible else None
+            if eligible:
+                with _canonical_witness_lock:
+                    hit = key in _canonical_witnesses
+                    if hit:
+                        _canonical_witnesses.move_to_end(key)
+                if hit:
+                    # Restoring/deleting an overridden __new__ can leave a
+                    # changed CPython constructor slot despite equal class
+                    # dictionaries. Probe only after the exact native contract
+                    # matched, outside the lock; failure uses the original path.
+                    json.JSONEncoder(ensure_ascii=False, allow_nan=False,
+                                     sort_keys=True, separators=(",", ":"))
+                    return value
+        except Exception:
+            eligible = False
         encoded = _encoded(value)
         if encoded != payload or hashlib.sha256(encoded.encode("utf-8")).hexdigest() != digest:
             raise JournalCorruptionError("Stored payload hash or canonical bytes differ")
+        try:
+            if (eligible and _canonical_witness_eligible(payload, digest)
+                    and _canonical_witness_shallow(value)):
+                cost = len(encoded.encode("utf-8")) + len(digest)
+                if cost <= _CANONICAL_WITNESS_ROW_BYTES:
+                    with _canonical_witness_lock:
+                        if key not in _canonical_witnesses:
+                            _canonical_witnesses[key] = cost
+                            _canonical_witness_bytes += cost
+                        while (len(_canonical_witnesses) > _CANONICAL_WITNESS_ENTRIES
+                               or _canonical_witness_bytes > _CANONICAL_WITNESS_BYTES):
+                            _, removed = _canonical_witnesses.popitem(last=False)
+                            _canonical_witness_bytes -= removed
+        except Exception:
+            pass  # Optional reuse never changes a successfully checked row.
         return value
     except (ValueError, TypeError, UnicodeError, RecursionError) as exc:
         raise JournalCorruptionError("Invalid stored canonical payload") from exc
@@ -391,8 +718,9 @@ class ScoutJournal:
     def _audit(self, db, *, legacy=False, include_lifecycle=False):
         with recovery_phase('journal_full_audit', journal=self):
             # Local to this exact audit, including concurrent/reentrant calls.
-            # Every stored row still gets its fresh canonical/hash check and
-            # complete replay. No state survives the transaction or broker IO.
+            # Every stored row is freshly decoded and matched to checked exact
+            # canonical bytes; every current row/chain/lifecycle is replayed.
+            # Raw canonical witnesses contain no decoded or execution state.
             validation_memo = ({}, {})
 
             def validate(record, *, event=False):
