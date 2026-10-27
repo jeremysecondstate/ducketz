@@ -42,7 +42,7 @@ from .scout_broker import ScoutBrokerAdapter
 from .scout_client import ScoutClient, exception_details
 from .local_forecast import forecast_disposition
 from .scout_protocol import Grant, Request, canonical_sha256
-from .local_forecast import _saved_forecast
+from .local_forecast import _saved_forecast, _saved_inputs
 from .starter_sizing import QuoteObservation, size_forecast
 from .technical_sizing import AvailableInput
 
@@ -526,7 +526,7 @@ class ScoutLocalAccountExecutor:
             original = self.intents.get(forecast['forecast_id'])
         if original is None:
             with dataset_phase("snapshot_load"):
-                frozen = self.store.inputs(forecast['cycle_id'], forecast['symbol'])
+                frozen = _saved_inputs(self.store, forecast['cycle_id'], forecast['symbol'])
                 if frozen is None or frozen[0] != forecast['snapshot_hash']:
                     raise ContractError('Original forecast inputs unavailable')
             quote = portfolio.quotes[forecast['symbol']]
