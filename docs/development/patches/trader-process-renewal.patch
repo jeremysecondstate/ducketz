@@ -1,0 +1,1361 @@
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -133,3 +133,17 @@
+ existing nightly task prompts without changing schedules, local bindings or
+ active/paused settings. Continue unfinished nightly work under standing
+ authorization; preparation never starts, restarts or trades through a trader.
++
++# Manual-session process renewal — direct human direction, October 26, 2026
++
++Follow `docs/development/trader-process-renewal.md`. After Jeremy manually starts
++either Atlas trader, that session may safely finish each complete iteration and
++renew its worker automatically using the latest complete installed generation.
++This supersedes blanket restart prohibitions only for planned continuation.
++Manual stops end the whole session; no initial unattended start, post-stop
++restart, reboot start or lifetime extension is authorized. Never operate live
++traders to test infrastructure. Preserve original science, order identities,
++working/partial/UNKNOWN evidence, independent state, cadence and stock policy.
++Complete reviewed local source/dependency installation by sealing an exact-byte
++generation with `tools/trader_installation.py`; working-tree edits alone are not
++installed runtime updates. Update existing instructions, never create a new task.
+--- a/Start-Gameplan-Trader.cmd
++++ b/Start-Gameplan-Trader.cmd
+@@ -1,15 +1,29 @@
+ @echo off
+-setlocal
+-title Ducketz Gameplan trader
+-rem Manual start: finish account setup, then run or wait for the supported stock session.
+-rem Ctrl-C or closing this manual launcher stops its verified trader process.
+-echo Ducketz Gameplan trader - manual start.
+-echo To stop, press Ctrl+C. If console text is selected, press Esc first.
+-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0docs\datafetch-ml\start_stock_session.ps1" -WaitForOpen -SizingPolicy gameplan-direction-current-market-v1 -ActivateForManualStart
+-set "traderExitCode=%errorlevel%"
+-if not "%traderExitCode%"=="0" (
+-    echo Trader startup was blocked or the worker stopped with exit code %traderExitCode%.
+-    echo Review the reason above. A pre-existing trader may still be running; use the reported worker identity before trying again.
+-    pause
++setlocal DisableDelayedExpansion
++echo Gameplan trader - manual start.
++echo Ctrl+C stops. If console text is selected, press Esc first.
++pushd "%~dp0"
++if errorlevel 1 (
++  echo Cannot open folder.
++  pause
++  exit /b 2
+ )
+-exit /b %traderExitCode%
++if not exist ".venv\Scripts\python.exe" (
++  echo Ducketz Python environment is missing.
++  popd
++  pause
++  exit /b 2
++)
++(
++".venv\Scripts\python.exe" -I -S -B "tools\trader_session_host.py" --trader gameplan %*
++call set "DUCKETZ_TRADER_EXIT=%%ERRORLEVEL%%"
++setlocal EnableDelayedExpansion
++popd
++if not "!DUCKETZ_TRADER_EXIT!"=="0" (
++  echo The Gameplan trader stopped with exit code !DUCKETZ_TRADER_EXIT!.
++  echo Review the reason above before starting it again.
++  echo A pre-existing trader may still be running. This launch never takes over or stops it.
++  pause
++)
++exit /b !DUCKETZ_TRADER_EXIT!
++)
+--- a/Start-15m-Trader.cmd
++++ b/Start-15m-Trader.cmd
+@@ -1,11 +1,10 @@
+ @echo off
+-setlocal
+-title Ducketz 15-minute trader
+-echo Ducketz 15-minute trader - manual start.
+-echo To stop, press Ctrl+C. If console text is selected, press Esc first.
++setlocal DisableDelayedExpansion
++echo 15-minute trader - manual start.
++echo Ctrl+C stops. If console text is selected, press Esc first.
+ pushd "%~dp0"
+ if errorlevel 1 (
+-  echo Could not open the Ducketz application folder.
++  echo Cannot open folder.
+   pause
+   exit /b 2
+ )
+@@ -15,12 +14,16 @@
+   pause
+   exit /b 2
+ )
+-".venv\Scripts\python.exe" -B -m ml.intraday.live_session --live %*
+-set "DUCKETZ_15M_EXIT=%ERRORLEVEL%"
++(
++".venv\Scripts\python.exe" -I -S -B "tools\trader_session_host.py" --trader intraday %*
++call set "DUCKETZ_TRADER_EXIT=%%ERRORLEVEL%%"
++setlocal EnableDelayedExpansion
+ popd
+-if not "%DUCKETZ_15M_EXIT%"=="0" (
+-  echo The 15-minute trader stopped with exit code %DUCKETZ_15M_EXIT%.
++if not "!DUCKETZ_TRADER_EXIT!"=="0" (
++  echo The 15-minute trader stopped with exit code !DUCKETZ_TRADER_EXIT!.
+   echo Review the reason above before starting it again.
++  echo A pre-existing trader may still be running. This launch never takes over or stops it.
+   pause
+ )
+-exit /b %DUCKETZ_15M_EXIT%
++exit /b !DUCKETZ_TRADER_EXIT!
++)
+--- a/ml/stock_trader/control.py
++++ b/ml/stock_trader/control.py
+@@ -65,6 +65,9 @@
+     if not isinstance(active, bool):
+         raise TypeError("active must be an explicit boolean")
+     target = Path(path or operator_intent_path(datastore_root)).resolve()
++    if not active and target == operator_intent_path(datastore_root):
++        from ml.trader_renewal import latch_manual_stop
++        latch_manual_stop(datastore_root, "gameplan")
+     target.parent.mkdir(parents=True, exist_ok=True)
+     temporary = target.with_suffix(target.suffix + f".tmp-{os.getpid()}")
+     try:
+--- a/ml/stock_trader/gameplan.py
++++ b/ml/stock_trader/gameplan.py
+@@ -87,8 +87,12 @@
+             "gameplan_activation_checksum_sha256": gameplan_checksum,
+         }
+     )
+-    active = broker_intent.active and gameplan_active
+-    if not broker_intent.active:
++    from ml.trader_renewal import managed_execution_allowed
++    session_allowed = managed_execution_allowed()
++    active = broker_intent.active and gameplan_active and session_allowed
++    if not session_allowed:
++        reason = "MANUAL_SESSION_AUTHORITY_ENDED"
++    elif not broker_intent.active:
+         reason = f"BROKER_{broker_intent.reason}"
+     elif not gameplan_active:
+         reason = gameplan_reason
+@@ -110,6 +114,9 @@
+ ) -> Path:
+     if not isinstance(active, bool):
+         raise TypeError("active must be an explicit boolean")
++    if not active:
++        from ml.trader_renewal import latch_manual_stop
++        latch_manual_stop(datastore_root, "gameplan")
+     target = gameplan_stock_activation_path(datastore_root)
+     target.parent.mkdir(parents=True, exist_ok=True)
+     temporary = target.with_suffix(target.suffix + f".tmp-{os.getpid()}")
+--- a/ml/stock_trader/independent_session.py
++++ b/ml/stock_trader/independent_session.py
+@@ -8,6 +8,7 @@
+ import json
+ import os
+ import time
++from contextlib import nullcontext
+ from pathlib import Path
+ 
+ import pandas as pd
+@@ -237,6 +238,7 @@
+     late_opening_date: str | None = None,
+     resume_quote_run: str | None = None,
+     resume_quote_symbol: str | None = None,
++    renewal=None,
+ ) -> dict:
+     """Serve one exchange date, optionally waiting for its opening first.
+ 
+@@ -252,29 +254,46 @@
+     """
+     root = Path(root).resolve()
+     requested_sizing_policy = validate_sizing_policy(sizing_policy)
+-    started = utc(clock())
++    continuation = dict(renewal.state) if renewal is not None else {}
++    if continuation and (
++        continuation.get("schema_version") != "gameplan-session-continuation-v1"
++        or continuation.get("root") != str(root)
++        or continuation.get("requested_sizing_policy") != requested_sizing_policy
++        or continuation.get("execute") is not execute
++        or continuation.get("wait_for_open") is not wait_for_open
++        or continuation.get("late_opening_date") != late_opening_date
++        or continuation.get("resume_quote_run") != resume_quote_run
++        or continuation.get("resume_quote_symbol") != resume_quote_symbol
++    ):
++        raise ValueError("Gameplan continuation differs from its original manual session")
++    started = utc(continuation["started_at"] if continuation else clock())
+     day = started.tz_convert("America/Los_Angeles").normalize()
+-    if wait_for_open:
++    if wait_for_open and not continuation:
+         opening, closing = _next_supported_session_bounds(started)
+         day = opening.normalize()
++    if continuation:
++        # Never choose tomorrow or reset a polling clock in a successor.
++        opening, closing = utc(continuation["opening"]), utc(continuation["closing"])
++        day = utc(continuation["day"]).tz_convert("America/Los_Angeles")
+     sizing_policy = effective_sizing_policy(requested_sizing_policy, day.date())
+     from ml.account_gameplan.config import load_account_config, assert_coordinator, verify_cutover
+     account_config = load_account_config(root)
+     assert_coordinator(account_config, sizing_policy)
+     if account_config is not None:
+         verify_cutover(root, account_config)
+-    recovery_pending = bool(resume_quote_run or resume_quote_symbol)
+-    if recovery_pending:
++    recovery_pending = (bool(continuation["recovery_pending"]) if continuation else
++                        bool(resume_quote_run or resume_quote_symbol))
++    if recovery_pending and not continuation:
+         if not (resume_quote_run and resume_quote_symbol and sizing_policy == GAMEPLAN_SIZING_POLICY) or late_opening_date:
+             raise ValueError("Quote recovery requires a run and symbol with the Gameplan policy")
+         from ml.stock_trader.quote_recovery import load_quote_recovery
+         load_quote_recovery(root, resume_quote_run, resume_quote_symbol, as_of=started)
+-    if late_opening_date is not None:
++    if late_opening_date is not None and not continuation:
+         from ml.stock_trader.gameplan import validate_late_opening_date
+         if sizing_policy != GAMEPLAN_SIZING_POLICY:
+             raise ValueError('Late opening requires the explicitly selected Gameplan policy')
+         validate_late_opening_date(late_opening_date, started)
+-    if not wait_for_open:
++    if not wait_for_open and not continuation:
+         opening = day + pd.Timedelta(hours=4)
+         closing = day + pd.Timedelta(hours=17)
+         if not stock_execution_window(opening).executable:
+@@ -283,13 +302,16 @@
+             return {"status": "NOOP_SESSION_FINISHED", "orders_submitted": 0}
+         if started < opening - pd.Timedelta(minutes=5):
+             raise ValueError("Start the bounded worker at or after 03:55 Pacific on its action date")
+-    attempted = set()
+-    calls = submitted = 0
+-    failed_cycles = consecutive_failures = 0
+-    last_cycle = None
++    attempted = set(continuation.get("attempted", ()))
++    calls = continuation.get("calls", 0)
++    submitted = continuation.get("submitted", 0)
++    failed_cycles = continuation.get("failed_cycles", 0)
++    consecutive_failures = continuation.get("consecutive_failures", 0)
++    last_cycle = continuation.get("last_cycle")
+     worker_error_diagnostics = None
+-    runtime_lock_wait = None
+-    deferred_entry_slot = None
++    runtime_lock_wait = continuation.get("runtime_lock_wait")
++    deferred_entry_slot = continuation.get("deferred_entry_slot")
++    preflight_completed = bool(continuation.get("preflight_completed", False))
+     status_path = root / "state/independent-stock-trader/session-status.json"
+ 
+     def publish_status(status):
+@@ -306,36 +328,78 @@
+             "runtime_lock_wait": runtime_lock_wait}
+         if worker_error_diagnostics is not None:
+             payload["worker_error_diagnostics"] = worker_error_diagnostics
++        if renewal is not None:
++            payload.update(session_id=getattr(renewal, "session_id", None),
++                           worker_generation=getattr(renewal, "generation", None))
+         _write_json_atomic(status_path, payload)
+ 
+-    with exclusive_runtime_lock(root / "locks/independent-stock-session.lock", process_name="independent-stock-session"):
+-        if not read_gameplan_stock_activation_intent(root).active:
++    def manually_stopped():
++        return ((renewal is not None and renewal.stopped())
++                or not read_gameplan_stock_activation_intent(root).active)
++
++    def handoff(next_poll_at):
++        # A completed runner has closed its ExitStack, releasing the execution
++        # lease and hourly lock after durable order/result writes. Resting orders
++        # remain untouched; only the process-local polling cursor is checkpointed.
++        if manually_stopped():
+             publish_status("STOPPED_TRADER_INACTIVE")
+-            return {"status": "SESSION_STOPPED_TRADER_INACTIVE", "calls": 0, "orders_submitted": 0}
++            return {"status": "SESSION_STOPPED_TRADER_INACTIVE", "calls": calls,
++                    "orders_submitted": submitted}
++        state = {"schema_version": "gameplan-session-continuation-v1", "root": str(root),
++                 "started_at": started.isoformat(), "day": day.isoformat(),
++                 "opening": utc(opening).isoformat(), "closing": utc(closing).isoformat(),
++                 "execute": execute, "requested_sizing_policy": requested_sizing_policy,
++                 "wait_for_open": wait_for_open, "late_opening_date": late_opening_date,
++                 "resume_quote_run": resume_quote_run, "resume_quote_symbol": resume_quote_symbol,
++                 "recovery_pending": recovery_pending, "attempted": sorted(attempted),
++                 "calls": calls, "submitted": submitted, "failed_cycles": failed_cycles,
++                 "consecutive_failures": consecutive_failures, "last_cycle": last_cycle,
++                 "runtime_lock_wait": runtime_lock_wait, "deferred_entry_slot": deferred_entry_slot,
++                 "preflight_completed": preflight_completed}
++        publish_status("PLANNED_RENEWAL")
++        renewal.checkpoint(state, utc(next_poll_at).isoformat())
++        return {"status": "PLANNED_RENEWAL", "calls": calls, "orders_submitted": submitted}
++
++    # The manual controller retains this legacy lock across generations, also
++    # excluding old launch paths during the gap when no worker is running.
++    session_lock = (nullcontext() if renewal is not None else
++                    exclusive_runtime_lock(root / "locks/independent-stock-session.lock", process_name="independent-stock-session"))
++    with session_lock:
++        if manually_stopped():
++            publish_status("STOPPED_TRADER_INACTIVE")
++            return {"status": "SESSION_STOPPED_TRADER_INACTIVE", "calls": calls, "orders_submitted": submitted}
+         if wait_for_open and utc(clock()) < opening:
+             reporter(json.dumps({"status": "SLEEPING_UNTIL_OPEN", "pid": os.getpid(),
+                 "status_path": str(status_path), "action_date": day.date().isoformat(),
+                 "wakes_at": opening.isoformat(), "sizing_policy": sizing_policy}, sort_keys=True))
+             try:
+                 while (now := utc(clock())) < opening:
+-                    if not read_gameplan_stock_activation_intent(root).active:
++                    if manually_stopped():
+                         publish_status("STOPPED_TRADER_INACTIVE")
+                         return {"status": "SESSION_STOPPED_TRADER_INACTIVE", "calls": 0, "orders_submitted": 0}
+                     publish_status("SLEEPING_UNTIL_OPEN")
++                    if renewal is not None:
++                        return handoff(min(opening, now + pd.Timedelta(seconds=30)))
+                     sleep(min(30., max(0., (opening - now).total_seconds())))
+             except KeyboardInterrupt:
+                 publish_status("STOPPED_INTERRUPTED")
+                 return {"status": "SESSION_STOPPED_INTERRUPTED", "calls": 0, "orders_submitted": 0}
+             # The publication can change while the nightly workflow finishes.
+             # Read it only after waking, without claiming a missed entry slot.
+-            if not read_gameplan_stock_activation_intent(root).active:
++            if manually_stopped():
+                 publish_status("STOPPED_TRADER_INACTIVE")
+                 return {"status": "SESSION_STOPPED_TRADER_INACTIVE", "calls": 0, "orders_submitted": 0}
+             if utc(clock()) >= closing:
+                 publish_status("FINISHED")
+                 return {"status": "SESSION_FINISHED", "calls": 0, "orders_submitted": 0,
+                         "reason": "SESSION_ELAPSED_WHILE_SLEEPING"}
+-        if not _has_inventory(root / LEDGER_RELATIVE_PATH):
++        if utc(clock()) >= closing:
++            publish_status("FINISHED_WITH_ERRORS" if consecutive_failures else "FINISHED")
++            return {"status": "SESSION_FINISHED_WITH_ERRORS" if consecutive_failures else "SESSION_FINISHED",
++                    "calls": calls, "orders_submitted": submitted, "failed_cycles": failed_cycles,
++                    "consecutive_failures": consecutive_failures,
++                    "unclosed_allocations": _has_inventory(root / LEDGER_RELATIVE_PATH)}
++        if not preflight_completed and not _has_inventory(root / LEDGER_RELATIVE_PATH):
+             forecast_sizing = sizing_policy in {FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY}
+             from ml.stock_trader.gameplan_execution import execution_preflight
+             preflight = (execution_preflight if sizing_policy == GAMEPLAN_SIZING_POLICY else
+@@ -345,11 +409,12 @@
+                 publish_status("BLOCKED_PREFLIGHT")
+                 return {"status": "NOOP_STOCK_FORECASTS_NOT_QUALIFIED" if forecast_sizing else "NOOP_ENRICHMENT_NOT_QUALIFIED", "calls": 0,
+                         "orders_submitted": 0, "enrichment_readiness": readiness}
++        preflight_completed = True
+         publish_status("RUNNING")
+-        reporter(json.dumps({"status": "SESSION_STARTED", "pid": os.getpid(),
++        reporter(json.dumps({"status": "SESSION_CONTINUED" if continuation else "SESSION_STARTED", "pid": os.getpid(),
+             "status_path": str(status_path), "closes_at": closing.isoformat(), "sizing_policy": sizing_policy}, sort_keys=True))
+         while (now := utc(clock())) < closing:
+-            if not read_gameplan_stock_activation_intent(root).active:
++            if manually_stopped():
+                 publish_status("STOPPED_TRADER_INACTIVE")
+                 return {"status": "SESSION_STOPPED_TRADER_INACTIVE", "calls": calls, "orders_submitted": submitted}
+             local = now.tz_convert("America/Los_Angeles")
+@@ -384,6 +449,10 @@
+                     sizing_options['late_opening_date'] = late_opening_date
+                 if recover_now:
+                     sizing_options.update(resume_quote_run=resume_quote_run, resume_quote_symbol=resume_quote_symbol)
++                if manually_stopped():
++                    publish_status("STOPPED_TRADER_INACTIVE")
++                    return {"status": "SESSION_STOPPED_TRADER_INACTIVE", "calls": calls,
++                            "orders_submitted": submitted}
+                 try:
+                     result = runner(root, execute=execute, entries=due_entry or recover_now, runtime_clock=clock, session_managed=True, **sizing_options)
+                 except Exception as exc:
+@@ -458,6 +527,8 @@
+             seconds = 5 if local.minute in {0, 1, 5, 6, 59} and has_inventory else 30
+             remaining = max(0., (closing - utc(clock())).total_seconds())
+             if remaining:
++                if renewal is not None:
++                    return handoff(min(closing, utc(clock()) + pd.Timedelta(seconds=seconds)))
+                 sleep(min(seconds, remaining))
+         publish_status("FINISHED_WITH_ERRORS" if consecutive_failures else "FINISHED")
+     return {"status": "SESSION_FINISHED_WITH_ERRORS" if consecutive_failures else "SESSION_FINISHED",
+--- a/ml/intraday/live_session.py
++++ b/ml/intraday/live_session.py
+@@ -220,7 +220,7 @@
+ 
+ 
+ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
+-                     clock=utcnow, pause=time.sleep, close_at=None):
++                     clock=utcnow, pause=time.sleep, close_at=None, renewal=None):
+     """New quarters receive a turn before one due recovery symbol.
+ 
+     Only missing data prerequisites retry automatically. Already issued model
+@@ -228,8 +228,16 @@
+     No missed-quarter forecast or older fitted model is invented.
+     """
+     saved = _session_cycles(runner.store, queue.session_id)
+-    last = max((instant(c["reference_at"]) for _, c in saved), default=None)
+-    recovery_due = False
++    saved_last = max((instant(c["reference_at"]) for _, c in saved), default=None)
++    continuation = renewal.state if renewal is not None else {}
++    last = instant(continuation["last_reference"]) if continuation.get("last_reference") else saved_last
++    recovery_due = bool(continuation.get("recovery_due", False))
++    def completed_pass():
++        if renewal is not None:
++            renewal.checkpoint({"last_reference": last.isoformat() if last else None,
++                                "recovery_due": recovery_due},
++                               (instant(clock()) + timedelta(seconds=1)).isoformat())
++        pause(1)
+     storage_stopped = lambda: stopped() or (close_at is not None and instant(clock()) >= instant(close_at))
+     while not stopped():
+         if close_at is not None and instant(clock()) >= instant(close_at):
+@@ -260,11 +268,11 @@
+             if not eligible_reference(reference):
+                 runner.store.event(queue.session_id,"closed_or_unspecified_edge",
+                                    {"reference_at":reference.isoformat(),"orders_submitted":0})
+-                pause(1); continue
++                completed_pass(); continue
+         else:
+             pending = _pending_cycle_passes(runner.store, queue.session_id, clock())
+             if not pending:
+-                pause(1); continue
++                completed_pass(); continue
+             _, cycle, retry_symbols = pending[0]
+             reference = instant(cycle["reference_at"])
+         incoming = LiveHistories(histories=histories,provider=provider,store=runner.store,journal=journal,
+@@ -307,11 +315,11 @@
+                 stopped=storage_stopped,pause=pause)
+         if retry_symbols is None:
+             recovery_due = True
+-        pause(1)
++        completed_pass()
+ 
+ 
+ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
+-                 clock=utcnow, pause=time.sleep, close_at=None, actor="Atlas"):
++                 clock=utcnow, pause=time.sleep, close_at=None, actor="Atlas", renewal=None):
+     """Fetch exact due outcomes independently, including after the last entry.
+ 
+     Acquisition retry evidence is durable. This never submits an order, changes
+@@ -319,7 +327,7 @@
+     Local copies of the history mapping keep scoring out of the training writer.
+     """
+     from .data import completed_15m_observation, synthetic_continuity_verified
+-    audited = set()
++    audited = set(renewal.state.get("audited", ())) if renewal is not None else set()
+     interrupted = lambda: stopped() or (close_at is not None and instant(clock()) >= instant(close_at))
+     def storage(operation, action):
+         return retry_scoring_storage(action, store=store, session_id=session_id,
+@@ -427,6 +435,9 @@
+                 observe("observe_acquired_target", forecast, candle=observed)
+             finally:
+                 drain_retained_targets()
++        if renewal is not None:
++            renewal.checkpoint({"audited": sorted(audited)},
++                               (instant(clock()) + timedelta(seconds=3)).isoformat())
+         pause(3)
+ 
+ 
+@@ -435,6 +446,262 @@
+     from .final_scoring import score_saved_session_outcomes as finalize
+     return finalize(store, session_id=session_id, actor=actor, symbols=symbols,
+                     as_of=as_of, stopped=stopped)
++
++
++def initialize_renewal_session(*, repository, datastore, profile, watchlist, config, clock=utcnow):
++    """Freeze one manually admitted session, without opening any provider.
++
++    The controller owns the existing manual-session lock for this entire
++    lifetime. A successor receives this envelope; it never calls this function
++    again or changes the scientific configuration of an unfinished cycle.
++    """
++    from dataclasses import asdict
++    from .local_execution import load_local_binding
++
++    root = Path(datastore)
++    effective = with_local_data_policy(config, root).validate()
++    pc, symbols = local_symbols(profile, watchlist, root)
++    binding = load_local_binding(root)
++    if binding.actor != pc or set(binding.symbols) != set(symbols):
++        raise ContractError("Independent local execution binding does not match profile")
++    if effective.source_dataset != "EQUS.MINI":
++        raise ContractError("Existing single-source live provider binding required")
++    started = instant(clock())
++    return dict(session_id="manual-" + pc.lower() + "-15m:" + uuid.uuid4().hex,
++                started_at=started.isoformat(), close_at=market_close_at(started).isoformat(),
++                actor=pc, symbols=list(symbols), config=asdict(effective),
++                binding_fingerprint=binding.fingerprint)
++
++
++def _renewal_histories(root, store, session, config):
++    """Load retained observations only when an admitted pass needs a symbol.
++
++    Idle fresh interpreters must not repeatedly read every original history.
++    Within a generation the existing acquisition code can augment the mapping;
++    the original session cutoff and each cycle's frozen inputs stay unchanged.
++    """
++    from .data import load_local_history
++    from .coverage import RECOVERY_POPULATION_CONTRACT
++
++    class Histories(dict):
++        def __init__(self):
++            super().__init__()
++            self.missing = set()
++            self.loading = threading.RLock()
++
++        def _load(self, symbol):
++            with self.loading:
++                if super().__contains__(symbol) or symbol in self.missing or symbol not in session["symbols"]:
++                    return
++                try:
++                    self[symbol] = load_local_history(root, symbol, source_dataset=config.source_dataset,
++                        **({"population_contract": config.population_contract} if config.population_contract else {}),
++                        **({"recovery_cutoff": instant(session["started_at"])}
++                           if config.population_contract == RECOVERY_POPULATION_CONTRACT else {}))
++                except Exception as exc:
++                    self.missing.add(symbol)
++                    store.event(session["session_id"], "history_unavailable",
++                                {"error_type": type(exc).__name__, "message": str(exc)}, symbol=symbol)
++
++        def __getitem__(self, symbol):
++            self._load(symbol)
++            return super().__getitem__(symbol)
++
++        def __contains__(self, symbol):
++            self._load(symbol)
++            return super().__contains__(symbol)
++
++        def get(self, symbol, default=None):
++            self._load(symbol)
++            return super().get(symbol, default)
++
++        def values(self):
++            # Legacy LiveHistories can infer its population contract from the
++            # retained manifests, but only after a real cycle was admitted.
++            for symbol in session["symbols"]:
++                self._load(symbol)
++            return super().values()
++
++        def __iter__(self):
++            for symbol in session["symbols"]:
++                self._load(symbol)
++            return super().__iter__()
++
++    return Histories()
++
++
++def _renewal_execution_pass(*, store, queue, executor, renewal, clock):
++    """One complete multi-symbol execution sweep and due own-order recovery.
++
++    Each step has already committed its intentions, reservations, receipts and
++    fills and released its execution lease before this function checkpoints.
++    Resting or UNKNOWN orders do not delay renewal or get resubmitted by it.
++    """
++    from .account_execution import execution_failure_evidence
++    from .cancellation import retry_delay
++
++    session = renewal.session
++    close_at = instant(session["close_at"])
++    next_recovery = instant(renewal.state.get("next_recovery", session["started_at"]))
++    if renewal.stopped():
++        return {"status": "STOPPED", "role": "execution"}
++    if instant(clock()) >= close_at:
++        return {"status": "COMPLETED", "role": "execution"}
++    for forecast in queue.due(clock()):
++        if renewal.stopped() or instant(clock()) >= close_at or not queue.broker_due(clock()):
++            break
++        try:
++            result = executor.step(forecast)
++            store.event(session["session_id"], "execution_step", result, symbol=forecast["symbol"])
++            print(json.dumps({"event": "execution_disposition", "symbol": forecast["symbol"],
++                **{key: result.get(key) for key in ("side", "desired_quantity", "adjusted_quantity",
++                    "disposition", "submission_status", "submitted_quantity", "filled_quantity")}}), flush=True)
++            disposition = result["disposition"]
++            if disposition == "previous_intention_reconciliation" or result["evidence"].get("proven_unsent_retry_eligible"):
++                unknown_without_broker_wait = (
++                    disposition == "previous_intention_reconciliation"
++                    and result["evidence"].get("reason_code") == "EXACT_BROKER_ORDER_ID_UNAVAILABLE"
++                    and result["evidence"].get("retry_after_seconds") is None
++                    and not result["evidence"].get("proven_unsent_retry_eligible"))
++                queue.defer(forecast["forecast_id"], now=clock(),
++                    seconds=result["evidence"].get("retry_after_seconds") or 3,
++                    broker_wait=not unknown_without_broker_wait)
++            elif disposition == "submission_recovery_required":
++                queue.broker_wait(now=clock(), seconds=result["evidence"].get("retry_after_seconds") or 3)
++                queue.complete(forecast["forecast_id"], disposition)
++            elif result["kind"] == "sizing_unavailable":
++                if disposition == "quote_stale_or_future" and instant(clock()) < instant(forecast["target_close"]):
++                    queue.defer(forecast["forecast_id"], now=clock(), seconds=3, broker_wait=False)
++                else:
++                    queue.complete(forecast["forecast_id"], "sizing_unavailable")
++            else:
++                queue.complete(forecast["forecast_id"], disposition)
++        except Exception as exc:
++            delay = retry_delay(exc, clock())
++            queue.defer(forecast["forecast_id"], now=clock(), seconds=delay, broker_wait=True)
++            store.event(session["session_id"], "execution_retry", {
++                "forecast_id": forecast["forecast_id"], "error_type": type(exc).__name__,
++                "message": str(exc), "retry_after_seconds": delay,
++                "diagnostics": execution_failure_evidence(exc)}, symbol=forecast["symbol"])
++            break
++    if (not renewal.stopped() and instant(clock()) < close_at
++            and instant(clock()) >= next_recovery and queue.broker_due(clock())):
++        try:
++            executor.recover()
++            delay = 3
++        except Exception as exc:
++            delay = retry_delay(exc, clock())
++            queue.broker_wait(now=clock(), seconds=delay)
++            store.event(session["session_id"], "order_recovery_retry", {
++                "error_type": type(exc).__name__, "message": str(exc), "retry_after_seconds": delay,
++                "diagnostics": execution_failure_evidence(exc)})
++        next_recovery = instant(clock()) + timedelta(seconds=delay)
++    if renewal.stopped():
++        return {"status": "STOPPED", "role": "execution"}
++    if instant(clock()) >= close_at:
++        return {"status": "COMPLETED", "role": "execution"}
++    renewal.checkpoint({"next_recovery": next_recovery.isoformat()},
++                       (instant(clock()) + timedelta(seconds=1)).isoformat())
++    raise RuntimeError("Renewal checkpoint must end the worker")
++
++
++def run_renewal_lane(role, *, repository, datastore, profile, watchlist, renewal,
++                     clock=utcnow, sleep=time.sleep):
++    """Run one independently renewable lane in an already manual session.
++
++    Only the execution lane constructs a broker or has execution authority.
++    Research, scoring and collection can finish their full passes concurrently
++    without blocking execution or restarting between individual symbols.
++    """
++    from .local_execution import load_local_binding
++    from dotenv import load_dotenv
++
++    if role not in {"execution", "forecast", "scoring", "candles", "market_inputs"}:
++        raise ContractError("Unknown manual-session renewal lane")
++    root, repository = Path(datastore), Path(repository)
++    session = renewal.session
++    pc, symbols = local_symbols(profile, watchlist, root)
++    binding = load_local_binding(root)
++    if (pc != session["actor"] or list(symbols) != session["symbols"]
++            or binding.actor != pc or set(binding.symbols) != set(symbols)
++            or binding.fingerprint != session["binding_fingerprint"]):
++        raise ContractError("Manual session local membership changed")
++    if renewal.stopped():
++        return {"status": "STOPPED", "role": role}
++    config_fields = dict(session["config"])
++    config_fields["models"] = tuple(config_fields["models"])
++    config = ResearchConfig(**config_fields).validate()
++    close_at = instant(session["close_at"])
++    if role != "candles" and instant(clock()) >= close_at:
++        return {"status": "COMPLETED", "role": role}
++    load_dotenv(repository / ".env")
++    store = ShadowStore(root / "intraday/shadow.sqlite3")
++    queue = ExecutionQueue(store, session["session_id"], actor=pc)
++
++    def pause(seconds):
++        end = time.monotonic() + max(0, float(seconds))
++        while time.monotonic() < end:
++            if renewal.stopped():
++                raise InterruptedError("Manual session stopped; durable work retained")
++            sleep(min(1, max(0, end - time.monotonic())))
++
++    if role == "execution":
++        from .account_execution import IntradayAccountExecutor
++        from app.services.schwab import SchwabSession
++        executor = IntradayAccountExecutor(datastore=root, store=store, broker=SchwabSession(),
++            local_symbols=symbols, session_started_at=instant(session["started_at"]), clock=clock,
++            manual_authority=lambda: not renewal.stopped() and instant(clock()) < close_at,
++            actor=pc, stopped=renewal.stopped, diagnostic_session_id=session["session_id"])
++        renewal.wait_due(clock=clock, sleep=sleep)
++        return _renewal_execution_pass(store=store, queue=queue, executor=executor, renewal=renewal, clock=clock)
++
++    if role == "market_inputs":
++        if not config.market_inputs_enabled:
++            return {"status": "COMPLETED", "role": role}
++        from .market_input_runtime import renewal_market_input_pass
++        try:
++            return renewal_market_input_pass(root=root, symbols=symbols, store=store,
++                renewal=renewal, clock=clock, config=config, sleep=sleep)
++        except Exception as exc:
++            if renewal.stopped():
++                return {"status": "STOPPED", "role": role}
++            # This lane was optional in the original threaded session: source
++            # failures never revoke core forecast/order authority. Record the
++            # failure and end this lane; do not manufacture a blind retry loop.
++            evidence = {"error_type": type(exc).__name__, "core_forecasts_continue": True,
++                        "automatic_lane_restart": False}
++            try:
++                store.event(session["session_id"], "market_input_worker_failed", evidence)
++            except Exception:
++                print(encoded({"event": "market_input_worker_failed", **evidence}), flush=True)
++            return {"status": "COMPLETED", "role": role, "optional_input_status": "FAILED", **evidence}
++
++    from .data import AcquisitionJournal
++    from app.services.databento_market_data import DatabentoMarketDataProvider
++    histories = _renewal_histories(root, store, session, config)
++    provider = DatabentoMarketDataProvider()
++    if provider.dataset != config.source_dataset:
++        raise ContractError("Provider binding differs from selected single source")
++    journal = AcquisitionJournal(root / "intraday/acquisition.sqlite3")
++    renewal.wait_due(clock=clock, sleep=sleep)
++    try:
++        if role == "forecast":
++            runner = ShadowRunner(store=store, pc=pc, symbols=symbols, config=config, clock=clock,
++                stopped=lambda: renewal.stopped() or instant(clock()) >= close_at)
++            forecasting_loop(runner, histories=histories, provider=provider, journal=journal, queue=queue,
++                stopped=renewal.stopped, clock=clock, pause=pause, close_at=close_at, renewal=renewal)
++        elif role == "scoring":
++            scoring_loop(store, histories=histories, provider=provider, journal=journal,
++                session_id=session["session_id"], stopped=renewal.stopped, clock=clock, pause=pause,
++                close_at=close_at, actor=pc, renewal=renewal)
++        else:
++            from .candle_runtime import renewal_candle_pass
++            return renewal_candle_pass(store=store, histories=histories, provider=provider, journal=journal,
++                renewal=renewal, config=config, clock=clock, pause=pause)
++    except InterruptedError:
++        if not renewal.stopped() and (role == "candles" or instant(clock()) < close_at):
++            raise
++    return {"status": "STOPPED" if renewal.stopped() else "COMPLETED", "role": role}
+ 
+ 
+ _STARTUP_STAGES = frozenset({
+--- a/docs/development/independent-traders.md
++++ b/docs/development/independent-traders.md
+@@ -108,3 +108,13 @@
+ assumptions. Jeremy still manually starts each trader. Preserve all trader
+ manual stops; nightly preparation never starts, restarts or places trades
+ through a trader.
++
++## Authorized process continuation — October 26, 2026
++
++Jeremy's manual initial start authorizes safe automatic worker renewal after
++each complete iteration within that same session; see
++[process renewal](trader-process-renewal.md). A manual stop stops the entire
++session permanently until Jeremy starts another one. This scoped direction
++supersedes blanket restart prohibitions for planned continuation only. It adds
++no initial unattended start, reboot start, lifetime extension or cross-trader
++dependency. Nightly preparation remains independent and never starts trading.
+--- a/docs/development/atlas-scheduled-tasks.md
++++ b/docs/development/atlas-scheduled-tasks.md
+@@ -63,3 +63,15 @@
+ no peer approval, source-transition wait, cross-trader dependency or automatic
+ trader start. Windows dispatch and trader processes were not changed or run by
+ this prompt update. Scout records its own native adoption separately.
++
++## October 26 manual-session renewal instructions
++
++The [renewal direction](trader-process-renewal.md) is now an authoritative prefix
++on the same twelve existing equity-related Atlas automations. Native readback
++verified each prior prompt remains an exact suffix; only prompt/update time
++changed. All task identities, schedules, model settings, notification policies,
++workspace bindings, target chats and memories were preserved: ten ACTIVE, two
++PAUSED. No task was added or run. The permission covers automatic continuation
++inside a manually started session, never initial starts or starts after stops.
++Existing source owners seal a complete reviewed local generation after source
++or dependency adoption so fresh workers load completed installations.
+--- a/tests/test_manual_trader_launchers.py
++++ b/tests/test_manual_trader_launchers.py
+@@ -28,11 +28,23 @@
+     source = root / "runtime.cs"
+     source.write_text(r'''
+ using System;
++using System.IO;
++using System.Threading;
+ class SyntheticRuntime {
+     static int Main(string[] args) {
+         Console.WriteLine("SYNTHETIC_RUNTIME_ONLY");
+         Console.WriteLine("CWD=" + Environment.CurrentDirectory);
+         for (int i=0; i<args.Length; i++) Console.WriteLine("ARG["+i+"]="+args[i]);
++        string log = Environment.GetEnvironmentVariable("DUCKETZ_FIXTURE_LOG");
++        if (log != null) File.AppendAllText(log, "invoked\n");
++        string ready = Environment.GetEnvironmentVariable("DUCKETZ_FIXTURE_READY");
++        string release = Environment.GetEnvironmentVariable("DUCKETZ_FIXTURE_RELEASE");
++        if (ready != null && release != null) {
++            File.WriteAllText(ready, "waiting");
++            DateTime deadline = DateTime.UtcNow.AddSeconds(30);
++            while (!File.Exists(release) && DateTime.UtcNow < deadline) Thread.Sleep(20);
++            if (!File.Exists(release)) return 90;
++        }
+         return Int32.Parse(Environment.GetEnvironmentVariable("DUCKETZ_FIXTURE_EXIT") ?? "0");
+     }
+ }
+@@ -143,7 +155,7 @@
+     assert result.returncode == 0, result.stdout + result.stderr
+     assert "SYNTHETIC_RUNTIME_ONLY" in result.stdout
+     assert "CWD=" + str(checkout) in result.stdout
+-    expected = ["-B", "-m", "ml.intraday.live_session", "--live", "--fixture-token", "value with spaces"]
++    expected = ["-I", "-S", "-B", "tools\\trader_session_host.py", "--trader", "intraday", "--fixture-token", "value with spaces"]
+     assert all(f"ARG[{i}]={value}" in result.stdout for i, value in enumerate(expected))
+     assert "15-minute trader - manual start" in result.stdout
+     assert "If console text is selected, press Esc first" in result.stdout
+@@ -166,20 +178,137 @@
+     assert "SYNTHETIC_RUNTIME_ONLY" not in output
+ 
+ 
+-def test_gameplan_double_click_failure_retains_manual_flags_and_reason(tmp_path):
+-    checkout, unrelated = _copy_launcher(tmp_path, "Start-Gameplan-Trader.cmd")
++def test_gameplan_double_click_failure_retains_manual_flags_and_reason(tmp_path, synthetic_python):
++    checkout, unrelated = _copy_launcher(tmp_path, "Start-Gameplan-Trader.cmd", synthetic_python)
+     output = _paused_failure(checkout / "Start-Gameplan-Trader.cmd", unrelated,
+                              "A pre-existing trader may still be running", 7)
+-    assert "SYNTHETIC_GAMEPLAN_ONLY" in output
+-    assert "SCRIPT_ROOT=" + str(checkout / "docs/datafetch-ml") in output
+-    assert "WAIT=True;POLICY=gameplan-direction-current-market-v1;MANUAL=True" in output
++    assert "SYNTHETIC_RUNTIME_ONLY" in output
++    expected = ["-I", "-S", "-B", "tools\\trader_session_host.py", "--trader", "gameplan"]
++    assert all(f"ARG[{i}]={value}" in output for i, value in enumerate(expected))
+     assert "stopped with exit code 7" in output
+     assert "If console text is selected, press Esc first" in output
+ 
+ 
+-def test_gameplan_success_returns_without_failure_pause(tmp_path):
+-    checkout, unrelated = _copy_launcher(tmp_path, "Start-Gameplan-Trader.cmd", gameplan_exit=0)
++def test_gameplan_success_returns_without_failure_pause(tmp_path, synthetic_python):
++    checkout, unrelated = _copy_launcher(tmp_path, "Start-Gameplan-Trader.cmd", synthetic_python)
+     result = _run(checkout / "Start-Gameplan-Trader.cmd", unrelated)
+     assert result.returncode == 0, result.stdout + result.stderr
+-    assert "SYNTHETIC_GAMEPLAN_ONLY" in result.stdout
+-    assert "startup was blocked" not in result.stdout
++    assert "SYNTHETIC_RUNTIME_ONLY" in result.stdout
++    assert "stopped with exit code" not in result.stdout
++
++
++# Exact reviewed pre-renewal launcher source, captured before installation.
++# Keep this fixture independent of whichever version is currently installed.
++LEGACY_LAUNCHERS = {
++    "Start-15m-Trader.cmd": r'''@echo off
++setlocal
++title Ducketz 15-minute trader
++echo Ducketz 15-minute trader - manual start.
++echo To stop, press Ctrl+C. If console text is selected, press Esc first.
++pushd "%~dp0"
++if errorlevel 1 (
++  echo Could not open the Ducketz application folder.
++  pause
++  exit /b 2
++)
++if not exist ".venv\Scripts\python.exe" (
++  echo Ducketz Python environment is missing.
++  popd
++  pause
++  exit /b 2
++)
++".venv\Scripts\python.exe" -B -m ml.intraday.live_session --live %*
++set "DUCKETZ_15M_EXIT=%ERRORLEVEL%"
++popd
++if not "%DUCKETZ_15M_EXIT%"=="0" (
++  echo The 15-minute trader stopped with exit code %DUCKETZ_15M_EXIT%.
++  echo Review the reason above before starting it again.
++  pause
++)
++exit /b %DUCKETZ_15M_EXIT%
++''',
++    "Start-Gameplan-Trader.cmd": r'''@echo off
++setlocal
++title Ducketz Gameplan trader
++rem Manual start: finish account setup, then run or wait for the supported stock session.
++rem Ctrl-C or closing this manual launcher stops its verified trader process.
++echo Ducketz Gameplan trader - manual start.
++echo To stop, press Ctrl+C. If console text is selected, press Esc first.
++powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0docs\datafetch-ml\start_stock_session.ps1" -WaitForOpen -SizingPolicy gameplan-direction-current-market-v1 -ActivateForManualStart
++set "traderExitCode=%errorlevel%"
++if not "%traderExitCode%"=="0" (
++    echo Trader startup was blocked or the worker stopped with exit code %traderExitCode%.
++    echo Review the reason above. A pre-existing trader may still be running; use the reported worker identity before trying again.
++    pause
++)
++exit /b %traderExitCode%
++''',
++}
++
++
++@pytest.mark.parametrize("name", list(LEGACY_LAUNCHERS))
++@pytest.mark.parametrize("initial_version", ["legacy", "renewal"])
++@pytest.mark.parametrize("old_newline", [b"\n", b"\r\n"])
++@pytest.mark.parametrize("new_newline", [b"\n", b"\r\n"])
++def test_atomic_install_during_running_launcher_never_launches_again(
++    tmp_path, synthetic_python, name, initial_version, old_newline, new_newline,
++):
++    """A returned child must never reach a new invocation through cmd's byte cursor."""
++    checkout, unrelated = _copy_launcher(tmp_path, name, synthetic_python)
++    launcher = checkout / name
++    current = launcher.read_bytes().replace(b"\r\n", b"\n")
++    old = LEGACY_LAUNCHERS[name].encode("ascii") if initial_version == "legacy" else current
++    launcher.write_bytes(old.replace(b"\n", old_newline))
++    replacement = current.replace(b"\n", new_newline)
++    if initial_version == "legacy":
++        invocation = b"-m ml.intraday.live_session" if "15m" in name else b"powershell.exe"
++        old_bytes = launcher.read_bytes()
++        resume_at = old_bytes.index(old_newline, old_bytes.index(invocation)) + len(old_newline)
++        end = replacement.index(new_newline, replacement.index(b'".venv\\Scripts\\python.exe" -I'))
++        assert end + len(new_newline) < resume_at
++    else:
++        # Deliberately move the successor's call beyond the suspended cursor.
++        # The already parsed terminal block must exit without reading it.
++        replacement = (b"rem Updated banner padding" + new_newline) * 40 + replacement
++    if "Gameplan" in name:
++        script = checkout / "docs/datafetch-ml/start_stock_session.ps1"
++        script.write_text(r'''
++param([switch]$WaitForOpen,[string]$SizingPolicy,[switch]$ActivateForManualStart)
++& "$PSScriptRoot\..\..\.venv\Scripts\python.exe" legacy-gameplan
++exit $LASTEXITCODE
++''', encoding="utf-8")
++    ready, release, log = (tmp_path / item for item in ("ready", "release", "invocations"))
++    process = subprocess.Popen(
++        _command(launcher), cwd=unrelated,
++        env=dict(os.environ, DUCKETZ_FIXTURE_EXIT="0", DUCKETZ_FIXTURE_READY=str(ready),
++                 DUCKETZ_FIXTURE_RELEASE=str(release), DUCKETZ_FIXTURE_LOG=str(log)),
++        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
++        text=True, creationflags=subprocess.CREATE_NO_WINDOW,
++    )
++    try:
++        deadline = time.monotonic() + 15
++        while not ready.exists():
++            assert process.poll() is None, "Synthetic child did not start"
++            assert time.monotonic() < deadline, "Synthetic child did not reach its wait"
++            time.sleep(0.02)
++        candidate = checkout / "replacement.cmd"
++        candidate.write_bytes(replacement)
++        os.replace(candidate, launcher)
++        release.write_text("stop complete", encoding="ascii")
++        output, _ = process.communicate(input="\n", timeout=15)
++        assert log.read_text().splitlines() == ["invoked"], output
++        if initial_version == "renewal":
++            assert process.returncode == 0, output
++    finally:
++        release.touch(exist_ok=True)
++        if process.poll() is None:
++            process.kill()  # Only the disposable copied cmd fixture.
++            process.communicate(timeout=5)
++
++
++@pytest.mark.parametrize("name", list(LEGACY_LAUNCHERS))
++def test_buffered_launcher_preserves_literal_exclamation_arguments(tmp_path, synthetic_python, name):
++    checkout, unrelated = _copy_launcher(tmp_path, name, synthetic_python)
++    result = _run(checkout / name, unrelated, arguments='--fixture-token "literal!token (value)"')
++    assert result.returncode == 0, result.stdout + result.stderr
++    assert "ARG[7]=literal!token (value)" in result.stdout
+--- a/app/services/schwab_token_store.py
++++ b/app/services/schwab_token_store.py
+@@ -28,14 +28,37 @@
+ _TOKEN_CACHE_LOCK_STATE = threading.local()
+ 
+ 
++def configure_local_repository(repository: Path | str) -> None:
++    """Bind a frozen worker to the original application's private token cache.
++
++    Call before constructing a client. The immutable source generation must
++    never acquire a separate credential cache or lock. Ordinary application
++    imports retain the existing project-local default.
++    """
++
++    path = Path(repository)
++    if not path.is_absolute():
++        raise ValueError("The local repository binding must be absolute")
++    target = path.resolve() / "data" / "schwab_tokens.json"
++    if not _TOKEN_CACHE_THREAD_LOCK.acquire(blocking=False):
++        raise RuntimeError("Cannot rebind an active token-cache transaction")
++    try:
++        if int(getattr(_TOKEN_CACHE_LOCK_STATE, "depth", 0)):
++            raise RuntimeError("Cannot rebind an active token-cache transaction")
++        global TOKEN_CACHE_PATH
++        TOKEN_CACHE_PATH = target
++    finally:
++        _TOKEN_CACHE_THREAD_LOCK.release()
++
++
+ @contextmanager
+ def locked_token_cache() -> Iterator[None]:
+     """Serialize a complete token refresh transaction across sessions/processes."""
+ 
+-    TOKEN_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+-    cache_path = TOKEN_CACHE_PATH.resolve()
+-    lock_path = TOKEN_CACHE_PATH.with_name(f"{TOKEN_CACHE_PATH.name}.lock")
+     with _TOKEN_CACHE_THREAD_LOCK:
++        TOKEN_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
++        cache_path = TOKEN_CACHE_PATH.resolve()
++        lock_path = TOKEN_CACHE_PATH.with_name(f"{TOKEN_CACHE_PATH.name}.lock")
+         depth = int(getattr(_TOKEN_CACHE_LOCK_STATE, "depth", 0))
+         active_path = getattr(_TOKEN_CACHE_LOCK_STATE, "cache_path", None)
+         if depth:
+--- a/tools/gameplan_first_use.py
++++ b/tools/gameplan_first_use.py
+@@ -64,12 +64,12 @@
+         temporary.unlink(missing_ok=True)
+ 
+ 
+-def _declaration(root):
++def _declaration(root, *, repository=None):
+     original = _read(Path(root) / CONFIG)
+     account = load_account_config(root)
+     if account is None:
+         raise ValueError("ATLAS_SOLE_EXECUTOR_ACCOUNT_MISSING")
+-    raw = _read(_repository() / MARKER)
++    raw = _read(Path(repository or _repository()) / MARKER)
+     declaration = json.loads(raw)
+     validate_first_use_declaration(declaration, account)
+     if _read(Path(root) / CONFIG) != original:
+@@ -77,12 +77,12 @@
+     return account, declaration, raw, original
+ 
+ 
+-def inspect_first_use(root):
++def inspect_first_use(root, *, repository=None):
+     """Return None when unselected; never inspect or modify account inventory."""
+-    if not (_repository() / MARKER).exists():
++    if not (Path(repository or _repository()) / MARKER).exists():
+         return None
+     try:
+-        _declaration(Path(root))
++        _declaration(Path(root), repository=repository)
+         return {"ready": True, "status": "READY_FOR_MANUAL_START", "startup_mode": "ATLAS_SOLE_EXECUTOR",
+                 "broker_reconciliation_pending": True, "activation_changed": False}
+     except (ValueError, OSError, KeyError, TypeError):
+@@ -91,15 +91,19 @@
+                 "broker_reconciliation_pending": True, "activation_changed": False}
+ 
+ 
+-def initialize_first_use(root, *, checkpoint=None):
++def initialize_first_use(root, *, checkpoint=None, repository=None, renewal=None):
+     """Called only by explicit manual Start; worker guards remain unchanged."""
+     root = _plain(Path(root)).resolve()
+     checkpoint = checkpoint or (lambda _: None)
++    if renewal is not None:
++        renewal.require_initial_session_lock(root)
+     lock = root / LOCK
+     lock.parent.mkdir(parents=True, exist_ok=True)
+     with ExitStack() as stack:
+         stack.enter_context(FileLock(str(lock), timeout=0))
+         for name in ("independent-stock-session.lock", "stock-trader-hourly.lock"):
++            if name == "independent-stock-session.lock" and renewal is not None:
++                continue  # The verified controller owns this lock across initialization.
+             stack.enter_context(exclusive_runtime_lock(root / "locks" / name, process_name="gameplan-first-use"))
+         stack.enter_context(FileLock(str(root / "state/account-gameplan/preparation.lock"), timeout=0))
+         account = load_account_config(root)
+@@ -108,7 +112,7 @@
+         if account is not None and account.activation["status"] == "ACTIVE":
+             verify_cutover(root, account)
+             return {"status": "ACCOUNT_READY", "ready": True, "activation_changed": False, "broker_read_performed": False}
+-        account, declaration, declaration_raw, original = _declaration(root)
++        account, declaration, declaration_raw, original = _declaration(root, repository=repository)
+         folder = root / "state/account-gameplan/first-use" / declaration["operation_id"]
+         _write(folder / "original-config.json", original)
+         _write(folder / "declaration.json", declaration_raw)
+@@ -133,7 +137,9 @@
+         from dataclasses import replace
+         verify_cutover(root, replace(account, activation=active["activation"]))
+         checkpoint("before_activation")
+-        if _read(_repository() / MARKER) != declaration_raw or _read(receipt_path) != receipt_raw:
++        if renewal is not None:
++            renewal.require_initial_session_lock(root)
++        if _read(Path(repository or _repository()) / MARKER) != declaration_raw or _read(receipt_path) != receipt_raw:
+             raise ValueError("ATLAS_SOLE_EXECUTOR_EVIDENCE_CHANGED")
+         verify_cutover(root, replace(account, activation=active["activation"]))
+         _write(root / CONFIG, _raw(active), expected=original)
+--- a/tools/native_ownership_cutover.py
++++ b/tools/native_ownership_cutover.py
+@@ -216,9 +216,9 @@
+             "tools": {name: file_checksum(repository / "tools" / name) for name in TOOLS}}
+ 
+ 
+-def _load_native(path):
++def _load_native(path, *, repository=None):
+     from tools.native_ownership_exchange import load_config
+-    return load_config(path)
++    return load_config(path, **({"repository": repository} if repository is not None else {}))
+ 
+ 
+ def _deadline(day, clock):
+@@ -266,13 +266,13 @@
+     return {"digest": digest, "inputs": packet["inputs"], "files": files}
+ 
+ 
+-def _completed_handoff(spec, native, account, watched):
++def _completed_handoff(spec, native, account, watched, *, repository=None):
+     from ml import nightly_workflow as workflow
+     from ml.nightly_handoff import preflight_handoff
+     from tools import nightly_exchange as exchange
+     from tools.gameplan_execution_readiness import _handoff
+     root, day = _path(native["datastore_root"]), spec["action_date"]
+-    exchange_path = _repository() / "scratch/nightly-workflow/exchange-config.json"
++    exchange_path = Path(repository or _repository()) / "scratch/nightly-workflow/exchange-config.json"
+     config = _json(_pin(exchange_path, spec["nightly"]["exchange_config_sha256"], watched))
+     if (config.get("actor") != "Atlas" or _path(config["account_config"]) != root / CONFIG
+             or config["account_scope_sha256"] != account.account_fingerprint):
+@@ -354,14 +354,15 @@
+         raise ValueError("CUTOVER_ORIGINAL_MIGRATION_DATE_INVALID")
+ 
+ 
+-def preflight(spec, *, clock=None, continuation=None):
++def preflight(spec, *, clock=None, continuation=None, repository=None):
+     """Verify exact local selections without writing or contacting a broker."""
+     clock = clock or (lambda: datetime.now(timezone.utc))
+     _shape(spec)
+     watched = {}
++    bindings = {"repository": repository} if repository is not None else {}
+     if spec["implementation"] != implementation():
+         raise ValueError("CUTOVER_IMPLEMENTATION_CHANGED")
+-    native = _load_native(_selection(spec["native_exchange_config"], watched))
++    native = _load_native(_selection(spec["native_exchange_config"], watched), **bindings)
+     if (native["actor"] != "Atlas" or native["operation_id"] != spec["operation_id"]
+             or native["cutover_action_date"] != _migration_date(spec)):
+         raise ValueError("CUTOVER_NATIVE_OPERATION_DIFFERS")
+@@ -374,10 +375,10 @@
+     runtime = _control_bindings(root) if _manual(spec) else spec["runtime_bindings"]
+     _runtime_guard(root, runtime, manual=_manual(spec))
+     from tools.native_ownership_exchange import _binding_inputs, resolve_operation_binding
+-    input_paths = {**_binding_inputs(native), "operation_config": _path(spec["native_exchange_config"]["path"])}
++    input_paths = {**_binding_inputs(native, **bindings), "operation_config": _path(spec["native_exchange_config"]["path"])}
+     frozen = {name: file_checksum(_plain(path)) for name, path in input_paths.items()}
+     native_binding = {"config": native, "account_binding_sha256": account.fingerprint, "frozen_inputs_sha256": frozen}
+-    _, binding_pins = resolve_operation_binding(work, native_binding)
++    _, binding_pins = resolve_operation_binding(work, native_binding, **bindings)
+     for path, checksum in binding_pins.items():
+         _pin(path, checksum, watched)
+     for name, path in input_paths.items():
+@@ -396,7 +397,7 @@
+             raise ValueError("MANUAL_START_INVOCATION_INVALID")
+     else:
+         human_path = _selection(spec["human_authorization"], watched)
+-        if not human_path.is_relative_to(_repository() / "scratch"):
++        if not human_path.is_relative_to(Path(repository or _repository()) / "scratch"):
+             raise ValueError("CUTOVER_HUMAN_RECORD_MUST_REMAIN_PRIVATE_LOCAL")
+         human = _json(human_path)
+         if (set(human) != {"schema_version", "operation_id", "action_date", "basis", "executor", "manual_start_only",
+@@ -447,7 +448,7 @@
+                for path in (ledger, prior / "holdings.sqlite3")):
+             raise ValueError("MANUAL_START_CONTINUATION_NATIVE_CHANGED")
+     watched[str(work / "export/manifest.json")] = file_checksum(work / "export/manifest.json")
+-    nightly = _completed_handoff(spec, native, account, watched)
++    nightly = _completed_handoff(spec, native, account, watched, **bindings)
+     _temporal_gate(spec, clock)
+     _guard(watched)
+     return {"root": root, "work": _activation_work(native, spec), "operation_root": work,
+@@ -561,12 +562,16 @@
+ 
+ 
+ @contextmanager
+-def _locks(root, work, exchange_lock, *, operation_root=None, manual_spec=None):
++def _locks(root, work, exchange_lock, *, operation_root=None, manual_spec=None, renewal=None):
+     disposition = {"active_config_sha256": None}
++    if renewal is not None:
++        renewal.require_initial_session_lock(root)
+     with ExitStack() as stack:
+         stack.enter_context(FileLock(str((operation_root or work.parent) / "operation.lock"), timeout=0))
+         stack.enter_context(FileLock(str(exchange_lock), timeout=0))
+         for name in ("independent-stock-session.lock", "stock-trader-hourly.lock"):
++            if name == "independent-stock-session.lock" and renewal is not None:
++                continue  # Exact controller lifetime ownership was verified above.
+             stack.enter_context(_native_lock(root / "locks" / name, root, work, disposition, manual_spec=manual_spec))
+         stack.enter_context(FileLock(str(root / "state/account-gameplan/preparation.lock"), timeout=0))
+         yield disposition
+@@ -681,7 +686,7 @@
+     raise ValueError("CUTOVER_RECOVERY_NATIVE_CHANGED_REVIEW_REQUIRED")
+ 
+ 
+-def apply(spec, *, clock=None, capture=None, checkpoint=None):
++def apply(spec, *, clock=None, capture=None, checkpoint=None, repository=None, renewal=None):
+     """One explicit transaction; injected capture/checkpoints are offline-test seams.
+ 
+     Manual retries reconcile the last proven installed union with fresh evidence.
+@@ -690,22 +695,23 @@
+     """
+     clock = clock or (lambda: datetime.now(timezone.utc))
+     checkpoint = checkpoint or (lambda _: None)
++    bindings = {"repository": repository} if repository is not None else {}
+     _shape(spec)
+     if _manual(spec) and spec["manual_invocation"]["trigger"] != "EXPLICIT_MANUAL_START":
+         raise ValueError("MANUAL_START_INVOCATION_REQUIRED")
+     # Resolve fixed local paths before preflight so a crash after activation can
+     # verify its own exact terminal journal without replaying the old exchange.
+-    native = _load_native(_selection(spec["native_exchange_config"], {}))
++    native = _load_native(_selection(spec["native_exchange_config"], {}), **bindings)
+     if (native["actor"] != "Atlas" or native["operation_id"] != spec["operation_id"]
+             or native["cutover_action_date"] != _migration_date(spec)):
+         raise ValueError("CUTOVER_NATIVE_OPERATION_DIFFERS")
+     root = _path(native["datastore_root"])
+     work = _activation_work(native, spec)
+-    config = _json(_repository() / "scratch/nightly-workflow/exchange-config.json")
++    config = _json(Path(repository or _repository()) / "scratch/nightly-workflow/exchange-config.json")
+     exchange_lock = _path(config["state_root"]) / "exchange.lock"
+     work.mkdir(parents=True, exist_ok=True)
+     with _locks(root, work, exchange_lock, operation_root=_operation_root(native, spec),
+-                manual_spec=spec if _manual(spec) else None) as disposition:
++                manual_spec=spec if _manual(spec) else None, renewal=renewal) as disposition:
+         if _manual(spec):
+             if (work / "spec.json").exists():
+                 _same_manual_inputs(_json(work / "spec.json"), spec)
+@@ -744,7 +750,7 @@
+                 continuation = previous.get("continuation")
+             if previous["phase"] == "COMPLETE":
+                 raise ValueError("CUTOVER_COMPLETED_ACCOUNT_BINDING_CHANGED")
+-        prepared = preflight(spec, clock=clock, continuation=continuation)
++        prepared = preflight(spec, clock=clock, continuation=continuation, **bindings)
+         if (previous or {}).get("number", 0) >= 9999:
+             raise ValueError("CUTOVER_RETRY_BOUND_EXHAUSTED")
+         attempt_name = "attempt-" + str((previous or {}).get("number", 0) + 1).zfill(4)
+@@ -787,6 +793,8 @@
+                 raise ValueError("CUTOVER_IMPLEMENTATION_CHANGED")
+             _runtime_guard(root, prepared["runtime_bindings"], manual=_manual(spec))
+             checkpoint("before_capture")
++            if renewal is not None:
++                renewal.require_initial_session_lock(root)
+             _temporal_gate(spec, clock)
+             observed = (capture(prepared["account"], clock) if capture is not None else
+                         _capture(prepared["account"], clock, deadline_guard=lambda: _temporal_gate(spec, clock)))
+@@ -851,7 +859,9 @@
+             def mutation_guard():
+                 from tools.native_ownership_exchange import resolve_operation_binding
+                 _guard(prepared["watched"])
+-                _, binding_pins = resolve_operation_binding(prepared["operation_root"], prepared["native_binding"])
++                if renewal is not None:
++                    renewal.require_initial_session_lock(root)
++                _, binding_pins = resolve_operation_binding(prepared["operation_root"], prepared["native_binding"], **bindings)
+                 if binding_pins != prepared["native_binding_pins"]:
+                     raise ValueError("CUTOVER_NATIVE_BINDING_EVIDENCE_CHANGED")
+                 if implementation() != spec["implementation"]:
+@@ -908,14 +918,15 @@
+             "nightly_session_rebound": False}
+ 
+ 
+-def _manual_spec(root, *, clock, invoke):
++def _manual_spec(root, *, clock, invoke, repository=None):
+     """Select existing local evidence; no user-authored approval document."""
+-    config_path = _repository() / "scratch/nightly-workflow/native-ownership-exchange-config.json"
++    bindings = {"repository": repository} if repository is not None else {}
++    config_path = Path(repository or _repository()) / "scratch/nightly-workflow/native-ownership-exchange-config.json"
+     if not config_path.is_file():
+         raise ValueError("NATIVE_INVENTORY_CONFIGURATION_MISSING")
+     if _path(_json(config_path)["datastore_root"]) != root:
+         raise ValueError("NATIVE_INVENTORY_DATASTORE_MISMATCH")
+-    native = _load_native(config_path)
++    native = _load_native(config_path, **bindings)
+     if native["actor"] != "Atlas":
+         raise ValueError("MANUAL_START_REQUIRES_ATLAS")
+     operation = _path(native["state_root"]) / native["operation_id"]
+@@ -927,7 +938,7 @@
+     # The bootstrap's original completed preparation is provenance, not an
+     # expiry date. The worker selects the actual executable session itself.
+     day = native["cutover_action_date"]
+-    exchange_path = _repository() / "scratch/nightly-workflow/exchange-config.json"
++    exchange_path = Path(repository or _repository()) / "scratch/nightly-workflow/exchange-config.json"
+     exchange = _json(exchange_path)
+     session = _path(exchange["state_root"]) / "sessions" / day
+     workflow = _json(_path(exchange["workflow_config"]))
+@@ -1016,7 +1027,7 @@
+                 "broker_reconciliation_pending": True, "activation_changed": False}
+ 
+ 
+-def ensure_gameplan_account_ready(root, *, sizing_policy, clock=None, capture=None):
++def ensure_gameplan_account_ready(root, *, sizing_policy, clock=None, capture=None, repository=None, renewal=None):
+     """Explicit manual Start performs inventory bootstrap once, then verifies it.
+ 
+     Scheduled launchers must not call this function. They retain the ordinary
+@@ -1024,7 +1035,11 @@
+     """
+     root = _path(root)
+     clock = clock or (lambda: datetime.now(timezone.utc))
++    bindings = {"repository": Path(repository).resolve()} if repository is not None else {}
++    continuation = {"renewal": renewal} if renewal is not None else {}
+     try:
++        if renewal is not None:
++            renewal.require_initial_session_lock(root)
+         from ml.stock_trader.sizing_policy import GAMEPLAN_SIZING_POLICY
+         if sizing_policy != GAMEPLAN_SIZING_POLICY:
+             raise ValueError("MANUAL_START_REQUIRES_GAMEPLAN_POLICY")
+@@ -1037,10 +1052,10 @@
+             verify_cutover(root, account)
+             return {"status": "ACCOUNT_READY", "ready": True, "activation_changed": False, "broker_read_performed": False}
+         from tools.gameplan_first_use import inspect_first_use, initialize_first_use
+-        if inspect_first_use(root) is not None:
+-            return initialize_first_use(root)
+-        spec, _ = _manual_spec(root, clock=clock, invoke=True)
+-        result = apply(spec, clock=clock, capture=capture)
++        if inspect_first_use(root, **bindings) is not None:
++            return initialize_first_use(root, **bindings, **continuation)
++        spec, _ = _manual_spec(root, clock=clock, invoke=True, **bindings)
++        result = apply(spec, clock=clock, capture=capture, **bindings, **continuation)
+         if result["status"] != "ACTIVE_CUTOVER_VERIFIED":
+             return {**result, "status": "ACCOUNT_NOT_READY", "ready": False, "reason": "NATIVE_OWNERSHIP_RECOVERY_REQUIRED"}
+         return {**result, "status": "ACCOUNT_READY", "ready": True}
+@@ -1048,7 +1063,7 @@
+         # Exact diagnostics stay local; provider replies never reach the launcher.
+         diagnostic = {"schema_version": MANUAL_VERSION, "error_type": type(error).__name__, "detail": str(error)}
+         raw = _bytes(diagnostic)
+-        local = _repository() / "scratch/nightly-workflow/manual-start-failures" / (_sha(raw) + ".json")
++        local = Path(repository or _repository()) / "scratch/nightly-workflow/manual-start-failures" / (_sha(raw) + ".json")
+         _once(local, raw)
+         return {"status": "ACCOUNT_NOT_READY", "ready": False, "reason": _startup_reason(error),
+                 "activation_changed": False, "broker_read_performed": None, "trader_started": False, "orders_placed": 0}
+--- a/tools/native_ownership_exchange.py
++++ b/tools/native_ownership_exchange.py
+@@ -136,8 +136,8 @@
+     return Path(__file__).resolve().parents[1]
+ 
+ 
+-def _reviewed_paths():
+-    folder = _repository() / "scratch/nightly-workflow"
++def _reviewed_paths(*, repository=None):
++    folder = Path(repository or _repository()) / "scratch/nightly-workflow"
+     return {"workflow": folder / "config.json", "exchange": folder / "exchange-config.json"}
+ 
+ 
+@@ -151,7 +151,7 @@
+         raise ValueError("Pinned coordination installation failed verification")
+ 
+ 
+-def load_config(path):
++def load_config(path, *, repository=None):
+     config = _json(_read(path, 128 * 1024))
+     if (set(config) != FIELDS or config["schema_version"] != VERSION or config["actor"] not in ACTORS
+             or config["private_native_ledger_exchange_authorized"] is not True):
+@@ -168,7 +168,7 @@
+             or state == exchange or state.is_relative_to(exchange) or exchange.is_relative_to(state)):
+         raise ValueError("Use authorized private CODEXSTORE exchange with separate local state")
+     profile = _json(_read(paths["local_profile"], 128 * 1024))
+-    repository = _repository()
++    repository = Path(repository or _repository()).resolve()
+     if (profile.get("actor") != config["actor"] or profile.get("machine") != ACTORS[config["actor"]]
+             or _absolute(profile.get("checkout")) != repository
+             or paths["local_profile"] != repository / "scratch/cross-pc/local-profile.json"
+@@ -176,13 +176,13 @@
+         raise ValueError("Native accounting exchange differs from this machine's private profile")
+     if not state.is_relative_to(repository / "scratch"):
+         raise ValueError("Native accounting local staging must remain inside this checkout's ignored scratch")
+-    reviewed = {name: _json(_read(source, 128 * 1024)) for name, source in _reviewed_paths().items()}
++    reviewed = {name: _json(_read(source, 128 * 1024)) for name, source in _reviewed_paths(repository=repository).items()}
+     workflow, shared = reviewed["workflow"], reviewed["exchange"]
+     if (workflow.get("actor") != config["actor"] or shared.get("actor") != config["actor"]
+             or _absolute(workflow.get("repository")) != repository
+             or _absolute(workflow.get("datastore")) != paths["datastore_root"]
+             or _absolute(shared.get("exchange_root")) != exchange
+-            or _absolute(shared.get("workflow_config")) != _reviewed_paths()["workflow"]
++            or _absolute(shared.get("workflow_config")) != _reviewed_paths(repository=repository)["workflow"]
+             or shared.get("private_exchange_authorized") is not True
+             or any(_absolute(saved.get(key)) != paths[key] for saved in (workflow, shared)
+                    for key in ("local_profile", "coordination_active"))):
+@@ -210,9 +210,9 @@
+     return _installed_private_values(_repository() / ".env")
+ 
+ 
+-def _binding_inputs(config):
++def _binding_inputs(config, *, repository=None):
+     return {"profile": Path(config["local_profile"]), "active": Path(config["coordination_active"]),
+-            "private_environment": _repository() / ".env", **_reviewed_paths(),
++            "private_environment": Path(repository or _repository()) / ".env", **_reviewed_paths(repository=repository),
+             **{name: _repository() / name for name in (
+                 "tools/native_ownership_exchange.py", "tools/native_ownership_export.py",
+                 "ml/account_gameplan/migration.py", "ml/account_gameplan/config.py",
+@@ -279,7 +279,7 @@
+         raise ValueError("Reviewed baseline requires an explicit timezone")
+ 
+ 
+-def _review_evidence(local, review):
++def _review_evidence(local, review, *, repository=None):
+     failure = review["failure_receipt"]
+     if (set(failure) != {"name", "sha256"} or not re.fullmatch(r"[0-9a-f]{64}\.json", str(failure["name"]))
+             or failure["name"] != failure["sha256"] + ".json"):
+@@ -301,7 +301,7 @@
+             or check["checked_files_sha256"] != expected):
+         raise ValueError("Real passing offline evidence for exact reviewed bytes required")
+     output = _absolute(check["output_path"])
+-    if not output.is_relative_to(_repository() / "scratch"):
++    if not output.is_relative_to(Path(repository or _repository()) / "scratch"):
+         raise ValueError("Offline check evidence must stay in ignored local scratch")
+     log = _read(output, 1024 * 1024)
+     if (_sha(log) != check["output_sha256"] or not re.search(rb"\b[1-9][0-9]* passed\b", log)
+@@ -310,7 +310,7 @@
+     return {path: failure["sha256"], output: check["output_sha256"]}
+ 
+ 
+-def resolve_operation_binding(local, expected_binding=None):
++def resolve_operation_binding(local, expected_binding=None, *, repository=None):
+     """Validate original plus append-only source reviews; return all watched pins.
+ 
+     Consumers must recheck these pins at mutation boundaries. No review is
+@@ -349,7 +349,7 @@
+             raise ValueError("Reviewed source revision differs from original evidence")
+         _source_transition(effective, receipt["effective_binding"], review)
+         _validate_failed_status(local, receipt["failed_status"], review)
+-        watched.update(_review_evidence(local, review))
++        watched.update(_review_evidence(local, review, repository=repository))
+         watched[path] = digest
+         effective, previous = receipt["effective_binding"], digest
+     if pending:

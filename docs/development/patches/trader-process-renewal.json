@@ -1,0 +1,111 @@
+{
+  "direct_files": {
+    "docs/development/trader-process-renewal.md": "ffd00f62ffd8225713a7d95e44d006282a67c354b5bc276a1dd0d7544ccbc481",
+    "ml/intraday/candle_runtime.py": "3bea1aa3c79701debd6658b32f530a3181e328da0a5e8993b13378758a7e2384",
+    "ml/intraday/market_input_runtime.py": "4ff350f4f564f1334d56600a5c52cd81d618b677f624428b03b8e26d9af6882e",
+    "ml/trader_renewal.py": "8f1f4b14339d41f5243e5f3926cf1b5a331c56242a59aa1b85ba33080ca32553",
+    "tests/check_trader_renewal_package.py": "eea29b3a9de7757f493c350fd4377a5fbb6a39e66502f8cac297f2757bd708fd",
+    "tests/intraday_renewal_subprocess.py": "918cbd7fb74bce6b7b3c99698f06a9b73b95233b062b61a345cc7f9ccc897c92",
+    "tests/test_gameplan_process_renewal.py": "62666de481880db1a542f9776585674b1ba11bdb1cef25ac3544c97a27570df7",
+    "tests/test_intraday_process_renewal.py": "f83390bf0063f800cd6519a3388865ddd840568264574e94957558cbf989bbc0",
+    "tests/test_trader_controller_handoff.py": "f71091815dd0524f46d936b8fe7e9f4f23b7841f605a3465797f9bf897570271",
+    "tests/test_trader_installation.py": "3b983c7a61530e03e944a8cbe2bc7929c0bbcecf707855fd57d3d38de3967af7",
+    "tests/test_trader_manual_stop.py": "4fd0563606acb14783f910400be1f9c8be70212b3174a2427fee7cbdc191e930",
+    "tests/test_trader_session_host.py": "394b5b04d50ea95cf7da35eac0697db7bfac5c5722efbe3efa134b484714a0fa",
+    "tests/test_trader_worker.py": "9b7f5da1ce58c61e3585271b7eb73f1d0bb2dab5c3348fd56dda1dd1c5c58ef4",
+    "tests/trader_controller_handoff_fixture.py": "32a48fd601aaae599ac5fa2f0a0ae2da748e9b5d8a4e12d1fc0ea493f3c2cfe6",
+    "tests/trader_renewal_subprocess_fixture.py": "6063fec73f646d406b5e88520a3ab91aebd882b59a5c03079a90db02a3bbd0c0",
+    "tools/trader_installation.py": "dada9452e8ce1b8c295134af82655e7c450027520da9b06780640fd5cb2a84b5",
+    "tools/trader_session_host.py": "0657197a028e379d3b237b93f00fcd7dba681555c3c6a0420e95e23bf2083d1d",
+    "tools/trader_worker.py": "871203786c795bdf1aa3ea4151dd2823cd5b1ed8ffc4606fc667df954ad0b85c"
+  },
+  "files": [
+    {
+      "after_sha256": "ff787d6a16376174940b7c2b51f4c7c5d975771f52e79bf7c35d8c34e6069a43",
+      "before_sha256": "7fb36207eb1285df1b42058b2340cdaa811a768b6a3da21a37deb76768134372",
+      "operation": "modify",
+      "path": "AGENTS.md"
+    },
+    {
+      "after_sha256": "a37d9429f16ba7a2c14f64ef95bad8b9d15c81756d9368df65f483a25a587869",
+      "before_sha256": "7f1ebd2584d7db9043462be9d503e3b341a41735c70e08d950c005a35ed434c6",
+      "operation": "modify",
+      "path": "Start-Gameplan-Trader.cmd"
+    },
+    {
+      "after_sha256": "bd662537268ed9d70df9c5c933fc5c9df547b768d1e68d23249792432c931aa3",
+      "before_sha256": "57776b40e17b67644aadf024ec400fcfb3a9b116c67e1a443abd1145bc9b67d2",
+      "operation": "modify",
+      "path": "Start-15m-Trader.cmd"
+    },
+    {
+      "after_sha256": "f020eaac93be1e7125171080b6cdc2dea72d898331f4d939391da824bb111392",
+      "before_sha256": "35db2f2e529c2856280b3a81a76ded1e5537b939a3c90ba2b2d3d9724d08a1e4",
+      "operation": "modify",
+      "path": "ml/stock_trader/control.py"
+    },
+    {
+      "after_sha256": "e23fd4abc21f61088a1535a28f95abcf77e71e0fefc7e05bfdedf2a6e8748a00",
+      "before_sha256": "7bfa48a0bc3bbd5076bf8a089cebd034fcede1d7dfd30de44be60172f2fc84ee",
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan.py"
+    },
+    {
+      "after_sha256": "e4c3ea3820ea507f2ca8fb91ac7f10e35fb86234b4428f2f1598a93a1fc61a0d",
+      "before_sha256": "ac100592ea98be3f8fc5a583f43ec8128321507281765962a36e3099d4063e50",
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_session.py"
+    },
+    {
+      "after_sha256": "a3ab9de4450417a16091e579f2f346f58ba6f254e7aae66aa986b63f5d4b5d6f",
+      "before_sha256": "1cfaa8111808c120d49dd969200d848b749bd17a813d9230722f76cd84765c75",
+      "operation": "modify",
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "after_sha256": "3e8a5baad7dad13d92a9ec78e8de0187fb443bbdc4939a4cc6b593d09ded5437",
+      "before_sha256": "39bbc192bc817f2658912b51d54c72ea588c24f4f60f93db09b688933b66bcad",
+      "operation": "modify",
+      "path": "docs/development/independent-traders.md"
+    },
+    {
+      "after_sha256": "9dcce86683ff49247ade8e409fd5cb7134603a652e8ee142e57d0dd80a2272d3",
+      "before_sha256": "8220da0782557840a57563ec7eb47135a5378627ef3ade11c8b7a44da4e83ded",
+      "operation": "modify",
+      "path": "docs/development/atlas-scheduled-tasks.md"
+    },
+    {
+      "after_sha256": "a8760a644d5ee5097099d848e9ae366a6b21fb990948e4b56ec7ef906f4c8753",
+      "before_sha256": "a9ce45555aed524ed623c53c1cb6c3dd64ff55e5cab29cf25f6c9a92e82a2aad",
+      "operation": "modify",
+      "path": "tests/test_manual_trader_launchers.py"
+    },
+    {
+      "after_sha256": "06041d5b4c3294451320fc8b24b414007fd889d994784f2d95f719ff188dc82c",
+      "before_sha256": "530efee645e20161e927dbff10c8342120bafbe96602b1dd5096d0263ef1e7c8",
+      "operation": "modify",
+      "path": "app/services/schwab_token_store.py"
+    },
+    {
+      "after_sha256": "5c928d1af673ebe6854b546b45babdd6cde3878906b455a2093fb2805e4e53e1",
+      "before_sha256": "9a02cb952a32ae389ab558ed766effb7004d822113427f923a0ed77fccf949f5",
+      "operation": "modify",
+      "path": "tools/gameplan_first_use.py"
+    },
+    {
+      "after_sha256": "c0b993cb16b0f4dacdfe07b2af0126bb83300181264bbe3147faa329f9776b23",
+      "before_sha256": "38238c20ced0e5eef5665451ea2f50cdce6c95668acb613a3f36e4da219a357c",
+      "operation": "modify",
+      "path": "tools/native_ownership_cutover.py"
+    },
+    {
+      "after_sha256": "cb5e51c987be65f1821379360e1af7009d3cb41c5edc6cf3c4d544f5c5fe2678",
+      "before_sha256": "36937ce58f59c21ff6fe26bbba3a74526c0facc01f9ff424bfa8eef86844ca51",
+      "operation": "modify",
+      "path": "tools/native_ownership_exchange.py"
+    }
+  ],
+  "patch": "docs/development/patches/trader-process-renewal.patch",
+  "patch_sha256": "669f2df200c0ff1cb2988cc02b24f6aad02f72efd118ffb7af23f4108ecceee1",
+  "schema": "trader-renewal-patches-v1"
+}
