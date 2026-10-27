@@ -1,0 +1,41 @@
+--- a/ml/intraday/technical_sizing.py
++++ b/ml/intraday/technical_sizing.py
+@@ -449,0 +450,16 @@
++    result, _ = _evaluate_size_with_snapshot(forecast, indicators,
++        symbol_policy=symbol_policy, hourly_reference=hourly_reference,
++        symbol_reference=symbol_reference, account_inputs=account_inputs,
++        calculated_at=calculated_at, half_share_ties=half_share_ties,
++        rounded_equality=rounded_equality, unavailable_reason=unavailable_reason)
++    return result
++
++
++def _evaluate_size_with_snapshot(forecast, indicators, *, symbol_policy=None, hourly_reference=None,
++                  symbol_reference=None, account_inputs=None, calculated_at,
++                  half_share_ties=None, rounded_equality=None, unavailable_reason=None):
++    """Return sizing and its owned indicator tree after full input validation.
++
++    No prevalidated payload is accepted. The returned tree is the fresh result
++    of the immutable snapshot's ordinary payload validation in this call.
++    """
+@@ -483 +499 @@
+-        return _encoded_result(SizingResult, value)
++        return _encoded_result(SizingResult, value), snapshot
+--- a/ml/intraday/starter_sizing.py
++++ b/ml/intraday/starter_sizing.py
+@@ -21 +21 @@
+-    SymbolSizingPolicy, WindowPolicy, evaluate_size, indicator_snapshot, _encoded_result,
++    SymbolSizingPolicy, WindowPolicy, evaluate_size, indicator_snapshot, _encoded_result, _evaluate_size_with_snapshot,
+@@ -188 +188 @@
+-    result = evaluate_size(forecast, indicators, symbol_policy=policy, symbol_reference=reference,
++    result, indicator_payload = _evaluate_size_with_snapshot(forecast, indicators, symbol_policy=policy, symbol_reference=reference,
+@@ -194 +194 @@
+-    payload.update(starter_policy_version=VERSION, indicator_snapshot=indicators.payload(),
++    payload.update(starter_policy_version=VERSION, indicator_snapshot=indicator_payload,
+--- a/ml/intraday/readiness.py
++++ b/ml/intraday/readiness.py
+@@ -76 +76 @@
+-        "IntradayAccountExecutor.step": {"size_forecast", "available_intraday_capacity", "_submit"}}},
++        "IntradayAccountExecutor.step": {"size_forecast", "_submission_capacity", "_submit"}}},
+@@ -83 +83 @@
+-        "independent_reference": {"SymbolReference"}, "size_forecast": {"indicator_snapshot", "evaluate_size"}}},
++        "independent_reference": {"SymbolReference"}, "size_forecast": {"indicator_snapshot", "_evaluate_size_with_snapshot"}}},
