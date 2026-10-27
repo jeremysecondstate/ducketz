@@ -99,6 +99,11 @@ def _now():
 
 
 def _plain(value):
+    kind = type(value)
+    if kind is dict:
+        return {str(k): _plain(v) for k, v in value.items()}
+    if kind is list:
+        return [_plain(v) for v in value]
     if isinstance(value, Mapping):
         return {str(k): _plain(v) for k, v in value.items()}
     if isinstance(value, (tuple, list)):
@@ -319,7 +324,7 @@ class QuarterHourMarketCollector:
 
     _native_state_reader = _state
 
-    def _read_queue(self, phase, reader):
+    def _read_queue(self, phase, reader, *, native_reader=None):
         """Decode native immutable bytes outside the lock; fence the final read.
 
         Every operation rereads the exact queue under its original native lock.
@@ -340,8 +345,10 @@ class QuarterHourMarketCollector:
             if (getattr(self._state, "__func__", None) is not native
                     or not self.state_path.exists()
                     or self.state_path.read_text(encoding="utf-8") != raw):
-                value = self._state()
-            return reader(value)
+                return reader(self._state())
+            return (native_reader or reader)(value)
+
+    _native_queue_reader = _read_queue
 
     def enqueue(self, quarter_start) -> int:
         start, now = instant(quarter_start), instant(self.clock())
@@ -418,7 +425,23 @@ class QuarterHourMarketCollector:
             now = instant(self.clock())
             return [(key, task) for key, task in state["tasks"].items()
                     if not _settled(task) and instant(task["due_at"]) <= now]
-        due = self._read_queue("step_due", read_due)
+        detached = []
+        def native_due(state):
+            # The exact native JSON map is detached from the durable queue.
+            # Freeze the original clock under the final lock, then scan outside
+            # it; each selected task and source block is still freshly checked.
+            now = instant(self.clock())
+            detached.append((state["tasks"], now))
+        if (type(self) is QuarterHourMarketCollector
+                and getattr(self._read_queue, "__func__", None)
+                    is QuarterHourMarketCollector._native_queue_reader):
+            due = self._read_queue("step_due", read_due, native_reader=native_due)
+        else:
+            due = self._read_queue("step_due", read_due)
+        if detached:
+            tasks, now = detached[0]
+            due = [(key, task) for key, task in tasks.items()
+                   if not _settled(task) and instant(task["due_at"]) <= now]
         selected = _select_tasks(due, max_requests)
 
         def perform(item):

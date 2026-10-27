@@ -1,0 +1,294 @@
+"""Native due scans release the queue lock; custom/freshness paths stay original."""
+from datetime import datetime, timedelta, timezone
+import json
+import types
+
+from filelock import FileLock, Timeout
+import pytest
+
+from ml.intraday import market_collection as M
+
+NOW = datetime(2026, 10, 27, 15, 30, tzinfo=timezone.utc)
+
+
+def collector(tmp_path, cls=None):
+    request = M.SourceRequest(provider="fmp", source_kind="stock_quote", symbol="SDGR",
+        dataset="fixture", schema="quote", endpoint="quote", params={"symbol": "SDGR"})
+    col = (cls or M.QuarterHourMarketCollector)(tmp_path, symbols=["SDGR"],
+        requests=[request], adapters={}, clock=lambda: NOW)
+    col.enqueue(NOW - timedelta(minutes=15))
+    return col
+
+
+def state(col):
+    return json.loads(col.state_path.read_text(encoding="utf8"))
+
+
+def publish(col, value):
+    col.state_path.write_text(json.dumps(value), encoding="utf8")
+
+
+def capture(col, monkeypatch):
+    calls = []
+    def select(due, maximum):
+        calls.append((due, maximum, col.lock.is_locked))
+        return []
+    monkeypatch.setattr(M, "_select_tasks", select)
+    return calls
+
+
+def timestamp_locks(col, monkeypatch):
+    calls = []
+    original = M.instant
+    def traced(value):
+        calls.append((value, col.lock.is_locked))
+        return original(value)
+    monkeypatch.setattr(M, "instant", traced)
+    return calls
+
+
+def test_native_due_scan_runs_outside_lock_with_original_clock_inside(tmp_path, monkeypatch):
+    col = collector(tmp_path)
+    value = state(col)
+    first = next(iter(value["tasks"].values()))
+    for index in range(20):
+        value["tasks"][str(index)] = {**first, "due_at": (NOW + timedelta(seconds=index-10)).isoformat()}
+    value["tasks"]["settled"] = {**first, "status": "COMPLETE", "due_at": "invalid-unused"}
+    value["tasks"]["finalized"] = {**first, "status": "PARTIAL", "window_finalized": True,
+        "due_at": "invalid-unused"}
+    publish(col, value)
+    selected = capture(col, monkeypatch)
+    locks = timestamp_locks(col, monkeypatch)
+    assert col.step(max_requests=4) == []
+    due, maximum, selection_locked = selected[0]
+    assert maximum == 4 and not selection_locked
+    assert [key for key, _ in due] == [next(iter(value["tasks"])), *map(str, range(11))]
+    assert locks[0] == (NOW, True)
+    assert all(not locked for _, locked in locks[1:])
+    assert len(locks) == 22 and not col.lock.is_locked
+
+
+@pytest.mark.parametrize("kind", ["instance", "subclass", "class"])
+def test_custom_state_keeps_due_scan_under_original_lock(tmp_path, monkeypatch, kind):
+    class Custom(M.QuarterHourMarketCollector):
+        pass
+    col = collector(tmp_path, cls=Custom if kind == "subclass" else None)
+    original = M.QuarterHourMarketCollector._native_state_reader
+    called = []
+    def custom(self):
+        called.append(self.lock.is_locked)
+        return original(self)
+    if kind == "class":
+        monkeypatch.setattr(M.QuarterHourMarketCollector, "_state", custom)
+    elif kind == "subclass":
+        monkeypatch.setattr(Custom, "_state", custom)
+    else:
+        col._state = types.MethodType(custom, col)
+    capture(col, monkeypatch)
+    locks = timestamp_locks(col, monkeypatch)
+    assert col.step(max_requests=1) == []
+    assert called == [True] and all(locked for _, locked in locks)
+
+
+@pytest.mark.parametrize("restore", [False, True])
+def test_mid_decode_state_override_uses_original_reader_even_if_it_restores_native(tmp_path, monkeypatch, restore):
+    col = collector(tmp_path)
+    custom_value = state(col)
+    original_state = M.QuarterHourMarketCollector._native_state_reader
+    original_decode = M.json.loads
+    called = []
+    def custom(self):
+        called.append(self.lock.is_locked)
+        if restore:
+            self._state = types.MethodType(original_state, self)
+        return custom_value
+    def decode(raw, *args, **kwargs):
+        value = original_decode(raw, *args, **kwargs)
+        col._state = types.MethodType(custom, col)
+        return value
+    monkeypatch.setattr(M.json, "loads", decode)
+    capture(col, monkeypatch)
+    locks = timestamp_locks(col, monkeypatch)
+    assert col.step(max_requests=1) == []
+    assert called == [True] and all(locked for _, locked in locks)
+
+
+@pytest.mark.parametrize("kind", ["instance", "class"])
+def test_two_argument_read_queue_override_keeps_original_call(tmp_path, monkeypatch, kind):
+    col = collector(tmp_path)
+    original = col._read_queue
+    calls = []
+    def wrapped(phase, reader):
+        calls.append(phase)
+        return original(phase, reader)
+    if kind == "instance":
+        col._read_queue = wrapped
+    else:
+        monkeypatch.setattr(M.QuarterHourMarketCollector, "_read_queue", lambda self, phase, reader: wrapped(phase, reader))
+    capture(col, monkeypatch)
+    locks = timestamp_locks(col, monkeypatch)
+    assert col.step(max_requests=1) == []
+    assert calls == ["step_due"] and all(locked for _, locked in locks)
+
+
+def test_changed_queue_during_decode_uses_current_original_locked_due_scan(tmp_path, monkeypatch):
+    col = collector(tmp_path)
+    current = state(col)
+    key = next(iter(current["tasks"]))
+    current["tasks"][key]["due_at"] = (NOW + timedelta(seconds=1)).isoformat()
+    original = M.json.loads
+    def decode(raw, *args, **kwargs):
+        result = original(raw, *args, **kwargs)
+        publish(col, current)
+        return result
+    monkeypatch.setattr(M.json, "loads", decode)
+    selected = capture(col, monkeypatch)
+    locks = timestamp_locks(col, monkeypatch)
+    assert col.step(max_requests=1) == []
+    assert selected[0][0] == [] and all(locked for _, locked in locks)
+
+
+@pytest.mark.parametrize("effect", ["settled", "future", "source_block"])
+def test_due_snapshot_does_not_bypass_current_task_or_source_recheck(tmp_path, monkeypatch, effect):
+    col = collector(tmp_path)
+    current = state(col)
+    key = next(iter(current["tasks"]))
+    def select(due, maximum):
+        assert not col.lock.is_locked
+        latest = state(col)
+        if effect == "settled":
+            latest["tasks"][key]["status"] = "COMPLETE"
+        elif effect == "future":
+            latest["tasks"][key]["due_at"] = (NOW + timedelta(seconds=1)).isoformat()
+        else:
+            latest["source_blocks"][col.requests[0].identity] = {"observed_at": NOW.isoformat(), "snapshot": "fixture"}
+        publish(col, latest)
+        return due[:maximum]
+    monkeypatch.setattr(M, "_select_tasks", select)
+    col.adapters = {"fmp": lambda *args: pytest.fail("Current task/source disposition reached provider")}
+    result = col.step(max_requests=1)
+    if effect == "source_block":
+        assert len(result) == 1 and result[0]["status"] == "NOT_AUTHORIZED"
+        assert state(col)["tasks"][key]["attempts"] == 1
+    else:
+        assert result == [] and state(col)["tasks"][key]["attempts"] == 0
+
+
+@pytest.mark.parametrize("custom", [False, True])
+def test_due_error_identity_and_native_lock_release_preserved(tmp_path, monkeypatch, custom):
+    col = collector(tmp_path)
+    if custom:
+        original = col._state
+        col._state = lambda: original()
+    error = ValueError("original due timestamp error")
+    original_instant = M.instant
+    def fail_due(value):
+        if isinstance(value, str):
+            assert col.lock.is_locked is custom
+            raise error
+        return original_instant(value)
+    monkeypatch.setattr(M, "instant", fail_due)
+    with pytest.raises(ValueError) as raised:
+        col.step(max_requests=1)
+    assert raised.value is error and not col.lock.is_locked
+
+
+def test_clock_error_stays_inside_final_lock_with_original_identity(tmp_path):
+    col = collector(tmp_path)
+    error = RuntimeError("original clock failure")
+    def fail():
+        assert col.lock.is_locked
+        raise error
+    col.clock = fail
+    with pytest.raises(RuntimeError) as raised:
+        col.step(max_requests=1)
+    assert raised.value is error and not col.lock.is_locked
+
+
+def test_due_scan_does_not_run_after_second_lock_timeout(tmp_path, monkeypatch):
+    col = collector(tmp_path)
+    col.lock.timeout = 0
+    holder = FileLock(col.lock.lock_file, timeout=0)
+    original = M.json.loads
+    def decode(raw, *args, **kwargs):
+        value = original(raw, *args, **kwargs)
+        holder.acquire()
+        return value
+    monkeypatch.setattr(M.json, "loads", decode)
+    col.clock = lambda: pytest.fail("Timed-out final lock reached due clock")
+    try:
+        with pytest.raises(Timeout) as raised:
+            col.step(max_requests=1)
+        assert raised.value.lock_file == col.lock.lock_file and holder.is_locked
+    finally:
+        holder.release()
+
+
+"""Golden canonical bytes retained across exact native container normalization."""
+from collections import UserDict
+from datetime import datetime, timezone
+import math
+import numpy as np
+import pandas as pd
+import pytest
+from ml.intraday.market_collection import canonical as container_canonical
+
+class _ContainerDict(dict): pass
+class _ContainerList(list): pass
+class _ContainerTuple(tuple): pass
+class _ContainerInt(int): pass
+class _ContainerString(str): pass
+class _ContainerFloat(float): pass
+class _ContainerItem:
+    def item(self): return {'nested': [1, float('nan')]}
+class _ContainerFallback:
+    def __str__(self): return 'fallback-object'
+
+@pytest.mark.parametrize('value,expected', [
+    (None, 'null'), (True, 'true'), (False, 'false'), (0, '0'),
+    (2**90, '1237940039285380274899124224'), (-5, '-5'), (0.0, '0.0'), (1.4, '1.4'),
+    (float('nan'), 'null'), (float('inf'), 'null'), (-float('inf'), 'null'),
+    ('snowman☃', '"snowman☃"'), ('quote"', '"quote\\\""'), ([], '[]'), ({}, '{}'),
+    ({'a': {'b': [1, float('nan'), None]}}, '{"a":{"b":[1,null,null]}}'),
+    ({1: 'int', True: 'bool', (1, 2): 'tuple'}, '{"(1, 2)":"tuple","1":"bool"}'),
+    ([[], {}, (), [{'k': [2]}]], '[[],{},[],[{"k":[2]}]]'),
+    (_ContainerDict({1: _ContainerList([None, _ContainerFloat(float('nan'))])}), '{"1":[null,null]}'),
+    (_ContainerList([1, _ContainerDict(a=2)]), '[1,{"a":2}]'),
+    (_ContainerTuple((1, {}, [2])), '[1,{},[2]]'),
+    (UserDict({1: UserDict(x=[float('inf')])}), '{"1":{"x":[null]}}'),
+    ((1, 2, [3]), '[1,2,[3]]'), (_ContainerInt(4), '4'), (_ContainerString('s'), '"s"'),
+    (_ContainerFloat(2.1), '2.1'), (_ContainerFloat(float('nan')), 'null'),
+    (datetime(2026, 10, 27, 15, 0, tzinfo=timezone.utc), '"2026-10-27T15:00:00+00:00"'),
+    (datetime(2026, 10, 27, 15, 0), '"2026-10-27T15:00:00"'),
+    (pd.Timestamp('2026-10-27T15:00:00.000000123Z'), '"2026-10-27T15:00:00.000000123+00:00"'),
+    (pd.NaT, 'null'), (pd.NA, 'null'), (np.int64(4), '4'),
+    (np.float64(float('nan')), 'null'), (np.float64(1.2), '1.2'), (np.array(3), '3'),
+    (_ContainerItem(), '{"nested":[1,null]}'), (_ContainerFallback(), '"fallback-object"'),
+])
+def test_native_container_golden_bytes_preserve_original_normalization(value, expected):
+    # These explicit byte strings were checked against the original normalizer.
+    assert container_canonical(value) == expected.encode('utf-8')
+
+class _ContainerPresentedDict(dict):
+    def items(self): return [('presented', [float('nan')])]
+class _ContainerPresentedList(list):
+    def __iter__(self): return iter(('presented', float('inf')))
+
+@pytest.mark.parametrize('value,expected', [
+    (_ContainerPresentedDict(hidden='must not select underlying storage'), '{"presented":[null]}'),
+    (_ContainerPresentedList(['hidden']), '["presented",null]'),
+    ({float('inf'): 'positive', -float('inf'): 'negative', float('nan'): 'missing'},
+     '{"-inf":"negative","inf":"positive","nan":"missing"}'),
+    ({1: 'number', '1': 'text'}, '{"1":"text"}'),
+    ({'1': 'text', 1: 'number'}, '{"1":"number"}'),
+])
+def test_container_custom_iteration_and_key_stringification_preserved(value, expected):
+    assert container_canonical(value) == expected.encode('utf-8')
+
+def test_native_container_normalization_keeps_original_nested_evidence():
+    missing = float('nan')
+    values = [missing, {'missing': float('inf')}]
+    source = {'task': {'nested': values}}
+    assert container_canonical(source) == b'{"task":{"nested":[null,{"missing":null}]}}'
+    assert source['task']['nested'] is values and values[0] is missing and math.isnan(missing)
+    assert math.isinf(values[1]['missing'])
