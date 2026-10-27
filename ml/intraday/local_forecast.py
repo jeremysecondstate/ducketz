@@ -19,6 +19,7 @@ from pathlib import Path
 import sqlite3
 import stat
 from threading import Lock
+from types import BuiltinFunctionType
 import time
 
 from ml.stock_direction_policy import stock_action
@@ -33,6 +34,11 @@ _FORECAST_COLUMNS = "id,pc,symbol,cycle_id,reference_at,issued_at,payload"
 _READ_RETRY_SECONDS = .25
 _READ_RETRY_PAUSE_SECONDS = .01
 _READ_MAX_ATTEMPTS = 8
+_NATIVE_READ_CONNECT = sqlite3.connect
+_NATIVE_READ_CONNECT_IS_BUILTIN = (
+    type(_NATIVE_READ_CONNECT) is BuiltinFunctionType
+    and _NATIVE_READ_CONNECT.__module__ == "_sqlite3"
+    and _NATIVE_READ_CONNECT.__name__ == "connect")
 _SNAPSHOT_CACHE_LIMIT = 64
 _SNAPSHOT_VALIDATIONS = OrderedDict()
 _SNAPSHOT_VALIDATIONS_LOCK = Lock()
@@ -217,15 +223,30 @@ def _cycle(db, cycle_id):
     return value
 
 
-def _saved_forecast_once(path, forecast, *, session_id, session_started):
-    # mode=ro cannot create absent evidence. Each attempt uses a fresh, zero-wait
-    # connection and one consistent transaction; failures close it before retry.
+def _saved_forecast_once(path, forecast, *, session_id, session_started,
+                         _retry_deadline=None):
+    # mode=ro cannot create absent evidence. Connection/setup stay zero-wait.
+    # The original native first attempt configures at most the existing pause
+    # as SQLite busy timeout, avoiding a Python sleep/re-entry during brief WAL
+    # recovery. SQLite/OS scheduling is not a hard elapsed-time bound.
     with closing(sqlite3.connect(_safe_path(path).as_uri() + "?mode=ro",
                                  uri=True, timeout=0)) as db:
         db.execute("PRAGMA query_only=ON")
         db.execute("BEGIN")
+        wait_ms = 0
+        if (_retry_deadline is not None and _NATIVE_READ_CONNECT_IS_BUILTIN
+                and sqlite3.connect is _NATIVE_READ_CONNECT):
+            remaining = _retry_deadline - time.monotonic()
+            wait_ms = min(int(_READ_RETRY_PAUSE_SECONDS * 1000),
+                          max(0, int(remaining * 1000)))
+            if wait_ms:
+                db.execute("PRAGMA busy_timeout=" + str(wait_ms))
         row = db.execute("SELECT " + _FORECAST_COLUMNS + " FROM forecasts WHERE id=?",
                          (forecast["forecast_id"],)).fetchone()
+        if wait_ms:
+            # This transaction now holds its consistent read view. Do not
+            # multiply the native allowance across later integrity statements.
+            db.execute("PRAGMA busy_timeout=0")
         if row is None or ShadowStore._forecast_value(row) != forecast:
             raise ContractError("Exact immutable forecast is not saved")
         cycle = _cycle(db, forecast["cycle_id"])
@@ -259,6 +280,8 @@ def _saved_forecast_once(path, forecast, *, session_id, session_started):
                 raise ContractError("Newer current-session forecast supersedes this intention")
 
 
+_NATIVE_SAVED_FORECAST_ONCE = _saved_forecast_once
+
 def _record_read_retry_failure(error, *, attempt_count, elapsed_seconds,
                                sleep_count, sleep_requested_seconds, stop_code):
     """Attach numeric observations only; callers protect the original failure.
@@ -283,6 +306,11 @@ def _saved_forecast(path, forecast, *, session_id, session_started):
     sleep_count, sleep_requested_seconds = 0, 0.0
     for attempt in range(_READ_MAX_ATTEMPTS):
         try:
+            if (attempt == 0 and _saved_forecast_once is _NATIVE_SAVED_FORECAST_ONCE
+                    and _NATIVE_READ_CONNECT_IS_BUILTIN
+                    and sqlite3.connect is _NATIVE_READ_CONNECT):
+                return _saved_forecast_once(path, forecast, session_id=session_id,
+                    session_started=session_started, _retry_deadline=deadline)
             return _saved_forecast_once(path, forecast, session_id=session_id,
                                         session_started=session_started)
         except sqlite3.OperationalError as exc:
