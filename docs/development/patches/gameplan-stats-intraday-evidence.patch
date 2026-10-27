@@ -1,0 +1,1595 @@
+diff --git a/app/ui/gameplan_stats.py b/app/ui/gameplan_stats.py
+--- a/app/ui/gameplan_stats.py
++++ b/app/ui/gameplan_stats.py
+@@ -96,9 +96,16 @@
+         self.refresh_button.pack(side="left")
+         _label(self.page, "Gameplan horizons + independent 15-Minute results · All times Pacific · Saved evidence only",
+                color=MUTED_TEXT, background=BACKGROUND).pack(anchor="w", pady=(3, 1))
++        self.schedule_label = _label(self.page,
++            "Daily Stats starts 17:30 Pacific after the 17:00 session close. Later observations reconcile after the normal evening data fetch.",
++            size=9, color=MUTED_TEXT, background=BACKGROUND, wraplength=1100, justify="left")
++        self.schedule_label.pack(fill="x", pady=(0, 3))
+         self.status_label = _label(self.page, textvariable=self.status, size=9, color=MUTED_TEXT,
+                                    background=BACKGROUND, wraplength=1100, justify="left")
+         self.status_label.pack(fill="x", pady=(0, 9))
++        self.sources_label = _label(self.page, "", size=9, color=MUTED_TEXT,
++            background=BACKGROUND, wraplength=1100, justify="left")
++        self.sources_label.pack(fill="x", pady=(0, 7))
+ 
+         viewport = tk.Frame(self.page, background=BACKGROUND)
+         viewport.pack(fill="both", expand=True)
+@@ -294,6 +301,8 @@
+         else:
+             self.controls.grid(row=0, column=1, columnspan=1, sticky="e", pady=0)
+         self.status_label.configure(wraplength=max(560, event.width - 20))
++        self.schedule_label.configure(wraplength=max(560, event.width - 20))
++        self.sources_label.configure(wraplength=max(560, event.width - 20))
+         self.population_label.configure(wraplength=max(400, event.width - 200))
+ 
+     @property
+@@ -399,6 +408,7 @@
+                 if error is not None:
+                     self.review = None
+                     self.heading.configure(text="Gameplan Stats")
++                    self.sources_label.configure(text="")
+                     self.status.set(str(error))
+                     self.status_label.configure(foreground=WARNING)
+                     self.report_button.configure(state="disabled")
+@@ -421,8 +431,19 @@
+         self.session.set(review.session)
+         self.heading.configure(text=f"{review.display_name} Stats")
+         self.report_button.configure(state="normal")
+-        self.status_label.configure(foreground=MUTED_TEXT)
+-        self.status.set(f"Verified session {review.session} · Outcomes through {review.outcomes_through:%b %d, %H:%M %Z} · Reviewed {review.reviewed_at:%b %d, %H:%M %Z}")
++        coverage = review.metrics()
++        self.status_label.configure(foreground=WARNING if coverage.awaiting_data else MUTED_TEXT)
++        self.status.set(
++            f"{review.snapshot_label} · Session {review.session} · Snapshot as of {review.reviewed_at:%b %d, %H:%M %Z} "
++            f"· Outcomes through {review.outcomes_through:%b %d, %H:%M %Z}\n"
++            f"{coverage.evaluated} evaluated · {coverage.awaiting_data} awaiting market-price data "
++            f"· {coverage.pending} awaiting maturity. "
++            + ("Revised saved evidence; the prior snapshot is retained." if review.revision_parent
++               else "A published snapshot can still have missing or immature outcomes."))
++        sources = review.observation_sources
++        self.sources_label.configure(text=(("Recorded observation origins: " + "; ".join(sources)
++            + (f" · {review.unrecorded_observations} observed boundaries lack a saved origin." if review.unrecorded_observations else "")) if sources
++            else "Observation origin is not recorded in this saved snapshot."))
+         if not review.outcomes:
+             if review.coverage_status == "NO_SAVED_INDEPENDENT_GAMEPLAN":
+                 self.status.set(f"Session {review.session}: no eligible forecasts were saved before the 04:00 Pacific opening. "
+@@ -629,9 +650,23 @@
+                 f"Observed return: {move}\nBrier score: {brier_text(outcome.brier)}\n\n"
+                 f"Target start: {outcome.start:%b %d, %H:%M %Z}\nTarget end: {outcome.end:%b %d, %H:%M %Z}\n"
+                 f"Start observation: {observed_start}\nEnd observation: {observed_end}\n\n"
++                + self._origin_details("Start", outcome.start_origin)
++                + self._origin_details("End", outcome.end_origin) + "\n"
++                +
+                 "Direction checks the sign of the actual return. Probability scores retain this forecast's saved target.\n"
+                 "Observations follow the review's five-minute boundary tolerance; these are market outcomes, not broker fills.")
+         self._text_dialog(title, text)
++
++    @staticmethod
++    def _origin_details(boundary, origin):
++        if origin is None:
++            return f"{boundary} market-data origin: not recorded in this snapshot.\n"
++        text = f"{boundary} market-data origin: {origin.label}\n"
++        if origin.recorded_at:
++            text += f"Saved receipt time: {origin.recorded_at:%b %d, %H:%M:%S %Z}\n"
++        if origin.has_collector_receipt:
++            text += f"Saved market-input receipt: {origin.input_sha256}\nRaw market payload: {origin.payload_sha256}\n"
++        return text
+ 
+     def _probability_definition(self):
+         costs = sorted({row.probability_target_threshold for row in self.review.rows(self.selected_horizon)}) if self.review else [.001]
+@@ -661,6 +696,12 @@
+             "Neither 15-Minute section enters Gameplan horizon totals.\n\n"
+             "Results are a saved review snapshot, not a live rescore. Refresh loads newly published reviews; "
+             "it does not fetch prices or mature an old forecast. OG Brier retains its cost-adjusted target; YG Brier uses raw positive returns. "
++            "The daily review starts at 17:30 Pacific after this workflow's 17:00 session close. "
++            "An early local snapshot uses already saved market evidence; later evening observations can publish a revision. "
++            "Its original probabilities, targets and direction labels remain unchanged. "
++            "When a boundary records the 15-minute market collector and its saved raw receipt hashes, "
++            "the observation source is identified as the trader's saved market data. A provider name alone "
++            "does not establish which collector saved it. This uses market observations, not the trader's model outputs, orders or fills. "
+             "Neutral calls are included only in Brier; flat moves fail either directional call. "
+             "These are prediction outcomes, not realized trading profit.")
+ 
+diff --git a/app/ui/gameplan_stats_data.py b/app/ui/gameplan_stats_data.py
+--- a/app/ui/gameplan_stats_data.py
++++ b/app/ui/gameplan_stats_data.py
+@@ -30,6 +30,40 @@
+ 
+ class GameplanStatsError(ValueError):
+     """The requested saved review is unavailable or cannot be verified."""
++
++
++@dataclass(frozen=True)
++class ObservationOrigin:
++    source: str | None = None
++    producer: str | None = None
++    input_sha256: str | None = None
++    payload_sha256: str | None = None
++    receipt_path: str | None = None
++    recorded_at: datetime | None = None
++
++    @property
++    def has_collector_receipt(self) -> bool:
++        reference = re.fullmatch(
++            r"intraday/market-inputs/objects/\d{4}/\d{2}/\d{2}/([a-f0-9]{64})\.json",
++            self.receipt_path or "")
++        return (self.producer in {"intraday-market-input-collector-v1", "intraday-market-input-collector-v2"}
++                and all(isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value)
++                        for value in (self.input_sha256, self.payload_sha256))
++                and reference is not None and reference[1] == self.input_sha256
++                and self.source is not None and self.recorded_at is not None)
++
++    @property
++    def label(self) -> str:
++        source = {"fmp:historical-chart:5min": "FMP 5-minute candles",
++                  "schwab:pricehistory:1m": "Schwab 1-minute candles",
++                  "schwab:pricehistory:5m": "Schwab 5-minute candles",
++                  "databento:XNAS.ITCH:ohlcv-1m": "Databento XNAS 1-minute candles",
++                  "databento:EQUS.MINI:ohlcv-1m": "Databento EQUS 1-minute candles"}.get(self.source, self.source)
++        if self.has_collector_receipt:
++            return "15-minute trader's saved market data" + (f" ({source})" if source else "")
++        if not source:
++            return "Origin not recorded"
++        return source + (" · collector evidence incomplete" if self.producer else " · collector not recorded")
+ 
+ 
+ @dataclass(frozen=True)
+@@ -52,6 +86,8 @@
+     observed_end: datetime | None
+     probability_target_contract: str = LEGACY_COST_TARGET
+     direction_policy_version: str | None = None
++    start_origin: ObservationOrigin | None = None
++    end_origin: ObservationOrigin | None = None
+ 
+     @property
+     def probability_target_threshold(self) -> float:
+@@ -126,6 +162,33 @@
+     probability_target_contract: str = LEGACY_COST_TARGET
+     coverage_status: str | None = None
+     receipt_sha256: str | None = None
++    review_mode: str | None = None
++    input_coverage_status: str | None = None
++    price_evidence_available_at: datetime | None = None
++    price_source_contract: str | None = None
++    revision_parent: str | None = None
++
++    @property
++    def snapshot_label(self) -> str:
++        if self.review_mode == "combined-atlas-scout":
++            return "Combined Atlas–Scout snapshot"
++        if self.review_mode == "completed-session-before-training":
++            local = self.reviewed_at.astimezone(PACIFIC)
++            if local.date().isoformat() == self.session and 17 * 60 + 30 <= local.hour * 60 + local.minute < 21 * 60:
++                return "Early local snapshot"
++            return "Local snapshot"
++        return "Saved snapshot"
++
++    @property
++    def observation_sources(self) -> tuple[str, ...]:
++        return tuple(sorted({origin.label for row in self.outcomes
++            for origin in (row.start_origin, row.end_origin) if origin is not None}))
++
++    @property
++    def unrecorded_observations(self) -> int:
++        return sum(observed is not None and (origin is None or origin.source is None)
++                   for row in self.outcomes for observed, origin in (
++                       (row.observed_start, row.start_origin), (row.observed_end, row.end_origin)))
+ 
+     @property
+     def display_name(self) -> str:
+@@ -211,6 +274,19 @@
+     except (TypeError, ValueError):
+         return None
+     return number if math.isfinite(number) else None
++
++
++def _observation_origin(row, boundary):
++    prefix = "actual_" + boundary + "_observation_"
++    values = {key: row.get(prefix + key) for key in (
++        "source", "producer", "input_sha256", "payload_sha256", "receipt_path", "recorded_at")}
++    recorded_at = values.pop("recorded_at")
++    values = {key: value if isinstance(value, str) and value.strip() else None for key, value in values.items()}
++    values["recorded_at"] = (None if recorded_at is None or pd.isna(recorded_at)
++                             else _timestamp(recorded_at, "saved observation receipt time"))
++    if not any(values.values()):
++        return None
++    return ObservationOrigin(**values)
+ 
+ 
+ def _outcome(row: dict) -> PredictionOutcome:
+@@ -252,6 +328,7 @@
+         str(row["id"]), str(row["symbol"]), str(row["model_group"]), str(row["route"]),
+         str(row["target_role"]), direction, status, probability, correct, brier,
+         actual_return, cost, start, end, *observed, contract, saved_version,
++        _observation_origin(row, "start"), _observation_origin(row, "end"),
+     )
+ 
+ 
+@@ -330,10 +407,15 @@
+             _timestamp(report["outcomes_through"], "outcome cutoff"), run,
+             run / "Gameplan-results.md", outcomes, excluded, contract, report.get("coverage_status"),
+             pointer["receipt_sha256"],
++            report.get("review_mode"), report.get("input_coverage_status"),
++            (_timestamp(report["price_evidence_available_at"], "price evidence cutoff")
++             if report.get("price_evidence_available_at") else None),
++            report.get("target_price_source_contract"),
++            (report.get("session_revision_parent") or {}).get("run_path"),
+         )
+     except GameplanStatsError:
+         raise
+     except FileNotFoundError as exc:
+-        raise GameplanStatsError("Saved results are not available yet. Refresh after the nightly results review finishes.") from exc
++        raise GameplanStatsError("Saved results are not available yet. Stats starts at 17:30 Pacific after the 17:00 session close; refresh after its snapshot is published.") from exc
+     except (OSError, ValueError, TypeError, KeyError, RuntimeError) as exc:
+         raise GameplanStatsError(f"Could not verify saved Gameplan results: {exc}") from exc
+diff --git a/datafetching/fmp_price_history_receipts.py b/datafetching/fmp_price_history_receipts.py
+--- a/datafetching/fmp_price_history_receipts.py
++++ b/datafetching/fmp_price_history_receipts.py
+@@ -150,7 +150,39 @@
+             'interpretation': 'Per-source requests and receipts, not proof of complete or market-wide observations'}
+ 
+ 
+-def load_native_five_minute_history(datastore_root, *, symbol):
++
++def _project_native_payload(payload, *, symbol, params, received, digest):
++    """Apply one identical native five-minute validator to either retained store."""
++    frame = pd.DataFrame(payload)
++    valid = pd.Series(True, index=frame.index)
++    if len(frame):
++        naive = frame.date.astype('string').str.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', na=False)
++        clocks = pd.to_datetime(frame.date.where(naive), format='%Y-%m-%d %H:%M:%S', errors='coerce')
++        dates = clocks.dt.strftime('%Y-%m-%d')
++        frame['timestamp'] = clocks.dt.tz_localize('America/New_York', ambiguous='NaT', nonexistent='NaT').dt.tz_convert('UTC')
++        for column in ('open', 'high', 'low', 'close', 'volume'):
++            valid &= ~frame[column].map(lambda value: isinstance(value, (bool, np.bool_)))
++            frame[column] = pd.to_numeric(frame[column], errors='coerce')
++        price = frame[['open', 'high', 'low', 'close']]
++        valid &= (frame.timestamp.notna() & dates.between(params['from'], params['to'])
++            & frame.timestamp.dt.minute.mod(5).eq(0) & frame.timestamp.dt.second.eq(0)
++            & frame.timestamp.dt.microsecond.eq(0)
++            & frame.timestamp.add(pd.Timedelta(minutes=5)).le(received)
++            & np.isfinite(frame[[*price, 'volume']]).all(axis=1)
++            & price.gt(0).all(axis=1) & frame.volume.gt(0)
++            & frame.high.ge(price.max(axis=1)) & frame.low.le(price.min(axis=1)))
++        # Check original dictionaries before pandas fills absent fields or
++        # projection erases flags and replaces the explicit provider symbol.
++        valid &= pd.Series([_native(native) and native.get('symbol', symbol) == symbol
++                            for native in payload], index=frame.index)
++        projected = frame.loc[valid, ['timestamp', 'open', 'high', 'low', 'close', 'volume']].copy()
++        projected = projected.assign(symbol=symbol, observation_source=SOURCE, observation_dataset=DATASET,
++            observation_interval_seconds=300, observation_input_sha256=digest, observation_recorded_at=received)
++        return projected, int((~valid).sum())
++    return pd.DataFrame(columns=OBSERVATION_COLUMNS), 0
++
++
++def load_native_five_minute_history(datastore_root, *, symbol, include_saved_intraday=False):
+     """Verify immutable receipts and project genuine completed native candles.
+ 
+     Dated revisions remain separate until each consumer applies its own evidence
+@@ -183,37 +215,41 @@
+         received = _clock(row['received_at'])
+         if _clock(row['request_started_at']) > received:
+             raise ValueError('Invalid native FMP acquisition clocks')
+-        frame = pd.DataFrame(payload)
+-        valid = pd.Series(True, index=frame.index)
+-        if len(frame):
+-            naive = frame.date.astype('string').str.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', na=False)
+-            clocks = pd.to_datetime(frame.date.where(naive), format='%Y-%m-%d %H:%M:%S', errors='coerce')
+-            dates = clocks.dt.strftime('%Y-%m-%d')
+-            frame['timestamp'] = clocks.dt.tz_localize('America/New_York', ambiguous='NaT', nonexistent='NaT').dt.tz_convert('UTC')
+-            for column in ('open', 'high', 'low', 'close', 'volume'):
+-                valid &= ~frame[column].map(lambda value: isinstance(value, (bool, np.bool_)))
+-                frame[column] = pd.to_numeric(frame[column], errors='coerce')
+-            price = frame[['open', 'high', 'low', 'close']]
+-            valid &= (frame.timestamp.notna() & dates.between(params['from'], params['to'])
+-                & frame.timestamp.dt.minute.mod(5).eq(0) & frame.timestamp.dt.second.eq(0)
+-                & frame.timestamp.dt.microsecond.eq(0)
+-                & frame.timestamp.add(pd.Timedelta(minutes=5)).le(received)
+-                & np.isfinite(frame[[*price, 'volume']]).all(axis=1)
+-                & price.gt(0).all(axis=1) & frame.volume.gt(0)
+-                & frame.high.ge(price.max(axis=1)) & frame.low.le(price.min(axis=1)))
+-            # Check original dictionaries before pandas fills absent fields or
+-            # projection erases flags and replaces the explicit provider symbol.
+-            valid &= pd.Series([_native(native) and native.get('symbol', symbol) == symbol
+-                                for native in payload], index=frame.index)
+-            projected = frame.loc[valid, ['timestamp', 'open', 'high', 'low', 'close', 'volume']].copy()
+-            projected = projected.assign(symbol=symbol, observation_source=SOURCE, observation_dataset=DATASET,
+-                observation_interval_seconds=300, observation_input_sha256=digest, observation_recorded_at=received)
+-            frames.append(projected)
++        frame, omitted = _project_native_payload(payload, symbol=symbol, params=params,
++                                                 received=received, digest=digest)
++        if not frame.empty:
++            frames.append(frame)
+         paths.append(path)
+         inventory.append({'path': str(path), 'sha256': digest, 'payload_sha256': row['payload_sha256'],
+-            'source': SOURCE, 'rows': int(valid.sum()), 'raw_rows': len(payload),
+-            'invalid_or_zero_volume_rows_excluded': int((~valid).sum()),
++            'source': SOURCE, 'rows': len(frame), 'raw_rows': len(payload),
++            'invalid_or_zero_volume_rows_excluded': omitted,
+             'received_at': received.isoformat(), 'request': params,
+             'response_adjustment_and_session_flags_attested': False})
++    from datafetching.intraday_fmp_observations import saved_fmp_responses
++    for saved in (saved_fmp_responses(datastore_root, symbol=symbol) if include_saved_intraday else ()):
++        params = saved['params']
++        if params != _request(symbol, params.get('from'), params.get('to')):
++            raise ValueError('Saved intraday FMP request differs from its native chart identity')
++        payload = saved['payload']
++        _validate_payload(payload)
++        frame, omitted = _project_native_payload(payload, symbol=symbol, params=params,
++            received=saved['received_at'], digest=saved['receipt_sha256'])
++        if not frame.empty:
++            frame = frame.assign(observation_producer=saved['producer'],
++                observation_payload_sha256=saved['payload_sha256'],
++                observation_receipt_path=saved['receipt_path'])
++            frames.append(frame)
++        paths.extend(saved['paths'])
++        inventory.append({'path': str(saved['paths'][0]), 'sha256': saved['receipt_sha256'],
++            'payload_path': str(saved['paths'][1]), 'payload_sha256': saved['payload_sha256'],
++            'source': SOURCE, 'producer': saved['producer'],
++            'producer_manifest_sha256': saved['producer_manifest_sha256'],
++            'producer_runtime_metadata': saved['producer_runtime_metadata'],
++            'collector_status': saved['collector_status'],
++            'rows': len(frame), 'raw_rows': len(payload),
++            'invalid_or_zero_volume_rows_excluded': omitted,
++            'received_at': saved['received_at'].isoformat(),
++            'request_started_at': saved['request_started_at'].isoformat(), 'request': params,
++            'response_adjustment_and_session_flags_attested': False})
+     result = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=OBSERVATION_COLUMNS)
+-    return result, tuple(paths), inventory
++    return result, tuple(dict.fromkeys(paths)), inventory
+diff --git a/datafetching/intraday_dbn_observations.py b/datafetching/intraday_dbn_observations.py
+new file mode 100644
+--- /dev/null
++++ b/datafetching/intraday_dbn_observations.py
+@@ -0,0 +1,129 @@
++"""Read native EQUS minute records retained by the independent intraday collector.
++
++Only framed provider OHLCV records are projected. Trades, quotes and derived
++15-minute features are never aggregated into target observations.
++"""
++import hashlib
++import json
++from pathlib import Path
++import re
++import struct
++
++import pandas as pd
++
++from datafetching.intraday_fmp_observations import saved_market_responses
++
++
++SOURCE = "databento:EQUS.MINI:ohlcv-1m"
++MAX_SEGMENT_BYTES = 64 * 1024 * 1024
++
++
++def _segment(root, reference):
++    from databento_dbn import DBNDecoder
++    if (not isinstance(reference, dict)
++            or reference.get("encoding") != "receipt-ns-u64be,length-u32be,DBN-record"
++            or type(reference.get("bytes")) is not int
++            or not 0 <= reference["bytes"] <= MAX_SEGMENT_BYTES
++            or not re.fullmatch(r"[a-f0-9]{64}", str(reference.get("sha256")))):
++        raise ValueError("Saved EQUS segment contract is invalid")
++    path = Path(reference.get("path", "")).resolve()
++    if not path.is_relative_to(root / "streams/EQUS.MINI") or path.suffix != ".frames":
++        raise ValueError("Saved EQUS segment escapes its original dataset")
++    if path.stat().st_size != reference["bytes"]:
++        raise ValueError("Saved EQUS segment size differs")
++    raw = path.read_bytes()
++    if len(raw) != reference["bytes"] or hashlib.sha256(raw).hexdigest() != reference["sha256"]:
++        raise RuntimeError("Saved EQUS segment checksum mismatch")
++    decoder, records, offset, count = DBNDecoder(has_metadata=False), [], 0, 0
++    while offset < len(raw):
++        if len(raw) - offset < 12:
++            raise ValueError("Saved EQUS frame is truncated")
++        received, length = struct.unpack_from(">QI", raw, offset)
++        offset += 12
++        if not 16 <= length <= 4096 or offset + length > len(raw):
++            raise ValueError("Saved EQUS frame length is invalid")
++        decoded = decoder.write_and_decode(raw[offset:offset + length])
++        offset += length
++        if len(decoded) != 1:
++            raise ValueError("Saved EQUS frame is not one complete native record")
++        record = decoded[0]
++        count += 1
++        # The dataset's original publisher identifies native EQUS.MINI records;
++        # neither an endpoint selection nor a projected symbol can replace it.
++        if int(record.publisher_id) == 95 and int(record.rtype) in (19, 33):
++            records.append((received, record))
++    if type(reference.get("records")) is not int or reference["records"] != count:
++        raise ValueError("Saved EQUS segment record count is invalid")
++    return path, records
++
++
++def load_saved_equity_minutes(datastore_root, *, symbol):
++    """Return verified native bars, immutable evidence paths and inventory."""
++    root = Path(datastore_root).resolve() / "intraday/market-inputs"
++    frames, paths, inventory, cache = [], [], [], {}
++    for saved in saved_market_responses(datastore_root, symbol=symbol, source="db_equity",
++                                       statuses=("ok", "empty", "extraction_unavailable", "unavailable")):
++        request, payload = saved["request"], saved["payload"]
++        if request.get("dataset") != "EQUS.MINI" or "ohlcv-1m" not in request.get("schemas", ()):
++            continue  # Another historical stream contract is not this source.
++        if not isinstance(payload, dict) or not isinstance(payload.get("raw_segments"), list):
++            if saved["collector_status"] == "unavailable":
++                continue  # An error response contains no native provider prices.
++            raise ValueError("Saved EQUS response has no native segment inventory")
++        records, segment_paths = [], []
++        for reference in payload["raw_segments"]:
++            key = json.dumps(reference, sort_keys=True)
++            if key not in cache:
++                cache[key] = _segment(root, reference)
++                if len(cache) > 128:
++                    cache.pop(next(iter(cache)))
++            path, selected = cache[key]
++            records.extend(selected)
++            segment_paths.append(path)
++        # Definitions come from verified native bytes, not projected features.
++        # An ambiguous instrument mapping is missing evidence, never guessed.
++        definitions, rows = {}, []
++        for received_ns, record in sorted(records, key=lambda item: item[0]):
++            received = pd.Timestamp(received_ns, unit="ns", tz="UTC")
++            if received > saved["received_at"]:
++                continue
++            instrument = int(record.instrument_id)
++            if int(record.rtype) == 19:
++                if (str(record.instrument_class) != "K"
++                        or str(record.security_update_action) not in {"A", "M"}
++                        or int(record.ts_event) > received_ns):
++                    definitions.pop(instrument, None)
++                    continue
++                definitions.setdefault(instrument, set()).add(str(record.raw_symbol).rstrip("\x00"))
++                continue
++            if definitions.get(instrument) != {symbol}:
++                continue
++            stamp = pd.Timestamp(record.ts_event, unit="ns", tz="UTC")
++            raw_prices = [getattr(record, field) for field in ("open", "high", "low", "close")]
++            prices = [value / 1e9 for value in raw_prices]
++            if (stamp.second or stamp.microsecond or stamp.nanosecond
++                    or stamp + pd.Timedelta(minutes=1) > received or record.volume <= 0
++                    or any(value <= 0 or value == 2**63 - 1 for value in raw_prices)
++                    or prices[1] < max(prices) or prices[2] > min(prices)):
++                continue
++            rows.append(dict(zip(("open", "high", "low", "close"), prices),
++                timestamp=stamp, volume=record.volume, symbol=symbol,
++                observation_source=SOURCE, observation_dataset="EQUS.MINI",
++                observation_interval_seconds=60,
++                observation_input_sha256=saved["receipt_sha256"],
++                observation_recorded_at=saved["received_at"],
++                observation_producer=saved["producer"],
++                observation_payload_sha256=saved["payload_sha256"],
++                observation_receipt_path=saved["receipt_path"]))
++        if rows:
++            frames.append(pd.DataFrame(rows).drop_duplicates())
++        paths.extend((*saved["paths"], *segment_paths))
++        inventory.append({"source": SOURCE, "producer": saved["producer"],
++            "path": str(saved["paths"][0]), "sha256": saved["receipt_sha256"],
++            "payload_path": str(saved["paths"][1]), "payload_sha256": saved["payload_sha256"],
++            "producer_manifest_sha256": saved["producer_manifest_sha256"],
++            "received_at": saved["received_at"].isoformat(), "rows": len(rows),
++            "native_segments": payload["raw_segments"],
++            "interpretation": "Native provider one-minute bars; no trade/quote aggregation or completeness claim"})
++    return (pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(),
++            tuple(dict.fromkeys(paths)), inventory)
+diff --git a/datafetching/intraday_fmp_observations.py b/datafetching/intraday_fmp_observations.py
+new file mode 100644
+--- /dev/null
++++ b/datafetching/intraday_fmp_observations.py
+@@ -0,0 +1,121 @@
++"""Read saved 15-minute collector FMP responses without running the collector.
++
++The collector's raw five-minute provider payloads are separate from its derived
++15-minute candles, forecasts and execution state. Only these immutable native
++responses are exposed here; this module has no acquisition or writable store API.
++"""
++from contextlib import closing
++import hashlib
++import json
++from pathlib import Path
++import re
++import sqlite3
++
++import pandas as pd
++
++
++RECEIPT_VERSIONS = {"intraday-receipt-market-inputs-v1": "intraday-market-input-collector-v1",
++                    "intraday-receipt-market-inputs-v2": "intraday-market-input-collector-v2"}
++SOURCE = "fmp_5min"
++MAX_ENVELOPE_BYTES = 1024 * 1024
++MAX_PAYLOAD_BYTES = 4 * 1024 * 1024
++
++
++def _clock(value):
++    stamp = pd.Timestamp(value)
++    if pd.isna(stamp) or stamp.tzinfo is None:
++        raise ValueError("Saved intraday price receipt requires an aware clock")
++    return stamp.tz_convert("UTC")
++
++
++def _read_object(root, relative, digest, *, kind, maximum):
++    if not isinstance(relative, str) or not re.fullmatch(r"[a-f0-9]{64}", str(digest)):
++        raise ValueError("Invalid saved intraday price object identity")
++    path = (root / relative).resolve()
++    if not path.is_relative_to((root / kind).resolve()) or path.name != digest + ".json":
++        raise ValueError("Saved intraday price object escapes its immutable store")
++    if path.stat().st_size > maximum:
++        raise ValueError("Saved intraday price object exceeds its bounded contract")
++    raw = path.read_bytes()
++    if len(raw) > maximum or hashlib.sha256(raw).hexdigest() != digest:
++        raise RuntimeError("Saved intraday price object checksum mismatch")
++    return path, raw, json.loads(raw)
++
++
++def saved_market_responses(datastore_root, *, symbol, source,
++                           statuses=("ok", "empty", "extraction_unavailable")):
++    """Yield verified original responses and receipt clocks from a read-only index.
++
++    All retained dated revisions remain available to the consuming review's
++    evidence cutoff. A missing collector store is ordinary absent evidence.
++    Neither SQLite schema creation nor provider initialization occurs here.
++    """
++    datastore = Path(datastore_root).resolve()
++    root = datastore / "intraday/market-inputs"
++    database = root / "receipts.sqlite3"
++    if not database.is_file():
++        return
++    if not re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,14}", symbol):
++        raise ValueError("Saved intraday price lookup requires an exact equity symbol")
++    with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True, timeout=5)) as db:
++        db.execute("PRAGMA query_only=ON")
++        cursor = db.execute("SELECT id,received_at,status,features,object_path FROM receipts "
++                            "WHERE symbol=? AND source=? ORDER BY received_at,id", (symbol, source))
++        while rows := cursor.fetchmany(256):
++            for identity, received, status, features, relative in rows:
++                envelope_path, _, envelope = _read_object(root, relative, identity,
++                    kind="objects", maximum=MAX_ENVELOPE_BYTES)
++                if (envelope.get("version") not in RECEIPT_VERSIONS or envelope.get("symbol") != symbol
++                        or envelope.get("source") != source or envelope.get("received_at") != received
++                        or envelope.get("status") != status or envelope.get("features") != json.loads(features)):
++                    raise ValueError("Saved intraday price catalog differs from its immutable receipt")
++                # Failed requests contain diagnostics rather than provider bars.
++                # Successful raw responses remain usable even if a downstream
++                # feature extractor failed, after full price validation below.
++                if status not in statuses:
++                    continue
++                request = envelope.get("request")
++                if isinstance(request, dict) and request.get("request_performed") is False:
++                    continue
++                if not isinstance(request, dict) or request.get("returned_identity_mismatch"):
++                    raise ValueError("Saved intraday price request identity differs")
++                received_at, started_at = _clock(received), _clock(envelope.get("request_started_at"))
++                if started_at > received_at:
++                    raise ValueError("Saved intraday price request follows its receipt")
++                reference = envelope.get("payload_ref")
++                if not isinstance(reference, dict):
++                    raise ValueError("Saved intraday price payload reference is missing")
++                payload_path, payload_bytes, payload = _read_object(root, reference.get("path"),
++                    reference.get("sha256"), kind="raw", maximum=MAX_PAYLOAD_BYTES)
++                if type(reference.get("bytes")) is not int or reference["bytes"] != len(payload_bytes):
++                    raise ValueError("Saved intraday price payload size differs")
++                paths = [envelope_path, payload_path]
++                runtime_ref = envelope.get("producer_runtime")
++                runtime_hash = None
++                if runtime_ref:
++                    if not isinstance(runtime_ref, dict):
++                        raise ValueError("Saved intraday producer reference is invalid")
++                    runtime_path, _, _ = _read_object(root, runtime_ref.get("path"),
++                        runtime_ref.get("sha256"), kind="producers", maximum=MAX_ENVELOPE_BYTES)
++                    runtime_hash = runtime_ref["sha256"]
++                    paths.append(runtime_path)
++                yield {"payload": payload, "request": request,
++                    "received_at": received_at, "request_started_at": started_at,
++                    "receipt_sha256": identity, "payload_sha256": reference["sha256"],
++                    "receipt_path": envelope_path.relative_to(datastore).as_posix(),
++                    "paths": tuple(paths), "producer": RECEIPT_VERSIONS[envelope["version"]],
++                    "producer_manifest_sha256": runtime_hash,
++                    "producer_runtime_metadata": "verified_manifest" if runtime_hash else "unrecorded",
++                    "collector_status": status}
++
++
++def saved_fmp_responses(datastore_root, *, symbol):
++    """Retain the original native chart request policy and collector identity."""
++    for saved in saved_market_responses(datastore_root, symbol=symbol, source=SOURCE):
++        request = saved["request"]
++        params = request.get("params")
++        if (request.get("endpoint") != "historical-chart/5min" or not isinstance(params, dict)
++                or params.get("symbol") != symbol or params.get("nonadjusted") != "true"
++                or params.get("extended") != "true"):
++            raise ValueError("Saved intraday price request lacks its native source policy")
++        yield saved | {"params": params}
+diff --git a/docs/development/gameplan-stats-intraday-evidence.md b/docs/development/gameplan-stats-intraday-evidence.md
+new file mode 100644
+--- /dev/null
++++ b/docs/development/gameplan-stats-intraday-evidence.md
+@@ -0,0 +1,65 @@
++# Saved intraday prices in Gameplan Stats
++
++The 17:30 America/Los_Angeles Gameplan Stats snapshot uses the native market
++prices saved during the day by the independent 15-Minute Trader. Its collector
++keeps these observations in the private intraday market-input store. Reading
++those saved prices does not start the trader or create a dependency on its
++current process, execution state, orders, model or manual controls.
++
++## Observation contract
++
++The reader accepts original FMP five-minute historical-chart responses under
++the existing `observed-multi-source-stock-v2` price contract, and saved native
++EQUS.MINI one-minute bars under contracts that already permit that source.
++It verifies the collector receipt, original raw payload, symbol, interval and
++acquisition timestamps. EQUS bars also require checksum-verified DBN segments
++and native instrument definitions. The original provider identity remains
++`fmp:historical-chart:5min` or `databento:EQUS.MINI:ohlcv-1m`; the independent
++15-Minute Trader is the collector, not a new market-data provider.
++
++Use original native one-minute or five-minute candles. Do not use generated fifteen-minute
++candles, filled gaps, model features, quotes, fills or account values as target
++prices. Do not relabel another dataset as FMP, broaden an older saved source
++contract, combine two providers' endpoints, or loosen the saved target's
++observation tolerance. A bad receipt is an error, not permission to trust its
++projected values. Invalid, synthetic, incomplete and zero-volume candles remain
++unavailable.
++
++Receipt time determines when an observation was available. A later-received
++revision cannot change an earlier snapshot. The normal selector still resolves
++eligible revisions within one provider and preserves unresolved conflicts.
++Other already supported price archives remain available under their original
++contracts; they do not prove the intraday collector was read.
++
++Only the Stats reconciliation path opts into these saved intraday receipts.
++Shared price loaders default to their existing behavior, preserving each PC's
++model-training inputs and saved recipes.
++
++## Snapshot and display
++
++New results retain the price source and collector evidence for each observed
++boundary, with receipt/payload hashes and actual acquisition times. These fields
++describe observed prices; the original saved probability, direction label,
++policy metadata, target definition and maturity remain unchanged.
++
++The Gameplan Stats tab reads the immutable published snapshot and its current
++dated pointer. It displays snapshot timing, available-data coverage and recorded
++price provenance. Refresh loads newly published results; it never fetches prices,
++trains models or starts a trader. Missing historical provenance remains
++unrecorded rather than being attributed to the intraday collector.
++
++Daily Stats reviews outcomes through the specified 17:00 Pacific close. Missing
++eligible observations remain awaiting data, and immature targets remain pending.
++A completed snapshot means the review finished with available evidence, not that
++every target matured or every market price was present. Reconciliation publishes
++an immutable revision when the result or its recorded evidence changes.
++
++The scheduling rules remain in [Gameplan Stats timing](gameplan-stats-timing.md):
++Stats from source-session 17:30, the same-session evening minimum at 21:00,
++the existing dispatcher kickoff at 21:05 and all later schedules retained.
++After the normal evening acquisition, the existing post-fetch reconciliation
++updates unfinished model feedback using the resulting reviewed snapshot.
++
++Raw intraday receipts, operating outputs, private native bindings and account
++state remain local. Shared source publication includes only the reviewed code,
++tests and portable documentation.
+diff --git a/ml/gameplan_actuals_review.py b/ml/gameplan_actuals_review.py
+--- a/ml/gameplan_actuals_review.py
++++ b/ml/gameplan_actuals_review.py
+@@ -166,6 +166,9 @@
+                 "candidate_price": None, "candidate_observed_at": None, "gap_seconds": None,
+                 "source_coverage": _source_window_coverage(inventory, symbol, start, end),
+                 "required_source_start": start.isoformat(), "required_source_end": end.isoformat()}
++    provenance = ("observation_source", "observation_producer", "observation_input_sha256",
++                  "observation_payload_sha256", "observation_receipt_path", "observation_recorded_at")
++    evidence.update(dict.fromkeys(provenance))
+     if boundary > now or bars.empty:
+         return evidence
+     timestamps = pd.DatetimeIndex(bars.timestamp)
+@@ -180,6 +183,16 @@
+     evidence.update(candidate_price=price, candidate_observed_at=observed.isoformat(), gap_seconds=gap.total_seconds(),
+                     status="INVALID_OBSERVATION" if price is None or price <= 0 else
+                     "OUTSIDE_TOLERANCE" if gap > STOCK_TARGET_BOUNDARY_TOLERANCE else "OBSERVED")
++    if evidence["status"] == "OBSERVED":
++        for field in provenance:
++            value = candidate.get(field)
++            if value is None or (pd.api.types.is_scalar(value) and pd.isna(value)):
++                continue
++            if field == "observation_recorded_at":
++                value = _aware_timestamp(value, "observation receipt time").isoformat()
++            elif not isinstance(value, str):
++                raise ValueError("Saved boundary provenance must be scalar text")
++            evidence[field] = value
+     return evidence
+ 
+ 
+@@ -611,7 +624,8 @@
+     """
+     from ml.stock_target_prices import load_stock_target_prices, stock_price_dataset
+     try:
+-        return load_stock_target_prices(root, symbols=symbols, source_contract=source_contract)
++        return load_stock_target_prices(root, symbols=symbols, source_contract=source_contract,
++                                        include_saved_intraday=True)
+     except RuntimeError as exc:
+         missing = str(exc)
+         recoverable = (missing == "No source-identified real stock observations are available"
+diff --git a/ml/gameplan_stats_handoff.py b/ml/gameplan_stats_handoff.py
+--- a/ml/gameplan_stats_handoff.py
++++ b/ml/gameplan_stats_handoff.py
+@@ -9,6 +9,7 @@
+ import json
+ import math
+ from pathlib import Path
++import re
+ from typing import Mapping, Sequence
+ 
+ import pandas as pd
+@@ -25,6 +26,9 @@
+ PACKAGE_VERSION = "cross-pc-gameplan-stats-v1"
+ NO_SAVED_FORECASTS = "NO_SAVED_INDEPENDENT_GAMEPLAN"
+ PRODUCERS = {"Atlas", "Scout"}
++OBSERVATION_ORIGIN_FIELDS = tuple(f"actual_{boundary}_observation_{field}"
++    for boundary in ("start", "end")
++    for field in ("source", "producer", "input_sha256", "payload_sha256", "receipt_path", "recorded_at"))
+ ROW_FIELDS = (
+     "id", "symbol", "action_date", "model_status", "model_group", "route", "target_role",
+     "direction", "actuals_status", "direction_correct", "calibrated_probability",
+@@ -32,8 +36,9 @@
+     "target_window_start", "target_window_end", "actual_start_observed_at", "actual_end_observed_at",
+     "probability_target_contract", "gameplan_variant", "direction_policy_version",
+     "direction_up_threshold", "direction_down_threshold",
+-)
+-REQUIRED_ROW_FIELDS = set(ROW_FIELDS) - {"assumed_round_trip_cost", "actual_start_observed_at", "actual_end_observed_at", "direction_policy_version", "direction_up_threshold", "direction_down_threshold"}
++) + OBSERVATION_ORIGIN_FIELDS
++EXPORT_ROW_FIELDS = tuple(name for name in ROW_FIELDS if name not in OBSERVATION_ORIGIN_FIELDS)
++REQUIRED_ROW_FIELDS = set(ROW_FIELDS) - set(OBSERVATION_ORIGIN_FIELDS) - {"assumed_round_trip_cost", "actual_start_observed_at", "actual_end_observed_at", "direction_policy_version", "direction_up_threshold", "direction_down_threshold"}
+ PACKAGE_FIELDS = {"schema_version", "producer", "action_date", "symbols", "reviewed_at", "outcomes_through",
+                   "probability_target_contract", "source_receipt_sha256", "source_manifest_sha256",
+                   "source_results_sha256", "source_report_sha256", "coverage_status", "rows"}
+@@ -72,6 +77,33 @@
+     if (len(recorded) == 2
+             and recorded["direction_down_threshold"] > recorded["direction_up_threshold"]):
+         raise ValueError("Stats package has reversed saved direction thresholds")
++
++
++def _validate_saved_observation_origins(row: Mapping, *, reviewed_at: str) -> None:
++    """Keep optional native receipt proof portable; never export local paths."""
++    from ml.stock_observation_sources import SOURCE_ORDER_V2
++    for boundary in ("start", "end"):
++        prefix = f"actual_{boundary}_observation_"
++        for field in ("source", "producer", "input_sha256", "payload_sha256", "receipt_path", "recorded_at"):
++            value = row.get(prefix + field)
++            if value is None:
++                continue
++            if not isinstance(value, str) or not value or len(value) > 512:
++                raise ValueError("Stats package has invalid optional observation provenance")
++            if field == "source" and value not in SOURCE_ORDER_V2:
++                raise ValueError("Stats package has an unsupported observation source")
++            if field == "producer" and value not in {"intraday-market-input-collector-v1", "intraday-market-input-collector-v2"}:
++                raise ValueError("Stats package has an unsupported observation producer")
++            if field == "recorded_at":
++                stamp = pd.Timestamp(value)
++                if pd.isna(stamp) or stamp.tzinfo is None or stamp > pd.Timestamp(reviewed_at):
++                    raise ValueError("Stats package observation receipt exceeds its evidence cutoff")
++            if field in ("input_sha256", "payload_sha256") and not re.fullmatch(r"[a-f0-9]{64}", value):
++                raise ValueError("Stats package has invalid observation receipt hash")
++            if field == "receipt_path":
++                match = re.fullmatch(r"intraday/market-inputs/objects/\d{4}/\d{2}/\d{2}/([a-f0-9]{64})\.json", value)
++                if not match or match[1] != row.get(prefix + "input_sha256"):
++                    raise ValueError("Stats package observation receipt must be its portable native reference")
+ 
+ 
+ def _validate_package(payload: dict) -> pd.DataFrame:
+@@ -98,6 +130,7 @@
+         if not isinstance(row, dict) or set(row) - set(ROW_FIELDS) or not REQUIRED_ROW_FIELDS.issubset(row):
+             raise ValueError("Stats package contains unsupported prediction fields")
+         _validate_saved_direction_thresholds(row)
++        _validate_saved_observation_origins(row, reviewed_at=payload["reviewed_at"])
+         if (row["symbol"] not in symbols or row["action_date"] != payload["action_date"]
+                 or not isinstance(row["id"], str) or not row["id"]
+                 or row["model_status"] not in {"PROMOTED", "RESEARCH_NOT_PROMOTED", "RESEARCH_NO_TARGET_HISTORY"}):
+@@ -126,7 +159,11 @@
+                 distance = boundary - observed if close else observed - boundary
+                 if not pd.Timedelta(0) <= distance <= STOCK_TARGET_BOUNDARY_TOLERANCE:
+                     raise ValueError("Stats package observation differs from its target boundary")
+-    frame = pd.DataFrame.from_records(rows, columns=ROW_FIELDS)
++    # Preserve the original v1 projection when no optional local evidence was
++    # supplied. Merely installing a new reader must not change portable science.
++    columns = (*EXPORT_ROW_FIELDS, *(name for name in OBSERVATION_ORIGIN_FIELDS
++                                    if any(name in row for row in rows)))
++    frame = pd.DataFrame.from_records(rows, columns=columns)
+     if frame.id.duplicated().any() or frame.duplicated(["symbol", "route"]).any():
+         raise ValueError("Stats package has duplicate forecast identities")
+     if set(frame.symbol) != set(symbols):
+@@ -161,7 +198,9 @@
+         coverage = NO_SAVED_FORECASTS
+     elif source_report.get("coverage_status") == NO_SAVED_FORECASTS:
+         raise ValueError("Stats source coverage disagrees with its saved forecasts")
+-    frame = original.loc[:, [name for name in ROW_FIELDS if name in original]].copy()
++    # Existing peers validate an exact v1 row allowlist. Keep their wire format
++    # unchanged; full endpoint proof remains in the immutable local snapshot.
++    frame = original.loc[:, [name for name in EXPORT_ROW_FIELDS if name in original]].copy()
+     for key, value in probability_target_metadata(target).items():
+         frame[key] = value
+     payload = {"schema_version": PACKAGE_VERSION, "producer": producer, "symbols": list(_symbols(symbols)),
+diff --git a/ml/gameplan_stats_outcome_revision.py b/ml/gameplan_stats_outcome_revision.py
+--- a/ml/gameplan_stats_outcome_revision.py
++++ b/ml/gameplan_stats_outcome_revision.py
+@@ -19,7 +19,7 @@
+ from ml.artifacts import create_timestamp_directory, file_checksum, verify_manifest, write_manifest, utc_timestamp
+ from ml.gameplan_actuals_review import RUNS, VERSION, _write_json
+ from ml.gameplan_evaluation import read_evaluation_history
+-from ml.gameplan_stats_handoff import ROW_FIELDS, _combined_report
++from ml.gameplan_stats_handoff import EXPORT_ROW_FIELDS, OBSERVATION_ORIGIN_FIELDS, _combined_report
+ from ml.independent_stock_targets import STOCK_TARGET_BOUNDARY_TOLERANCE
+ from ml.stock_direction_policy import saved_direction_policy_summary
+ 
+@@ -45,7 +45,7 @@
+ _FILES = ("receipt.json", "manifest.json", "forecast-results.parquet", "report.json")
+ # Older completed-session producers omit these optional fields from ROW_FIELDS.
+ # A revision still freezes every recorded policy field, including absence.
+-_ROW_FIELDS = tuple(dict.fromkeys((*ROW_FIELDS, "direction_policy_version",
++_ROW_FIELDS = tuple(dict.fromkeys((*EXPORT_ROW_FIELDS, "direction_policy_version",
+                                  "direction_up_threshold", "direction_down_threshold")))
+ 
+ 
+@@ -301,6 +301,19 @@
+                 value = proposed[key]
+                 if key.endswith("observed_at") and value is not None and isinstance(frame[key].dtype, pd.DatetimeTZDtype):
+                     value = pd.Timestamp(value)
++                frame.at[frame.index[index], key] = value
++            # Optional local acquisition proof belongs to the old observations,
++            # not to the frozen forecast identity. Replace only what this
++            # supported revision actually proves; never carry an old collector
++            # receipt onto newly evaluated endpoints or invent acquisition time.
++            update = next(item for item in payload["updates"] if item["id"] == original["id"])
++            for key in OBSERVATION_ORIGIN_FIELDS:
++                if key not in frame:
++                    continue
++                boundary = "entry" if key.startswith("actual_start_") else "exit"
++                value = (update["target_observation_source"] if key.endswith("_source") else
++                         update[f"target_observation_{boundary}_input_sha256"] if key.endswith("_input_sha256") else None)
++                frame[key] = frame[key].astype(object)
+                 frame.at[frame.index[index], key] = value
+         elif original["id"]in expected_mature:
+             frame.at[frame.index[index],"actuals_status"]="MATURE_AWAITING_DATA"
+diff --git a/ml/stock_observation_sources.py b/ml/stock_observation_sources.py
+--- a/ml/stock_observation_sources.py
++++ b/ml/stock_observation_sources.py
+@@ -256,7 +256,8 @@
+     return result, int((~valid).sum())
+ 
+ 
+-def load_observed_stock_sources(root: Path, *, symbols, source_contract="observed-multi-source-stock-v1"):
++def load_observed_stock_sources(root: Path, *, symbols, source_contract="observed-multi-source-stock-v1",
++                                include_saved_intraday=False):
+     from datafetching.databento_archive import discover_archive_partitions
+     from ml.stock_target_prices import (
+         OBSERVED_MULTI_STOCK_PRICE_SOURCES, OBSERVED_MULTI_STOCK_PRICE_SOURCE_V2, XNAS_STOCK_PRICE_SOURCE,
+@@ -282,6 +283,13 @@
+         inventory.append({"source": SOURCE_ORDER[0], "rows": len(native),
+                           "source_evidence": report})
+     for symbol in symbols:
++        if include_saved_intraday:
++            from datafetching.intraday_dbn_observations import load_saved_equity_minutes
++            saved, saved_files, saved_inventory = load_saved_equity_minutes(root, symbol=symbol)
++            if not saved.empty:
++                frames.append(saved)
++            files.extend(saved_files)
++            inventory.extend(saved_inventory)
+         # Raw EQUS rows retain the dataset/schema/adjustment identity which the
+         # seven-column normalized projection deliberately does not contain.
+         for path in sorted((root / "stocks" / symbol / "bars/1m/databento/raw").glob("*_ohlcv-1m_1m_raw.parquet")):
+@@ -336,7 +344,8 @@
+                                       "invalid_or_zero_volume_rows_excluded": omitted})
+         if source_contract == OBSERVED_MULTI_STOCK_PRICE_SOURCE_V2:
+             from datafetching.fmp_price_history_receipts import load_native_five_minute_history
+-            fmp, fmp_files, fmp_inventory = load_native_five_minute_history(root, symbol=symbol)
++            fmp, fmp_files, fmp_inventory = load_native_five_minute_history(root, symbol=symbol,
++                include_saved_intraday=include_saved_intraday)
+             if not fmp.empty:
+                 frames.append(fmp)
+             files.extend(fmp_files)
+diff --git a/ml/stock_target_prices.py b/ml/stock_target_prices.py
+--- a/ml/stock_target_prices.py
++++ b/ml/stock_target_prices.py
+@@ -46,6 +46,7 @@
+ def load_stock_target_prices(
+     datastore_root: Path, *, symbols: Sequence[str],
+     source_contract: str = CANONICAL_STOCK_PRICE_SOURCE,
++    include_saved_intraday: bool = False,
+ ) -> tuple[pd.DataFrame, tuple[Path, ...], dict]:
+     """Return observed prices, provenance files, and a verified source inventory.
+ 
+@@ -57,7 +58,8 @@
+     root = Path(datastore_root).resolve()
+     if source_contract in OBSERVED_MULTI_STOCK_PRICE_SOURCES:
+         from ml.stock_observation_sources import load_observed_stock_sources
+-        return load_observed_stock_sources(root, symbols=symbols, source_contract=source_contract)
++        return load_observed_stock_sources(root, symbols=symbols, source_contract=source_contract,
++                                           include_saved_intraday=include_saved_intraday)
+     dataset = stock_price_dataset(source_contract)
+     clean_symbols = tuple(str(value).strip().upper() for value in symbols)
+     if not clean_symbols or len(set(clean_symbols)) != len(clean_symbols):
+@@ -131,23 +133,41 @@
+                 "published_at": replay_manifest["published_at"]})
+     else:
+         for symbol in clean_symbols:
++            saved = pd.DataFrame()
++            if include_saved_intraday:
++                from datafetching.intraday_dbn_observations import load_saved_equity_minutes
++                saved, saved_files, saved_inventory = load_saved_equity_minutes(root, symbol=symbol)
++                files.extend(saved_files)
++                partitions.extend(saved_inventory)
+             folder = root / "stocks" / symbol / "bars/1m/databento/normalized"
+             paths = sorted(folder.glob("*_ohlcv-1m_1m.parquet"))
+-            if not paths:
++            if not paths and saved.empty:
+                 raise RuntimeError(f"Canonical stock minute prices are missing: {symbol}")
+             for path in paths:
+                 frame = pd.read_parquet(path)
+                 _verify_native_markers(frame)
+                 if "provider_dataset" not in frame or set(frame.provider_dataset.dropna().astype(str)) != {dataset}:
+                     raise RuntimeError(f"Canonical stock price dataset differs from {dataset}: {path}")
+-                frames.append(frame.loc[:, ["timestamp", "open", "close"]].assign(symbol=symbol))
++                selected = frame.loc[:, ["timestamp", "open", "close"]].assign(symbol=symbol)
++                if include_saved_intraday:
++                    selected = selected.assign(observation_source="databento:EQUS.MINI:ohlcv-1m",
++                        observation_dataset=dataset, observation_interval_seconds=60,
++                        observation_recorded_at=pd.NaT)
++                frames.append(selected)
+                 files.append(path)
++            if not saved.empty:
++                # Existing canonical observations keep precedence for exact
++                # duplicate values and their historically unrecorded clocks.
++                frames.append(saved)
+     bars = pd.concat(frames, ignore_index=True)
+     bars["timestamp"] = pd.to_datetime(bars.timestamp, utc=True, errors="coerce")
+     if bars.timestamp.isna().any():
+         raise RuntimeError("Stock price source has invalid minute timestamps")
+     bars = bars.drop_duplicates(["symbol", "timestamp", "open", "close"])
+-    if bars.duplicated(["symbol", "timestamp"]).any():
++    # Stats applies its actual receipt cutoff before checking compatible live
++    # EQUS conflicts. A future receipt cannot invalidate an earlier snapshot.
++    defer_saved_conflicts = include_saved_intraday and source_contract == CANONICAL_STOCK_PRICE_SOURCE
++    if not defer_saved_conflicts and bars.duplicated(["symbol", "timestamp"]).any():
+         raise RuntimeError("Stock price source contains conflicting minute observations")
+     # A provider row with both prices undefined contains no price observation.
+     # Preserve its verified native evidence and disclose the omitted minute;
+diff --git a/tests/test_gameplan_stats_intraday_prices.py b/tests/test_gameplan_stats_intraday_prices.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_gameplan_stats_intraday_prices.py
+@@ -0,0 +1,254 @@
++"""Saved collector receipts feed Stats without acquiring data or changing targets."""
++import copy
++import json
++from pathlib import Path
++
++import pandas as pd
++import pytest
++
++from app.ui.gameplan_stats_data import load_gameplan_stats
++from ml.artifacts import file_checksum, verify_manifest, write_manifest
++from ml.gameplan_actuals_review import publish_completed_session_review
++from ml.gameplan_stats_handoff import OBSERVATION_ORIGIN_FIELDS, EXPORT_ROW_FIELDS, _validate_package, export_stats_package
++from ml.intraday.market_inputs import MarketInputStore
++from ml.stock_target_prices import OBSERVED_MULTI_STOCK_PRICE_SOURCE_V2, stock_price_dataset
++from tests.test_gameplan_actuals_review import publication_case
++from tests.test_gameplan_stats_direct_observations import direct
++
++
++DAY = "2026-09-09"
++EARLY = "2026-09-10T00:30Z"
++LATE = "2026-09-10T04:10Z"
++
++
++def candle(clock, *, price=100., close=101., **changes):
++    return {"date": DAY + " " + clock, "open": price, "high": max(price, close) + 1,
++            "low": min(price, close) - 1, "close": close, "volume": 20, **changes}
++
++
++def retain(root, payload, *, received="2026-09-09T12:01Z", status="ok"):
++    return MarketInputStore(root).append(symbol="AAPL", source="fmp_5min",
++        started_at=received, received_at=received, payload=payload,
++        features={}, status=status, producer_runtime={},
++        request={"endpoint": "historical-chart/5min", "params": {
++            "symbol": "AAPL", "from": DAY, "to": DAY,
++            "nonadjusted": "true", "extended": "true"}})
++
++
++@pytest.fixture
++def case(publication_case, monkeypatch):
++    """Freeze an original multi-source forecast before creating input receipts."""
++    c = publication_case
++    contract = OBSERVED_MULTI_STOCK_PRICE_SOURCE_V2
++    dataset = stock_price_dataset(contract)
++    config = c.original.manifest["configuration"]
++    config["target_price_source_contract"] = contract
++    (c.original.run_directory / "manifest.json").write_text(json.dumps(c.original.manifest))
++    for path in (c.original.run_directory / "forecasts.parquet", c.original_trade / "trade-plan.parquet"):
++        frame = pd.read_parquet(path)
++        frame["target_price_source_contract"] = contract
++        frame["target_price_dataset"] = dataset
++        frame.to_parquet(path, index=False)
++    planning_path = c.original_trade / "planning-price-path.json"
++    planning = json.loads(planning_path.read_text())
++    planning.update(price_source_contract=contract, price_dataset=dataset)
++    planning_path.write_text(json.dumps(planning))
++    manifest = json.loads((c.original_trade / "manifest.json").read_text())
++    write_manifest(c.original_trade, run_timestamp=pd.Timestamp(DAY, tz="UTC"), input_files=[],
++        output_files=["trade-plan.parquet", "planning-price-path.json"],
++        configuration=manifest["configuration"])
++    receipt_path = c.original_trade / "receipt.json"
++    receipt = json.loads(receipt_path.read_text())
++    receipt["manifest_sha256"] = file_checksum(c.original_trade / "manifest.json")
++    receipt_path.write_text(json.dumps(receipt))
++    monkeypatch.setattr("app.services.fmp_corporate_data.FmpCorporateDataProvider._get_json",
++        lambda *a, **kw: pytest.fail("Stats must only read saved observations"))
++    return c
++
++
++def publish(c, at=EARLY):
++    return publish_completed_session_review(c.root, action_date=DAY,
++        clock=lambda: pd.Timestamp(at), reconcile_existing=True)
++
++
++def first_row(run):
++    rows = pd.read_parquet(run / "forecast-results.parquet")
++    return rows.loc[rows.route.eq("1h@04:00")].iloc[0]
++
++
++def test_native_collector_prices_reach_stats_and_verified_ui(case):
++    original = pd.read_parquet(case.original.run_directory / "forecasts.parquet")
++    retained = retain(case.root, [candle("07:00:00"), candle("07:55:00", close=105.)])
++    before = {path: file_checksum(path) for path in case.root.rglob("*") if path.is_file()}
++    run = publish(case)
++    row = first_row(run)
++    assert row.actuals_status == "EVALUATED" and row.actual_return == pytest.approx(.05)
++    assert row.actual_start_observation_source == "fmp:historical-chart:5min"
++    assert row.actual_start_observation_producer == "intraday-market-input-collector-v2"
++    assert row.actual_start_observation_input_sha256 == retained["id"]
++    assert row.actual_end_observation_payload_sha256 == retained["payload_ref"]["sha256"]
++    assert row.actual_start_observation_recorded_at == retained["received_at"]
++    assert row.actual_start_observation_receipt_path == Path(retained["object_path"]).relative_to(case.root).as_posix()
++    saved = pd.read_parquet(run / "forecast-results.parquet")
++    pd.testing.assert_frame_equal(saved[original.columns], original, check_exact=True)
++    assert "direction_policy_version" not in original  # Historical absence stays unrecorded.
++    report = json.loads((run / "report.json").read_text())
++    assert report["forecasts"] == {"total": 24, "evaluated": 1, "pending_maturity": 6, "mature_awaiting_data": 17}
++    assert report["input_coverage_status"] == "MATURE_OBSERVATIONS_MISSING"
++    assert all(file_checksum(path) == digest for path, digest in before.items())
++    assert not (case.root / "stocks/AAPL/bars/5m/fmp/raw-history").exists()
++    review = load_gameplan_stats(case.root, DAY)
++    outcome = next(value for value in review.outcomes if value.route == "1h@04:00")
++    assert outcome.start_origin.has_collector_receipt and outcome.end_origin.has_collector_receipt
++    assert "15-minute trader" in outcome.start_origin.label
++    assert review.metrics().pending == 6 and review.metrics().awaiting_data == 17
++    assert load_gameplan_stats(case.root).run_directory == run
++    verify_manifest(run)
++
++
++def test_late_saved_receipt_revises_available_evidence_without_maturing_long_targets(case):
++    retain(case.root, [candle("07:00:00")])
++    early = publish(case)
++    assert first_row(early).actuals_status == "MATURE_AWAITING_DATA"
++    assert pd.isna(first_row(early).actual_end_observation_producer)
++    frozen = {path: file_checksum(path) for path in early.iterdir() if path.is_file()}
++    retain(case.root, [candle("07:00:00"), candle("07:55:00", close=105.)], received="2026-09-10T04:05Z")
++    assert publish(case, "2026-09-10T00:35Z") == early  # Future receipt stays unavailable.
++    later = publish(case, LATE)
++    assert later != early and first_row(later).actuals_status == "EVALUATED"
++    report = json.loads((later / "report.json").read_text())
++    assert report["session_revision_parent"]["receipt.json"] == frozen[early / "receipt.json"]
++    assert report["forecasts"]["pending_maturity"] == 6
++    assert report["outcomes_through"] == "2026-09-10T00:00:00+00:00"
++    assert all(file_checksum(path) == digest for path, digest in frozen.items())
++    assert publish(case, "2026-09-10T04:15Z") == later
++    assert load_gameplan_stats(case.root, DAY).run_directory == later
++
++
++def test_missing_zero_volume_and_out_of_tolerance_prices_remain_missing(case):
++    retain(case.root, [candle("07:00:00", volume=0), candle("07:10:00"), candle("07:55:00")])
++    run = publish(case)
++    row = first_row(run)
++    assert row.actuals_status == "MATURE_AWAITING_DATA"
++    assert pd.isna(row.actual_return) and pd.isna(row.actual_start_price)
++    assert pd.isna(row.actual_start_observation_producer)
++    assert row.actual_end_observation_producer == "intraday-market-input-collector-v2"
++
++
++def test_saved_legacy_contract_does_not_gain_a_new_fallback(publication_case):
++    c = publication_case
++    retain(c.root, [candle("07:00:00"), candle("07:55:00", close=105.)])
++    run = publish(c)
++    row = first_row(run)
++    assert row.target_price_source_contract == "xnas-itch-archive-v1"
++    assert row.actuals_status == "MATURE_AWAITING_DATA" and pd.isna(row.actual_return)
++    assert pd.isna(row.actual_start_observation_producer)
++    report = json.loads((run / "report.json").read_text())
++    assert report["forecasts"] == {"total": 24, "evaluated": 0, "pending_maturity": 6, "mature_awaiting_data": 18}
++
++
++def test_default_v1_handoff_stays_compatible_and_optional_reader_proof_is_strict(case):
++    retained = retain(case.root, [candle("07:00:00"), candle("07:55:00", close=105.)])
++    run = publish(case)
++    destination = export_stats_package(case.root, producer="Atlas", symbols=["AAPL"],
++        destination=case.root / "package.json", action_date=DAY, review_run=run)
++    payload = json.loads(destination.read_text())
++    first = next(row for row in payload["rows"] if row["route"] == "1h@04:00")
++    assert set(first).issubset(EXPORT_ROW_FIELDS)
++    assert not set(OBSERVATION_ORIGIN_FIELDS) & set(first)
++    assert not set(OBSERVATION_ORIGIN_FIELDS) & set(_validate_package(payload).columns)
++    # New readers may retain optional evidence already supplied by a supported
++    # local materialization; the default v1 wire never requires peer upgrades.
++    local = first_row(run)
++    first.update({name: None if pd.isna(local[name]) else local[name]
++                  for name in OBSERVATION_ORIGIN_FIELDS})
++    assert first["actual_start_observation_input_sha256"] == retained["id"]
++    assert first["actual_start_observation_producer"] == "intraday-market-input-collector-v2"
++    assert str(case.root) not in destination.read_text()
++    validated = _validate_package(payload)
++    assert validated.loc[validated.route.eq("1h@04:00"), "actual_start_observation_input_sha256"].iloc[0] == retained["id"]
++    for field, value in (
++        ("receipt_path", "C:/DATASTORE/private/account.json"),
++        ("receipt_path", "intraday/market-inputs/objects/../../private.json"),
++        ("receipt_path", "intraday/market-inputs/objects/2026/09/09/" + "0" * 64 + ".json"),
++        ("payload_sha256", "credential-shaped-invalid-value"),
++        ("recorded_at", "2026-09-11T00:00:00Z"),
++        ("producer", "private-account-data"),
++        ("source", "https://example.invalid/?token=secret"),
++    ):
++        changed = copy.deepcopy(payload)
++        row = next(item for item in changed["rows"] if item["route"] == "1h@04:00")
++        row["actual_start_observation_" + field] = value
++        with pytest.raises(ValueError, match="Stats package"):
++            _validate_package(changed)
++    legacy = copy.deepcopy(payload)
++    for row in legacy["rows"]:
++        for field in list(row):
++            if field.startswith(("actual_start_observation_", "actual_end_observation_")):
++                del row[field]
++    assert len(_validate_package(legacy)) == len(payload["rows"])
++
++
++def test_cumulative_revision_updates_evidence_without_freezing_old_collector_receipts(tmp_path):
++    import tests.test_gameplan_stats_outcome_revision as saved
++    from ml import gameplan_stats_outcome_revision as revision
++    root = tmp_path / "revision"
++    rows = [saved.forecast("AAPL", "4h@16:00"), saved.forecast("DBX", "4h@12:00", status="EVALUATED")]
++    for row in rows:
++        row.update(dict.fromkeys(OBSERVATION_ORIGIN_FIELDS))
++        row.update(actual_start_observation_source="fmp:historical-chart:5min",
++            actual_start_observation_producer="intraday-market-input-collector-v2",
++            actual_start_observation_input_sha256="e" * 64,
++            actual_start_observation_payload_sha256="f" * 64,
++            actual_start_observation_receipt_path="intraday/market-inputs/objects/2026/10/23/" + "e" * 64 + ".json",
++            actual_start_observation_recorded_at="2026-10-23T23:10:00Z")
++    rows[0]["actual_start_observed_at"] = rows[0]["target_window_start"]
++    parent = saved.base(root, rows=rows)
++    before = pd.read_parquet(parent / "forecast-results.parquet")
++    frozen = {path: file_checksum(path) for path in parent.iterdir() if path.is_file()}
++    saved.history(root, rows)
++    package = tmp_path / "revision.json"
++    revision.export_revision(root, base_run=parent, expected_base_receipt_sha256=file_checksum(parent / "receipt.json"),
++        destination=package, reviewed_at=saved.NOW)
++    payload = json.loads(package.read_text())
++    assert all(not set(OBSERVATION_ORIGIN_FIELDS) & set(row) for row in payload["rows"])
++    run = revision.adopt_revision(root, package=package, expected_sha256=file_checksum(package), base_run=parent,
++        expected_base_receipt_sha256=file_checksum(parent / "receipt.json"), reviewed_at=saved.NOW)
++    after = pd.read_parquet(run / "forecast-results.parquet")
++    assert after.iloc[0].actual_start_observation_source == "fmp:historical-chart:5min"
++    assert after.iloc[0].actual_start_observation_input_sha256 == "c" * 64
++    assert after.iloc[0].actual_end_observation_input_sha256 == "d" * 64
++    assert pd.isna(after.iloc[0].actual_start_observation_producer)
++    assert pd.isna(after.iloc[0].actual_start_observation_receipt_path)
++    assert pd.isna(after.iloc[0].actual_start_observation_recorded_at)
++    pd.testing.assert_series_equal(after.iloc[1], before.iloc[1], check_exact=True)
++    scientific = [key for key in before if key not in (*revision._OUTCOMES, *OBSERVATION_ORIGIN_FIELDS)]
++    pd.testing.assert_frame_equal(after[scientific], before[scientific], check_exact=True)
++    assert all(file_checksum(path) == digest for path, digest in frozen.items())
++
++
++def test_direct_revision_does_not_require_acquisition_metadata_in_original_forecasts(direct):
++    import tests.test_gameplan_stats_direct_observations as native
++    parent = direct["parent"]
++    frame = pd.read_parquet(parent / "forecast-results.parquet")
++    for name in OBSERVATION_ORIGIN_FIELDS:
++        frame[name] = None
++    frame.to_parquet(parent / "forecast-results.parquet", index=False)
++    manifest = json.loads((parent / "manifest.json").read_text())
++    write_manifest(parent, run_timestamp=pd.Timestamp("2026-10-24T01:00Z"), input_files=[],
++        output_files=["forecast-results.parquet", "report.json", "Gameplan-results.md"],
++        configuration=manifest["configuration"])
++    receipt = json.loads((parent / "receipt.json").read_text())
++    receipt["manifest_sha256"] = file_checksum(parent / "manifest.json")
++    (parent / "receipt.json").write_text(json.dumps(receipt))
++    for path in (direct["root"] / "ml/gameplan-actuals-review-latest/run.json",
++                 direct["root"] / "ml/gameplan-actuals-review-by-date/2026-10-23/run.json"):
++        pointer = json.loads(path.read_text())
++        pointer["current"]["receipt_sha256"] = file_checksum(parent / "receipt.json")
++        path.write_text(json.dumps(pointer))
++    native.export(direct)
++    run = native.adopt(direct)
++    result = pd.read_parquet(run / "forecast-results.parquet").iloc[0]
++    assert result.actuals_status == "EVALUATED"
++    assert result.actual_start_observation_input_sha256 == direct["receipt"]["sha256"]
++    assert pd.isna(result.actual_start_observation_producer)
+diff --git a/tests/test_gameplan_stats_snapshot_context.py b/tests/test_gameplan_stats_snapshot_context.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_gameplan_stats_snapshot_context.py
+@@ -0,0 +1,154 @@
++"""Saved snapshot timing, coverage and market-observation origin in the Stats UI."""
++import json
++from pathlib import Path
++
++import pandas as pd
++import pytest
++
++from app.ui.gameplan_stats_data import load_gameplan_stats
++from ml.artifacts import file_checksum, write_manifest
++from gameplan_stats_fixture import forecast, write_review
++from test_gameplan_stats_ui import tab, _finish_refresh
++
++
++def snapshot(root, *, session='2026-09-11', version='early', rows=None, mode='completed-session-before-training',
++             reviewed_at=None, parent=None):
++    run = write_review(root, rows, session=session, version=version)
++    report = json.loads((run/'report.json').read_text())
++    report.update(reviewed_at=reviewed_at or f'{session}T17:35:00-07:00', review_mode=mode,
++                  price_evidence_available_at=reviewed_at or f'{session}T17:35:00-07:00',
++                  input_coverage_status='MATURE_OBSERVATIONS_MISSING',
++                  target_price_source_contract='observed-multi-source-stock-v2')
++    if parent:
++        report['session_revision_parent'] = {'run_path': parent.relative_to(root).as_posix()}
++    (run/'report.json').write_text(json.dumps(report))
++    write_manifest(run,run_timestamp=report['reviewed_at'],input_files=[],
++        output_files=['forecast-results.parquet','report.json','Gameplan-results.md'],
++        configuration={'schema_version':report['schema_version'],'action_date':session})
++    receipt = json.loads((run/'receipt.json').read_text())
++    receipt['manifest_sha256'] = file_checksum(run/'manifest.json')
++    (run/'receipt.json').write_text(json.dumps(receipt))
++    for path in (root/'ml/gameplan-actuals-review-latest/run.json',root/f'ml/gameplan-actuals-review-by-date/{session}/run.json'):
++        value=json.loads(path.read_text())
++        value['current']['receipt_sha256']=file_checksum(run/'receipt.json')
++        path.write_text(json.dumps(value))
++    return run
++
++
++def origin_row(*, proof=True, recorded_at='2026-09-11T05:02:00-07:00'):
++    row=forecast()
++    for boundary in ('start','end'):
++        prefix=f'actual_{boundary}_observation_'
++        row[prefix+'source']='fmp:historical-chart:5min'
++        if proof:
++            row.update({prefix+'producer':'intraday-market-input-collector-v2',
++                prefix+'input_sha256':'a'*64,prefix+'payload_sha256':'b'*64,
++                prefix+'receipt_path':f"intraday/market-inputs/objects/2026/09/11/{'a'*64}.json",
++                prefix+'recorded_at':recorded_at})
++    return row
++
++
++@pytest.mark.parametrize('session,stamp,mode,label',[
++    ('2026-09-11','2026-09-11T17:35:00-07:00','completed-session-before-training','Early local snapshot'),
++    ('2026-11-02','2026-11-02T17:30:00-08:00','completed-session-before-training','Early local snapshot'),
++    ('2026-09-11','2026-09-11T21:00:00-07:00','completed-session-before-training','Local snapshot'),
++    ('2026-09-11','2026-09-12T00:15:00-07:00','completed-session-before-training','Local snapshot'),
++    ('2026-09-11','2026-09-11T17:35:00-07:00','combined-atlas-scout','Combined Atlas–Scout snapshot'),
++    ('2026-09-11','2026-09-11T17:35:00-07:00',None,'Saved snapshot'),
++])
++def test_reader_labels_actual_snapshot_without_relabelling_legacy_or_later_reviews(tmp_path,session,stamp,mode,label):
++    snapshot(tmp_path,session=session,rows=[forecast(session=session)],reviewed_at=stamp,mode=mode)
++    review=load_gameplan_stats(tmp_path,session)
++    assert review.snapshot_label==label
++    assert review.price_evidence_available_at.isoformat()==stamp
++    assert review.input_coverage_status=='MATURE_OBSERVATIONS_MISSING'
++    assert review.price_source_contract=='observed-multi-source-stock-v2'
++
++
++@pytest.mark.parametrize('producer',['intraday-market-input-collector-v1','intraday-market-input-collector-v2'])
++def test_reader_retains_exact_saved_collector_evidence_without_reading_raw_data(tmp_path,monkeypatch,producer):
++    import ml.stock_target_prices as prices
++    monkeypatch.setattr(prices,'load_stock_target_prices',lambda *a,**k:pytest.fail('UI cannot load market-price stores'))
++    row=origin_row(recorded_at=pd.Timestamp('2026-09-11T12:02Z'))
++    for boundary in ('start','end'):
++        row[f'actual_{boundary}_observation_producer']=producer
++    snapshot(tmp_path,rows=[row])
++    review=load_gameplan_stats(tmp_path)
++    row=review.outcomes[0]
++    assert row.start_origin.has_collector_receipt
++    assert row.start_origin.producer==producer
++    assert row.start_origin.input_sha256=='a'*64
++    assert row.start_origin.payload_sha256=='b'*64
++    assert row.start_origin.recorded_at.isoformat()=='2026-09-11T05:02:00-07:00'
++    assert review.observation_sources==("15-minute trader's saved market data (FMP 5-minute candles)",)
++    assert review.unrecorded_observations==0
++
++
++def test_provider_alone_never_claims_fifteen_minute_collector(tmp_path):
++    snapshot(tmp_path,rows=[origin_row(proof=False)])
++    review=load_gameplan_stats(tmp_path)
++    assert not review.outcomes[0].start_origin.has_collector_receipt
++    assert review.observation_sources==('FMP 5-minute candles · collector not recorded',)
++    assert '15-minute' not in review.observation_sources[0]
++
++
++@pytest.mark.parametrize('path',[
++    'saved-market-inputs/receipt.json',
++    f"C:/DATASTORE/intraday/market-inputs/objects/2026/09/11/{'a'*64}.json",
++    f"intraday/market-inputs/objects/2026/09/11/{'b'*64}.json",
++    f"intraday/market-inputs/objects/2026/09/11/../{'a'*64}.json",
++])
++def test_malformed_receipt_reference_never_claims_collector_origin(tmp_path,path):
++    row=origin_row()
++    for boundary in ('start','end'):
++        row[f'actual_{boundary}_observation_receipt_path']=path
++    snapshot(tmp_path,rows=[row])
++    review=load_gameplan_stats(tmp_path)
++    assert not review.outcomes[0].start_origin.has_collector_receipt
++    assert review.observation_sources==('FMP 5-minute candles · collector evidence incomplete',)
++
++
++def test_old_snapshot_origin_remains_unrecorded(tmp_path):
++    write_review(tmp_path,[forecast()])
++    review=load_gameplan_stats(tmp_path)
++    assert review.outcomes[0].start_origin is None
++    assert review.observation_sources==() and review.unrecorded_observations==2
++    assert review.snapshot_label=='Saved snapshot'
++
++
++def test_actual_tab_explains_early_time_partial_coverage_and_schedule(tab,tmp_path):
++    snapshot(tmp_path)
++    tab.set_review(load_gameplan_stats(tmp_path))
++    assert 'Early local snapshot' in tab.status.get()
++    assert 'Snapshot as of Sep 11, 17:35 PDT' in tab.status.get()
++    assert 'Outcomes through Sep 11, 17:00 PDT' in tab.status.get()
++    assert '5 evaluated · 1 awaiting market-price data · 1 awaiting maturity' in tab.status.get()
++    assert '17:30 Pacific' in tab.schedule_label.cget('text')
++    assert '17:00 session close' in tab.schedule_label.cget('text')
++    assert 'not recorded' in tab.sources_label.cget('text')
++
++
++def test_actual_dialog_displays_saved_origin_and_receipt_hashes(tab,tmp_path,monkeypatch):
++    snapshot(tmp_path,rows=[origin_row()])
++    tab.set_review(load_gameplan_stats(tmp_path))
++    shown=[]
++    monkeypatch.setattr(tab,'_text_dialog',lambda title,text:shown.append(text))
++    tab._show_outcome('AAPL',0,tab.review.outcomes[0])
++    assert "15-minute trader's saved market data" in shown[0]
++    assert 'Saved receipt time: Sep 11, 05:02:00 PDT' in shown[0]
++    assert 'a'*64 in shown[0] and 'b'*64 in shown[0]
++    assert "15-minute trader's saved market data" in tab.sources_label.cget('text')
++
++
++def test_tab_refreshes_same_session_revision_and_retains_original_artifact(tab,tmp_path):
++    parent=snapshot(tmp_path,version='first',rows=[forecast(status='MATURE_AWAITING_DATA')])
++    before={p.name:p.read_bytes() for p in parent.iterdir() if p.is_file()}
++    tab.set_review(load_gameplan_stats(tmp_path))
++    revised=snapshot(tmp_path,version='revised',rows=[origin_row()],reviewed_at='2026-09-11T21:45:00-07:00',parent=parent)
++    tab.refresh()
++    _finish_refresh(tab)
++    assert tab.review.run_directory==revised
++    assert tab.review.snapshot_label=='Local snapshot'
++    assert 'Revised saved evidence' in tab.status.get()
++    assert '1 evaluated · 0 awaiting market-price data · 0 awaiting maturity' in tab.status.get()
++    assert {p.name:p.read_bytes() for p in parent.iterdir() if p.is_file()}==before
+diff --git a/tests/test_intraday_fmp_observations.py b/tests/test_intraday_fmp_observations.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_intraday_fmp_observations.py
+@@ -0,0 +1,193 @@
++"""Native retained collector data remains read-only and explicitly opted in."""
++from contextlib import closing
++import hashlib
++import json
++from pathlib import Path
++import sqlite3
++import struct
++
++import pandas as pd
++import pytest
++
++from datafetching.fmp_price_history_receipts import load_native_five_minute_history
++from datafetching.intraday_dbn_observations import load_saved_equity_minutes
++from ml.intraday.market_inputs import MarketInputStore
++from ml.stock_observation_sources import completed_observation_bars
++from ml.stock_target_prices import load_stock_target_prices
++
++
++def retain(root, *, payload=None, **overrides):
++    row = {"date": "2026-10-26 07:00:00", "open": 10, "high": 12,
++           "low": 9, "close": 11, "volume": 3}
++    args = dict(symbol="AAPL", source="fmp_5min", started_at="2026-10-26T11:05:01Z",
++        received_at="2026-10-26T11:05:01Z", payload=[row] if payload is None else payload,
++        features={}, producer_runtime={}, request={"endpoint": "historical-chart/5min",
++            "params": {"symbol": "AAPL", "from": "2026-10-26", "to": "2026-10-26",
++                       "nonadjusted": "true", "extended": "true"}})
++    args.update(overrides)
++    return MarketInputStore(root).append(**args)
++
++
++def rewrite_envelope(root, saved, mutate):
++    store = Path(root) / "intraday/market-inputs"
++    old = Path(saved["object_path"])
++    value = json.loads(old.read_bytes())
++    mutate(value)
++    raw = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
++    digest = hashlib.sha256(raw).hexdigest()
++    new = old.with_name(digest + ".json")
++    new.write_bytes(raw)
++    with closing(sqlite3.connect(store / "receipts.sqlite3")) as db:
++        db.execute("UPDATE receipts SET id=?,object_path=? WHERE id=?",
++                   (digest, str(new.relative_to(store)), saved["id"]))
++        db.commit()
++    return new
++
++
++def test_reader_absent_store_creates_nothing_and_default_does_not_opt_in(tmp_path):
++    assert load_native_five_minute_history(tmp_path, symbol="AAPL")[0].empty
++    assert not list(tmp_path.iterdir())
++    retain(tmp_path)
++    assert load_native_five_minute_history(tmp_path, symbol="AAPL")[0].empty
++    with pytest.raises(RuntimeError, match="No source-identified"):
++        load_stock_target_prices(tmp_path, symbols=["AAPL"],
++                                 source_contract="observed-multi-source-stock-v2")
++
++
++@pytest.mark.parametrize("version", ["v1", "v2"])
++def test_original_native_prices_provenance_and_cutoff(tmp_path, version):
++    saved = retain(tmp_path)
++    if version == "v1":
++        rewrite_envelope(tmp_path, saved, lambda row: row.update(version="intraday-receipt-market-inputs-v1"))
++    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
++    frame, paths, inventory = load_native_five_minute_history(tmp_path, symbol="AAPL", include_saved_intraday=True)
++    assert frame.timestamp.tolist() == [pd.Timestamp("2026-10-26T11:00Z")]
++    assert frame.observation_interval_seconds.tolist() == [300]
++    assert frame.observation_producer.tolist() == ["intraday-market-input-collector-" + version]
++    assert frame.observation_source.tolist() == ["fmp:historical-chart:5min"]
++    assert frame.observation_payload_sha256.iloc[0] == saved["payload_ref"]["sha256"]
++    assert not Path(frame.observation_receipt_path.iloc[0]).is_absolute()
++    assert inventory[0]["producer_runtime_metadata"] == "unrecorded"
++    assert completed_observation_bars(frame, pd.Timestamp("2026-10-26T11:05Z")).empty
++    assert len(completed_observation_bars(frame, pd.Timestamp("2026-10-26T11:06Z"))) == 1
++    assert all(p.read_bytes() == raw for p, raw in before.items())
++    assert set(paths).issubset(before)
++
++
++@pytest.mark.parametrize("change", [
++    lambda row: row["request"]["params"].update(symbol="MSFT"),
++    lambda row: row["request"]["params"].update(nonadjusted="false"),
++    lambda row: row["payload_ref"].update(path="../outside.json"),
++    lambda row: row.update(source="fmp_quote"),
++    lambda row: row.update(received_at="2026-10-26T11:06:00Z"),
++])
++def test_catalog_cross_symbol_policy_and_path_mismatches_rejected(tmp_path, change):
++    saved = retain(tmp_path)
++    rewrite_envelope(tmp_path, saved, change)
++    with pytest.raises((ValueError, RuntimeError)):
++        load_native_five_minute_history(tmp_path, symbol="AAPL", include_saved_intraday=True)
++
++
++def test_raw_tamper_and_native_markers(tmp_path):
++    saved = retain(tmp_path)
++    raw = tmp_path / "intraday/market-inputs" / saved["payload_ref"]["path"]
++    raw.write_bytes(raw.read_bytes() + b" ")
++    with pytest.raises(RuntimeError, match="checksum"):
++        load_native_five_minute_history(tmp_path, symbol="AAPL", include_saved_intraday=True)
++
++
++@pytest.mark.parametrize("change", [{"synthetic": True}, {"no_trade": True}, {"volume": 0},
++                                    {"symbol": "MSFT"}, {"synthetic": "false"}])
++def test_invalid_native_rows_do_not_supply_prices(tmp_path, change):
++    row = {"date": "2026-10-26 07:00:00", "open": 10, "high": 12, "low": 9,
++           "close": 11, "volume": 3, **change}
++    retain(tmp_path, payload=[row])
++    frame, _, inventory = load_native_five_minute_history(tmp_path, symbol="AAPL", include_saved_intraday=True)
++    assert frame.empty and inventory[0]["invalid_or_zero_volume_rows_excluded"] == 1
++
++
++def native_dbn_fixture(root, *, mapped_symbol="AAPL", publisher=95, volume=3,
++                       definition_action="ADD", definition_class="STOCK", future_definition=False):
++    from databento_dbn import InstrumentDefMsg, OHLCVMsg, InstrumentClass, SecurityUpdateAction, RType
++    clock = pd.Timestamp("2026-10-26T11:00Z").value
++    definition = InstrumentDefMsg(publisher_id=95, instrument_id=123,
++        ts_event=clock + (86400000000000 if future_definition else 0),
++        ts_recv=clock, min_price_increment=10000000, display_factor=1000000000,
++        raw_symbol=mapped_symbol, asset=mapped_symbol, security_type="EQUITY",
++        instrument_class=getattr(InstrumentClass, definition_class),
++        security_update_action=getattr(SecurityUpdateAction, definition_action))
++    bar = OHLCVMsg(rtype=RType.OHLCV_1M, publisher_id=publisher, instrument_id=123, ts_event=clock,
++        open=10000000000, high=12000000000, low=9000000000, close=11000000000, volume=volume)
++    records = [(clock, definition), (clock + 61000000000, bar)]
++    raw = b"".join(struct.pack(">QI", stamp, len(bytes(record))) + bytes(record) for stamp, record in records)
++    path = root / "intraday/market-inputs/streams/EQUS.MINI/2026/10/26/test.frames"
++    path.parent.mkdir(parents=True)
++    path.write_bytes(raw)
++    segment = dict(path=str(path), sha256=hashlib.sha256(raw).hexdigest(), bytes=len(raw), records=2,
++                   encoding="receipt-ns-u64be,length-u32be,DBN-record")
++    saved = retain(root, source="db_equity", started_at="2026-10-26T11:00Z",
++        received_at="2026-10-26T11:02Z", payload={"raw_segments": [segment]},
++        request={"dataset": "EQUS.MINI", "schemas": ["definition", "ohlcv-1m"]})
++    return saved, path
++
++
++def test_native_dbn_segment_preserves_one_minute_contract_and_proof(tmp_path):
++    saved, path = native_dbn_fixture(tmp_path)
++    bars, files, inventory = load_saved_equity_minutes(tmp_path, symbol="AAPL")
++    assert len(bars) == 1 and bars.close.iloc[0] == 11
++    assert bars.observation_interval_seconds.iloc[0] == 60
++    assert bars.observation_source.iloc[0] == "databento:EQUS.MINI:ohlcv-1m"
++    assert bars.observation_input_sha256.iloc[0] == saved["id"]
++    assert bars.observation_payload_sha256.iloc[0] == saved["payload_ref"]["sha256"]
++    assert path in files and inventory[0]["rows"] == 1
++    with pytest.raises(RuntimeError, match="No source-identified"):
++        load_stock_target_prices(tmp_path, symbols=["AAPL"],
++                                 source_contract="observed-multi-source-stock-v2")
++    opted, _, _ = load_stock_target_prices(tmp_path, symbols=["AAPL"],
++        source_contract="observed-multi-source-stock-v1", include_saved_intraday=True)
++    assert opted.observation_source.tolist() == ["databento:EQUS.MINI:ohlcv-1m"]
++    canonical, _, _ = load_stock_target_prices(tmp_path, symbols=["AAPL"],
++        source_contract="canonical-equity-minute-v1", include_saved_intraday=True)
++    assert canonical.observation_input_sha256.tolist() == [saved["id"]]
++    assert completed_observation_bars(bars, pd.Timestamp("2026-10-26T11:01Z")).empty
++    path.write_bytes(path.read_bytes()[:-1] + b"x")
++    with pytest.raises(RuntimeError, match="checksum"):
++        load_saved_equity_minutes(tmp_path, symbol="AAPL")
++
++
++@pytest.mark.parametrize("options", [{"mapped_symbol": "MSFT"}, {"publisher": 2}, {"volume": 0},
++                                    {"definition_action": "DELETE"}, {"definition_class": "FUTURE"},
++                                    {"future_definition": True}])
++def test_dbn_other_symbol_publisher_and_empty_prices_remain_missing(tmp_path, options):
++    native_dbn_fixture(tmp_path, **options)
++    assert load_saved_equity_minutes(tmp_path, symbol="AAPL")[0].empty
++
++
++def test_unavailable_features_do_not_discard_verified_native_dbn_prices(tmp_path):
++    saved, _ = native_dbn_fixture(tmp_path)
++    store = tmp_path / "intraday/market-inputs"
++    rewrite_envelope(tmp_path, saved, lambda row: row.update(status="unavailable"))
++    with closing(sqlite3.connect(store / "receipts.sqlite3")) as db:
++        db.execute("UPDATE receipts SET status='unavailable'")
++        db.commit()
++    assert len(load_saved_equity_minutes(tmp_path, symbol="AAPL")[0]) == 1
++
++
++def test_unavailable_response_and_no_request_are_not_price_evidence(tmp_path):
++    retain(tmp_path, status="unavailable", payload={"error": "unavailable"},
++           request={"request_performed": False})
++    assert load_native_five_minute_history(tmp_path, symbol="AAPL", include_saved_intraday=True)[0].empty
++
++
++def test_future_saved_eq_us_conflict_does_not_invalidate_earlier_canonical_evidence(tmp_path):
++    native_dbn_fixture(tmp_path)
++    folder = tmp_path / "stocks/AAPL/bars/1m/databento/normalized"
++    folder.mkdir(parents=True)
++    pd.DataFrame({"timestamp": [pd.Timestamp("2026-10-26T11:00Z")],
++        "open": [10.], "close": [10.], "provider_dataset": ["EQUS.MINI"]}).to_parquet(
++            folder / "20261026_ohlcv-1m_1m.parquet", index=False)
++    bars, _, _ = load_stock_target_prices(tmp_path, symbols=["AAPL"], include_saved_intraday=True)
++    earlier = completed_observation_bars(bars, pd.Timestamp("2026-10-26T11:01Z"))
++    assert earlier.close.tolist() == [10.]
++    with pytest.raises(ValueError, match="conflicting source clocks"):
++        completed_observation_bars(bars, pd.Timestamp("2026-10-26T11:03Z"))
+diff --git a/tests/test_nightly_stats_timing_evidence.py b/tests/test_nightly_stats_timing_evidence.py
+--- a/tests/test_nightly_stats_timing_evidence.py
++++ b/tests/test_nightly_stats_timing_evidence.py
+@@ -148,7 +148,8 @@
+ 
+ def test_missing_source_produces_truthful_empty_contract_without_provider_calls(tmp_path, monkeypatch):
+     calls = []
+-    def missing(root, *, symbols, source_contract):
++    def missing(root, *, symbols, source_contract, include_saved_intraday=False):
++        assert include_saved_intraday is True
+         calls.append(tuple(symbols))
+         raise RuntimeError("No source-identified real stock observations are available")
+     monkeypatch.setattr("ml.stock_target_prices.load_stock_target_prices", missing)
+@@ -173,7 +174,8 @@
+ 
+ 
+ def test_missing_one_symbol_preserves_other_real_observations(tmp_path, monkeypatch):
+-    def available(root, *, symbols, source_contract):
++    def available(root, *, symbols, source_contract, include_saved_intraday=False):
++        assert include_saved_intraday is True
+         if "MU" in symbols:
+             raise RuntimeError("Verified XNAS.ITCH stock minute archive is missing: MU")
+         return prices(), (), {"source_contract": source_contract, "dataset": "XNAS.ITCH"}

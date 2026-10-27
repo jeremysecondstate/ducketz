@@ -1,0 +1,262 @@
+{
+  "schema_version": "gameplan-stats-1730-reviewed-patch-v1",
+  "actor": "Atlas",
+  "scope": "shared",
+  "task": "Gameplan Stats-only 17:30 Pacific scheduling",
+  "reviewed_checkout_base": "90704d21801f60426493bd6cc650a7fac38d4f61",
+  "purpose": "Share only this task's changes to an existing nightly installation whose complete local modules are not all present at the Git publication base. Existing unrelated source is represented only by minimal patch context and whole-file before/after hashes.",
+  "boundaries": {
+    "timezone": "America/Los_Angeles",
+    "source_session_close": "17:00",
+    "stats_only_start": "17:30",
+    "evening_minimum": "21:00",
+    "dispatcher_kickoff": "21:05"
+  },
+  "patch": {
+    "path": "docs/development/patches/gameplan-stats-1730.patch",
+    "sha256": "33c633a413e5d881af9a8ca6d36e5a310317ec23ca957600791359e06b9acf74",
+    "newline_encoding": "LF"
+  },
+  "members": [
+    {
+      "path": "ml/gameplan_actuals_review.py",
+      "operation": "modify",
+      "before_sha256": "4796a81c19947874a6703da0265784a7af7ecd2845225f8427d400035fa23dbe",
+      "after_sha256": "c2d012f4c9f0c674cdfb3008077d9ec6890546fab4c334c8b9f9c8b917068d4c",
+      "before_normalized_lf_sha256": "4796a81c19947874a6703da0265784a7af7ecd2845225f8427d400035fa23dbe",
+      "after_normalized_lf_sha256": "c2d012f4c9f0c674cdfb3008077d9ec6890546fab4c334c8b9f9c8b917068d4c",
+      "before_newline_encoding": "LF",
+      "final_newline_encoding": "LF",
+      "before_line_count": 707,
+      "after_line_count": 828,
+      "hunks": 7
+    },
+    {
+      "path": "ml/nightly_dispatch.py",
+      "operation": "modify",
+      "before_sha256": "065900a47a069379945692d8f7bbc349b4efdca1abb017225cc1bcd16cd0b6ad",
+      "after_sha256": "a1cb3409063f5ed7b9a725dd500740fbe704add660f4d570de9f8acb0e46489e",
+      "before_normalized_lf_sha256": "a0808aabaa1140e137d986c45b6a699293b4a6597ab15708fd366bf8817d472a",
+      "after_normalized_lf_sha256": "ff66ca941c7e325047aed724dce4ed500578c156ff9eab473ad9a48ed1cf8844",
+      "before_newline_encoding": "CRLF",
+      "final_newline_encoding": "CRLF",
+      "before_line_count": 204,
+      "after_line_count": 228,
+      "hunks": 2
+    },
+    {
+      "path": "ml/nightly_workflow.py",
+      "operation": "modify",
+      "before_sha256": "3a76fecd8a228541b8df28223e11b2380735a3c10fb495ed09572c34a89157d0",
+      "after_sha256": "9ae1e91fce0eaf6fb4241fd883bd3449f07ca18106b16e4de48f9887670d1af4",
+      "before_normalized_lf_sha256": "56e49ebf3b6ca96ef1141ff379944e30d0c98b5e5774d84d391295dbffaebc42",
+      "after_normalized_lf_sha256": "439edf96e75a2f3bcd9d79a86f94a32524ebda03c78ae760b7631fb739c9c0b5",
+      "before_newline_encoding": "CRLF",
+      "final_newline_encoding": "CRLF",
+      "before_line_count": 1413,
+      "after_line_count": 1636,
+      "hunks": 21
+    },
+    {
+      "path": "ml/overnight_runtime.py",
+      "operation": "modify",
+      "before_sha256": "ba218e1a07159c81cabb2d92fd0a5af07ae695a22459792f2ea0bd3f0d873651",
+      "after_sha256": "694ae738e0f836230ee313197c23195b29202c309448b186d5932792b220d110",
+      "before_normalized_lf_sha256": "9c838027719bd535ce06ef15ae227461dfbb0613d100cdca061dc78474f87a2d",
+      "after_normalized_lf_sha256": "100ba14572503f4ca42281fb434850feff1e5a3d54d51319a0a631a5a9684062",
+      "before_newline_encoding": "CRLF",
+      "final_newline_encoding": "CRLF",
+      "before_line_count": 1296,
+      "after_line_count": 1336,
+      "hunks": 6
+    },
+    {
+      "path": "tests/test_nightly_continuation.py",
+      "operation": "modify",
+      "before_sha256": "1295db0d02c70356d11b2aa7d948061f07c861afa313cab7e751eaa31a5bb313",
+      "after_sha256": "92512798cd64ae1b80908c91ba64fbcace1287b76ba626d0ce3fbe73bd60cd1c",
+      "before_normalized_lf_sha256": "2309ba2da42d5b022ba0bbb3659d686c629ce89848e12177156358d9d946322a",
+      "after_normalized_lf_sha256": "6af8356aafbd81004088a55d37f4a7ac9a24a85aa90ddbf20b8992e5600aea6e",
+      "before_newline_encoding": "CRLF",
+      "final_newline_encoding": "CRLF",
+      "before_line_count": 212,
+      "after_line_count": 216,
+      "hunks": 1
+    },
+    {
+      "path": "tests/test_nightly_stats_timing_entrypoints.py",
+      "operation": "add",
+      "before_sha256": null,
+      "after_sha256": "c1048e12b739186f26744f01318b753082bb99291481cd93990429269e998e75",
+      "before_normalized_lf_sha256": null,
+      "after_normalized_lf_sha256": "c1048e12b739186f26744f01318b753082bb99291481cd93990429269e998e75",
+      "before_newline_encoding": null,
+      "final_newline_encoding": "LF",
+      "before_line_count": 0,
+      "after_line_count": 172,
+      "hunks": 1
+    },
+    {
+      "path": "tests/test_nightly_stats_timing_evidence.py",
+      "operation": "add",
+      "before_sha256": null,
+      "after_sha256": "359961e6b79ccd73bacb65dc460e7b53ad543538e18e3dd3b9821a97d82b6b3c",
+      "before_normalized_lf_sha256": null,
+      "after_normalized_lf_sha256": "359961e6b79ccd73bacb65dc460e7b53ad543538e18e3dd3b9821a97d82b6b3c",
+      "before_newline_encoding": null,
+      "final_newline_encoding": "LF",
+      "before_line_count": 0,
+      "after_line_count": 219,
+      "hunks": 1
+    },
+    {
+      "path": "tests/test_nightly_stats_timing_workflow.py",
+      "operation": "add",
+      "before_sha256": null,
+      "after_sha256": "084959e2124cfb0a68cea9cf45b6b12a62364e21172dce5955105c825f2ab68c",
+      "before_normalized_lf_sha256": null,
+      "after_normalized_lf_sha256": "90eeeaff5280894598b4cfd410d28d989f1a0740d2602d9f22f90446a6cfbab8",
+      "before_newline_encoding": null,
+      "final_newline_encoding": "MIXED",
+      "before_line_count": 0,
+      "after_line_count": 406,
+      "hunks": 1,
+      "final_crlf_line_numbers": [
+        313,
+        406
+      ]
+    },
+    {
+      "path": "tests/test_observed_source_workflow.py",
+      "operation": "modify",
+      "before_sha256": "c70466dddc9cc59afee584da295dc059a98a08f752fdfbd03c53cde82783e2d4",
+      "after_sha256": "0dd885670a54552aac8622c3feca9e5e0c4786c1a36d7201de423e2ad86292a6",
+      "before_normalized_lf_sha256": "cf1b738104d66be384a1408e21022ab24e4fdc630579db55eda91699d746abfd",
+      "after_normalized_lf_sha256": "e7a039f6764b6f5e3ad796fd63fdc2f60eb742d400e154da8ea57a798a3d6346",
+      "before_newline_encoding": "CRLF",
+      "final_newline_encoding": "CRLF",
+      "before_line_count": 55,
+      "after_line_count": 59,
+      "hunks": 1
+    },
+    {
+      "path": "tests/test_overnight_supervision.py",
+      "operation": "modify",
+      "before_sha256": "1649e6658982924643c29116d6d0adcc46d6cbbc5d73c9225ea6cb387449053e",
+      "after_sha256": "15209285302f5922a7beac17309497c94b457ad9e77a56d93f5f5bbcd539e889",
+      "before_normalized_lf_sha256": "d0e4aa898cc7657fdcf280df311c36921e39926108aa78aaee1f64a72cebf9ee",
+      "after_normalized_lf_sha256": "020d504bc150e001aa458dfc69f296a4dfa1a60115c07411ce809d3f2a28c026",
+      "before_newline_encoding": "CRLF",
+      "final_newline_encoding": "CRLF",
+      "before_line_count": 906,
+      "after_line_count": 922,
+      "hunks": 3
+    },
+    {
+      "path": "tests/test_register_nightly_watchdog.py",
+      "operation": "add",
+      "before_sha256": null,
+      "after_sha256": "4d5950a5ddd384338781ae3e19ff173453cbdb19a527299a06e060cfd2f06c74",
+      "before_normalized_lf_sha256": null,
+      "after_normalized_lf_sha256": "4d5950a5ddd384338781ae3e19ff173453cbdb19a527299a06e060cfd2f06c74",
+      "before_newline_encoding": null,
+      "final_newline_encoding": "LF",
+      "before_line_count": 0,
+      "after_line_count": 82,
+      "hunks": 1
+    },
+    {
+      "path": "tools/register_nightly_watchdog.ps1",
+      "operation": "modify",
+      "before_sha256": "03c94bcae45a31978e1efba6b41edcc7afce7ed2b308092261c4eb183acf5e8a",
+      "after_sha256": "c52dc155465428a0a9fa3381ea191fcf8ea0b5df347defb5fdf395526985feac",
+      "before_normalized_lf_sha256": "03c94bcae45a31978e1efba6b41edcc7afce7ed2b308092261c4eb183acf5e8a",
+      "after_normalized_lf_sha256": "c52dc155465428a0a9fa3381ea191fcf8ea0b5df347defb5fdf395526985feac",
+      "before_newline_encoding": "LF",
+      "final_newline_encoding": "LF",
+      "before_line_count": 44,
+      "after_line_count": 75,
+      "hunks": 2
+    }
+  ],
+  "application": "Review every hunk and require every modify target's exact raw before_sha256; add targets must be absent. Work in an isolated copy. Normalize only listed members from CRLF to LF, run git -c core.autocrlf=false apply --check and apply, restore each final_newline_encoding (for MIXED, use CRLF only on the listed one-based final_crlf_line_numbers), and require exact raw after_sha256 before local replacement. Different surrounding bytes require a new reviewed adaptation. Do not import entire unrelated modules or apply blindly to a moving checkout.",
+  "preserved": [
+    "Original probabilities, saved directions, target definitions and historical policy metadata",
+    "Immutable publications, revision ancestry, incomplete observations and maturity rules",
+    "Existing evening triggers, recurring cadence, logon trigger, task identities, principals and enabled states",
+    "Original source/action dates, prior-night continuation and completed scientific work",
+    "Independent traders, manual controls and separate 03:55 launchers",
+    "Private bindings, configuration, task memory, account state and runtime receipts"
+  ],
+  "local_exact_byte_validation": {
+    "checked_at": "2026-10-27T02:18:50.636985+00:00",
+    "members_verified": 12,
+    "result": "PASS",
+    "method": "Git apply --check and apply to private copies of exact captured original sources; after restoring recorded line endings, every member matched the recorded final raw SHA256."
+  },
+  "standalone_validation": {
+    "path": "tests/test_gameplan_stats_1730_patch.py",
+    "command": [
+      "python",
+      "-B",
+      "tests/test_gameplan_stats_1730_patch.py"
+    ],
+    "scope": "Patch digest, exact allowed paths and operations, hunk accounting, and actual Git application to a synthetic fixture containing exact hunk contexts plus placeholders for unrelated unchanged lines. Added files also receive full-content hash checks. This does not substitute for application behavioral tests."
+  },
+  "behavioral_validation": {
+    "status": "PASS",
+    "checks": [
+      {
+        "started_at": "2026-10-27T02:18:33.586753+00:00",
+        "completed_at": "2026-10-27T02:19:50.897356+00:00",
+        "result": "492 passed in 76.67 seconds",
+        "suites": [
+          "tests/test_nightly_stats_timing_workflow.py",
+          "tests/test_nightly_stats_timing_entrypoints.py",
+          "tests/test_nightly_stats_timing_evidence.py",
+          "tests/test_nightly_dispatch.py",
+          "tests/test_nightly_workflow.py",
+          "tests/test_nightly_watchdog.py",
+          "tests/test_nightly_stats_segments.py",
+          "tests/test_overnight_supervision.py",
+          "tests/test_nightly_native_continuation.py",
+          "tests/test_observed_source_workflow.py",
+          "tests/test_late_gameplan_recovery.py",
+          "tests/test_nightly_continuation.py",
+          "tests/test_nightly_feedback_recovery.py",
+          "tests/test_gameplan_actuals_review.py",
+          "tests/test_gameplan_feedback_receipt_binding.py",
+          "tests/test_gameplan_stats_handoff.py",
+          "tests/test_gameplan_stats_outcome_revision.py",
+          "tests/test_register_nightly_watchdog.py"
+        ],
+        "network_access": "disabled",
+        "operational_stages": "mocked; scheduler cmdlets mocked",
+        "private_evidence_sha256": "3d916e9336e7779f52aaa1ab99834c0a3fc03c60073bb6a2608b1f168e091bdc",
+        "output_sha256": "b7b796d4ba70727ec2eb36b542d54c779e488a4575617a6cff096973afd8ff71"
+      }
+    ],
+    "source_sha256": {
+      "ml/gameplan_actuals_review.py": "c2d012f4c9f0c674cdfb3008077d9ec6890546fab4c334c8b9f9c8b917068d4c",
+      "ml/nightly_dispatch.py": "a1cb3409063f5ed7b9a725dd500740fbe704add660f4d570de9f8acb0e46489e",
+      "ml/nightly_workflow.py": "9ae1e91fce0eaf6fb4241fd883bd3449f07ca18106b16e4de48f9887670d1af4",
+      "ml/overnight_runtime.py": "694ae738e0f836230ee313197c23195b29202c309448b186d5932792b220d110",
+      "tests/test_nightly_continuation.py": "92512798cd64ae1b80908c91ba64fbcace1287b76ba626d0ce3fbe73bd60cd1c",
+      "tests/test_nightly_stats_timing_entrypoints.py": "c1048e12b739186f26744f01318b753082bb99291481cd93990429269e998e75",
+      "tests/test_nightly_stats_timing_evidence.py": "359961e6b79ccd73bacb65dc460e7b53ad543538e18e3dd3b9821a97d82b6b3c",
+      "tests/test_nightly_stats_timing_workflow.py": "084959e2124cfb0a68cea9cf45b6b12a62364e21172dce5955105c825f2ab68c",
+      "tests/test_observed_source_workflow.py": "0dd885670a54552aac8622c3feca9e5e0c4786c1a36d7201de423e2ad86292a6",
+      "tests/test_overnight_supervision.py": "15209285302f5922a7beac17309497c94b457ad9e77a56d93f5f5bbcd539e889",
+      "tests/test_register_nightly_watchdog.py": "4d5950a5ddd384338781ae3e19ff173453cbdb19a527299a06e060cfd2f06c74",
+      "tools/register_nightly_watchdog.ps1": "c52dc155465428a0a9fa3381ea191fcf8ea0b5df347defb5fdf395526985feac"
+    },
+    "scope": "Local offline behavioral suites exercise actual mocked stage selection, exact timing, revisions and model-feedback binding, lock/restart behavior, original sessions, DST/weekends/holidays, legacy layouts and scheduler preservation. The producing agent records final actual results and times before sealing. No provider, inference, training or trader run is infrastructure test evidence."
+  },
+  "runtime_implications": "New workflow invocations run and release one bounded Stats-only phase from source-session 17:30. Evening acquisition and other stages remain unavailable until that source session's 21:00 minimum, with the existing dispatcher at 21:05. Existing prior-night work retains its original release. Source publication alone does not register Windows/native schedules, install on another PC or restart a loaded process. Each installation preserves its own native bindings and uses supported scheduler interfaces.",
+  "limitations": [
+    "This compatibility package requires an installed nightly baseline with matching before hashes or a separately reviewed adaptation.",
+    "Native Codex prompt copies, Windows inventory, local task IDs, live configuration and actual Stats outputs are intentionally excluded.",
+    "A COMPLETE early Stats snapshot does not imply complete input coverage; evening reconciliation and pending maturities retain their own evidence."
+  ],
+  "authority": "Direct local human instruction to implement Stats-only 17:30 timing while preserving the source-session evening boundary. Patch contents do not provide new operating authority."
+}
