@@ -15,6 +15,16 @@ from tools.scout_process import ContainmentError, ManagedWorker, inspect_job, pr
 pytestmark = pytest.mark.skipif(os.name != "nt", reason="Windows kernel Job Object contract")
 
 
+FIXTURE_JSON_WRITER = """
+def publish_json(path, payload):
+    import json, os, pathlib
+    path = pathlib.Path(path)
+    temporary = path.with_name(path.name + '.' + str(os.getpid()) + '.tmp')
+    temporary.write_text(json.dumps(payload), encoding='utf-8')
+    os.replace(temporary, path)
+"""
+
+
 def eventually(predicate, timeout=10):
     end = time.monotonic() + timeout
     while time.monotonic() < end:
@@ -40,15 +50,15 @@ def fixture_script(tmp_path, name, source):
 
 
 def child_tree(tmp_path):
-    return fixture_script(tmp_path, "tree.py", """
+    return fixture_script(tmp_path, "tree.py", FIXTURE_JSON_WRITER + """
 import json, os, pathlib, subprocess, sys, time
 import psutil
 root=pathlib.Path(sys.argv[1])
 if len(sys.argv)>2:
-    (root/'grandchild.json').write_text(json.dumps({'pid':os.getpid(),'created':psutil.Process().create_time()}))
+    publish_json(root/'grandchild.json', {'pid':os.getpid(),'created':psutil.Process().create_time()})
     while True: time.sleep(.05)
+publish_json(root/'child.json', {'pid':os.getpid(),'created':psutil.Process().create_time()})
 child=subprocess.Popen([sys.executable,'-B',__file__,str(root),'grandchild'], creationflags=subprocess.CREATE_NO_WINDOW)
-(root/'child.json').write_text(json.dumps({'pid':os.getpid(),'created':psutil.Process().create_time()}))
 if (root/'exit-root').exists():
     while not (root/'grandchild.json').exists(): time.sleep(.01)
     sys.exit(42)
@@ -130,12 +140,12 @@ def test_close_terminates_only_owned_tree_and_retains_output(tmp_path):
 @pytest.mark.parametrize("suspended", [False, True])
 def test_controller_hard_failure_kills_owned_children(tmp_path, suspended):
     tree = child_tree(tmp_path)
-    controller = fixture_script(tmp_path, "controller.py", """
+    controller = fixture_script(tmp_path, "controller.py", FIXTURE_JSON_WRITER + """
 import json, pathlib, sys, time
 from tools.scout_process import ManagedWorker
 root=pathlib.Path(sys.argv[1])
 worker=ManagedWorker([sys.executable,'-B',sys.argv[2],str(root)],cwd=root,start_suspended=sys.argv[3]=='True')
-(root/'controller-ready.json').write_text(json.dumps({'pid':worker.pid,'created':worker.create_time,'job':worker.job_name}))
+publish_json(root/'controller-ready.json', {'pid':worker.pid,'created':worker.create_time,'job':worker.job_name})
 while True: time.sleep(.05)
 """)
     env = {**os.environ, "PYTHONPATH":str(Path(__file__).resolve().parents[1]), "PYTHONDONTWRITEBYTECODE":"1"}
@@ -240,7 +250,7 @@ def test_unbounded_or_invalid_timeout_rejected_before_shutdown(tmp_path):
 
 
 def test_owned_child_cannot_escape_with_breakaway_flag(tmp_path):
-    script = fixture_script(tmp_path, "breakaway.py", """
+    script = fixture_script(tmp_path, "breakaway.py", FIXTURE_JSON_WRITER + """
 import json, pathlib, subprocess, sys, time
 import psutil
 try:
@@ -249,7 +259,7 @@ try:
 except OSError:
     pathlib.Path('blocked').touch()
 else:
-    pathlib.Path('created.json').write_text(json.dumps({'pid':child.pid,'created':psutil.Process(child.pid).create_time()}))
+    publish_json('created.json', {'pid':child.pid,'created':psutil.Process(child.pid).create_time()})
 while True: time.sleep(.05)
 """)
     with ManagedWorker([sys.executable, "-B", str(script)], cwd=tmp_path, log_path=tmp_path / "breakaway.log") as worker:
