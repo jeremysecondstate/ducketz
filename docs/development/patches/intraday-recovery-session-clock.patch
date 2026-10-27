@@ -1,0 +1,11 @@
+--- a/ml/intraday/recovered_population.py
++++ b/ml/intraday/recovered_population.py
+@@ -32,0 +33 @@
++_SESSION_QUARTER = pd.offsets.Minute(15)
+@@ -66 +67,5 @@
+-    if not session.contains(opened_at) or _utc(opened_at) != _utc(opened_at).floor("15min"):
++    if not session.contains(opened_at):
++        raise ContractError("Recovery candle is outside its exact session quarter")
++    # Keep the independent session proof; normalize the quarter clock once.
++    opened = _utc(opened_at)
++    if opened != opened.floor(_SESSION_QUARTER):

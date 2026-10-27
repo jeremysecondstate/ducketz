@@ -1,0 +1,103 @@
+{
+  "schema": "intraday-recovery-session-clock-package-v1",
+  "scope": "Shared recovery session validation; preserve local symbols, scientific recipes, source proofs, trader controls and runtime independence.",
+  "change": "Reuse the normalized quarter timestamp and a fixed fifteen-minute offset, retaining independent SessionBounds.contains and exact session-bound output.",
+  "patch_sha256": "216cea6baf11980abf2de76959a1f1b73903c1b5ff86187af033cbe135969cc4",
+  "patch_encoding": "UTF-8 LF zero-context unified diff; use reviewed git apply --unidiff-zero. Raw CRLF source identities recorded separately.",
+  "sources": {
+    "ml/intraday/recovered_population.py": {
+      "operation": "modify",
+      "before_sha256": "8616d05b13ad4e00a8ab1560197c48f2033a602753c462bce1b79f45773c3450",
+      "after_sha256": "72758ddfa4455085dee62de8216b489778c51e8b5e0df6ac2f97c1f2f4aa3fe9",
+      "before_normalized_sha256": "75e2698eff6d7273bba8906d5cb0425339ecc30f91ca2e15eb75fd977e175abd",
+      "after_normalized_sha256": "f569494d04c8920d8a10fbdca964d8b8b10f3c05e1a56e010e17e069fd15c674",
+      "before_line_endings": "CRLF",
+      "after_line_endings": "CRLF",
+      "extracts_before": {
+        "_utc": {
+          "source": "def _utc(value):\n    stamp = pd.Timestamp(value)\n    if pd.isna(stamp) or stamp.tzinfo is None:\n        raise ContractError(\"Recovery clocks must be timezone aware\")\n    return stamp.tz_convert(\"UTC\")\n",
+          "sha256": "d442a78dfbdc5c0725af9bbb3efe07d568588284db524c911f55ab84aa43ab02",
+          "line": 35,
+          "end_line": 39
+        },
+        "_session": {
+          "source": "def _session(session, opened_at):\n    from .data import SessionBounds\n    if isinstance(session, Mapping):\n        session = SessionBounds(str(session[\"session_id\"]), session[\"session_open\"], session[\"session_close\"])\n    if not session.contains(opened_at) or _utc(opened_at) != _utc(opened_at).floor(\"15min\"):\n        raise ContractError(\"Recovery candle is outside its exact session quarter\")\n    return {\"session_id\": str(session.session_id), \"session_open\": _utc(session.opened_at).isoformat(),\n            \"session_close\": _utc(session.closed_at).isoformat()}\n",
+          "sha256": "3ffdb3e70fcfea932ea0a20b56205d62bd88c47809cb5deac36851a8b311f5fb",
+          "line": 62,
+          "end_line": 69
+        }
+      },
+      "extracts_after": {
+        "_utc": {
+          "source": "def _utc(value):\n    stamp = pd.Timestamp(value)\n    if pd.isna(stamp) or stamp.tzinfo is None:\n        raise ContractError(\"Recovery clocks must be timezone aware\")\n    return stamp.tz_convert(\"UTC\")\n",
+          "sha256": "d442a78dfbdc5c0725af9bbb3efe07d568588284db524c911f55ab84aa43ab02",
+          "line": 36,
+          "end_line": 40
+        },
+        "_session": {
+          "source": "def _session(session, opened_at):\n    from .data import SessionBounds\n    if isinstance(session, Mapping):\n        session = SessionBounds(str(session[\"session_id\"]), session[\"session_open\"], session[\"session_close\"])\n    if not session.contains(opened_at):\n        raise ContractError(\"Recovery candle is outside its exact session quarter\")\n    # Keep the independent session proof; normalize the quarter clock once.\n    opened = _utc(opened_at)\n    if opened != opened.floor(_SESSION_QUARTER):\n        raise ContractError(\"Recovery candle is outside its exact session quarter\")\n    return {\"session_id\": str(session.session_id), \"session_open\": _utc(session.opened_at).isoformat(),\n            \"session_close\": _utc(session.closed_at).isoformat()}\n",
+          "sha256": "6d3d5585c8aef3239eeae5b8f42ac6dc4355e4e5dafc87eec8745e1e2c376b9b",
+          "line": 63,
+          "end_line": 74
+        }
+      },
+      "constants_after": {
+        "_SESSION_QUARTER": {
+          "source": "_SESSION_QUARTER = pd.offsets.Minute(15)\n",
+          "sha256": "a2eee7280a8779ef74687d0eb21d2e461028619cc85a245074b2fa5a5ac61ca1",
+          "line": 33,
+          "end_line": 33
+        }
+      }
+    }
+  },
+  "unchanged_dependencies": {
+    "ml/intraday/prediction.py": {
+      "sha256": "37e3c7d9c16fea801625e2231ab34d5fc4e18ca78cef768f22db565dd4dfa95c",
+      "normalized_sha256": "37e3c7d9c16fea801625e2231ab34d5fc4e18ca78cef768f22db565dd4dfa95c",
+      "extracts": {
+        "STEP": {
+          "source": "STEP = timedelta(minutes=15)\n",
+          "sha256": "9d095414a288ead1945b5b84bb276e7525779f155292de9caf04473344b85445",
+          "line": 14,
+          "end_line": 14
+        },
+        "ContractError": {
+          "source": "class ContractError(ValueError):\n    pass\n",
+          "sha256": "5f8c35f8faefbad6e386ec436b0ff13e11e5e7899e12c2ff90c1bd1da67a27bb",
+          "line": 18,
+          "end_line": 19
+        },
+        "instant": {
+          "source": "def instant(value: str | datetime) -> datetime:\n    try:\n        result = value if isinstance(value, datetime) else datetime.fromisoformat(value.replace(\"Z\", \"+00:00\"))\n    except (ValueError, TypeError, AttributeError) as exc:\n        raise ContractError(\"Timezone-aware timestamp required\") from exc\n    if result.tzinfo is None or result.utcoffset() is None:\n        raise ContractError(\"Timezone-aware timestamp required\")\n    return result.astimezone(timezone.utc)\n",
+          "sha256": "d690bd3ea45ac5b4d1351126e23b7c20cf6aae84a7d19dea80b6aca2423b6679",
+          "line": 26,
+          "end_line": 33
+        }
+      }
+    },
+    "ml/intraday/data.py": {
+      "sha256": "7bf155050d80405b07fd6b6e6475cdd8cb352db888e3bea7e401b160f249e06f",
+      "normalized_sha256": "db76cb5b82ce6f7fcbfea3563bfc61f1b0c15d91773c476451d999f1ae77e96d",
+      "extracts": {
+        "utc": {
+          "source": "def utc(value) -> pd.Timestamp:\n    \"\"\"Require timezone awareness; never guess the host timezone.\"\"\"\n    return pd.Timestamp(instant(value))\n",
+          "sha256": "6f2a31c990f5be21d774b05a448a8072edfff6764ec9d6825bcce941378bdf19",
+          "line": 60,
+          "end_line": 62
+        },
+        "SessionBounds": {
+          "source": "@dataclass(frozen=True)\nclass SessionBounds:\n    session_id: str\n    opened_at: str\n    closed_at: str\n    policy: str = \"explicit-session-bounds\"\n\n    def contains(self, opened_at, duration=STEP) -> bool:\n        start = utc(opened_at)\n        return utc(self.opened_at) <= start and start + duration <= utc(self.closed_at)\n",
+          "sha256": "c9ac2c1658dbe974e1c153072fb27a4c2a40bfbba92f66b08cf33dd144316fc4",
+          "line": 94,
+          "end_line": 103
+        }
+      }
+    }
+  },
+  "limits": [
+    "Portable extracted-function differential tests are offline evidence, not full installed composition or live latency recovery.",
+    "The independent SessionBounds.contains path remains; do not replace its instant normalization with pandas-only timestamp semantics.",
+    "Apply only exact reviewed hunks to a compatible local composition, preserving every unrelated source function, native proof, input, probability, target and binding."
+  ]
+}
