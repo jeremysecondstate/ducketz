@@ -1,0 +1,66 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T121815Z-6fc400ef491e4f6bb634d1fae4e474b0",
+  "change_id": "20261027T121815Z-6fc400ef491e4f6bb634d1fae4e474b0",
+  "details": [
+    "Incident atlas-gameplan-capture-signal-expiry-false-failure-20261027: original saved Gameplan targets could expire during local instruction selection before any broker observation. Report this proved local no-read event as PREDICTION_TARGET_ELAPSED instead of a broker reconciliation failure.",
+    "Only the actual local callback exception instance may supply proof. Require original valid prediction identities and target windows, first capture attempt, zero prior transient read failures, and no established account identity or ledger. Keep each expired instruction unsent and retain mixed nonexpired originals for the next ordinary pass.",
+    "Manual stops and existing binding guards retain priority. Older sizing strategies, malformed windows, broker exception text or typed impostors, earlier failed reads and quote refreshes remain real failures. Preserve every probability, target, scientific recipe, original order identity, state, trader independence, deadline and cadence.",
+    "Public runtime preimage26ed5113 maps to exact canonical repair940fdd44; Atlas composed-runtime preimageca59b248 maps to reviewed local0fee78b9. Apply only corresponding reviewed hunks on another installation; do not copy the full Atlas composition. The exact local-test hunk records the expected outcome change for the absent initial-state fixture."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_runtime.py",
+      "sha256": "940fdd44becc129f825ce2bb3d49ddad1f7d5ddd9e5c7c0d0c1d176dde08cb8f"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_capture_target_expiry.py",
+      "sha256": "f3dd1944708dcb830bd9e4adfc28166334971bacbff03ef88996235d5933fa11"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_gameplan_capture_target_expiry.py",
+      "sha256": "665a74f41b33ebb0ec8f5c7a0512053e445bdf69e80ae2827356210c0205c1ac"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/gameplan-capture-target-expiry-local-tests.patch",
+      "sha256": "d7430b76e46f2b58647b39faa30c9e0c8c5b0f2e6b271dff48c98cb263a8d5ca"
+    }
+  ],
+  "limitations": [
+    "Source publication, common-main integration, complete local installation, runtime loading and natural affected exercise remain separate facts. No new-generation worker loading or affected live recovery is asserted.",
+    "The separate124case canonical broad suite passed on its retained pre-normalization raw graph. Final exact raw-byte author/queue/source/main evidence uses14new and16adjacent cases; line-ending-only normalization was explicitly verified.",
+    "Offline simulation establishes classification and guard behavior, not a guarantee of execution timing, fills or profit. Peer installation is not inferred."
+  ],
+  "local_installation": "Atlas exact local source installation and14case installed check completed, then sealed complete530-source generation 70365fb8bfc2c221a6949f1c5d234b067fee9c00aeb003d92873772bb0f52a46 with529source files unchanged and existing runtime 14a239f36a42c55ba084d2c4699764b92086a33ea4172c38e26d46ba68e3d224. Previous complete generation retained.",
+  "main_commit": "fd7277b03d13a5f6961db9b54939294dcc07282f",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/434",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Use the established reviewed exact-preimage installation and complete-generation seal. Existing manually started sessions may load complete installations only at their authorized safe iteration boundary. Preserve all manual stops and original session lifetime; no initial start, forced renewal, post-stop restart, extra task, broker/provider request or order is part of this repair.",
+  "scope": "shared",
+  "source_commit": "6a13494e48404b0577007e2946befac63ffa76f3",
+  "summary": "Atlas Gameplan first-read target expiry classification published and installed as a complete generation",
+  "tests": [
+    {
+      "command": "python -B tests/check_isolated_gameplan_capture_target_expiry.py --focused",
+      "completed_at_utc": "2026-10-27T12:21:53.472960+00:00",
+      "passed_cases": 14,
+      "scope": "exact canonical author, sealed queue, isolated source and fresh common-main candidate"
+    },
+    {
+      "command": "python -B tests/check_isolated_gameplan_target_elapsed_status.py --focused",
+      "completed_at_utc": "2026-10-27T12:21:53.472960+00:00",
+      "passed_cases": 16,
+      "scope": "same exact canonical graphs, adjacent final target-expiry guards"
+    },
+    {
+      "command": "python -B tests/check_isolated_gameplan_capture_target_expiry.py --focused",
+      "completed_at_utc": "2026-10-27T12:15:46.087164+00:00",
+      "passed_cases": 14,
+      "scope": "exact installed composition"
+    }
+  ]
+}

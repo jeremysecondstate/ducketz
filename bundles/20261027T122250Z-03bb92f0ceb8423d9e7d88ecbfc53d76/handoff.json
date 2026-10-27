@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T12:22:50.610269Z",
+  "id": "20261027T122250Z-03bb92f0ceb8423d9e7d88ecbfc53d76",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas Gameplan first-read target expiry classification published and installed as a complete generation"
+}
