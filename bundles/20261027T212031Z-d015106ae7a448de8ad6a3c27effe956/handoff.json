@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T21:20:31.255201Z",
+  "id": "20261027T212031Z-d015106ae7a448de8ad6a3c27effe956",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas 15m final capacity/submission reuses one unchanged original forecast validation while preserving fresh source proofs and manual controls"
+}

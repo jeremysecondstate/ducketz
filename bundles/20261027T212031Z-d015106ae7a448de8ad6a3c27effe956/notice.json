@@ -1,0 +1,60 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T211310Z-5f4f1fd7777b42c09275179f18fd3cc3",
+  "change_id": "20261027T211310Z-5f4f1fd7777b42c09275179f18fd3cc3",
+  "details": [
+    "Actor Atlas; task ATLAS Trader Representative; retain one independently validated original only within final post-sizing capacity/submission, with fresh physical/schema/epoch/revision proof and full caller equality at every read and writer.",
+    "Uncertain or changed source uses full original validation. Cold sizing reads clear the proof before research decoding; exceptions, nested work, foreign threads and expired copied contexts cannot extend reuse.",
+    "Original forecasts, model recipes, sizing formulas, order identities, current capacity/quote checks, independent state and manual controls remain unchanged. Peer review applies the exact-preimage patch to its local composition."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-forecast-record-reuse.patch",
+      "sha256": "e3b334397657ec9e9e0288c3c31791f7b224303811735d61499748c5201bd092"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-forecast-record-reuse.json",
+      "sha256": "90909a5ce3c0ba52056936f2066490a08902fc8e44ecdf7c97c128a7608f45a2"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_forecast_record_reuse.py",
+      "sha256": "f0fc1d14aa8412fac484ee6f0f6c2bae4860efbe767780f2f9af5e512f7221f7"
+    }
+  ],
+  "limitations": [
+    "Portable standard-library semantic checks cover extracted owned functions and source bindings. Full composed application regressions and retained large-input experiments are recorded separately.",
+    "Five pre-existing recovery diagnostic fixture failures reproduce on the unchanged installed baseline; those cases are not passing evidence for this change.",
+    "No sustained live latency recovery, historical complete cause, broker acceptance or in-memory code digest is inferred from offline checks.",
+    "Separate low-CPU metadata delay and broad sizing latency remain open. Original historical missing inputs, unknown order responses and original exceptions remain preserved."
+  ],
+  "local_installation": "Two exact-preimage source files installed; complete531source generation f3f34a478d37152359eb2611c3e917164fb21fa32279fa49a17be47e3526fa1d sealed with529parent sources and frozenruntime unchanged. Actual sealed153case full application suite and92portable/static checks pass.",
+  "main_commit": "da5bdece69cd250be91e08502462ed24d72e0dd3",
+  "privacy_review": "Only generic exact-preimage source hunks, hashes, scoped validation results and installation facts. No source scientific payload, fitted model, account/order state, credentials, local operating/native bindings or peer-specific tuning. No additional trader/nightly prerequisite.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/464",
+  "repository": "jeremysecondstate/ducketz",
+  "retained_input_experiment": "One large retained original forecast, identical input and two projection outputs. Full independent validations2to1; one measuredpair1.64534to0.90347seconds, similarpeakworking set. Measures the forecast validation pair, not full sizing research or whole execution memory/performance.",
+  "runtime_implications": "After reviewed exact local installation seal the complete source/runtime generation with tools/trader_installation.py. Natural planned renewal only within an already manually started session; no initial start, post-stop restart, lifetime extension or live verification.",
+  "runtime_loading": "One naturally renewed own execution worker selects the exact complete installed generation with11identity checks. Complete affected sizing exercise, exact in-memory digest and sustained live recovery remain separate/unproved.",
+  "scope": "shared",
+  "source_commit": "f43a312a57b12795bf255d295bb3be85fd29a41a",
+  "summary": "Atlas 15m final capacity/submission reuses one unchanged original forecast validation while preserving fresh source proofs and manual controls",
+  "tests": [
+    {
+      "network_attempts": 0,
+      "new_adversarial_and_execution_cases": 26,
+      "passed_each": 153,
+      "scope": "Complete composed531source candidate and actual complete sealed modules"
+    },
+    {
+      "passed_each": 75,
+      "scope": "Portable owned-function semantics in queue/source/main"
+    },
+    {
+      "passed": 92,
+      "scope": "Actual sealed portable semantics plus exact-source/static protected-method checks"
+    }
+  ]
+}
