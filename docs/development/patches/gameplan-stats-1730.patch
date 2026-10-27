@@ -1,0 +1,1895 @@
+diff --git a/ml/gameplan_actuals_review.py b/ml/gameplan_actuals_review.py
+--- a/ml/gameplan_actuals_review.py
++++ b/ml/gameplan_actuals_review.py
+@@ -566,17 +566,27 @@
+ 
+ def publish_completed_session_review(root: Path, *, action_date: str | None = None,
+                                      reviewed_at: object | None = None, clock=utc_timestamp,
+-                                     price_loader=None, deadline: object | None = None) -> Path:
++                                     price_loader=None, deadline: object | None = None,
++                                     reconcile_existing: bool = False) -> Path:
+     """Score a completed session without fitting or preparing its successor.
+ 
+     Only the original pre-open publication and its matching saved instructions
+     are eligible. Historical estimates remain archive evidence. Longer windows
+     remain pending at this session's close. The output
+     is the same verified artifact consumed by the existing Gameplan Stats tab.
++    Reconciliation reuses unchanged evidence or publishes a new immutable
++    revision with exact parent hashes; it never changes the session cutoff.
+     """
+     root = Path(root).resolve()
+-    now = _aware_timestamp(clock() if reviewed_at is None else reviewed_at, "review time")
++    execution_started = _aware_timestamp(clock(), "execution time")
++    now = execution_started if reviewed_at is None else _aware_timestamp(reviewed_at, "review time")
+     context = completed_session_context(now, action_date)
++    if reconcile_existing:
++        release = _clock(context["action_date"], 17) + pd.Timedelta(minutes=30)
++        if execution_started < release or now < release:
++            raise ValueError("Stats-only session review is eligible at 17:30 America/Los_Angeles")
++        if now > execution_started:
++            raise ValueError("Stats reconciliation review time cannot be later than its actual execution clock")
+     deadline_at = _aware_timestamp(deadline, "deadline") if deadline is not None else None
+     if deadline_at is not None and deadline_expired(now, deadline_at):
+         raise ValueError("Actuals review publication deadline passed")
+@@ -584,14 +594,105 @@
+               "review_mode": "completed-session-before-training", "successor_gameplan_run": None,
+               "source_selection": "Last verified publication and matching trade plan saved before the reviewed 04:00 opening",
+               "orders_placed": 0, "broker_orders_enabled": False}
++    if reconcile_existing:
++        report["execution_started_at"] = execution_started.isoformat()
+     if deadline_at is not None:
+         report["deadline_at"] = deadline_at.isoformat()
+     return _publish_session_review(root, report=report, inputs=[], clock=clock,
+-                                   price_loader=price_loader, deadline_at=deadline_at)
++                                   price_loader=price_loader, deadline_at=deadline_at,
++                                   reconcile_existing=reconcile_existing)
++
++
++def _available_review_prices(root, *, symbols, source_contract):
++    """Read each supported source without turning absent prices into failure.
++
++    Only exact missing-source conditions are recoverable here. Corrupt files,
++    identities, receipts and conflicting observations retain their errors.
++    """
++    from ml.stock_target_prices import load_stock_target_prices, stock_price_dataset
++    try:
++        return load_stock_target_prices(root, symbols=symbols, source_contract=source_contract)
++    except RuntimeError as exc:
++        missing = str(exc)
++        recoverable = (missing == "No source-identified real stock observations are available"
++                       or missing.startswith("Verified XNAS.ITCH stock minute archive is missing: ")
++                       or missing.startswith("Canonical stock minute prices are missing: "))
++        if not recoverable:
++            raise
++        if len(symbols) > 1:
++            pieces = [_available_review_prices(root, symbols=(symbol,), source_contract=source_contract)
++                      for symbol in symbols]
++            frames = [frame for frame, _, _ in pieces if not frame.empty]
++            bars = pd.concat(frames, ignore_index=True) if frames else pieces[0][0].copy()
++            files = tuple(dict.fromkeys(path for _, paths, _ in pieces for path in paths))
++            inventory = {"source_contract": source_contract, "dataset": stock_price_dataset(source_contract),
++                         "by_symbol": {symbol: item[2] for symbol, item in zip(symbols, pieces)},
++                         "unavailable_symbols": [symbol for symbol, item in zip(symbols, pieces) if item[0].empty],
++                         "source_coverage_claim": "available verified local observations only; missing evidence remains unscored"}
++        else:
++            bars = pd.DataFrame({"timestamp": pd.Series(dtype="datetime64[ns, UTC]"),
++                                 "symbol": pd.Series(dtype=str), "open": pd.Series(dtype=float),
++                                 "close": pd.Series(dtype=float)})
++            files = ()
++            inventory = {"source_contract": source_contract, "dataset": stock_price_dataset(source_contract),
++                         "unavailable_symbols": list(symbols), "missing_dependency": missing,
++                         "source_coverage_claim": "no verified local observations available"}
++        bars.attrs["stock_price_source"] = inventory
++        return bars, files, inventory
++
++
++def _previous_session_snapshot(root, report):
++    """Select this local session's immutable review, not a combined publication."""
++    from app.ui.gameplan_stats_data import load_gameplan_stats
++    candidates = []
++    for path in (root / RUNS).glob("*/receipt.json"):
++        receipt = _json(path)
++        if receipt.get("action_date") != report["action_date"] or receipt.get("status") != "COMPLETE":
++            continue
++        saved = _json(path.parent / "report.json")
++        if saved.get("review_mode") != "completed-session-before-training":
++            continue
++        reviewed = _aware_timestamp(saved["reviewed_at"], "saved review time")
++        if reviewed > _aware_timestamp(report["reviewed_at"], "review time"):
++            raise ValueError("Stats reconciliation cannot precede an existing session snapshot")
++        candidates.append((reviewed, path.parent.name, path.parent, saved))
++    if not candidates:
++        return None
++    _, _, run, saved = max(candidates, key=lambda item: item[:2])
++    load_gameplan_stats(root, report["action_date"], run_directory=run,
++                       expected_receipt_sha256=file_checksum(run / "receipt.json"))
++    return run, saved
++
++
++def _same_session_snapshot(run, saved, report, results, price_results):
++    identity = ("action_date", "successor_action_date", "source_gameplan_run", "source_trade_plan_path",
++                "outcomes_through", "probability_target_contract", "coverage_status")
++    if any(saved.get(key) != report.get(key) for key in identity):
++        return False
++    for name, current in (("forecast-results.parquet", results), ("price-results.parquet", price_results)):
++        try:
++            pd.testing.assert_frame_equal(pd.read_parquet(run / name), current, check_dtype=False,
++                                          check_exact=True, check_like=True,
++                                          check_index_type=False, check_column_type=False)
++        except AssertionError:
++            return False
++    return True
++
++
++def _publish_reader_pointers(root, run, action_date):
++    pointer = {"schema_version": VERSION, "current": {"run_path": run.relative_to(root).as_posix(),
++               "action_date": action_date, "receipt_sha256": file_checksum(run / "receipt.json")}}
++    _write_json(root / "ml/gameplan-actuals-review-latest/run.json", pointer)
++    dated = root / f"ml/gameplan-actuals-review-by-date/{action_date}"
++    _write_json(dated / "run.json", pointer)
++    temporary = dated / "Gameplan-results.tmp"
++    temporary.write_bytes((run / "Gameplan-results.md").read_bytes())
++    temporary.replace(dated / "Gameplan-results.md")
+ 
+ 
+ def _publish_session_review(root: Path, *, report: dict, inputs: list,
+-                            clock, price_loader=None, deadline_at=None) -> Path:
++                            clock, price_loader=None, deadline_at=None,
++                            reconcile_existing=False) -> Path:
+     from ml.stock_target_prices import load_stock_target_prices
+     action_date = report["action_date"]
+     now = _aware_timestamp(report["reviewed_at"], "review time")
+@@ -602,7 +703,8 @@
+         forecasts = pd.read_parquet(original.run_directory / "forecasts.parquet")
+         trades = _saved_trade_plan(root, original)
+         contract = original.manifest["configuration"]["target_price_source_contract"]
+-        prices, price_files, inventory = (price_loader or load_stock_target_prices)(
++        prices, price_files, inventory = (price_loader or (_available_review_prices if reconcile_existing
++                                                        else load_stock_target_prices))(
+             root, symbols=tuple(sorted(forecasts.symbol.unique())), source_contract=contract)
+         results = compare_forecasts(forecasts, prices, observed_at=cutoff, trade_rows=trades[1] if trades else None,
+                                     evidence_available_at=now)
+@@ -632,6 +734,30 @@
+             # invented historical forecast. The saved result remains empty.
+             report.update(probability_target_metadata(RAW_DIRECTION_TARGET))
+     report.update(saved_direction_policy_summary(results.to_dict("records")))
++    if reconcile_existing:
++        report["input_coverage_status"] = ("NO_SAVED_INDEPENDENT_GAMEPLAN" if results.empty else
++            "MATURE_OBSERVATIONS_MISSING" if results.actuals_status.eq("MATURE_AWAITING_DATA").any()
++            else "MATURE_OBSERVATIONS_AVAILABLE")
++        report["snapshot_completion_semantics"] = "COMPLETE means the available-evidence snapshot was published, not complete price coverage or long-horizon maturity"
++        report["awaiting_observation_dependencies"] = [
++            {"id": row["id"], "symbol": row["symbol"], "route": row["route"],
++             "source_contract": row.get("target_price_source_contract", report["target_price_source_contract"]),
++             "boundary": boundary,
++             **{key: row.get(f"actual_{boundary}_{key}") for key in (
++                 "status", "source_coverage", "required_source_start", "required_source_end")}}
++            for row in results.to_dict("records") if row["actuals_status"] == "MATURE_AWAITING_DATA"
++            for boundary in ("start", "end") if row.get(f"actual_{boundary}_status") != "OBSERVED"]
++        previous = _previous_session_snapshot(root, report)
++        if previous:
++            parent, saved = previous
++            if _same_session_snapshot(parent, saved, report, results, price_results):
++                _publish_reader_pointers(root, parent, action_date)
++                return parent
++            names = ("receipt.json", "manifest.json", "report.json", "forecast-results.parquet", "price-results.parquet")
++            report["session_revision_parent"] = {"run_path": parent.relative_to(root).as_posix(),
++                **{name: file_checksum(parent / name) for name in names}}
++            report["session_revision_reason"] = "available_completed_session_evidence_changed"
++            inputs += [parent / name for name in names]
+     if deadline_at is not None and deadline_expired(_aware_timestamp(clock(), "completion time"), deadline_at):
+         raise ValueError("Actuals review publication deadline passed")
+     run = create_timestamp_directory(root / RUNS, timestamp=now)
+@@ -649,16 +775,9 @@
+     _write_json(run / "receipt.json", {"schema_version": VERSION, "status": "COMPLETE", "action_date": action_date,
+                 "run_path": run.relative_to(root).as_posix(), "manifest_sha256": file_checksum(run / "manifest.json"),
+                 "orders_placed": 0, "broker_orders_enabled": False})
+-    pointer = {"schema_version": VERSION, "current": {"run_path": run.relative_to(root).as_posix(), "action_date": action_date,
+-               "receipt_sha256": file_checksum(run / "receipt.json")}}
+-    _write_json(root / "ml/gameplan-actuals-review-latest/run.json", pointer)
+-    dated = root / f"ml/gameplan-actuals-review-by-date/{action_date}"
+-    _write_json(dated / "run.json", pointer)
+     # The durable run is immutable; this dated reader is the link in the next
+     # Gameplan. Replace atomically so an open document never sees a partial copy.
+-    temporary = dated / "Gameplan-results.tmp"
+-    temporary.write_bytes((run / "Gameplan-results.md").read_bytes())
+-    temporary.replace(dated / "Gameplan-results.md")
++    _publish_reader_pointers(root, run, action_date)
+     # Execution is a separate private snapshot, never part of this prediction
+     # run, manifest, handoff package, or prerequisite for nightly continuation.
+     # Publish only after the prediction artifacts and reader pointers are durable.
+@@ -684,11 +803,13 @@
+     mode.add_argument("--completed-session", action="store_true", help="Publish completed-session Stats before successor training")
+     parser.add_argument("--action-date", help="Explicit reviewed XNYS session; otherwise the most recent completed 17:00 Pacific action day")
+     parser.add_argument("--reviewed-at", help="Explicit timezone-aware review time; default is the current time")
++    parser.add_argument("--reconcile-existing", action="store_true",
++                        help="Reuse unchanged completed-session evidence or publish an immutable revision")
+     parser.add_argument("--deadline")
+     parser.add_argument('--deadline-exception', type=Path)
+     args = parser.parse_args(argv)
+-    if not args.completed_session and (args.action_date is not None or args.reviewed_at is not None):
+-        parser.error("--action-date and --reviewed-at require --completed-session")
++    if not args.completed_session and (args.action_date is not None or args.reviewed_at is not None or args.reconcile_existing):
++        parser.error("--action-date, --reviewed-at and --reconcile-existing require --completed-session")
+     if args.completed_session and args.deadline_exception is not None:
+         parser.error("--deadline-exception belongs to the legacy successor review")
+     root = resolve_datastore_dir(root_dir=args.datastore, target=None if args.datastore else args.datastore_target)
+@@ -696,7 +817,7 @@
+         extra = {'deadline_exception':args.deadline_exception} if args.deadline_exception is not None else {}
+         if args.completed_session:
+             run = publish_completed_session_review(root, action_date=args.action_date,
+-                reviewed_at=args.reviewed_at, deadline=args.deadline)
++                reviewed_at=args.reviewed_at, deadline=args.deadline, reconcile_existing=args.reconcile_existing)
+         else:
+             run = publish_actuals_review(root, gameplan_run=args.gameplan_run, deadline=args.deadline, **extra)
+     print(json.dumps({"status": "COMPLETE", "run_path": str(run), "review_path": str(run / "Gameplan-results.md"), "orders_placed": 0}))
+diff --git a/ml/nightly_dispatch.py b/ml/nightly_dispatch.py
+--- a/ml/nightly_dispatch.py
++++ b/ml/nightly_dispatch.py
+@@ -25,16 +25,36 @@
+ TERMINAL = {"LOCAL_COMPLETE_PEER_SETUP_PENDING", "COMPLETE", "HANDOFF_VERIFIED_LOCAL"}
+ 
+ 
++def session_phase(source_session, now=None):
++    """Release one source session's phases, independently of the current hour.
++
++    These wall-clock boundaries are localized separately so weekends, midnight
++    and DST cannot turn an already released prior night back into waiting work.
++    The 21:00 data minimum deliberately differs from the retained 21:05 wake.
++    """
++    observed = utc_timestamp(now)
++    day = pd.Timestamp(source_session)
++    if day.tzinfo is not None or day != day.normalize():
++        raise ValueError("Nightly source session must be an unambiguous calendar date")
++    local = day.tz_localize("America/Los_Angeles")
++    stats = local.replace(hour=17, minute=30).tz_convert("UTC")
++    evening = local.replace(hour=21).tz_convert("UTC")
++    kickoff = local.replace(hour=21, minute=5).tz_convert("UTC")
++    return {"stats_eligible_at": stats.isoformat(), "evening_eligible_at": evening.isoformat(),
++            "kickoff_at": kickoff.isoformat(), "stats_eligible": observed >= stats,
++            "evening_eligible": observed >= evening, "kickoff_eligible": observed >= kickoff}
++
++
+ def intended_session(now=None):
+     from ml.gameplan_actuals_review import completed_session_context
+     now = utc_timestamp(now)
+     context = completed_session_context(now)
+     action = context["successor_action_date"]
+     original = pd.Timestamp(action).tz_localize("America/Los_Angeles").replace(hour=4).tz_convert("UTC")
+-    kickoff = pd.Timestamp(context["action_date"]).tz_localize("America/Los_Angeles").replace(hour=21, minute=5).tz_convert("UTC")
++    phase = session_phase(context["action_date"], now)
+     return {"action_date": action, "source_session": context["action_date"],
+-            "deadline_at": original.isoformat(), "kickoff_at": kickoff.isoformat(),
+-            "eligible": now >= kickoff}
++            "deadline_at": original.isoformat(), **phase,
++            "eligible": phase["kickoff_eligible"]}
+ 
+ 
+ def continuation_session(config, now=None):
+@@ -51,12 +71,16 @@
+         if path != expected or state.get("actor") != config["actor"] or state.get("run_id") != latest.get("run_id"):
+             raise ValueError("Latest nightly pointer differs from its dated workflow")
+         if state.get("status") not in TERMINAL:
++            phase = session_phase(state["source_session"], observed)
+             return {"action_date": state["action_date"], "source_session": state["source_session"],
+-                    "deadline_at": state["deadline_at"], "kickoff_at": None, "eligible": True}
++                    "deadline_at": state["deadline_at"], **phase, "eligible": phase["stats_eligible"]}
++    if selection["stats_eligible"]:
++        return {**selection, "eligible": True}
+     if not selection["eligible"]:
+         # Before the next kickoff, a missed prior night still owns its session.
+         selection = intended_session(observed - pd.Timedelta(days=1))
+-        selection["eligible"] = observed >= utc_timestamp(selection["kickoff_at"])
++        selection.update(session_phase(selection["source_session"], observed))
++        selection["eligible"] = selection["stats_eligible"]
+     return selection
+ 
+ 
+diff --git a/ml/nightly_workflow.py b/ml/nightly_workflow.py
+--- a/ml/nightly_workflow.py
++++ b/ml/nightly_workflow.py
+@@ -384,10 +384,10 @@
+             previous = None
+         else:
+             arguments["resume_run"] = run
+-    if not previous and step in ("prepare_stats", "datastore_catchup"):
++    if not previous and step in ("early_stats", "prepare_stats", "datastore_catchup"):
+         arguments["stop_after"] = ("stock_target_history" if config.get("stock_price_source", "xnas-itch-archive-v1") in {"xnas-itch-archive-v1", "observed-multi-source-stock-v1", "observed-multi-source-stock-v2"}
+                                    else "loop_a_close_fetch") if step == "datastore_catchup" else "gameplan_stats"
+-        if step == "prepare_stats" and state.get("workflow_layout"):
++        if step == "early_stats" or (step == "prepare_stats" and state.get("workflow_layout")):
+             arguments["start_at"] = "gameplan_stats"
+     elif not previous:
+         arguments["start_at"] = "gameplan_trade_planning" if step == "local_gameplan" else "loop_b_directional_generation"
+@@ -395,11 +395,15 @@
+             arguments["stop_after"] = "stock_enrichment_training"
+         arguments["model_feedback"] = Path(state["steps"]["model_review"]["output"]["proposal"])
+     bound_attempt = None
++    initial_native_path = overnight_status(root).get("run_path")
++    if initial_native_path and not Path(initial_native_path).is_dir():
++        initial_native_path = None
+     def record_native_progress(message: str) -> None:
+         nonlocal bound_attempt
+         if bound_attempt is None:
+             latest = overnight_status(root)
+-            if latest.get("owner_pid") == os.getpid() and latest.get("run_path"):
++            if (latest.get("owner_pid") == os.getpid() and latest.get("run_path")
++                    and latest["run_path"] != initial_native_path):
+                 bound_attempt = str(latest["run_path"])
+                 entry["native_run"] = bound_attempt
+                 # The native runtime emits its first progress after writing the
+@@ -416,7 +420,8 @@
+     finally:
+         latest = overnight_status(root)
+         # Bind only this worker's native attempt, never another producer's run.
+-        if latest.get("owner_pid") == os.getpid() and latest.get("run_path"):
++        if (latest.get("owner_pid") == os.getpid() and latest.get("run_path")
++                and (latest["run_path"] == bound_attempt or latest["run_path"] != initial_native_path)):
+             entry["native_run"] = str(latest["run_path"])
+             save()
+ 
+@@ -760,6 +765,78 @@
+     return True
+ 
+ 
++def _prefetch_stats_reconciliation_needed(config, state):
++    """A later completed fetch can supersede a snapshot in unfinished science."""
++    from ml.nightly_dispatch import LAYOUT, TERMINAL
++    if state.get("status") in TERMINAL or state.get("workflow_layout") != LAYOUT:
++        return False
++    steps = state["steps"]
++    training = steps.get("train_and_plan", {})
++    if training.get("status") == "COMPLETE":
++        return False
++    stats, acquired = steps.get("prepare_stats", {}), steps.get("datastore_catchup", {})
++    if any(entry.get("status") != "COMPLETE" for entry in (stats, acquired)):
++        return False
++    if not stats.get("completed_at") or not acquired.get("completed_at"):
++        return False
++    if utc_timestamp(stats["completed_at"]) >= utc_timestamp(acquired["completed_at"]):
++        return False
++    if training.get("native_run"):
++        from ml.overnight_runtime import _validated_run
++        native = _validated_run(Path(config["datastore"]).resolve(), Path(training["native_run"]))
++        if (native / "receipt.json").is_file() and _json(native / "receipt.json").get("status") == "COMPLETE":
++            _native_outputs(native)
++            return False
++    return True
++
++
++def _reconcile_prefetch_stats(config, state, path, save):
++    """Archive an earlier snapshot before the existing post-fetch scorer runs.
++
++    Caller holds both workflow/runtime locks. Completion of a snapshot does not
++    prove observation coverage; completed scientific history remains frozen.
++    """
++    if not _prefetch_stats_reconciliation_needed(config, state):
++        return False
++    steps = state["steps"]
++    stats, acquired = steps["prepare_stats"], steps["datastore_catchup"]
++    _verify_outputs(stats["output"])
++    _verify_outputs(acquired["output"])
++    before = path.read_bytes()
++    if json.loads(before) != state:
++        raise ValueError("Saved workflow changed before pre-fetch Stats reconciliation")
++    identity = sha256(before).hexdigest()
++    directory = path.parent / "operational-recoveries" / ("prefetch-stats-" + identity)
++    directory.mkdir(parents=True, exist_ok=True)
++    record = {"schema_version": "nightly-prefetch-stats-reconciliation-v1",
++        "workflow_run_id": state["run_id"], "action_date": state["action_date"],
++        "source_session": state["source_session"], "before_state_sha256": identity,
++        "reason": "Completed Stats snapshot predates newly completed evening acquisition",
++        "stats_completed_at": stats["completed_at"], "acquisition_completed_at": acquired["completed_at"],
++        "reset_steps": ["prepare_stats"], "scientific_outputs_preserved": True}
++    for destination, raw in ((directory / "before-state.json", before),
++            (directory / "reconciliation.json", (json.dumps(record, indent=2, sort_keys=True) + "\n").encode())):
++        if destination.exists():
++            if destination.read_bytes() != raw:
++                raise ValueError("Original pre-fetch Stats reconciliation evidence changed")
++        else:
++            temporary = destination.with_name(destination.name + "." + uuid.uuid4().hex + ".tmp")
++            with temporary.open("xb") as stream:
++                stream.write(raw)
++                stream.flush()
++                os.fsync(stream.fileno())
++            os.replace(temporary, destination)
++    steps["prepare_stats"] = {key: value for key, value in stats.items()
++        if key in ("attempts", "started_at", "owner", "responsibility")}
++    state.setdefault("stats_reconciliations", []).append({"path": str(directory / "reconciliation.json"),
++        "sha256": file_checksum(directory / "reconciliation.json"), "at": utc_timestamp().isoformat()})
++    state.update(next_responsibility="stats", stats_continuation={"status": "PENDING",
++        "step": "prepare_stats", "after": "datastore_catchup", "source_session": state["source_session"],
++        "reason": record["reason"]})
++    save()
++    return True
++
++
+ def _verify_local_preparation(config: dict, state: dict) -> dict:
+     """Verify frozen completed work without consulting current display pointers."""
+     from ml.artifacts import verify_manifest
+@@ -842,7 +919,11 @@
+ 
+ 
+ def _execute_step(config: dict, state: dict, step: str, save) -> dict:
+-    if step in ("prepare_stats", "train_and_plan", "datastore_catchup", "local_gameplan"):
++    from ml.nightly_dispatch import session_phase
++    phase = session_phase(state["source_session"])
++    if not phase["stats_eligible"] or (step != "early_stats" and not phase["evening_eligible"]):
++        raise ValueError("Nightly stage is before its source session's authorized release time")
++    if step in ("early_stats", "prepare_stats", "train_and_plan", "datastore_catchup", "local_gameplan"):
+         return _run_native(config, state, step, save)
+     if step == "model_review":
+         from ml.gameplan_model_feedback import prepare_feedback
+@@ -999,11 +1080,33 @@
+             "repository_repair_owner": owner, "reason": reason}
+ 
+ 
++def _selected_session(config, action_date, observed):
++    """Keep a launch's exact source/action pair across a delayed worker start."""
++    from ml.gameplan_actuals_review import completed_session_context
++    from ml.nightly_dispatch import session_phase
++    if pd.Timestamp(action_date).date().isoformat() != action_date:
++        raise ValueError("Use an exact selected action date")
++    current = status(config, action_date=action_date)
++    if current.get("source_session"):
++        source, deadline = current["source_session"], current["deadline_at"]
++    else:
++        action = pd.Timestamp(action_date).tz_localize("America/Los_Angeles")
++        context = completed_session_context(action)
++        if context["successor_action_date"] != action_date:
++            raise ValueError("Selected action date is not a supported successor session")
++        source = context["action_date"]
++        deadline = action.replace(hour=4).tz_convert("UTC").isoformat()
++    phase = session_phase(source, observed)
++    return {"action_date": action_date, "source_session": source, "deadline_at": deadline,
++            **phase, "eligible": phase["stats_eligible"]}
++
++
+ def run_workflow(config: dict, *, resume_action_date: str | None = None,
+                  recover_action_date: str | None = None, recovery_deadline=None, now=None,
+                  execute_step=None, identity=None, supervise=True, planning_tail_exception=None,
+                  responsibility=None, catch_up=False, recovery_reason: str | None = None,
+-                 human_resume_source: str | None = None) -> dict:
++                 human_resume_source: str | None = None, stats_only=False,
++                 selected_action_date: str | None = None) -> dict:
+     from ml.overnight_runtime import scheduled_session_eligibility, next_action_deadline
+     root, repository, state_root = map(Path, (config["datastore"], config["repository"], config["state_root"]))
+     state_root.mkdir(parents=True, exist_ok=True)
+@@ -1013,9 +1116,15 @@
+     executor = execute_step or _execute_step
+     from ml.nightly_dispatch import (LAYOUT, RESPONSIBILITIES, OWNERS, TERMINAL,
+         intended_session, next_responsibility, authority, recovery_record, validate_recovery,
+-        failure_record, retry_disposition)
++        failure_record, retry_disposition, session_phase)
+     if responsibility is not None and responsibility not in RESPONSIBILITIES:
+         raise ValueError("Unknown nightly responsibility")
++    if stats_only and responsibility not in (None, "stats"):
++        raise ValueError("Stats-only execution cannot select another responsibility")
++    if stats_only and (recover_action_date or recovery_reason or planning_tail_exception):
++        raise ValueError("Stats-only execution preserves its session without a legacy recovery override")
++    if selected_action_date and (resume_action_date or recover_action_date):
++        raise ValueError("A selected action date cannot replace another explicitly pinned session")
+     explicit_catch_up = catch_up and recovery_reason is not None
+     continuing = config.get("continue_until_complete", True) is True
+     if recovery_reason is not None and not catch_up:
+@@ -1033,12 +1142,22 @@
+     if planning_tail_exception is not None and not resume_action_date:
+         raise ValueError("A planning continuation requires the existing recovery action date")
+     with FileLock(str(state_root / "workflow.lock"), timeout=0):
+-        if catch_up:
++        current_selection = intended_session(observed)
++        early_direct = (not resume_action_date and not recover_action_date and not explicit_catch_up
++                        and not current_selection["evening_eligible"])
++        if (catch_up or stats_only or selected_action_date or early_direct) and not resume_action_date and not explicit_catch_up:
+             from ml.nightly_dispatch import continuation_session
+-            selection = continuation_session(config, observed) if continuing else intended_session(observed)
++            if stats_only or (early_direct and not catch_up) or not continuing:
++                selection = current_selection
++            else:
++                selection = continuation_session(config, observed)
++            if selected_action_date:
++                selection = _selected_session(config, selected_action_date, observed)
+             path = state_root / "runs" / selection["action_date"] / "state.json"
+-            if not selection["eligible"]:
++            if not selection["stats_eligible"]:
+                 return {"status": "WAITING_KICKOFF", **selection}
++            if (not selection["evening_eligible"] and responsibility not in (None, "stats")):
++                return {"status": "WAITING_KICKOFF", **selection, "responsibility": responsibility}
+             if path.exists():
+                 state = _json(path)
+             else:
+@@ -1076,6 +1195,10 @@
+             elif explicit_catch_up:
+                 from ml.nightly_recovery import session_context
+                 context = session_context(observed)
++                if selected_action_date:
++                    pinned = _selected_session(config, selected_action_date, observed)
++                    context.update(source_session=pinned["source_session"], action_date=pinned["action_date"],
++                                   original_deadline_at=pinned["deadline_at"])
+                 eligibility = {"eligible": True, "local_date": context["source_session"]}
+             else:
+                 eligibility = scheduled_session_eligibility(observed)
+@@ -1109,10 +1232,31 @@
+                     state.update(recovery)
+         def save():
+             _write(path, state)
++            latest_path = state_root / "latest.json"
++            if early_phase and latest_path.is_file():
++                previous_pointer = _json(latest_path)
++                previous_path = Path(previous_pointer["state_path"]).resolve()
++                if previous_path != path.resolve():
++                    previous = _json(previous_path)
++                    if (previous_path == (state_root / "runs" / previous["action_date"] / "state.json").resolve()
++                            and previous.get("actor") == config["actor"]
++                            and previous.get("run_id") == previous_pointer.get("run_id")
++                            and previous.get("status") not in TERMINAL):
++                        # A new snapshot must not hide another dated night's
++                        # unfinished continuation behind the convenience pointer.
++                        return
+             _write(state_root / "latest.json", {"state_path": str(path), "run_id": state["run_id"]})
+         if state.get("schema_version") != VERSION or state.get("actor") != config["actor"]:
+             raise ValueError("Workflow state identity differs")
+-        _refresh_planning_recipe(config, state, path, observed, save)
++        phase = session_phase(state["source_session"], observed)
++        early_phase = stats_only or not phase["evening_eligible"]
++        if not phase["stats_eligible"]:
++            return {"status": "WAITING_STATS", "action_date": state["action_date"], **phase}
++        if early_phase and responsibility not in (None, "stats"):
++            return {"status": "WAITING_EVENING", "action_date": state["action_date"], **phase,
++                    "responsibility": responsibility}
++        if not early_phase:
++            _refresh_planning_recipe(config, state, path, observed, save)
+         if state.get("status") in TERMINAL:
+             if state.get("action_date") != path.parent.name:
+                 raise ValueError("Completed workflow identity differs from its action-date path")
+@@ -1141,8 +1285,14 @@
+             if state.get("recovery"):
+                 if state.get("scheduled_recovery") or state.get("recovery_deadline_at"):
+                     raise ValueError("A workflow must preserve one frozen recovery route")
+-            if catch_up:
+-                selected_owner = next_responsibility(state)
++            if early_phase and (state["steps"].get("early_stats", {}).get("status") == "COMPLETE"
++                    or state["steps"].get("prepare_stats", {}).get("status") == "COMPLETE"):
++                # COMPLETE means a truthful snapshot, not complete observation
++                # coverage. The ordinary post-fetch prepare_stats is still due.
++                return state
++            if catch_up and not early_phase:
++                selected_owner = ("stats" if _prefetch_stats_reconciliation_needed(config, state)
++                                  else next_responsibility(state))
+                 if responsibility is not None and selected_owner != responsibility:
+                     return {"status": "WAITING_PREREQUISITE", "action_date": state["action_date"],
+                             "responsibility": responsibility, "next_responsibility": selected_owner}
+@@ -1177,18 +1327,27 @@
+                 yield threading.Event()
+             manager = _supervision(root) if supervise else no_supervision()
+             with exclusive_runtime_lock(root / ".ducketz-overnight-runtime.lock", process_name="Nightly workflow"), manager as lost:
+-                if continuing:
++                if continuing and not early_phase:
+                     _recover_stale_model_feedback(config, state, path, save)
+                     state["continuation_policy"] = "complete-dated-nightly-preparation-v1"
+                 state.update(status="RUNNING", owner_pid=os.getpid())
+                 state.pop("error", None)
+                 state.pop("failed_at", None)
+                 save()
+-                for step in workflow_steps(state):
++                if not early_phase:
++                    _reconcile_prefetch_stats(config, state, path, save)
++                for step in (("early_stats",) if early_phase else workflow_steps(state)):
+                     entry = state["steps"].setdefault(step, {})
+                     if entry.get("status") == "COMPLETE":
+                         continue
+-                    stage_owner = ("datastore" if step == "prepare_stats" and not state.get("workflow_layout") else OWNERS[step])
++                    stage_owner = ("stats" if step == "early_stats" else
++                                   "datastore" if step == "prepare_stats" and not state.get("workflow_layout") else OWNERS[step])
++                    live_phase = session_phase(state["source_session"], observed + pd.Timedelta(
++                        microseconds=int(max(0, monotonic() - started_tick) * 1_000_000)))
++                    if not live_phase["stats_eligible"] or (step != "early_stats" and not live_phase["evening_eligible"]):
++                        state.update(status="WAITING_EVENING", owner_pid=None, current_step=step)
++                        save()
++                        return state
+                     if responsibility is not None and stage_owner != responsibility:
+                         state.update(status="WAITING_PREREQUISITE", current_step=step, owner_pid=None,
+                                      next_responsibility=stage_owner)
+@@ -1207,16 +1366,34 @@
+                     output = executor(config, state, step, save)
+                     _verify_outputs(output)
+                     entry.update(status="COMPLETE", output=output, completed_at=utc_timestamp().isoformat())
++                    if step == "prepare_stats" and state.get("stats_continuation"):
++                        state["stats_continuation"].update(status="COMPLETE",
++                            reconciled_at=entry["completed_at"], output=output)
+                     entry.pop("error", None)
+                     if state.get("failure", {}).get("step") == step:
+                         state["failure"].update(disposition="RESOLVED", resolved_at=utc_timestamp().isoformat())
+                     save()
++                    if step == "datastore_catchup":
++                        _reconcile_prefetch_stats(config, state, path, save)
++                    if continuing and step == "prepare_stats":
++                        # Evening observations can revise the early snapshot.
++                        # Rebind only unfinished dependent work before this same
++                        # invocation advances to a saved model review or fit.
++                        _recover_stale_model_feedback(config, state, path, save)
+                 if lost.is_set():
+                     state["supervision_status"] = "LEASE_RENEWAL_RETRY"
+                 _verify_symbol_binding(config, state)
+                 _verify_configuration_binding(config, state)
+             if lost.is_set():
+                 state["supervision_status"] = "LEASE_RENEWAL_OR_RELEASE_RETRY"
++            if early_phase:
++                state.update(status="EARLY_STATS_COMPLETE", current_step=None, owner_pid=None,
++                    next_responsibility="datastore", timing_policy="stats-1730-evening-2100-v1",
++                    stats_continuation={"status": "PENDING", "step": "prepare_stats", "after": "datastore_catchup",
++                        "reason": "Reconcile available observations after normal evening acquisition",
++                        "source_session": state["source_session"], **phase})
++                save()
++                return state
+             state.update(status="LOCAL_COMPLETE_PEER_SETUP_PENDING", current_step=None, owner_pid=None,
+                 completed_at=utc_timestamp().isoformat(), joint_ready=False,
+                 joint_status="Local preparation complete; cross-PC enablement pending; no communication or synthesis attempted")
+@@ -1268,14 +1445,28 @@
+     from ml.nightly_dispatch import continuation_session
+     continuing = config.get("continue_until_complete", True) is True
+     selection = continuation_session(config, now) if continuing else intended_session(now)
++    today = intended_session(now)
++    if today["stats_eligible"] and not today["kickoff_eligible"]:
++        today_state = status(config, action_date=today["action_date"])
++        if (today_state.get("status") not in TERMINAL
++                and today_state.get("steps", {}).get("early_stats", {}).get("status") != "COMPLETE"
++                and today_state.get("steps", {}).get("prepare_stats", {}).get("status") != "COMPLETE"):
++            # One bounded current-session snapshot may use a free worker while
++            # a prior night retains its separate continuation identity.
++            selection = today
+     current = status(config, action_date=selection["action_date"])
+     result = {**selection, "actor": config["actor"], "status": current["status"]}
+     root = Path(config["state_root"])
+     refresh = _recipe_refresh_required(current, intended_action_date=intended_session(now)["action_date"])
+     if current["status"] in TERMINAL and not refresh:
+         return {**result, "dispatch": False, "reason": "Retain completed session and its original receipts"}
+-    if not selection["eligible"]:
++    if not selection["stats_eligible"]:
+         return {**result, "status": "WAITING_KICKOFF", "dispatch": False}
++    early_phase = not selection["kickoff_eligible"]
++    if early_phase and (current.get("steps", {}).get("early_stats", {}).get("status") == "COMPLETE"
++                        or current.get("steps", {}).get("prepare_stats", {}).get("status") == "COMPLETE"):
++        return {**result, "status": "WAITING_EVENING", "dispatch": False,
++                "reason": "Stats snapshot retained; normal evening dispatcher remains at source-session 21:05"}
+     root.mkdir(parents=True, exist_ok=True)
+     try:
+         with FileLock(str(root / "workflow.lock"), timeout=0):
+@@ -1292,10 +1483,11 @@
+     if not continuing and cutoff and utc_timestamp(now) >= utc_timestamp(cutoff):
+         return {**result, "status": "RECOVERY_EXPIRED", "dispatch": False,
+                 "reason": "Retain the fixed cutoff; reviewed planning-tail continuation or human input is required"}
+-    owner = ("gameplan" if current.get("steps", {}).get("train_and_plan", {}).get("status") == "COMPLETE"
++    owner = "stats" if early_phase or _prefetch_stats_reconciliation_needed(config, current) else ("gameplan" if current.get("steps", {}).get("train_and_plan", {}).get("status") == "COMPLETE"
+              else next_responsibility({**current, "status": "READY"})) if refresh else (
+              next_responsibility(current) if current["status"] != "NOT_STARTED" else "datastore")
+     return {**result, "dispatch": bool(owner), "responsibility": owner,
++            **({"stats_only": True} if early_phase else {}),
+             **({"recipe_refresh_required": True} if refresh else {}),
+             "owner": config.get("responsibility_owners", {}).get(owner, owner)}
+ 
+@@ -1316,6 +1508,7 @@
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("--config", type=Path, required=True)
+     parser.add_argument("--resume-action-date")
++    parser.add_argument("--selected-action-date", help="Keep a dispatch's exact source/action session when its worker starts")
+     parser.add_argument("--human-resume-source", help="Reference to Jeremy's explicit instruction to resume a stopped night")
+     parser.add_argument("--recover-action-date", help="Explicit operator recovery of today's missing nightly run")
+     parser.add_argument("--recovery-deadline", help="Fixed zoned deadline for an explicitly requested recovery")
+@@ -1324,6 +1517,8 @@
+     from ml.nightly_dispatch import RESPONSIBILITIES
+     parser.add_argument("--responsibility", choices=RESPONSIBILITIES)
+     parser.add_argument("--catch-up", action="store_true", help="Use recorded standing authority and the exchange calendar")
++    parser.add_argument("--stats-only", action="store_true",
++        help="Run only the dated Stats snapshot using existing evidence; never acquire data or launch the evening tail")
+     parser.add_argument("--recovery-reason", help="Explicit authorization for the legacy date-pinned recovery route")
+     parser.add_argument("--dry-run", action="store_true", help="Inspect a dispatch decision without launching work")
+     modes = parser.add_mutually_exclusive_group(required=True)
+@@ -1333,6 +1528,11 @@
+     modes.add_argument("--check", action="store_true")
+     modes.add_argument("--dispatch", action="store_true", help="Launch just the next prerequisite-ready responsibility")
+     args = parser.parse_args(argv)
++    if args.stats_only and (not (args.run or args.launch) or args.responsibility not in (None, "stats")):
++        parser.error("--stats-only requires --run or --launch with no responsibility other than stats")
++    if args.selected_action_date and (not (args.run or args.launch)
++                                     or args.resume_action_date or args.recover_action_date):
++        parser.error("--selected-action-date requires a run/launch without another explicit session")
+     if args.recovery_reason is not None and (not args.catch_up or not (args.run or args.launch)):
+         parser.error("--recovery-reason requires --catch-up with --run or --launch")
+     if args.dry_run and not args.dispatch:
+@@ -1359,8 +1559,25 @@
+                 "codex_available": bool(binary and Path(binary).is_file()),
+                 "peer_communication_enabled": False, "source_identity": source_identity(Path(config["repository"]))}
+         elif args.launch or args.dispatch:
+-            from ml.nightly_dispatch import intended_session
+-            selected_date = args.resume_action_date or args.recover_action_date or intended_session()["action_date"]
++            from ml.nightly_dispatch import intended_session, continuation_session, session_phase
++            launch_observed = utc_timestamp()
++            pinned_action = args.selected_action_date or args.resume_action_date or args.recover_action_date
++            if decision:
++                launch_selection = decision
++            elif pinned_action:
++                launch_selection = _selected_session(config, pinned_action, launch_observed)
++            elif args.catch_up and not args.stats_only and not args.recovery_reason:
++                launch_selection = continuation_session(config, launch_observed)
++            else:
++                launch_selection = intended_session(launch_observed)
++            selected_date = launch_selection["action_date"]
++            phase = session_phase(launch_selection["source_session"], launch_observed)
++            stats_only = args.stats_only or bool(decision and decision.get("stats_only")) or not phase["evening_eligible"]
++            if not phase["stats_eligible"] or (not phase["evening_eligible"] and args.responsibility not in (None, "stats")):
++                result = {"status": "WAITING_STATS" if not phase["stats_eligible"] else "WAITING_EVENING",
++                          "action_date": selected_date, **phase}
++                print(json.dumps(result, indent=2, sort_keys=True))
++                return 0
+             gate = _launch_repository_repair_gate(config, selected_date)
+             if gate:
+                 print(json.dumps(gate, indent=2, sort_keys=True))
+@@ -1372,6 +1589,10 @@
+             responsibility = decision["responsibility"] if args.dispatch else args.responsibility
+             if responsibility:
+                 command += ["--responsibility", responsibility]
++            if stats_only:
++                command.append("--stats-only")
++            if not (args.resume_action_date or args.recover_action_date):
++                command += ["--selected-action-date", selected_date]
+             if args.catch_up or args.dispatch:
+                 command.append("--catch-up")
+             if args.recovery_reason is not None:
+@@ -1398,6 +1619,8 @@
+                                   recovery_deadline=args.recovery_deadline,
+                                   planning_tail_exception=args.planning_tail_exception,
+                                   human_resume_source=args.human_resume_source,
++                                  stats_only=args.stats_only,
++                                  selected_action_date=args.selected_action_date,
+                                   responsibility=args.responsibility, catch_up=args.catch_up, recovery_reason=args.recovery_reason)
+         print(json.dumps(result, indent=2, default=str))
+         return 0
+diff --git a/ml/overnight_runtime.py b/ml/overnight_runtime.py
+--- a/ml/overnight_runtime.py
++++ b/ml/overnight_runtime.py
+@@ -240,6 +240,29 @@
+     if not stats_first or not stock_only or not independent_stock_horizons:
+         raise ValueError("Dated continuation requires Stats-first independent stock preparation")
+     return selected
++
++
++def _source_session_for_deadline(deadline: object) -> str:
++    """Recover legacy runs' reviewed session from their original action date."""
++    action = utc_timestamp(deadline).tz_convert(SCHEDULE_TIMEZONE)
++    label = pd.Timestamp(action.date())
++    calendar = xcals.get_calendar("XNYS", start=label - pd.Timedelta(days=31),
++                                 end=label + pd.Timedelta(days=14))
++    session = calendar.date_to_session(label, direction="next")
++    return pd.Timestamp(calendar.previous_session(session)).date().isoformat()
++
++
++def _require_phase_release(source_session: str, stages: Sequence[str], now: object) -> dict:
++    """Guard executable segments, including direct and recovered native runs."""
++    from ml.nightly_dispatch import session_phase
++    phase = session_phase(source_session, now)
++    stats_only = tuple(stages) == (GAMEPLAN_STATS_STAGE,)
++    key = "stats_eligible" if stats_only else "evening_eligible"
++    if not phase[key]:
++        label = "Stats-only" if stats_only else "Evening production"
++        raise ValueError(f"{label} for source session {source_session} is not released until "
++                         f"{phase[key + '_at']}; no stage was launched")
++    return phase
+ 
+ 
+ def run_overnight_pipeline(
+@@ -382,6 +405,11 @@
+     if recovery_spec is not None and deadline is None and resume is None:
+         from ml.nightly_recovery import verify_recovery
+         deadline = verify_recovery(root, recovery_spec, created)["authorization"]["original_deadline_at"]
++    if late_action_date is not None and deadline is None and resume is None:
++        from ml.nightly_continuation import action_date
++        # A directly requested late publication belongs to its original batch,
++        # not to the next deadline selected from today's wall clock.
++        deadline = pd.Timestamp(action_date(late_action_date)).tz_localize(SCHEDULE_TIMEZONE).replace(hour=4)
+     deadline_at = utc_timestamp(resume["deadline_at"] if resume else deadline) if (resume or deadline is not None) else next_action_deadline(created)
+     continuation_action_date = _continuation_context(
+         continuation_action_date, deadline=deadline_at, stats_first=stats_first,
+@@ -443,13 +471,23 @@
+         selected = tuple(stage for stage in selected if stage not in option_stages)
+     if not selected:
+         raise ValueError("No overnight stages remain within the requested stock-only boundaries")
++    # Use the batch identity, never a blanket local-hour gate. In particular,
++    # a prior night's work stays released during the following morning/day.
++    if stats_first:
++        from ml.gameplan_actuals_review import completed_session_context
++        context = completed_session_context(created, review_action_date)
++        review_action_date = context["action_date"]
++        if context["successor_action_date"] != deadline_at.tz_convert(SCHEDULE_TIMEZONE).date().isoformat():
++            raise ValueError("Reviewed source session differs from the original successor action date")
++        source_session = review_action_date
++    else:
++        source_session = _source_session_for_deadline(deadline_at)
++    phase = _require_phase_release(source_session, selected, created)
+     feedback_binding = None
+     if model_feedback is not None:
+         model_feedback = Path(model_feedback).resolve()
+         feedback_binding = {"path": str(model_feedback), "sha256": file_checksum(model_feedback)}
+     if stats_first:
+-        from ml.gameplan_actuals_review import completed_session_context
+-        review_action_date = completed_session_context(created, review_action_date)["action_date"]
+         if GAMEPLAN_STATS_STAGE in selected and any(stage in selected for stage in ("loop_b_directional_generation", "gameplan_publication")):
+             raise ValueError("Stop after gameplan_stats for model review before starting the training segment")
+         if any(stage in selected for stage in ("loop_b_directional_generation", "gameplan_publication")) and model_feedback is None:
+@@ -545,7 +583,7 @@
+         ),
+         GAMEPLAN_STATS_STAGE: (
+             python, "-u", "-m", "ml.gameplan_actuals_review", *datastore_argument,
+-            "--completed-session", "--action-date", str(review_action_date),
++            "--completed-session", "--reconcile-existing", "--action-date", str(review_action_date),
+             "--deadline", effective_deadline.isoformat(),
+         ),
+         "strategy_generation": (
+@@ -607,6 +645,7 @@
+         "broker_orders_enabled": False, "orders_placed": 0,
+         "status": "RUNNING", "stages": [], "current_stage": None,
+         "stats_first": stats_first, "review_action_date": review_action_date,
++        "source_session": source_session, "phase_release": phase,
+         "model_feedback": feedback_binding,
+         "late_action_date": late_action_date,
+         "continuation_action_date": continuation_action_date,
+@@ -670,6 +709,7 @@
+                     reporter("OVERNIGHT HEALTH " + json.dumps(dict(payload), default=str))
+ 
+             try:
++                _require_phase_release(source_session, (stage,), started)
+                 if stage in ("loop_b_directional_generation", "gameplan_publication") and feedback_binding:
+                     if file_checksum(model_feedback) != feedback_binding["sha256"]:
+                         raise ValueError("Reviewed model feedback changed before training")
+diff --git a/tests/test_nightly_continuation.py b/tests/test_nightly_continuation.py
+--- a/tests/test_nightly_continuation.py
++++ b/tests/test_nightly_continuation.py
+@@ -43,7 +43,11 @@
+     path = Path(config["state_root"]) / "runs/2026-10-12/state.json"
+     before = path.read_bytes()
+     result = run(config, "datastore", lambda *a: pytest.fail("Completed logical night replayed"), now="2026-10-13T02:00Z")
+-    assert result["run_id"] == complete["run_id"] and path.read_bytes() == before
++    assert result["status"] == "WAITING_KICKOFF" and result["action_date"] == "2026-10-13"
++    assert path.read_bytes() == before
++    assert workflow._json(path)["run_id"] == complete["run_id"]
++    early = workflow.dispatch_status(config, now="2026-10-13T02:00Z")
++    assert early["dispatch"] and early["responsibility"] == "stats" and early["stats_only"]
+     decision = workflow.dispatch_status(config, now="2026-10-13T04:06Z")
+     assert decision["dispatch"] and decision["action_date"] == "2026-10-13"
+ 
+diff --git a/tests/test_nightly_stats_timing_entrypoints.py b/tests/test_nightly_stats_timing_entrypoints.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_nightly_stats_timing_entrypoints.py
+@@ -0,0 +1,172 @@
++"""Offline phase-boundary checks observe native commands, never real providers."""
++import json
++from pathlib import Path
++
++import pandas as pd
++import pytest
++
++from ml import nightly_dispatch as dispatch
++from ml import overnight_runtime as native
++from ml.artifacts import utc_timestamp
++
++
++@pytest.fixture
++def execution(monkeypatch):
++    clock = [pd.Timestamp("2026-10-27T00:30:00Z")]
++    calls = []
++    monkeypatch.setattr(native, "utc_timestamp",
++                        lambda value=None: utc_timestamp(value) if value is not None else clock[0])
++    def stage(command, **kwargs):
++        calls.append(command)
++        kwargs["log_path"].write_text("Offline phase execution fixture", encoding="utf-8")
++        return 0
++    monkeypatch.setattr(native, "_run_stage", stage)
++    return clock, calls
++
++
++def run(root, **kwargs):
++    options = dict(datastore_argument=("--datastore", str(root)), repository_root=root,
++                   stock_only=True, independent_stock_horizons=True, stats_first=True,
++                   review_action_date="2026-10-26", deadline="2026-10-27T11:00:00Z",
++                   stock_price_source="observed-multi-source-stock-v2", reporter=None,
++                   start_at="gameplan_stats", stop_after="gameplan_stats")
++    options.update(kwargs)
++    return native.run_overnight_pipeline(root, **options)
++
++
++@pytest.mark.parametrize("stamp,allowed", [
++    ("2026-10-27T00:29:59Z", False),
++    ("2026-10-27T00:30:00Z", True),
++    ("2026-10-27T03:59:59Z", True),
++])
++def test_native_stats_only_exact_release(tmp_path, execution, stamp, allowed):
++    clock, calls = execution
++    clock[0] = pd.Timestamp(stamp)
++    if not allowed:
++        with pytest.raises(ValueError, match="Stats-only.*not released"):
++            run(tmp_path)
++        assert not list(tmp_path.iterdir())
++    else:
++        result = run(tmp_path)
++        report = json.loads((result / "stage-report.json").read_text())
++        assert report["stage_order"] == ["gameplan_stats"]
++        assert report["source_session"] == "2026-10-26"
++        assert report["review_action_date"] == "2026-10-26"
++        assert report["deadline_at"] == "2026-10-27T11:00:00+00:00"
++        assert report["status"] == "COMPLETE"
++        assert [command[3] for command in calls] == ["ml.gameplan_actuals_review"]
++        assert "--reconcile-existing" in calls[0]
++        assert calls[0][calls[0].index("--action-date") + 1] == "2026-10-26"
++    assert len(calls) == int(allowed)
++
++
++@pytest.mark.parametrize("stamp", ["2026-10-27T00:30:00Z", "2026-10-27T03:59:59Z"])
++@pytest.mark.parametrize("start,stop", [
++    ("loop_a_close_fetch", "gameplan_stats"),
++    ("stock_target_history", "stock_target_history"),
++    ("loop_b_directional_generation", "stock_enrichment_training"),
++    ("gameplan_trade_planning", "gameplan_trade_planning"),
++])
++def test_native_early_route_cannot_launch_evening_stage(tmp_path, execution, stamp, start, stop):
++    clock, calls = execution
++    clock[0] = pd.Timestamp(stamp)
++    with pytest.raises(ValueError, match="Evening production.*not released"):
++        run(tmp_path, start_at=start, stop_after=stop)
++    assert calls == []
++    assert not list(tmp_path.iterdir())
++
++
++def test_legacy_combined_route_is_not_an_early_fetch_escape(tmp_path, execution):
++    _, calls = execution
++    with pytest.raises(ValueError, match="Evening production.*not released"):
++        run(tmp_path, stats_first=False, review_action_date=None,
++            start_at="loop_a_close_fetch", stop_after="gameplan_publication")
++    assert calls == []
++
++
++@pytest.mark.parametrize("stamp,kickoff", [
++    ("2026-10-27T04:00:00Z", False), ("2026-10-27T04:05:00Z", True),
++])
++def test_data_minimum_does_not_advance_scheduled_kickoff(tmp_path, execution, stamp, kickoff):
++    clock, calls = execution
++    clock[0] = pd.Timestamp(stamp)
++    result = run(tmp_path, start_at="loop_a_close_fetch", stop_after="stock_target_history")
++    assert [command[3] for command in calls] == ["datafetching.orchestrate", "ml.stock_target_history"]
++    assert json.loads((result / "stage-report.json").read_text())["status"] == "COMPLETE"
++    selection = dispatch.intended_session(stamp)
++    assert selection["evening_eligible"] is True
++    assert selection["eligible"] is kickoff
++    assert selection["kickoff_eligible"] is kickoff
++
++
++@pytest.mark.parametrize("stamp", [
++    "2026-10-26T07:01:00Z", "2026-10-26T15:00:00Z", "2026-10-27T00:10:00Z",
++])
++def test_prior_friday_evening_work_continues_any_hour(tmp_path, execution, stamp):
++    clock, calls = execution
++    clock[0] = pd.Timestamp(stamp)
++    result = run(tmp_path, review_action_date="2026-10-23", deadline="2026-10-26T11:00:00Z",
++                 start_at="loop_a_close_fetch", stop_after="stock_target_history",
++                 continuation_action_date="2026-10-26")
++    report = json.loads((result / "stage-report.json").read_text())
++    assert report["source_session"] == "2026-10-23"
++    assert report["continuation_action_date"] == "2026-10-26"
++    assert len(calls) == 2
++
++
++@pytest.mark.parametrize("source,stamp,action", [
++    ("2026-03-06", "2026-03-07T01:30:00Z", "2026-03-09"),
++    ("2026-03-09", "2026-03-10T00:30:00Z", "2026-03-10"),
++    ("2026-10-30", "2026-10-31T00:30:00Z", "2026-11-02"),
++    ("2026-11-02", "2026-11-03T01:30:00Z", "2026-11-03"),
++    ("2026-07-02", "2026-07-03T00:30:00Z", "2026-07-06"),
++])
++def test_dst_weekend_and_holiday_mapping(source, stamp, action):
++    phase = dispatch.session_phase(source, stamp)
++    selection = dispatch.intended_session(stamp)
++    assert phase["stats_eligible"] is True and phase["evening_eligible"] is False
++    assert not dispatch.session_phase(source, pd.Timestamp(stamp) - pd.Timedelta(seconds=1))["stats_eligible"]
++    assert (selection["source_session"], selection["action_date"]) == (source, action)
++    assert utc_timestamp(phase["stats_eligible_at"]).tz_convert("America/Los_Angeles").strftime("%H:%M") == "17:30"
++
++
++def test_early_stats_failure_resume_keeps_its_only_stage(tmp_path, execution, monkeypatch):
++    clock, calls = execution
++    def fail(command, **kwargs):
++        calls.append(command)
++        kwargs["log_path"].write_text("Immutable first failure")
++        return 3
++    monkeypatch.setattr(native, "_run_stage", fail)
++    with pytest.raises(RuntimeError, match="exited with code 3"):
++        run(tmp_path)
++    failed = Path(native.overnight_status(tmp_path)["run_path"])
++    originals = {p.name: p.read_bytes() for p in failed.iterdir() if p.is_file()}
++    clock[0] = pd.Timestamp("2026-10-27T01:15:00Z")
++    monkeypatch.setattr(native, "_run_stage", lambda command, **kwargs: calls.append(command) or 0)
++    result = run(tmp_path, resume_run=failed)
++    report = json.loads((result / "stage-report.json").read_text())
++    assert report["stage_order"] == ["gameplan_stats"]
++    assert report["source_session"] == "2026-10-26"
++    assert len(calls) == 2 and all(command[3] == "ml.gameplan_actuals_review" for command in calls)
++    assert {p.name: p.read_bytes() for p in failed.iterdir() if p.is_file()} == originals
++
++
++def test_cannot_relabel_current_batch_as_prior_source_to_bypass_release(tmp_path, execution):
++    _, calls = execution
++    with pytest.raises(ValueError, match="source session differs"):
++        run(tmp_path, review_action_date="2026-10-23", start_at="loop_a_close_fetch",
++            stop_after="stock_target_history")
++    assert calls == []
++
++
++def test_legacy_explicit_late_action_keeps_original_released_batch(tmp_path, execution):
++    clock, calls = execution
++    clock[0] = pd.Timestamp("2026-10-27T00:10:00Z")
++    result = run(tmp_path, stats_first=False, review_action_date=None, deadline=None,
++                 late_action_date="2026-10-26", start_at="gameplan_publication",
++                 stop_after="gameplan_publication")
++    report = json.loads((result / "stage-report.json").read_text())
++    assert report["source_session"] == "2026-10-23"
++    assert report["deadline_at"] == "2026-10-26T11:00:00+00:00"
++    assert report["late_action_date"] == "2026-10-26"
++    assert [command[3] for command in calls] == ["ml.nightly_gameplan"]
+diff --git a/tests/test_nightly_stats_timing_evidence.py b/tests/test_nightly_stats_timing_evidence.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_nightly_stats_timing_evidence.py
+@@ -0,0 +1,219 @@
++"""Offline early/evening Stats evidence, immutable revision and feedback checks."""
++import json
++
++import pandas as pd
++import pytest
++
++from ml.artifacts import file_checksum, verify_manifest
++from ml.gameplan_actuals_review import _available_review_prices, publish_completed_session_review
++from tests.test_gameplan_actuals_review import _with_source_partitions, publication_case, prices
++
++
++def _report(run):
++    return json.loads((run / "report.json").read_text())
++
++
++def _publish(case, bars, at):
++    return publish_completed_session_review(case.root, action_date="2026-09-09",
++        clock=lambda: pd.Timestamp(at), price_loader=lambda *a, **kw: (bars, (), {}),
++        reconcile_existing=True)
++
++
++@pytest.mark.parametrize("day,early,eligible", [
++    ("2026-10-26", "2026-10-27T00:29:59Z", "2026-10-27T00:30:00Z"),
++    ("2026-11-02", "2026-11-03T01:29:59Z", "2026-11-03T01:30:00Z"),
++    ("2026-03-09", "2026-03-10T00:29:59Z", "2026-03-10T00:30:00Z"),
++])
++def test_direct_stats_reconciliation_enforces_source_session_boundary(tmp_path, day, early, eligible):
++    with pytest.raises(ValueError, match="eligible at 17:30"):
++        publish_completed_session_review(tmp_path, action_date=day,
++            clock=lambda: pd.Timestamp(early), reconcile_existing=True)
++    assert not (tmp_path / "ml/gameplan-actuals-review-runs").exists()
++    run = publish_completed_session_review(tmp_path, action_date=day,
++        clock=lambda: pd.Timestamp(eligible), reconcile_existing=True)
++    assert _report(run)["action_date"] == day
++
++
++@pytest.mark.parametrize("actual,requested,message", [
++    ("2026-10-27T00:29:59Z", "2026-10-27T00:30:00Z", "eligible at 17:30"),
++    ("2026-10-27T00:31:00Z", "2026-10-27T04:30:00Z", "actual execution clock"),
++])
++def test_requested_future_review_time_cannot_bypass_actual_execution_clock(tmp_path, actual, requested, message):
++    with pytest.raises(ValueError, match=message):
++        publish_completed_session_review(tmp_path, action_date="2026-10-26",
++            clock=lambda: pd.Timestamp(actual), reviewed_at=requested, reconcile_existing=True)
++    assert not (tmp_path / "ml/gameplan-actuals-review-runs").exists()
++
++
++def test_cli_future_review_time_cannot_release_stats_early(tmp_path, monkeypatch):
++    from ml import gameplan_actuals_review as actuals
++    publish = actuals.publish_completed_session_review
++    monkeypatch.setattr(actuals, "publish_completed_session_review", lambda *a, **kw:
++        publish(*a, **kw, clock=lambda: pd.Timestamp("2026-10-27T00:29:59Z")))
++    with pytest.raises(ValueError, match="eligible at 17:30"):
++        actuals.main(["--datastore", str(tmp_path), "--completed-session", "--reconcile-existing",
++                      "--action-date", "2026-10-26", "--reviewed-at", "2026-10-27T00:30:00Z"])
++    assert not (tmp_path / "ml/gameplan-actuals-review-runs").exists()
++
++
++def test_early_snapshot_is_complete_with_missing_prices_and_fixed_pending_maturity(publication_case):
++    c = publication_case
++    bars = prices().assign(observation_recorded_at=pd.Timestamp("2026-09-10T04:05Z"))
++    early = _publish(c, bars, "2026-09-10T00:30Z")  # Wednesday 17:30 PDT.
++    report = _report(early)
++    frame = pd.read_parquet(early / "forecast-results.parquet")
++    assert report["status"] == "COMPLETE"
++    assert report["input_coverage_status"] == "MATURE_OBSERVATIONS_MISSING"
++    assert report["forecasts"] == {"total": 24, "evaluated": 0,
++                                    "pending_maturity": 6, "mature_awaiting_data": 18}
++    assert len(report["awaiting_observation_dependencies"]) == 36
++    assert frame.actual_return.isna().all()
++    assert frame.loc[frame.route.eq("4h@16:00"), "actuals_status"].iloc[0] == "PENDING_MATURITY"
++    assert report["outcomes_through"] == "2026-09-10T00:00:00+00:00"
++    assert report["reviewed_at"] == "2026-09-10T00:30:00+00:00"
++    assert report["successor_action_date"] == "2026-09-10"
++
++
++def test_evening_late_prices_create_exact_ancestry_without_mutating_original(publication_case):
++    from app.ui.gameplan_stats_data import load_gameplan_stats
++    c = publication_case
++    bars = prices().assign(observation_recorded_at=pd.Timestamp("2026-09-10T04:05Z"))
++    early = _publish(c, bars, "2026-09-10T00:30Z")
++    preserved = {path: file_checksum(path) for path in early.iterdir() if path.is_file()}
++    later = _publish(c, bars, "2026-09-10T04:30Z")
++    assert later != early
++    report = _report(later)
++    assert report["forecasts"]["evaluated"] > 0
++    assert report["forecasts"]["pending_maturity"] == 6
++    assert report["session_revision_parent"]["run_path"] == early.relative_to(c.root).as_posix()
++    assert report["session_revision_parent"]["receipt.json"] == preserved[early / "receipt.json"]
++    assert report["outcomes_through"] == _report(early)["outcomes_through"]
++    assert all(file_checksum(path) == digest for path, digest in preserved.items())
++    original = pd.read_parquet(early / "forecast-results.parquet")
++    revised = pd.read_parquet(later / "forecast-results.parquet")
++    frozen = [key for key in pd.read_parquet(c.original.run_directory / "forecasts.parquet")]
++    pd.testing.assert_frame_equal(original[frozen], revised[frozen], check_exact=True)
++    assert load_gameplan_stats(c.root, "2026-09-09").run_directory == later
++    assert load_gameplan_stats(c.root).run_directory == later
++    verify_manifest(early)
++    verify_manifest(later)
++
++
++def test_repeated_invocation_and_unchanged_new_inventory_reuse_snapshot(publication_case):
++    c = publication_case
++    first = _publish(c, prices(), "2026-09-10T00:30Z")
++    same = _publish(c, prices(), "2026-09-10T00:35Z")
++    evening = _publish(c, prices(), "2026-09-10T04:30Z")
++    assert first == same == evening
++    assert len(list((c.root / "ml/gameplan-actuals-review-runs").iterdir())) == 1
++    assert _report(evening)["reviewed_at"] == "2026-09-10T00:30:00+00:00"
++
++
++def test_changed_boundary_provenance_revises_even_with_unchanged_scores(publication_case):
++    c = publication_case
++    first = _publish(c, prices(), "2026-09-10T00:30Z")
++    now_covered = _with_source_partitions(prices(), [("2026-09-08", "2026-09-10")])
++    later = _publish(c, now_covered, "2026-09-10T04:30Z")
++    assert later != first
++    original = pd.read_parquet(first / "forecast-results.parquet")
++    revised = pd.read_parquet(later / "forecast-results.parquet")
++    pd.testing.assert_series_equal(original.actual_return, revised.actual_return)
++    assert original.actual_start_source_coverage.eq("UNKNOWN").all()
++    assert revised.actual_start_source_coverage.eq("VERIFIED_COMPLETE").any()
++    assert _report(later)["session_revision_parent"]["receipt.json"] == file_checksum(first / "receipt.json")
++
++
++def test_revised_observed_prices_create_revision_and_stale_feedback_cannot_bind(publication_case, monkeypatch):
++    from ml import gameplan_model_feedback as feedback
++    c = publication_case
++    # Fixture publication has only the supported frozen forecast input; model
++    # diagnostic details are irrelevant to its Stats receipt binding.
++    (c.original.run_directory / "model-reports.json").write_text("{}")
++    first = _publish(c, prices(), "2026-09-10T00:30Z")
++    diagnostics = feedback.prepare_feedback(c.root, review_run=first,
++        now="2026-09-10T00:31Z")
++    before = json.loads((diagnostics / "diagnostics.json").read_text())
++    revised_prices = prices()
++    revised_prices.loc[revised_prices.timestamp.eq("2026-09-09T11:59Z"), "close"] = 95.
++    later = _publish(c, revised_prices, "2026-09-10T04:30Z")
++    assert later != first
++    with pytest.raises(ValueError, match="Stats or training implementation changed"):
++        feedback._verify_diagnostics(c.root, before)
++    refreshed = feedback.prepare_feedback(c.root, review_run=later, now="2026-09-10T04:31Z")
++    binding = json.loads((refreshed / "diagnostics.json").read_text())["stats"]
++    assert binding["receipt_sha256"] == file_checksum(later / "receipt.json")
++    assert binding["receipt_sha256"] != before["stats"]["receipt_sha256"]
++    assert _report(later)["session_revision_parent"]["receipt.json"] == before["stats"]["receipt_sha256"]
++
++
++def test_missing_source_produces_truthful_empty_contract_without_provider_calls(tmp_path, monkeypatch):
++    calls = []
++    def missing(root, *, symbols, source_contract):
++        calls.append(tuple(symbols))
++        raise RuntimeError("No source-identified real stock observations are available")
++    monkeypatch.setattr("ml.stock_target_prices.load_stock_target_prices", missing)
++    frame, files, inventory = _available_review_prices(tmp_path, symbols=("AAPL",),
++        source_contract="observed-multi-source-stock-v2")
++    assert frame.empty and files == ()
++    assert inventory["unavailable_symbols"] == ["AAPL"]
++    assert inventory["missing_dependency"] == "No source-identified real stock observations are available"
++    assert calls == [("AAPL",)]
++
++
++def test_absent_local_archive_still_publishes_saved_forecasts_as_missing(publication_case):
++    c = publication_case
++    run = publish_completed_session_review(c.root, action_date="2026-09-09",
++        clock=lambda: pd.Timestamp("2026-09-10T00:30Z"), reconcile_existing=True)
++    report = _report(run)
++    assert report["forecasts"] == {"total": 24, "evaluated": 0,
++                                    "pending_maturity": 6, "mature_awaiting_data": 18}
++    assert report["price_inventory"]["unavailable_symbols"] == ["AAPL"]
++    assert report["awaiting_observation_dependencies"]
++    assert pd.read_parquet(run / "forecast-results.parquet").actual_return.isna().all()
++
++
++def test_missing_one_symbol_preserves_other_real_observations(tmp_path, monkeypatch):
++    def available(root, *, symbols, source_contract):
++        if "MU" in symbols:
++            raise RuntimeError("Verified XNAS.ITCH stock minute archive is missing: MU")
++        return prices(), (), {"source_contract": source_contract, "dataset": "XNAS.ITCH"}
++    monkeypatch.setattr("ml.stock_target_prices.load_stock_target_prices", available)
++    frame, files, inventory = _available_review_prices(tmp_path, symbols=("AAPL", "MU"),
++        source_contract="xnas-itch-archive-v1")
++    assert set(frame.symbol) == {"AAPL"}
++    assert inventory["unavailable_symbols"] == ["MU"]
++    assert files == ()
++
++
++@pytest.mark.parametrize("message", ["Stock price archive raw payload failed verification",
++                                    "Stock price source contains conflicting minute observations",
++                                    "Stock price source has invalid minute timestamps"])
++def test_corrupt_source_does_not_become_missing_data(tmp_path, monkeypatch, message):
++    def corrupt(*a, **kw):
++        raise RuntimeError(message)
++    monkeypatch.setattr("ml.stock_target_prices.load_stock_target_prices", corrupt)
++    with pytest.raises(RuntimeError, match=message):
++        _available_review_prices(tmp_path, symbols=("AAPL",), source_contract="xnas-itch-archive-v1")
++
++
++def test_legacy_completed_snapshot_is_reused_without_rewriting_receipt(publication_case):
++    c = publication_case
++    legacy = publish_completed_session_review(c.root, action_date="2026-09-09",
++        clock=lambda: pd.Timestamp("2026-09-10T00:30Z"), price_loader=c.loader)
++    before = file_checksum(legacy / "receipt.json")
++    reused = _publish(c, prices(), "2026-09-10T04:30Z")
++    assert reused == legacy
++    assert file_checksum(legacy / "receipt.json") == before
++
++
++def test_no_saved_plan_is_idempotent_baseline_and_never_loads_prices(tmp_path):
++    def forbidden(*a, **kw):
++        pytest.fail("No saved plan must not load, acquire or invent price data")
++    first = publish_completed_session_review(tmp_path, action_date="2026-09-09",
++        clock=lambda: pd.Timestamp("2026-09-10T00:30Z"), price_loader=forbidden,
++        reconcile_existing=True)
++    again = publish_completed_session_review(tmp_path, action_date="2026-09-09",
++        clock=lambda: pd.Timestamp("2026-09-10T04:30Z"), price_loader=forbidden,
++        reconcile_existing=True)
++    assert first == again
++    assert _report(first)["input_coverage_status"] == "NO_SAVED_INDEPENDENT_GAMEPLAN"
+diff --git a/tests/test_nightly_stats_timing_workflow.py b/tests/test_nightly_stats_timing_workflow.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_nightly_stats_timing_workflow.py
+@@ -0,0 +1,406 @@
++"""Source-session phase execution checks; every worker/provider effect is mocked."""
++import json
++from pathlib import Path
++
++from filelock import FileLock, Timeout
++import pandas as pd
++import pytest
++
++from ml import nightly_workflow as workflow
++from ml import nightly_dispatch as dispatch
++from ml.artifacts import utc_timestamp
++from test_nightly_dispatch import config, identity
++from test_nightly_workflow import _write_native
++
++
++def execute(config, now, calls, **kwargs):
++    config["continue_until_complete"] = True
++    return workflow.run_workflow(config, now=now, identity=identity, supervise=False,
++        execute_step=lambda config, state, step, save: calls.append(step) or {"files": {}}, **kwargs)
++
++
++@pytest.mark.parametrize("mode", [{}, {"catch_up": True}, {"stats_only": True},
++                                  {"responsibility": "stats"}])
++def test_172959_cannot_start_new_stats(config, mode):
++    calls = []
++    result = execute(config, "2026-10-27T00:29:59Z", calls, **mode)
++    # A missed older night may continue, but never the new October 26 snapshot.
++    assert not calls or result["source_session"] < "2026-10-26"
++    assert not (Path(config["state_root"]) / "runs/2026-10-27/state.json").exists()
++
++
++@pytest.mark.parametrize("stamp", ["2026-10-27T00:30:00Z", "2026-10-27T03:59:59Z"])
++def test_early_run_executes_exactly_stats_and_yields_ownership(config, stamp):
++    calls = []
++    result = execute(config, stamp, calls, stats_only=True)
++    assert calls == ["early_stats"]
++    assert result["status"] == "EARLY_STATS_COMPLETE" and result["owner_pid"] is None
++    assert (result["source_session"], result["action_date"]) == ("2026-10-26", "2026-10-27")
++    assert result["steps"]["early_stats"]["status"] == "COMPLETE"
++    assert "prepare_stats" not in result["steps"] and "datastore_catchup" not in result["steps"]
++    assert result["stats_continuation"]["after"] == "datastore_catchup"
++    with FileLock(str(Path(config["state_root"]) / "workflow.lock"), timeout=0):
++        pass
++    repeated = execute(config, stamp, calls, stats_only=True)
++    assert repeated["run_id"] == result["run_id"] and calls == ["early_stats"]
++
++
++@pytest.mark.parametrize("role", ["datastore", "model", "gameplan", "display"])
++def test_all_explicit_evening_responsibilities_have_no_early_side_effects(config, role):
++    calls = []
++    result = execute(config, "2026-10-27T03:59:59Z", calls, responsibility=role, catch_up=True)
++    assert result["status"].startswith("WAITING_") and calls == []
++
++
++def test_repeated_wakes_retain_2105_and_evening_dependency_order(config):
++    calls = []
++    execute(config, "2026-10-27T00:30Z", calls, stats_only=True)
++    for stamp in ("2026-10-27T00:35Z", "2026-10-27T03:59:59Z", "2026-10-27T04:00Z", "2026-10-27T04:04:59Z"):
++        decision = workflow.dispatch_status(config, now=stamp)
++        assert not decision["dispatch"] and decision["status"] == "WAITING_EVENING"
++    decision = workflow.dispatch_status(config, now="2026-10-27T04:05Z")
++    assert decision["dispatch"] and decision["responsibility"] == "datastore"
++    for role in dispatch.RESPONSIBILITIES:
++        execute(config, "2026-10-27T04:05Z", calls, responsibility=role, catch_up=True)
++    assert calls == ["early_stats", *dispatch.STEPS]
++
++
++def test_stats_only_catchup_never_becomes_evening_pipeline(config):
++    calls = []
++    result = execute(config, "2026-10-27T06:50Z", calls, stats_only=True)
++    assert calls == ["early_stats"] and result["status"] == "EARLY_STATS_COMPLETE"
++
++
++def test_early_snapshot_does_not_replace_previous_unfinished_pointer(config):
++    calls = []
++    prior = execute(config, "2026-10-24T04:05Z", calls, responsibility="datastore", catch_up=True)
++    pointer = Path(config["state_root"]) / "latest.json"
++    original = pointer.read_bytes()
++    decision = workflow.dispatch_status(config, now="2026-10-27T00:30Z")
++    assert decision["source_session"] == "2026-10-26" and decision["stats_only"]
++    execute(config, "2026-10-27T00:30Z", calls, stats_only=True)
++    assert pointer.read_bytes() == original
++    resumed = execute(config, "2026-10-27T00:35Z", calls, responsibility="stats", catch_up=True)
++    assert resumed["run_id"] == prior["run_id"] and resumed["source_session"] == "2026-10-23"
++    assert calls == ["datastore_catchup", "early_stats", "prepare_stats"]
++
++
++@pytest.mark.parametrize("stamp", ["2026-10-26T15:00Z", "2026-10-27T00:10Z", "2026-10-27T07:10Z"])
++def test_old_night_retains_continuation_at_any_current_hour(config, stamp):
++    calls = []
++    prior = execute(config, "2026-10-24T04:05Z", calls, responsibility="datastore", catch_up=True)
++    resumed = execute(config, stamp, calls, resume_action_date=prior["action_date"], responsibility="stats")
++    assert calls == ["datastore_catchup", "prepare_stats"]
++    assert resumed["source_session"] == "2026-10-23" and resumed["action_date"] == "2026-10-26"
++
++
++def test_legacy_combined_segment_is_preserved_and_not_resumed_early(config):
++    calls = []
++    state = execute(config, "2026-10-27T00:30Z", calls, stats_only=True)
++    path = Path(config["state_root"]) / "runs/2026-10-27/state.json"
++    state.pop("workflow_layout")
++    state["steps"] = {"prepare_stats": {"status": "FAILED", "native_run": "legacy-combined-fixture"}}
++    workflow._write(path, state)
++    calls.clear()
++    result = execute(config, "2026-10-27T00:35Z", calls, resume_action_date=state["action_date"], stats_only=True)
++    assert calls == ["early_stats"]
++    assert result["steps"]["prepare_stats"] == state["steps"]["prepare_stats"]
++    assert "workflow_layout" not in result
++
++
++def test_completed_legacy_stats_prevents_duplicate_snapshot(config):
++    calls = []
++    state = execute(config, "2026-10-27T00:30Z", calls, stats_only=True)
++    path = Path(config["state_root"]) / "runs/2026-10-27/state.json"
++    state.pop("workflow_layout")
++    state["steps"] = {"prepare_stats": {"status": "COMPLETE", "output": {"files": {}}}}
++    workflow._write(path, state)
++    before = path.read_bytes()
++    calls.clear()
++    execute(config, "2026-10-27T00:35Z", calls, resume_action_date=state["action_date"], stats_only=True)
++    assert calls == [] and path.read_bytes() == before
++
++
++def test_overlapping_stats_invocations_preserve_live_owner(config):
++    root = Path(config["state_root"])
++    root.mkdir()
++    with FileLock(str(root / "workflow.lock"), timeout=0):
++        calls = []
++        with pytest.raises(Timeout):
++            execute(config, "2026-10-27T00:30Z", calls, stats_only=True)
++    assert calls == []
++
++
++def test_native_early_segment_is_stats_only_and_recovers_completed_receipt(config, monkeypatch):
++    root = Path(config["datastore"])
++    state = {"deadline_at": "2026-10-27T11:00Z", "source_session": "2026-10-26",
++        "action_date": "2026-10-27", "steps": {"early_stats": {}}}
++    calls = []
++    def native(root, **kwargs):
++        calls.append(kwargs)
++        run = root / "ml/overnight-runs/early-fixture"
++        _write_native(run)
++        return run
++    monkeypatch.setattr("ml.overnight_runtime.run_overnight_pipeline", native)
++    monkeypatch.setattr("ml.overnight_runtime.overnight_status", lambda *_: {})
++    workflow._run_native(config, state, "early_stats", lambda: None)
++    workflow._run_native(config, state, "early_stats", lambda: None)
++    assert len(calls) == 1
++    assert calls[0]["start_at"] == calls[0]["stop_after"] == "gameplan_stats"
++    assert calls[0]["review_action_date"] == "2026-10-26"
++    assert "model_feedback" not in calls[0]
++
++
++@pytest.mark.parametrize("stamp,source,action,deadline", [
++    ("2026-10-31T00:30Z", "2026-10-30", "2026-11-02", "2026-11-02T12:00:00+00:00"),
++    ("2026-12-25T01:30Z", "2026-12-24", "2026-12-28", "2026-12-28T12:00:00+00:00"),
++    ("2026-03-07T01:30Z", "2026-03-06", "2026-03-09", "2026-03-09T11:00:00+00:00"),
++])
++def test_early_execution_keeps_source_and_successor_over_dst_and_holidays(config, stamp, source, action, deadline):
++    calls = []
++    result = execute(config, stamp, calls, stats_only=True)
++    assert calls == ["early_stats"]
++    assert (result["source_session"], result["action_date"], result["deadline_at"]) == (source, action, deadline)
++
++
++def test_launch_before_stats_boundary_never_spawns_worker(config, monkeypatch):
++    monkeypatch.setattr(workflow, "load_config", lambda _: config)
++    monkeypatch.setattr(workflow, "verify_installation", lambda _: None)
++    monkeypatch.setattr(workflow, "utc_timestamp", lambda value=None: utc_timestamp(value) if value is not None else pd.Timestamp("2026-10-27T00:29:59Z"))
++    monkeypatch.setattr(workflow.subprocess, "Popen", lambda *a, **k: pytest.fail("Premature worker launch"))
++    assert workflow.main(["--config", "unused", "--launch", "--stats-only"]) == 0
++
++
++def test_selected_dispatch_session_survives_a_later_clock_day(config):
++    calls = []
++    result = execute(config, "2026-10-28T01:30Z", calls, stats_only=True, selected_action_date="2026-10-27")
++    assert calls == ["early_stats"]
++    assert (result["source_session"], result["action_date"]) == ("2026-10-26", "2026-10-27")
++
++
++def test_catchup_launch_checks_prior_session_and_pins_child_date(config, monkeypatch):
++    calls = []
++    prior = execute(config, "2026-10-24T04:05Z", calls, responsibility="datastore", catch_up=True)
++    monkeypatch.setattr(workflow, "load_config", lambda _: config)
++    monkeypatch.setattr(workflow, "verify_installation", lambda _: None)
++    monkeypatch.setattr(workflow, "utc_timestamp", lambda value=None: utc_timestamp(value) if value is not None else pd.Timestamp("2026-10-27T00:10Z"))
++    commands = []
++    class Worker:
++        pid = 12345
++        def __init__(self, command, **kwargs):
++            commands.append(command)
++    monkeypatch.setattr(workflow.subprocess, "Popen", Worker)
++    assert workflow.main(["--config", "unused", "--launch", "--catch-up", "--responsibility", "stats"]) == 0
++    assert len(commands) == 1
++    assert "--stats-only" not in commands[0]
++    assert commands[0][commands[0].index("--selected-action-date") + 1] == prior["action_date"]
++
++
++def test_outer_stats_crash_reuses_durable_native_receipt(config, monkeypatch):
++    config["continue_until_complete"] = True
++    root = Path(config["datastore"])
++    observed = pd.Timestamp("2026-10-27T00:30Z")
++    monkeypatch.setattr(dispatch, "utc_timestamp", lambda value=None: utc_timestamp(value) if value is not None else observed)
++    calls = []
++    def native(root, **kwargs):
++        calls.append(kwargs)
++        run = root / "ml/overnight-runs/crash-fixture"
++        _write_native(run)
++        return run
++    monkeypatch.setattr("ml.overnight_runtime.run_overnight_pipeline", native)
++    monkeypatch.setattr("ml.overnight_runtime.overnight_status", lambda *_: {})
++    def crashed(config, state, step, save):
++        workflow._execute_step(config, state, step, save)
++        raise InterruptedError("Outer worker exited after complete native Stats receipt")
++    with pytest.raises(InterruptedError):
++        workflow.run_workflow(config, now=observed, identity=identity, supervise=False,
++                              stats_only=True, execute_step=crashed)
++    result = workflow.run_workflow(config, now=observed, identity=identity, supervise=False,
++                                    stats_only=True)
++    assert len(calls) == 1 and result["status"] == "EARLY_STATS_COMPLETE"
++    assert result["steps"]["early_stats"]["attempts"] == 2
++
++
++from test_nightly_feedback_recovery import prepared, _proposal
++
++
++def test_evening_revision_rebinds_pending_feedback_before_same_invocation_training(prepared, monkeypatch):
++    from gameplan_stats_fixture import forecast, write_review
++    from ml import gameplan_model_feedback as feedback
++    config, state, path, directories = prepared
++    state["steps"]["prepare_stats"] = {}
++    workflow._write(path, state)
++    old_review = state["steps"]["model_review"]["output"]["proposal"]
++    calls = []
++    def reviewer(config, run, deadline):
++        calls.append("reviewer")
++        diagnostics = json.loads((run / "diagnostics.json").read_text())
++        saved = feedback.save_feedback_review(Path(config["datastore"]), run, _proposal(diagnostics))
++        return workflow._review_outputs(run, saved, "fixture-reviewer", reused=False)
++    monkeypatch.setattr(workflow, "run_reviewer", reviewer)
++    def step(config, state, step, save):
++        calls.append(step)
++        if step == "prepare_stats":
++            write_review(Path(config["datastore"]), [forecast("AAPL"), forecast("MSFT")], version="02")
++        elif step == "model_review":
++            return workflow._execute_step(config, state, step, save)
++        elif step == "train_and_plan":
++            proposal = Path(state["steps"]["model_review"]["output"]["proposal"])
++            assert str(proposal) != old_review
++            feedback.load_feedback_review(Path(config["datastore"]), proposal)
++        return {"files": {}}
++    result = workflow.run_workflow(config, resume_action_date=state["action_date"],
++        execute_step=step, now="2026-09-12T06:05Z", supervise=False, identity=identity)
++    assert calls[:4] == ["prepare_stats", "model_review", "reviewer", "train_and_plan"]
++    assert result["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
++    assert len(result["operational_recoveries"]) == 1
++    assert Path(old_review).is_file()
++
++
++def test_preflight_failure_cannot_bind_previous_native_segment_to_new_step(config, monkeypatch):
++    import os
++    root = Path(config["datastore"])
++    previous = root / "ml/overnight-runs/previous-stats"
++    _write_native(previous)
++    state = {"deadline_at": "2026-10-27T11:00Z", "source_session": "2026-10-26",
++        "action_date": "2026-10-27", "steps": {"datastore_catchup": {}}}
++    monkeypatch.setattr("ml.overnight_runtime.overnight_status", lambda *_: {
++        "owner_pid": os.getpid(), "run_path": str(previous)})
++    def rejected(*args, **kwargs):
++        raise ValueError("Before source-session evening release")
++    monkeypatch.setattr("ml.overnight_runtime.run_overnight_pipeline", rejected)
++    with pytest.raises(ValueError, match="evening release"):
++        workflow._run_native(config, state, "datastore_catchup", lambda: None)
++    assert "native_run" not in state["steps"]["datastore_catchup"]
++
++
++def test_plain_launch_pins_session_for_worker_starting_after_midnight(config, monkeypatch):
++    monkeypatch.setattr(workflow, "load_config", lambda _: config)
++    monkeypatch.setattr(workflow, "verify_installation", lambda _: None)
++    monkeypatch.setattr(workflow, "utc_timestamp", lambda value=None: utc_timestamp(value) if value is not None else pd.Timestamp("2026-10-27T06:59:59Z"))
++    commands = []
++    class Worker:
++        pid = 12345
++        def __init__(self, command, **kwargs):
++            commands.append(command)
++    monkeypatch.setattr(workflow.subprocess, "Popen", Worker)
++    assert workflow.main(["--config", "unused", "--launch"]) == 0
++    selected = commands[0][commands[0].index("--selected-action-date") + 1]
++    calls = []
++    result = execute(config, "2026-10-27T07:00:01Z", calls, selected_action_date=selected)
++    assert (result["source_session"], result["action_date"]) == ("2026-10-26", "2026-10-27")
++    assert calls == list(dispatch.STEPS)
++
++
++def test_1730_dispatch_launches_only_pinned_stats_worker(config, monkeypatch):
++    config["continue_until_complete"] = True
++    monkeypatch.setattr(workflow, "load_config", lambda _: config)
++    monkeypatch.setattr(workflow, "verify_installation", lambda _: None)
++    clock = lambda value=None: utc_timestamp(value) if value is not None else pd.Timestamp("2026-10-27T00:30Z")
++    monkeypatch.setattr(workflow, "utc_timestamp", clock)
++    monkeypatch.setattr(dispatch, "utc_timestamp", clock)
++    commands = []
++    class Worker:
++        pid = 12345
++        def __init__(self, command, **kwargs):
++            commands.append(command)
++    monkeypatch.setattr(workflow.subprocess, "Popen", Worker)
++    assert workflow.main(["--config", "unused", "--dispatch"]) == 0
++    assert len(commands) == 1
++    command = commands[0]
++    assert "--stats-only" in command
++    assert command[command.index("--responsibility") + 1] == "stats"
++    assert command[command.index("--selected-action-date") + 1] == "2026-10-27"
++
++
++def test_migrated_completed_early_stats_reconciles_after_new_evening_fetch(config, monkeypatch):
++    clock = {"now": pd.Timestamp("2026-10-27T00:30Z")}
++    monkeypatch.setattr(workflow, "utc_timestamp", lambda value=None: utc_timestamp(value) if value is not None else clock["now"])
++    calls = []
++    early = execute(config, clock["now"], calls, stats_only=True)
++    path = Path(config["state_root"]) / "runs/2026-10-27/state.json"
++    old_stats = json.loads(json.dumps(early["steps"]["early_stats"]))
++    early["steps"] = {"prepare_stats": old_stats}
++    workflow._write(path, early)
++    clock["now"] = pd.Timestamp("2026-10-27T04:05Z")
++    calls.clear()
++    result = execute(config, clock["now"], calls, selected_action_date=early["action_date"])
++    assert calls == list(dispatch.STEPS)
++    assert result["steps"]["prepare_stats"]["attempts"] == 2
++    record = Path(result["stats_reconciliations"][0]["path"])
++    before = json.loads((record.parent / "before-state.json").read_text())
++    assert before["steps"]["prepare_stats"] == old_stats
++    assert before["steps"]["datastore_catchup"]["status"] == "COMPLETE"
++    assert result["stats_continuation"]["status"] == "COMPLETE"
++
++
++def test_restart_after_acquisition_save_routes_reconciliation_to_stats(config, monkeypatch):
++    clock = {"now": pd.Timestamp("2026-10-27T00:30Z")}
++    monkeypatch.setattr(workflow, "utc_timestamp", lambda value=None: utc_timestamp(value) if value is not None else clock["now"])
++    calls = []
++    state = execute(config, clock["now"], calls, stats_only=True)
++    path = Path(config["state_root"]) / "runs/2026-10-27/state.json"
++    state["steps"] = {"prepare_stats": state["steps"]["early_stats"],
++        "datastore_catchup": {"status": "COMPLETE", "completed_at": "2026-10-27T04:06Z", "output": {"files": {}}}}
++    workflow._write(path, state)
++    clock["now"] = pd.Timestamp("2026-10-27T04:10Z")
++    decision = workflow.dispatch_status(config, now=clock["now"])
++    assert decision["dispatch"] and decision["responsibility"] == "stats"
++    calls.clear()
++    result = execute(config, clock["now"], calls, responsibility="stats", catch_up=True)
++    assert calls == ["prepare_stats"] and len(result["stats_reconciliations"]) == 1
++    again = execute(config, clock["now"], calls, responsibility="stats", catch_up=True)
++    assert calls == ["prepare_stats"] and again["status"] == "WAITING_PREREQUISITE"
++
++
++def test_prefetch_stats_migration_preserves_completed_scientific_history(config, monkeypatch):
++    monkeypatch.setattr(workflow, "utc_timestamp", lambda value=None: utc_timestamp(value) if value is not None else pd.Timestamp("2026-10-27T00:30Z"))
++    calls = []
++    state = execute(config, "2026-10-27T00:30Z", calls, stats_only=True)
++    path = Path(config["state_root"]) / "runs/2026-10-27/state.json"
++    state["steps"] = {"prepare_stats": state["steps"]["early_stats"],
++        "datastore_catchup": {"status": "COMPLETE", "completed_at": "2026-10-27T04:06Z", "output": {"files": {}}},
++        "model_review": {"status": "COMPLETE", "output": {"files": {}}},
++        "train_and_plan": {"status": "COMPLETE", "output": {"files": {}}}}
++    frozen = json.loads(json.dumps(state["steps"]))
++    workflow._write(path, state)
++    calls.clear()
++    result = execute(config, "2026-10-27T04:10Z", calls, resume_action_date=state["action_date"])
++    assert calls == ["local_gameplan", "verify_display", "local_handoff"]
++    assert all(result["steps"][key] == entry for key, entry in frozen.items())
++    assert "stats_reconciliations" not in result
++
++
++def test_migrated_stats_refreshes_existing_feedback_before_training(prepared, monkeypatch):
++    from gameplan_stats_fixture import forecast, write_review
++    from ml import gameplan_model_feedback as feedback
++    config, state, path, directories = prepared
++    state["steps"]["datastore_catchup"] = {}
++    state["steps"]["prepare_stats"]["completed_at"] = "2026-09-12T06:02Z"
++    old_stats_entry = json.loads(json.dumps(state["steps"]["prepare_stats"]))
++    old_proposal = state["steps"]["model_review"]["output"]["proposal"]
++    workflow._write(path, state)
++    calls = []
++    def reviewer(config, run, deadline):
++        calls.append("reviewer")
++        diagnostics = json.loads((run / "diagnostics.json").read_text())
++        saved = feedback.save_feedback_review(Path(config["datastore"]), run, _proposal(diagnostics))
++        return workflow._review_outputs(run, saved, "fixture-reviewer", reused=False)
++    monkeypatch.setattr(workflow, "run_reviewer", reviewer)
++    def step(config, state, step, save):
++        calls.append(step)
++        if step == "prepare_stats":
++            write_review(Path(config["datastore"]), [forecast("AAPL"), forecast("MSFT")], version="02")
++        elif step == "model_review":
++            return workflow._execute_step(config, state, step, save)
++        elif step == "train_and_plan":
++            proposal = Path(state["steps"]["model_review"]["output"]["proposal"])
++            assert str(proposal) != old_proposal
++            feedback.load_feedback_review(Path(config["datastore"]), proposal)
++        return {"files": {}}
++    result = workflow.run_workflow(config, resume_action_date=state["action_date"],
++        execute_step=step, now="2026-09-12T06:05Z", supervise=False, identity=identity)
++    assert calls[:5] == ["datastore_catchup", "prepare_stats", "model_review", "reviewer", "train_and_plan"]
++    history = Path(result["stats_reconciliations"][0]["path"]).parent / "before-state.json"
++    assert json.loads(history.read_text())["steps"]["prepare_stats"] == old_stats_entry
++    assert len(result["operational_recoveries"]) == 1 and Path(old_proposal).is_file()
+diff --git a/tests/test_observed_source_workflow.py b/tests/test_observed_source_workflow.py
+--- a/tests/test_observed_source_workflow.py
++++ b/tests/test_observed_source_workflow.py
+@@ -1,14 +1,18 @@
+ """New source policy uses normal nightly acquisition without an operational gate."""
+ import json
++import pandas as pd
+ import pytest
+ from datetime import datetime, timezone
+ from pathlib import Path
+ 
+ from ml.overnight_runtime import run_overnight_pipeline
++from ml.artifacts import utc_timestamp
+ 
+ 
+ @pytest.mark.parametrize("source", ["observed-multi-source-stock-v1", "observed-multi-source-stock-v2"])
+ def test_new_source_keeps_history_stage_and_requests_real_schwab_history(tmp_path,monkeypatch,source):
++    monkeypatch.setattr("ml.overnight_runtime.utc_timestamp", lambda value=None:
++        utc_timestamp(value) if value is not None else pd.Timestamp("2026-10-27T04:05:00Z"))
+     calls=[]
+     def complete(command,**kwargs):
+         calls.append(command)
+diff --git a/tests/test_overnight_supervision.py b/tests/test_overnight_supervision.py
+--- a/tests/test_overnight_supervision.py
++++ b/tests/test_overnight_supervision.py
+@@ -1,5 +1,6 @@
+ import json
+ import sys
++import time
+ from pathlib import Path
+ 
+ import pandas as pd
+@@ -10,6 +11,17 @@
+     STAGE_ORDER, _run_stage, next_action_deadline, overnight_status,
+     claim_supervision, recover_interrupted_run, request_stage_stop, run_overnight_pipeline,
+ )
++
++
++@pytest.fixture(autouse=True)
++def completed_evening_clock(monkeypatch):
++    """Native execution fixtures must not depend on the test machine's hour."""
++    original = utc_timestamp
++    started = time.monotonic()
++    clock = lambda value=None: original(value) if value is not None else (
++        pd.Timestamp("2026-09-10T04:05:00Z") + pd.Timedelta(seconds=time.monotonic() - started))
++    monkeypatch.setattr("ml.overnight_runtime.utc_timestamp", clock)
++    monkeypatch.setattr(sys.modules[__name__], "utc_timestamp", clock)
+ 
+ 
+ def run(root, **kwargs):
+@@ -224,8 +236,12 @@
+         kwargs["log_path"].write_text("preserved stage evidence")
+         return 9 if command[3] == "ml.prediction_runtime" else 0
+     monkeypatch.setattr("ml.overnight_runtime._run_stage", stage)
+-    with pytest.raises(RuntimeError, match="exited with code 9"):
+-        run(tmp_path)
++    # This helper is also imported by modules without this file's clock fixture.
++    with monkeypatch.context() as clock_patch:
++        clock_patch.setattr("ml.overnight_runtime.utc_timestamp", lambda value=None:
++            utc_timestamp(value) if value is not None else pd.Timestamp("2026-09-10T04:05:00Z"))
++        with pytest.raises(RuntimeError, match="exited with code 9"):
++            run(tmp_path)
+     run_path = Path(overnight_status(tmp_path)["run_path"])
+     report_path = run_path / "stage-report.json"
+     report = json.loads(report_path.read_text())
+diff --git a/tests/test_register_nightly_watchdog.py b/tests/test_register_nightly_watchdog.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_register_nightly_watchdog.py
+@@ -0,0 +1,82 @@
++"""Exercise registration with mocked Windows cmdlets; never register a real task."""
++import json
++from pathlib import Path
++import shutil
++import subprocess
++
++import pytest
++
++
++SCRIPT = Path(__file__).resolve().parents[1] / "tools/register_nightly_watchdog.ps1"
++
++
++@pytest.mark.parametrize("enabled", [True, False])
++@pytest.mark.parametrize("already_installed", [True, False])
++def test_existing_registration_preserves_everything_except_stats_trigger(tmp_path, enabled, already_installed):
++    shell = shutil.which("pwsh") or shutil.which("powershell")
++    if not shell:
++        pytest.skip("PowerShell required for mocked registration integration")
++    harness = tmp_path / "registration.ps1"
++    # All Windows mutation cmdlets are shadowed before invoking the real helper.
++    harness.write_text(r'''
++$ErrorActionPreference='Stop'
++function Get-TimeZone { [pscustomobject]@{Id='Pacific Standard Time'} }
++function New-ScheduledTaskTrigger {
++ param([switch]$Daily,[string]$At)
++ [pscustomobject]@{StartBoundary='';Enabled=$true;DaysInterval=1;CimClass=[pscustomobject]@{CimClassName='MSFT_TaskDailyTrigger'}}
++}
++$old=@(
++ [pscustomobject]@{StartBoundary='2026-10-09T21:05:00';Enabled=$true;DaysInterval=1;CimClass=[pscustomobject]@{CimClassName='MSFT_TaskDailyTrigger'}},
++ [pscustomobject]@{StartBoundary='2026-10-09T15:13:24-07:00';Enabled=$true;Repetition=[pscustomobject]@{Interval='PT5M'};CimClass=[pscustomobject]@{CimClassName='MSFT_TaskTimeTrigger'}},
++ [pscustomobject]@{UserId='retained-user';Enabled=$true;CimClass=[pscustomobject]@{CimClassName='MSFT_TaskLogonTrigger'}}
++)
++if (ALREADY_INSTALLED) { $t=New-ScheduledTaskTrigger -Daily -At '17:30';$t.StartBoundary='2026-10-26T17:30:00';$old += $t }
++$global:mockTask=[pscustomobject]@{
++ TaskName='Owned dispatch';TaskPath='\';Description='Ducketz deterministic responsibility dispatch. old';State='Ready'
++ Triggers=$old;Actions=@([pscustomobject]@{Execute=PYTHON_PATH;Arguments=ARGUMENTS;WorkingDirectory=REPO_PATH})
++ Settings=[pscustomobject]@{Enabled=TASK_ENABLED;StartWhenAvailable=$true;MultipleInstances='IgnoreNew';PrivateSetting='retain'}
++ Principal=[pscustomobject]@{UserId='original';LogonType='InteractiveToken';RunLevel='Highest'}
++}
++$before=$global:mockTask | ConvertTo-Json -Depth 20
++function Get-ScheduledTask { param($TaskName,$TaskPath,$ErrorAction) $global:mockTask }
++function Get-ScheduledTaskInfo {
++ param($TaskName)
++ [pscustomobject]@{NextRunTime=[datetime]'2026-10-27T17:30:00';LastRunTime=[datetime]'2026-10-26T17:03:24';LastTaskResult=0}
++}
++function Register-ScheduledTask { throw 'Existing registration must not be recreated' }
++function New-ScheduledTaskAction { throw 'Action must be preserved' }
++function New-ScheduledTaskPrincipal { throw 'Principal must be preserved' }
++function New-ScheduledTaskSettingsSet { throw 'Settings must be preserved' }
++function Set-ScheduledTask {
++ param($InputObject)
++ $global:mockTask=$InputObject
++ $global:mockTask
++}
++& HELPER_PATH -Repository REPO_PATH -Python PYTHON_PATH -Config CONFIG_PATH -TaskName 'Owned dispatch' | Out-Null
++$first=$global:mockTask | ConvertTo-Json -Depth 20
++& HELPER_PATH -Repository REPO_PATH -Python PYTHON_PATH -Config CONFIG_PATH -TaskName 'Owned dispatch' | Out-Null
++[pscustomobject]@{Before=($before|ConvertFrom-Json);First=($first|ConvertFrom-Json);After=$global:mockTask} | ConvertTo-Json -Depth 20
++'''.replace("ALREADY_INSTALLED", "$true" if already_installed else "$false")
++        .replace("TASK_ENABLED", "$true" if enabled else "$false")
++        .replace("HELPER_PATH", _ps(SCRIPT))
++        .replace("PYTHON_PATH", _ps(Path(shell)))
++        .replace("REPO_PATH", _ps(tmp_path))
++        .replace("CONFIG_PATH", _ps(harness))
++        .replace("ARGUMENTS", _ps(f'-B -m tools.nightly_watchdog --config "{harness}"')),
++        encoding="utf-8")
++    result = subprocess.run([shell, "-NoProfile", "-NonInteractive", "-File", str(harness)],
++                            capture_output=True, text=True, timeout=30, check=True)
++    result = json.loads(result.stdout)
++    before, first, after = result["Before"], result["First"], result["After"]
++    assert first == after, "Repeated installation must not add another trigger"
++    assert len(after["Triggers"]) == 4
++    assert after["Triggers"][:3] == before["Triggers"][:3]
++    assert after["Triggers"][3]["StartBoundary"].endswith("T17:30:00")
++    assert after["Triggers"][3]["DaysInterval"] == 1
++    assert after["Triggers"][3]["Enabled"] is True
++    for key in ("Actions", "Settings", "Principal", "State", "TaskName", "TaskPath"):
++        assert after[key] == before[key]
++
++
++def _ps(value):
++    return "'" + str(value).replace("'", "''") + "'"
+diff --git a/tools/register_nightly_watchdog.ps1 b/tools/register_nightly_watchdog.ps1
+--- a/tools/register_nightly_watchdog.ps1
++++ b/tools/register_nightly_watchdog.ps1
+@@ -20,17 +20,44 @@
+         throw 'The requested task name belongs to another task; preserve it and choose the owned watchdog name.'
+     }
+     $arguments = '-B -m tools.nightly_watchdog --config "' + $Config + '"'
+-    $action = New-ScheduledTaskAction -Execute $Python -Argument $arguments -WorkingDirectory $Repository
+-    $kickoff = New-ScheduledTaskTrigger -Daily -At '21:05'
+-    # A floating boundary follows the Windows Pacific timezone through DST.
+-    $kickoff.StartBoundary = (Get-Date).ToString('yyyy-MM-dd') + 'T21:05:00'
+-    # The timer is cheap and date-aware. AtLogOn resumes missed work after a reboot.
+-    $timer = New-ScheduledTaskTrigger -Once -At ((Get-Date).AddMinutes(5)) -RepetitionInterval (New-TimeSpan -Minutes 5)
+-    $logon = New-ScheduledTaskTrigger -AtLogOn -User ([Security.Principal.WindowsIdentity]::GetCurrent().Name)
+-    $principal = New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
+-    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 3) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -WakeToRun
+-    $description = 'Ducketz deterministic responsibility dispatch. One action-date workflow; no trader control. Native Codex responsibility tasks own review, repairs, private handoff and notifications.'
+-    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger @($kickoff, $timer, $logon) -Principal $principal -Settings $settings -Description $description -Force | Out-Null
++    $stats = New-ScheduledTaskTrigger -Daily -At '17:30'
++    # America/Los_Angeles: Windows' Pacific Standard Time applies PDT/PST.
++    # Floating wall time is intentional; an offset would pin the UTC hour.
++    $stats.StartBoundary = (Get-Date).ToString('yyyy-MM-dd') + 'T17:30:00'
++    $description = 'Ducketz deterministic responsibility dispatch. Gameplan Stats only at 17:30 America/Los_Angeles; evening kickoff remains 21:05. One dated workflow; no trader control.'
++    if ($existing) {
++        if (@($existing.Actions).Count -ne 1 -or
++            $existing.Actions[0].Execute -ne $Python -or
++            $existing.Actions[0].Arguments -ne $arguments -or
++            $existing.Actions[0].WorkingDirectory -ne $Repository) {
++            throw 'Existing dispatch action differs from the reviewed binding; preserve it for explicit review.'
++        }
++        # Extend only the existing trigger collection. Do not re-create the
++        # principal, settings, enabled state, original timer or logon binding.
++        $hasStats = @($existing.Triggers | Where-Object {
++            $_.CimClass.CimClassName -eq 'MSFT_TaskDailyTrigger' -and
++            $_.StartBoundary -match 'T17:30:00$' -and $_.DaysInterval -eq 1
++        })
++        if ($hasStats.Count -gt 1) { throw 'Duplicate Stats wakes require explicit review.' }
++        if ($hasStats.Count -eq 0) {
++            $existing.Triggers = @(@($existing.Triggers) + $stats)
++        } else {
++            if (-not $hasStats[0].Enabled) { throw 'Existing Stats trigger is disabled; preserve its explicit state.' }
++        }
++        $existing.Description = $description
++        Set-ScheduledTask -InputObject $existing | Out-Null
++    } else {
++        $action = New-ScheduledTaskAction -Execute $Python -Argument $arguments -WorkingDirectory $Repository
++        $kickoff = New-ScheduledTaskTrigger -Daily -At '21:05'
++        # A floating boundary follows the Windows Pacific timezone through DST.
++        $kickoff.StartBoundary = (Get-Date).ToString('yyyy-MM-dd') + 'T21:05:00'
++        # The timer is cheap and date-aware. AtLogOn resumes missed work after a reboot.
++        $timer = New-ScheduledTaskTrigger -Once -At ((Get-Date).AddMinutes(5)) -RepetitionInterval (New-TimeSpan -Minutes 5)
++        $logon = New-ScheduledTaskTrigger -AtLogOn -User ([Security.Principal.WindowsIdentity]::GetCurrent().Name)
++        $principal = New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
++        $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 3) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -WakeToRun
++        Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger @($stats, $kickoff, $timer, $logon) -Principal $principal -Settings $settings -Description $description -Force | Out-Null
++    }
+ }
+ $task = Get-ScheduledTask -TaskName $TaskName
+ $info = Get-ScheduledTaskInfo -TaskName $TaskName
+@@ -38,7 +65,11 @@
+     TaskName=$task.TaskName; State=[string]$task.State; Timezone=(Get-TimeZone).Id
+     NextRunTime=$info.NextRunTime.ToString('o'); LastRunTime=$info.LastRunTime.ToString('o')
+     LastTaskResult=$info.LastTaskResult; Actions=@($task.Actions | Select-Object Execute,Arguments,WorkingDirectory)
+-    Triggers=@($task.Triggers | Select-Object StartBoundary,Enabled,Repetition,CimClass)
++    Triggers=@($task.Triggers | ForEach-Object {
++        [pscustomobject]@{Kind=$_.CimClass.CimClassName; StartBoundary=$_.StartBoundary;
++            Enabled=$_.Enabled; DaysInterval=$_.DaysInterval; Interval=$_.Repetition.Interval;
++            Duration=$_.Repetition.Duration; UserId=$_.UserId}
++    })
+     StartWhenAvailable=$task.Settings.StartWhenAvailable; MultipleInstances=[string]$task.Settings.MultipleInstances
+     LogonType=[string]$task.Principal.LogonType
+ } | ConvertTo-Json -Depth 8
