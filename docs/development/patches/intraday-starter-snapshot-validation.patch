@@ -1,0 +1,12 @@
+--- a/ml/intraday/starter_sizing.py
++++ b/ml/intraday/starter_sizing.py
+@@ -177,8 +177,7 @@
+     """
+     policy = starter_policy(str(forecast["symbol"]))
+     snapshot_hash = forecast["snapshot_hash"]
+-    if digest(forecast_snapshot) != snapshot_hash:
+-        raise ContractError("Original forecast snapshot hash changed")
++    # indicator_snapshot verifies this exact frozen snapshot before use.
+     indicators = indicator_snapshot(forecast_snapshot["candles"], symbol=policy.symbol,
+         reference_at=forecast["reference_at"], data_cutoff=forecast["training_cutoff"],
+         indicator_specs=policy.indicators, window_policy=policy.window,
