@@ -1,0 +1,63 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T230536Z-fadd7621332d44dc86831f1ac16bcae7",
+  "change_id": "20261027T230536Z-fadd7621332d44dc86831f1ac16bcae7",
+  "details": [
+    "Actor Atlas; task ATLAS Trader Representative. A read-only direct comparison avoids copying retained proof strings only for native ASCII scalar maps under conservative ordinary stdlib JSON identity/state guards.",
+    "Every original native source, hash, session and field validator remains; other values and replaced serializers retain original JSON normalization. Existing decoded-primary constructor repair is preserved through reviewed disjoint ownership composition.",
+    "Both PCs review exact source hunks against their local composition and retain local model policy, independent state and manual controls. No publication, peer or installation operating prerequisite is added."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-recovery-flat-comparison.patch",
+      "sha256": "c573a25ad7d239a96d9a500215e1f19e63197adb11664826a07cf13a6a784157"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-recovery-flat-comparison.json",
+      "sha256": "e64afdcc275ae829bf318dcc60c424db509c810d7e8496b4f8fe3f0e80e79611"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_recovery_flat_comparison.py",
+      "sha256": "563a467ecb8d3e4fe1bd2416e5e74810009357d016613b2102328feb5ccfc508"
+    }
+  ],
+  "limitations": [
+    "96 standalone portable checks use explicit unchanged source/session and clock adapters; 344 real full-composition tests and20 independent checks are separately bound to the exact composed531member graph.",
+    "Development interpreter ran full-composition checks; unchanged frozen runtime manifest and selected JSON/NumPy/Pandas hashes are recorded separately.",
+    "Four current composed retained-input replays preserve exact original payload and identity; whole calculation timings are mixed, with no established overall speedup.",
+    "Actual retained-row comparison batches isolate a small component benefit only; sustained natural latency recovery remains open.",
+    "Ordinary sealed JSON initialization and later serializer replacement are guarded; arbitrary deliberate mutation/spoofing inside existing function objects is outside that premise.",
+    "Private operating data and bindings are excluded; this package performs no trader, provider, broker, model or order operation."
+  ],
+  "local_installation": "Root-owned exact-preimage local application installation and complete generation sealing are separate stages. Their completion, natural runtime loading and affected live benefit are not established by source publication.",
+  "main_commit": "f5a568b658ffad74a0f169cd7bb9760bc3d15b57",
+  "performance": "Actual retained-row comparison-only batches showed a2.4-2.6x small-component improvement. Four composed full-calculation replays retained exact original payloads and identities but had mixed timings; no overall speedup or sustained natural latency recovery is established.",
+  "privacy_review": "Only generic source patch, byte metadata, standalone checker and sanitized validation facts are shared. No private native bindings, account state, raw inputs, fitted models, ledgers or credentials are exported.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/472",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Complete reviewed generation sealing is required after local installation. Natural renewal remains confined to an already manually started session after complete iterations. No initial unattended start, post-stop restart, lifetime extension, trader control, provider/broker/order operation or induced live test.",
+  "scope": "shared",
+  "source_commit": "495735e7db595307a41929a859afc23cb9dc505d",
+  "summary": "Atlas recovery proof comparison repair published",
+  "tests": [
+    {
+      "exact_source_imports": 69,
+      "network_subprocess_failures_skips": 0,
+      "passed": 344,
+      "scope": "Complete composed531member source graph with development interpreter"
+    },
+    {
+      "network_attempts": 0,
+      "passed": 20,
+      "scope": "Independent composed real-module parity and AST checks"
+    },
+    {
+      "network_attempts": 0,
+      "passed_each": 96,
+      "scope": "Portable checker in queue, isolated source and fresh main candidate"
+    }
+  ]
+}
