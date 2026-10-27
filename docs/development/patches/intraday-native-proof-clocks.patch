@@ -1,0 +1,46 @@
+--- a/ml/intraday/coverage.py
++++ b/ml/intraday/coverage.py
+@@ -141,16 +141,38 @@
+         _require_native_observations([candle, *evidence["observations"]])
+         native_step = pd.Timedelta(minutes=1)
+         times = [_utc(row["opened_at"]) for row in evidence["observations"]]
+-        if (len(times) != observed or len(set(times)) != len(times) or times != sorted(times)
+-                or any(t < op or t+native_step > op+STEP or t != t.floor(_NATIVE_MINUTE) for t in times)):
+-            return False
++        if len(times) != observed or len(set(times)) != len(times) or times != sorted(times):
++            return False
++        # UTC integer clocks retain exact nanoseconds without repeated scalar
++        # Timestamp arithmetic. Preserve pandas' original path for dates that
++        # it represents outside its nanosecond range.
++        native_closes = None
++        try:
++            first_ns, end_ns = op.value, (op+STEP).value
++            native_ns = [opened.value for opened in times]
++        except OverflowError:
++            if any(t < op or t+native_step > op+STEP or t != t.floor(_NATIVE_MINUTE) for t in times):
++                return False
++        else:
++            if any(t < first_ns or t+60_000_000_000 > end_ns or t % 60_000_000_000 for t in native_ns):
++                return False
++            native_closes = [t+60_000_000_000 for t in native_ns]
+         if _utc(candle["native_first_opened_at"]) != times[0] or _utc(candle["native_last_opened_at"]) != times[-1]:
+             return False
+-        for row, opened in zip(evidence["observations"], times):
++        for index, (row, opened) in enumerate(zip(evidence["observations"], times)):
+             if row.get("source_id") != candle["source_id"] or row.get("synthetic") is not False:
+                 return False
+             available = _utc(row["available_at"])
+-            if available > av or available < opened+native_step:
++            if available > av:
++                return False
++            if native_closes is None:
++                too_early = available < opened+native_step
++            else:
++                try:
++                    too_early = available.value < native_closes[index]
++                except OverflowError:
++                    too_early = available < opened+native_step
++            if too_early:
+                 return False
+             vals = [float(row[key]) for key in ("open","high","low","close","volume")]
+             a,h,l,c,v = vals
