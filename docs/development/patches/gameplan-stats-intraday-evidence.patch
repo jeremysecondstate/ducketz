@@ -674,7 +674,25 @@ new file mode 100644
 diff --git a/ml/gameplan_actuals_review.py b/ml/gameplan_actuals_review.py
 --- a/ml/gameplan_actuals_review.py
 +++ b/ml/gameplan_actuals_review.py
-@@ -166,6 +166,9 @@
+@@ -89,10 +89,15 @@
+ 
+ def _observed_prices(prices: pd.DataFrame, forecasts: pd.DataFrame, observed_at: object,
+                      *, evidence_available_at: object | None = None) -> dict:
+-    _source_identity(prices, forecasts)
++    contract, dataset = _source_identity(prices, forecasts)
+     now = _aware_timestamp(observed_at, "observed_at")
+     from ml.stock_observation_sources import completed_observation_bars
+-    bars = completed_observation_bars(prices, now, evidence_available_at=evidence_available_at)
++    # Pandas propagates attrs through every selection. Keep the complete input
++    # inventory on the original frame/report, without repeatedly deep-copying
++    # it through each row and boundary calculation. Validate before narrowing.
++    observed_input = pd.DataFrame(prices, copy=False)
++    observed_input.attrs = {"stock_price_source": {"source_contract": contract, "dataset": dataset}}
++    bars = completed_observation_bars(observed_input, now, evidence_available_at=evidence_available_at)
+     bars["timestamp"] = pd.to_datetime(bars.timestamp, utc=True, errors="raise")
+     bars["symbol"] = bars.symbol.astype(str).str.upper()
+     # The close of a minute is not available until that minute has completed.
+@@ -166,6 +171,9 @@
                  "candidate_price": None, "candidate_observed_at": None, "gap_seconds": None,
                  "source_coverage": _source_window_coverage(inventory, symbol, start, end),
                  "required_source_start": start.isoformat(), "required_source_end": end.isoformat()}
@@ -684,7 +702,7 @@ diff --git a/ml/gameplan_actuals_review.py b/ml/gameplan_actuals_review.py
      if boundary > now or bars.empty:
          return evidence
      timestamps = pd.DatetimeIndex(bars.timestamp)
-@@ -180,6 +183,16 @@
+@@ -180,6 +188,16 @@
      evidence.update(candidate_price=price, candidate_observed_at=observed.isoformat(), gap_seconds=gap.total_seconds(),
                      status="INVALID_OBSERVATION" if price is None or price <= 0 else
                      "OUTSIDE_TOLERANCE" if gap > STOCK_TARGET_BOUNDARY_TOLERANCE else "OBSERVED")
@@ -701,7 +719,41 @@ diff --git a/ml/gameplan_actuals_review.py b/ml/gameplan_actuals_review.py
      return evidence
  
  
-@@ -611,7 +624,8 @@
+@@ -239,6 +257,7 @@
+     if "gameplan_variant" in forecasts and not forecasts.gameplan_variant.eq(target_metadata["gameplan_variant"]).all():
+         raise ValueError("Saved Gameplan variant disagrees with its probability target")
+     by_symbol = _observed_prices(prices, forecasts, now, evidence_available_at=evidence_available_at)
++    empty_bars = pd.DataFrame(prices, copy=False).iloc[:0]
+     inventory = prices.attrs.get("stock_price_source", {})
+     if trade_rows is not None:
+         _match_trade_rows(forecasts, trade_rows)
+@@ -261,7 +280,7 @@
+         end = _aware_timestamp(row["target_window_end"], "target_window_end")
+         if end <= start:
+             raise ValueError("Frozen forecast has an invalid target window")
+-        bars = by_symbol.get(str(row["symbol"]).upper(), prices.iloc[:0])
++        bars = by_symbol.get(str(row["symbol"]).upper(), empty_bars)
+         from ml.stock_observation_sources import choose_target_source
+         bars = choose_target_source(bars, row)
+         if len(bars) and "observation_source" in bars:
+@@ -313,6 +332,7 @@
+     now = _aware_timestamp(observed_at, "observed_at")
+     contract, dataset = _source_identity(prices, forecasts)
+     by_symbol = _observed_prices(prices, forecasts, now, evidence_available_at=evidence_available_at)
++    empty_bars = pd.DataFrame(prices, copy=False).iloc[:0]
+     inventory = prices.attrs.get("stock_price_source", {})
+     if planning_path is not None and (planning_path.get("price_source_contract") != contract
+                                       or planning_path.get("price_dataset") != dataset
+@@ -323,7 +343,7 @@
+                     == SPARSE_PLANNING_PRICE_PATH_CONTRACT else "observed_close")
+     rows = []
+     for symbol in sorted(forecasts.symbol.unique()):
+-        bars = by_symbol.get(symbol, prices.iloc[:0])
++        bars = by_symbol.get(symbol, empty_bars)
+         for hour in range(4, 18):
+             clock = f"{hour:02d}:00"
+             timestamp = _clock(action_date, hour)
+@@ -611,7 +631,8 @@
      """
      from ml.stock_target_prices import load_stock_target_prices, stock_price_dataset
      try:
@@ -958,7 +1010,7 @@ diff --git a/tests/test_gameplan_stats_intraday_prices.py b/tests/test_gameplan_
 new file mode 100644
 --- /dev/null
 +++ b/tests/test_gameplan_stats_intraday_prices.py
-@@ -0,0 +1,254 @@
+@@ -0,0 +1,315 @@
 +"""Saved collector receipts feed Stats without acquiring data or changing targets."""
 +import copy
 +import json
@@ -1056,6 +1108,10 @@ new file mode 100644
 +    report = json.loads((run / "report.json").read_text())
 +    assert report["forecasts"] == {"total": 24, "evaluated": 1, "pending_maturity": 6, "mature_awaiting_data": 17}
 +    assert report["input_coverage_status"] == "MATURE_OBSERVATIONS_MISSING"
++    collector_inputs = [item for item in report["price_inventory"]["inventory"]
++                        if item.get("producer") == "intraday-market-input-collector-v2"]
++    assert collector_inputs and collector_inputs[0]["request"]["symbol"] == "AAPL"
++    assert collector_inputs[0]["payload_sha256"] == retained["payload_ref"]["sha256"]
 +    assert all(file_checksum(path) == digest for path, digest in before.items())
 +    assert not (case.root / "stocks/AAPL/bars/5m/fmp/raw-history").exists()
 +    review = load_gameplan_stats(case.root, DAY)
@@ -1213,6 +1269,63 @@ new file mode 100644
 +    assert result.actuals_status == "EVALUATED"
 +    assert result.actual_start_observation_input_sha256 == direct["receipt"]["sha256"]
 +    assert pd.isna(result.actual_start_observation_producer)
++
++
++def test_large_input_inventory_is_not_copied_per_forecast_or_price_point():
++    from ml.gameplan_actuals_review import _observed_prices, compare_forecasts, compare_price_points
++    from tests.test_gameplan_actuals_review import forecasts, prices, _with_source_partitions
++
++    class InventoryCopyProbe:
++        copies = 0
++        def __deepcopy__(self, memo):
++            self.copies += 1
++            return self
++
++    predictions = pd.concat([forecasts().assign(symbol=symbol,
++        id=lambda frame: frame.id.str.replace("AAPL", symbol))
++        for symbol in ("AAPL", "MSFT", "NVDA")], ignore_index=True)
++    native = prices().assign(observation_source="databento:XNAS.ITCH:ohlcv-1m",
++        observation_dataset="XNAS.ITCH", observation_interval_seconds=60,
++        observation_input_sha256="a" * 64,
++        observation_recorded_at=pd.Timestamp("2026-09-10T00:05Z"))
++    # One original AAPL endpoint arrives after the early review. MSFT already
++    # has its evidence, and NVDA has none. Future targets keep their maturity.
++    late = native.copy()
++    late.loc[late.timestamp.eq("2026-09-09T11:59Z"), "observation_recorded_at"] = pd.Timestamp("2026-09-10T04:05Z")
++    bars = pd.concat([late, native.assign(symbol="MSFT")], ignore_index=True)
++    inventory = _with_source_partitions(prices(), [("2026-09-08", "2026-09-10")]).attrs["stock_price_source"]
++    bars.attrs = {"stock_price_source": inventory}
++    expected = {}
++    for at in (EARLY, LATE):
++        expected[at] = (compare_forecasts(predictions, bars, observed_at="2026-09-10T00:00Z", evidence_available_at=at),
++            compare_price_points(predictions, bars, action_date=DAY,
++                observed_at="2026-09-10T00:00Z", evidence_available_at=at))
++    original_values = pd.DataFrame(bars, copy=False).copy()
++    probe = InventoryCopyProbe()
++    full_inventory = {**inventory, "retained_receipt_inventory": [
++        {"input_sha256": f"{index:064x}", "source": "native", "nested_metadata": list(range(100))}
++        for index in range(1000)], "copy_probe": probe}
++    bars.attrs = {"stock_price_source": full_inventory}
++    for at in (EARLY, LATE):
++        actual = (compare_forecasts(predictions, bars, observed_at="2026-09-10T00:00Z", evidence_available_at=at),
++            compare_price_points(predictions, bars, action_date=DAY,
++                observed_at="2026-09-10T00:00Z", evidence_available_at=at))
++        for result, baseline in zip(actual, expected[at]):
++            pd.testing.assert_frame_equal(result, baseline, check_exact=True)
++        assert actual[0].actuals_status.eq("PENDING_MATURITY").sum() == 18
++        assert actual[0].loc[actual[0].symbol.eq("NVDA"), "actuals_status"].eq("MATURE_AWAITING_DATA").sum() == 18
++        assert actual[0].actual_start_source_coverage.eq("VERIFIED_COMPLETE").any()
++        assert actual[0].actual_start_observation_input_sha256.eq("a" * 64).any()
++    early_aapl = expected[EARLY][0].query('symbol == "AAPL" and route == "1h@04:00"').iloc[0]
++    later_aapl = expected[LATE][0].query('symbol == "AAPL" and route == "1h@04:00"').iloc[0]
++    assert early_aapl.actuals_status == "MATURE_AWAITING_DATA" and later_aapl.actuals_status == "EVALUATED"
++    assert probe.copies == 0  # Deterministic amplification regression, not a timing threshold.
++    assert bars.attrs["stock_price_source"] is full_inventory
++    pd.testing.assert_frame_equal(pd.DataFrame(bars, copy=False), original_values, check_exact=True)
++    bad = pd.DataFrame(bars, copy=False)
++    bad.attrs = {"stock_price_source": {**full_inventory, "dataset": "WRONG"}}
++    with pytest.raises(ValueError, match="verified stock_price_source"):
++        _observed_prices(bad, predictions, "2026-09-10T00:00Z", evidence_available_at=EARLY)
 diff --git a/tests/test_gameplan_stats_snapshot_context.py b/tests/test_gameplan_stats_snapshot_context.py
 new file mode 100644
 --- /dev/null
