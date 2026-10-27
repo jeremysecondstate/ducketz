@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "path": "ml/intraday/intentions.py",
+  "before_sha256": "f9a1d157b0f31c231094f310ed6be12918398399783c03dc07cdacba87a2a77a",
+  "after_sha256": "a7d8750c836b75de6ee5bf7b4dfd291fbec8374d665f1040a2d47a85919cb0ec",
+  "patch_sha256": "c0b621aa69b6bf19a6ee32cbccae4216014dcb6ff767b07e8cee4421b2cd6b68",
+  "before_lf_sha256": "5aa7e4d9dd9e23fea22573ff9356f346296561ddcc992f15cacbf8479dbde195",
+  "after_lf_sha256": "33b894a31820047dac8963b9e904ea94d1dd4335fc2594dd62519790eda46f53",
+  "summary": "Fresh native sizing persistence reuses one independently validated original forecast within the existing bounded scope; customized readers retain their original behavior.",
+  "scope": "shared",
+  "peer_applicability": "Common correctness and performance helper; preserve local science, bindings, independent state and manual controls.",
+  "limitations": [
+    "Apply reviewed exact hunks to the locally composed consumer; public base may require projection instead of full reconstruction.",
+    "Portable checker exercises changed function with explicit unchanged-validator stubs; complete installed-source integration is separately required.",
+    "No broker/provider calls, orders, trader process operation, training or science policy changes."
+  ],
+  "runtime_implications": "Requires reviewed local source installation and sealing of a complete generation; publication or an edited checkout alone does not establish loading."
+}
