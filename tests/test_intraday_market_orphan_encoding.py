@@ -201,12 +201,12 @@ def test_native_recovery_preserves_fresh_other_worker_queue_changes(case, monkey
     assert saved["tasks"][case[1]]["attempts"] == 1
 
 
-def test_fresh_receipt_commit_keeps_original_encoding(case):
+def test_fresh_native_receipt_commit_uses_equivalent_native_encoding(case):
     col = case[0]
     for path in col.root.glob("snapshots/**/*.json"):
         path.unlink()
     observed = recover((col, case[1], case[2], None, case[4]), expected_calls=2)
-    assert observed["atomic_native"] == [False] and observed["canonical_queue"] == [True]
+    assert observed["atomic_native"] == [True] and observed["canonical_queue"] == []
 
 
 def test_orphan_commit_keeps_native_lock_timeout_and_original_queue(case):
