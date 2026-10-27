@@ -1,0 +1,32 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T125551Z-dcf36ab65e244f748a63ab70ed2ebfd0",
+  "files": [
+    "ml/intraday/live_session.py",
+    "ml/intraday/iteration_boundary.py",
+    "tests/test_intraday_iteration_boundary.py",
+    "tests/test_intraday_live_session.py",
+    "docs/development/scout-iteration-restarts.md"
+  ],
+  "limitations": [
+    "Offline fixtures establish the repaired callback and scheduler continuation. They do not establish live latency recovery, market coverage, a production lock holder, order fills or completed scientific qualification.",
+    "Original forecasts, durable input failures, scientific qualification and historical labels retain their saved meaning. Private runtime overlays, recipes, models, account state and operating evidence are not source publication payload."
+  ],
+  "main_sha": "79bc12d7e0cfa9a37a4718c5d3e28aa41471a0e3",
+  "privacy_review": "Reviewed shared source and offline-test facts only; no local paths, private operating evidence, raw data, models, recipes, credentials or task state.",
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/438"
+  ],
+  "runtime_implications": "Compatible Scout worker source loads through the next safe automatic replacement after a completed full-symbol iteration within an already authorized run. The controller bootstrap protocol and initial-launch boundary remain unchanged. Local installation, actual loaded generation and affected runtime behavior remain separate observations; preserve manual stop, original deadline, durable pending work and order identities.",
+  "scope": "Shared Scout iteration-worker and checkpoint correctness, tests and documentation. Each PC retains its own symbols, private scientific recipe, operating bindings and independent order state.",
+  "source_branch": "codex/scout/20261027T125551Z-dcf36ab65e244f748a63ab70ed2ebfd0",
+  "source_record": "20261027T125551Z-dcf36ab65e244f748a63ab70ed2ebfd0",
+  "source_sha": "fbabfec8085ed0a4f76f221e791189c4863b38b0",
+  "summary": "Scout repaired full-symbol recovery iteration handoffs and preserved the scheduler next turn across safe worker replacements.",
+  "tests": [
+    "Source, isolated courier and reviewed current-main candidates each passed 347 tests across nine whole modules with 0 skips. Stage counts overlap.",
+    "All stages bind 183 exact owned and dependency fingerprints; imported candidate source and final raw Git blobs verify.",
+    "Fixtures cover exact full-scope retries, subset and reused-result exclusions, strict checkpoint identity and measured attempt counts, scheduler-turn continuity, original session/deadline/stop controls, worker drain and durable order recovery."
+  ]
+}

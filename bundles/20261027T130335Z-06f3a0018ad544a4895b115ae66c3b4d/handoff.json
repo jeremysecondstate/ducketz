@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T13:03:35.872744Z",
+  "id": "20261027T130335Z-06f3a0018ad544a4895b115ae66c3b4d",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout repaired full-symbol recovery iteration handoffs and preserved the scheduler next turn across safe worker replacements."
+}
