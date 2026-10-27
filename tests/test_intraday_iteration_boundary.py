@@ -41,13 +41,13 @@ class Lifecycle:
 
 
 def seed_cycle(store, *, lifecycle, config, reference="2026-10-08T17:00:00Z", failure=None,
-               missing=None, queue=None, status=None):
+               missing=None, queue=None, status=None, attempt_count=1):
     reference = instant(reference)
     identity = "cycle-" + str(lifecycle.generation)
     failures = {} if failure is None else {SYMBOLS[-1]: failure}
     value = dict(pc="Scout", symbols=list(SYMBOLS), reference_at=reference.isoformat(), mode="live",
                  experiment=lifecycle.session_id, status=status or ("partial_failure" if failures else "completed"),
-                 started_at=NOW, completed_at=NOW, configuration_hash=digest(_jsonable(asdict(config))), failures=failures)
+                 started_at=NOW, completed_at=NOW, attempt_count=attempt_count, configuration_hash=digest(_jsonable(asdict(config))), failures=failures)
     store.begin_cycle(identity, value)
     for symbol in SYMBOLS:
         if symbol in failures or symbol == missing:
@@ -403,3 +403,121 @@ def test_generation_status_survives_brief_native_observer_handle(tmp_path, monke
     assert denied and set(denied) <= {5, 32, 33}
     assert json.loads(target.read_text())["status"] == "PLANNED_RESTART"
     assert not list(target.parent.glob("manual-session.json.*.tmp"))
+
+
+@pytest.mark.parametrize("attempt_count,recovery_first", [(1, True), (2, False), (7, False)])
+def test_checkpoint_scheduler_turn_matches_durable_measured_attempt(tmp_path, attempt_count, recovery_first):
+    store = ShadowStore(tmp_path / "turn.sqlite3")
+    lifecycle = Lifecycle()
+    config = live_session.ResearchConfig()
+    live_session.ExecutionQueue(store, lifecycle.session_id, pc="Scout")
+    identity = seed_cycle(store, lifecycle=lifecycle, config=config, attempt_count=attempt_count)
+    checkpoint = capture_checkpoint(store, lifecycle=lifecycle, symbols=SYMBOLS, boundary_cycle_id=identity)
+    assert checkpoint["recovery_first"] is recovery_first
+    # This has the original v1 shape, including historical count1/True.
+    successor = Lifecycle(2, checkpoint)
+    validate_resume(store, lifecycle=successor, symbols=SYMBOLS, config=config)
+    checkpoint["recovery_first"] = not recovery_first
+    with pytest.raises(ContractError, match="scheduler turn"):
+        validate_resume(store, lifecycle=successor, symbols=SYMBOLS, config=config)
+
+
+@pytest.mark.parametrize("invalid", [None, 0, -1, True, "1", 1.0])
+def test_boundary_requires_real_measured_attempt_count(tmp_path, invalid):
+    store = ShadowStore(tmp_path / "unmeasured.sqlite3")
+    lifecycle = Lifecycle()
+    config = live_session.ResearchConfig()
+    live_session.ExecutionQueue(store, lifecycle.session_id, pc="Scout")
+    identity = seed_cycle(store, lifecycle=lifecycle, config=config, attempt_count=invalid)
+    with pytest.raises(ContractError, match="measured attempt count"):
+        capture_checkpoint(store, lifecycle=lifecycle, symbols=SYMBOLS, boundary_cycle_id=identity)
+
+
+@pytest.mark.parametrize("invalid", [None, 0, 1, "true", "false", []])
+def test_resume_rejects_non_boolean_scheduler_turn(tmp_path, invalid):
+    store = ShadowStore(tmp_path / "typed-turn.sqlite3")
+    lifecycle = Lifecycle()
+    config = live_session.ResearchConfig()
+    live_session.ExecutionQueue(store, lifecycle.session_id, pc="Scout")
+    identity = seed_cycle(store, lifecycle=lifecycle, config=config)
+    checkpoint = capture_checkpoint(store, lifecycle=lifecycle, symbols=SYMBOLS, boundary_cycle_id=identity)
+    checkpoint["recovery_first"] = invalid
+    with pytest.raises(ContractError, match="scheduler turn"):
+        validate_resume(store, lifecycle=Lifecycle(2, checkpoint), symbols=SYMBOLS, config=config)
+
+
+def test_four_generations_alternate_due_recovery_and_new_quarters(tmp_path):
+    store = ShadowStore(tmp_path / "fair-generations.sqlite3")
+    config = live_session.ResearchConfig()
+    lifecycle = Lifecycle()
+    queue = live_session.ExecutionQueue(store, lifecycle.session_id, pc="Scout")
+    now, calls, checkpoint = [instant(NOW)], [], None
+    def run(inputs, **kw):
+        calls.append(kw)
+        reference = kw["reference_at"].isoformat()
+        identity = "cycle:" + reference
+        failure = dict(type="AcquisitionPending", recorded_at=now[0].isoformat(), retryable=True,
+                       reason="real_input_missing", retry_at=(now[0] + timedelta(seconds=1)).isoformat())
+        saved = store.begin_cycle(identity, dict(pc="Scout", symbols=list(SYMBOLS), mode="live",
+            experiment=lifecycle.session_id, reference_at=reference, started_at=now[0].isoformat(),
+            status="running", configuration_hash=digest(_jsonable(asdict(config)))))
+        store.update_cycle(identity, dict(status="partial_failure", completed_at=now[0].isoformat(),
+            attempt_count=saved.get("attempt_count", 0) + 1,
+            failures={symbol: dict(failure) for symbol in SYMBOLS}))
+        now[0] += timedelta(minutes=17)
+        return {"cycle_id": identity}
+    runner = SimpleNamespace(store=store, config=config, symbols=SYMBOLS, run_cycle=run)
+    for generation in range(1, 5):
+        lifecycle = Lifecycle(generation, checkpoint)
+        validate_resume(store, lifecycle=lifecycle, symbols=SYMBOLS, config=config)
+        boundaries = []
+        live_session.forecasting_loop(runner, histories={}, provider=None, journal=None, queue=queue,
+            stopped=lambda: False, clock=lambda: now[0], pause=lambda _: pytest.fail("Expected a full returned attempt"),
+            history_source=lambda _: object(), on_iteration=boundaries.append,
+            recovery_first=checkpoint["recovery_first"] if checkpoint else False)
+        assert len(boundaries) == 1
+        checkpoint = capture_checkpoint(store, lifecycle=lifecycle, symbols=SYMBOLS,
+            boundary_cycle_id=boundaries[0]["cycle_id"])
+        assert checkpoint["recovery_first"] is (generation % 2 == 1)
+        assert all(row["status"] == "partial_failure" and len(row["failures"]) == 11
+                   for row in checkpoint["cycles"])
+    assert [call["retry_symbols"] for call in calls] == [None, list(SYMBOLS), None, list(SYMBOLS)]
+    assert calls[2]["reference_at"] > calls[0]["reference_at"]
+    assert all(not call["allow_execution"] for call in (calls[1], calls[3]))
+    assert not store.forecasts()  # Real deferrals never become invented observations.
+
+
+@pytest.mark.parametrize("attempt_count,expected", [(1, True), (2, False)])
+def test_manual_successor_consumes_validated_checkpoint_turn(tmp_path, monkeypatch, attempt_count, expected):
+    kwargs, first, _, _, _ = setup_session(tmp_path, monkeypatch)
+    assert live_session.run_manual(**kwargs)["status"] == "PLANNED_RESTART"
+    store = ShadowStore(tmp_path / "intraday/shadow.sqlite3")
+    store.update_cycle("cycle-1", {"attempt_count": attempt_count})
+    checkpoint = capture_checkpoint(store, lifecycle=first, symbols=SYMBOLS, boundary_cycle_id="cycle-1")
+    kwargs, successor, _, _, _ = setup_session(tmp_path, monkeypatch, lifecycle=Lifecycle(2, checkpoint))
+    publish = live_session.forecasting_loop
+    seen = []
+    def consume(runner, **kw):
+        seen.append(kw["recovery_first"])
+        assert kw["recovery_first"] is expected
+        return publish(runner, **kw)
+    monkeypatch.setattr(live_session, "forecasting_loop", consume)
+    assert live_session.run_manual(**kwargs)["status"] == "PLANNED_RESTART"
+    assert seen == [expected] and successor.checkpoints[0]["recovery_first"] is True
+
+
+@pytest.mark.parametrize("mutation", ["turn", "typed_turn", "count", "kind", "typed_generation"])
+def test_scheduler_checkpoint_corruption_fails_before_broker(tmp_path, monkeypatch, mutation):
+    kwargs, first, _, _, _ = setup_session(tmp_path, monkeypatch)
+    live_session.run_manual(**kwargs)
+    checkpoint = first.checkpoints[0]
+    if mutation == "turn": checkpoint["recovery_first"] = False
+    if mutation == "typed_turn": checkpoint["recovery_first"] = 1
+    if mutation == "kind": checkpoint["boundary_kind"] = "poll"
+    if mutation == "typed_generation": checkpoint["generation"] = True
+    if mutation == "count":
+        ShadowStore(tmp_path / "intraday/shadow.sqlite3").update_cycle("cycle-1", {"attempt_count": None})
+    kwargs, _, calls, executors, _ = setup_session(tmp_path, monkeypatch, lifecycle=Lifecycle(2, checkpoint))
+    with pytest.raises(ContractError):
+        live_session.run_manual(**kwargs)
+    assert not executors and "fresh_broker_preflight" not in calls

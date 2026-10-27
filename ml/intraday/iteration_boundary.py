@@ -68,6 +68,10 @@ def capture_checkpoint(store, *, lifecycle, symbols, boundary_cycle_id):
               for identity, _ in _cycle_rows(store, lifecycle.session_id)]
     if boundary_cycle_id not in {row["cycle_id"] for row in cycles}:
         raise ContractError("Missing iteration boundary cycle")
+    boundary = dict(_cycle_rows(store, lifecycle.session_id))[boundary_cycle_id]
+    attempt_count = boundary.get("attempt_count")
+    if type(attempt_count) is not int or attempt_count < 1:
+        raise ContractError("Iteration boundary lacks a measured attempt count")
     queue = _queue_state(store, lifecycle.session_id)
     return {"schema": SCHEMA, "session_id": lifecycle.session_id,
             "generation": lifecycle.generation, "release": lifecycle.release,
@@ -81,7 +85,7 @@ def capture_checkpoint(store, *, lifecycle, symbols, boundary_cycle_id):
             "pending_queue": [row for row in queue["queue"] if row["status"] == "pending"],
             "completed_queue": [row for row in queue["queue"] if row["status"] != "pending"],
             "broker_retry": queue["broker_retry"], "owned_workers_drained": True,
-            "pending_order_identity_preserved": True, "recovery_first": True}
+            "pending_order_identity_preserved": True, "recovery_first": attempt_count == 1}
 
 
 def validate_resume(store, *, lifecycle, symbols, config):
@@ -96,15 +100,23 @@ def validate_resume(store, *, lifecycle, symbols, config):
         return
     if (not isinstance(checkpoint, dict) or checkpoint.get("schema") != SCHEMA
             or checkpoint.get("session_id") != lifecycle.session_id
+            or type(checkpoint.get("generation")) is not int
             or checkpoint.get("generation") != generation - 1
             or checkpoint.get("symbols") != list(symbols)
-            or checkpoint.get("owned_workers_drained") is not True):
+            or checkpoint.get("owned_workers_drained") is not True
+            or checkpoint.get("boundary_kind") != "full_symbol_attempt_with_durable_deferrals"):
         raise ContractError("Incompatible iteration checkpoint identity")
     for field in ("started_at", "wake_at", "deadline"):
         if instant(checkpoint[field]) != instant(getattr(lifecycle, field)):
             raise ContractError("Iteration checkpoint changed original session authority")
     actual = capture_checkpoint(store, lifecycle=lifecycle, symbols=symbols,
                                 boundary_cycle_id=checkpoint["boundary_cycle_id"])
+    # A first measured attempt is fresh; a later attempt recovers saved work.
+    # Preserve that next-turn choice rather than restarting recovery priority
+    # on every generation. Old v1 checkpoints already store True for fresh work.
+    if (type(checkpoint.get("recovery_first")) is not bool
+            or checkpoint["recovery_first"] is not actual["recovery_first"]):
+        raise ContractError("Iteration checkpoint differs from durable scheduler turn")
     for field in ("cycles", "last_reference", "queue_sha256", "pending_queue", "completed_queue", "broker_retry"):
         if checkpoint.get(field) != actual[field]:
             raise ContractError("Iteration checkpoint differs from durable " + field)

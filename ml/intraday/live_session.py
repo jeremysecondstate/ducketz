@@ -274,9 +274,15 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
                          retry_symbols=retry_symbols,allow_execution=reference == newest)
         if result and result.get("cycle_id"):
             runner.store.update_cycle(result["cycle_id"], {"last_recovery_attempt_at":instant(clock()).isoformat()})
-        if on_iteration is not None and retry_symbols is None:
+        configured = tuple(getattr(runner, "symbols", ()))
+        full_scope = retry_symbols is None or (
+            bool(configured) and len(retry_symbols) == len(configured)
+            and len(set(retry_symbols)) == len(configured)
+            and set(retry_symbols) == set(configured))
+        reused = isinstance(result, dict) and result.get("recovered_existing") is True
+        if on_iteration is not None and full_scope and not reused:
             on_iteration(result)
-            return  # One full fresh pass; no next-quarter overlap during handoff.
+            return  # Full returned attempt; no next-quarter overlap during handoff.
         pause(1)
 
 
@@ -761,7 +767,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 forecasting_loop(runner,histories=histories,provider=provider,journal=journal,queue=queue,
                                  stopped=should_stop,clock=clock,pause=pause,
                                  history_source=minute_feed.history_source,
-                                 **({"on_iteration": iteration_finished, "recovery_first": lifecycle.generation > 1}
+                                 **({"on_iteration": iteration_finished, "recovery_first": (
+                                     lifecycle.previous_checkpoint["recovery_first"] if lifecycle.generation > 1 else False)}
                                     if lifecycle is not None else {}))
             except BaseException as exc:
                 store.event(session_id,"forecast_worker_stopped",{"error_type":type(exc).__name__,"message":str(exc)})
