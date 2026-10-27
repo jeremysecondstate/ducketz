@@ -1,0 +1,62 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T181853Z-f7c83e576ede4c4d9e22115ac1c0c213",
+  "change_id": "20261027T181853Z-f7c83e576ede4c4d9e22115ac1c0c213",
+  "details": [
+    "Atlas 15m Trader Representative removes a repeated serialization of the validated immutable sizing intention. Encode before the writer, hash and INSERT the same canonical text; preserve complete payload bytes, IDs, original probability, target, quantity and provenance.",
+    "Both PCs may review corresponding exact-preimage consumer hunks while preserving local model policy. All original sizing validation, forecast preflight/recheck, immutable retry comparisons, transaction boundaries and receipt records remain.",
+    "Publish only portable compatibility patch, exact method extracts and offline regressions. Complete local composition, installation, loaded code and affected natural latency are separate evidence."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-intention-encode-once.patch",
+      "sha256": "65f8579950504f4952c5b0d307750a58200a2656ba58ebd7705bc3dccb7c6050"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-intention-encode-once.json",
+      "sha256": "ed4cffbadad9b5e15aaafd4af74cef64b1baf8e519dcac429d875ef80b54eca0"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_intention_encode_once.py",
+      "sha256": "1a100dd0ba94d808602bc7b9beabfd43eac0c442f754dfa0dc0a78d14bf8a63e"
+    }
+  ],
+  "limitations": [
+    "Portable exact-method tests use isolated SQLite/store/result doubles. Actual full-module regressions and directed parity are separately recorded.",
+    "Synthetic mechanism improvement does not attribute the original live wall delay or establish sustained recovery. Any documented preexisting regression expectation remains a separate limitation.",
+    "One preexisting cold-sizing expectation fails identically on unchanged source; excluded by exact name from independent157case run. No application source change was made for this fixture."
+  ],
+  "local_installation": "Atlas installed exact reviewed save_sizing hunk and sealed complete531-source generation 2a90575c6eb2e4aa0ba9b22b11dcd963681682af55c79a8844e1296acdca7f5e. All530otherparentfiles and frozen runtime retained; complete source/runtime verification succeeded.",
+  "main_commit": "2e00f2b931f0dbf72d6593966766a604ccdc511a",
+  "natural_affected_exercise": "Sustained live latency recovery unproved. No live test was induced.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/451",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Apply reviewed exact-preimage save_sizing consumer hunks, then seal the complete generation with tools/trader_installation.py. An already manually started session may load it at a completed iteration. No initial start, manual-stop bypass, session extension, order or provider action.",
+  "runtime_loading": "Observed separately through natural own-session worker records and exact launch paths.",
+  "scope": "shared",
+  "source_commit": "b7228b6e686bbaa54e6e6b062c2d72aec54abea7",
+  "summary": "Atlas intention persistence encodes immutable evidence once before writer; repair published and sealed",
+  "tests": [
+    {
+      "command": "python -B tests/check_intraday_intention_encode_once.py",
+      "completed_at_utc": "2026-10-27T18:20:15.918672+00:00",
+      "passed_cases_each": 28,
+      "scope": "Immutable queue, isolated source and fresh main candidate"
+    },
+    {
+      "deselected_preexisting_fixture": 1,
+      "network_calls": 0,
+      "passed_cases": 157,
+      "scope": "Independent full local candidate"
+    },
+    {
+      "existing_and_directed_cases": 141,
+      "network_calls": 0,
+      "portable_cases": 28,
+      "scope": "Actual sealed source"
+    }
+  ]
+}

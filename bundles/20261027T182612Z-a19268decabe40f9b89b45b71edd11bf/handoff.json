@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T18:26:12.353183Z",
+  "id": "20261027T182612Z-a19268decabe40f9b89b45b71edd11bf",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas intention persistence encodes immutable evidence once before writer; repair published and sealed"
+}
