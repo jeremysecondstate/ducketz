@@ -174,6 +174,37 @@ def _event_record(record):
     return result
 
 
+_NATIVE_EVENT_RECORD = _event_record
+
+
+def _audit_event_record(record):
+    """Compare checked native JSON without exposing a shallow record copy.
+
+    The historical helper still returns detached values for appends and custom
+    inputs. This temporary audit view only replaces the outer token field; its
+    nested DTO values are neither changed nor returned to callers.
+    """
+    if (_event_record is not _NATIVE_EVENT_RECORD or type(record) is not dict
+            or set(record) != _RECORD_KEYS):
+        return _event_record(record)
+    for key, value in record.items():
+        if type(key) is not str:
+            return _event_record(record)
+        if key in {"request", "grant"}:
+            if value is None and key == "grant":
+                continue
+            if (type(value) is not dict
+                    or any(type(name) is not str or type(item) not in (str, int)
+                           for name, item in value.items())):
+                return _event_record(record)
+        elif value is not None and type(value) is not str:
+            return _event_record(record)
+    result = dict(record)
+    token = result.pop("send_token")
+    result["send_token_sha256"] = hashlib.sha256(token.encode("ascii")).hexdigest() if token else None
+    return result
+
+
 class ScoutJournal:
     """An explicit file and immutable account/session/participant/stream binding.
 
@@ -423,7 +454,7 @@ class ScoutJournal:
                 for rid, raw, digest in db.execute("SELECT request_id, payload, sha256 FROM records"):
                     record = _checked_json(raw, digest)
                     validate(record)
-                    if rid != record["request"]["request_id"] or _event_record(record) != replayed.get(rid):
+                    if rid != record["request"]["request_id"] or _audit_event_record(record) != replayed.get(rid):
                         raise JournalCorruptionError("Current record differs from durable history")
                     records[rid] = record
                 if set(records) != set(replayed):
