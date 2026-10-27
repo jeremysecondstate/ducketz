@@ -1,0 +1,62 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T215401Z-c59b0fa0e952444dbfeb0872b434c416",
+  "change_id": "20261027T215401Z-c59b0fa0e952444dbfeb0872b434c416",
+  "details": [
+    "Actor Atlas; task ATLAS Trader Representative; shared sizing correctness-preserving performance repair. After successful original semantic validation, unchanged exact built-in result objects reuse that validation proof while decoding a fresh independent JSON tree on every access.",
+    "First access and changed-field, subclass, nonexact-string or invalid-proof cases retain the full original canonical digest validator and original failure ordering. Preserve numeric-key normalization, scientific recipes, original probabilities/targets, native/source/session evidence, independent states and all manual controls.",
+    "Publish exactly three portable additions: narrow preimage patch, exact source/dependency extracts, and self-contained offline differential/adversarial checker. Both PCs review matching hunks and retain local source composition/symbol recipes."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-sizing-payload-proof.json",
+      "sha256": "ebf31908be1f2838d329f6297da0e2613a05434dd3b00578ae86fc58c8230d47"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-sizing-payload-proof.patch",
+      "sha256": "e3266bd44bbecc1a52b14ab444609434d260871392c3aa588fda3acba015165b"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_sizing_payload_proof.py",
+      "sha256": "e56f6475115264a53fadda0e9e213d8eb362d2dbf7f961e0e0e7d244ce1b4fdd"
+    }
+  ],
+  "limitations": [
+    "50 portable cases,68 actual candidate tests on complete531-source graph,202 independent adversarial assertions and full23744candle original parity passed. These are offline evidence; source/main/local install/loading/affected natural exercise remain separate.",
+    "Exact full output139119095canonicalbytes and23606native/23744sessionchecks preserved. Candidate22.706seconds is unprofiled while baseline30.417seconds includes cProfile; timings are not a speedup comparison. Broad sizing latency remains open.",
+    "Only repeated successful payload validation is shortened; initial scientific sizing and original full semantic validation remain. No first-access or sustained live recovery claim."
+  ],
+  "local_installation": "Exact preimage local installation and complete531-source generation 2055a6d3a90ea016566c7477c53c264b01ebf501f33abda86d2870198c72b4c7 sealed;530other parent source members and the existing frozen runtime preserved. Fresh actual sealed68applicationtests and50exact-installed portable cases pass.",
+  "main_commit": "742f6edac421ee88c3a1dbfa64b4160c80f4fddb",
+  "natural_affected_exercise": "Broad latency remains open. First semantic validation is unchanged; repeated successful getter encodes reduce3to1 in bounded mechanism checks. Full23744candle replay retains all139119095canonicalbytes and23606native/23744sessionchecks. Profiled baseline and unprofiled candidate timings cannot establish a speedup.",
+  "privacy_review": "Portable generic source patch/extracts/checker and factual source/install stages only. Original inputs/results/models/account/order state, native bindings, sessions and task memory remain private. No peer acceptance or nightly prerequisite.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/467",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Apply only matching reviewed local source hunks, preserve complete current source/dependency closure and seal exact complete generation with tools/trader_installation.py. Natural worker renewal is authorized inside an existing manually started session only. No initial start, post-stop restart, lifetime extension, live infrastructure exercise, provider/broker call or order. Installation, loading and affected natural exercise are distinct facts.",
+  "runtime_loading": "Installation and offline checks do not establish naturally loaded code. One bounded own-session snapshot is recorded separately; no induced start, restart, test order or extra acceptance round.",
+  "scope": "shared",
+  "source_commit": "e42f1e67ef2fa28160e6ddbf2f6c7604c1453d5f",
+  "summary": "Atlas immutable sizing payload proof reuse published and locally installed; broad latency remains open",
+  "tests": [
+    {
+      "command": "python -B tests/check_intraday_sizing_payload_proof.py",
+      "network_calls": 0,
+      "passed_cases_each": 50,
+      "scope": "Immutable queue, isolated source and fresh common main"
+    },
+    {
+      "full_application_tests": 68,
+      "installed_source_portable_cases": 50,
+      "network_calls": 0,
+      "passed_cases": 118,
+      "scope": "Actual sealed complete local source"
+    },
+    {
+      "passed_assertions": 202,
+      "scope": "Independent adversarial review"
+    }
+  ]
+}

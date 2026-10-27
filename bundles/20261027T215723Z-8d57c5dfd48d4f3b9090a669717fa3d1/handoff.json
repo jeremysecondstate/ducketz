@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T21:57:23.607092Z",
+  "id": "20261027T215723Z-8d57c5dfd48d4f3b9090a669717fa3d1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas immutable sizing payload proof reuse published and locally installed; broad latency remains open"
+}
