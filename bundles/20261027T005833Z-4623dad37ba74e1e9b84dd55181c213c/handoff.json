@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T00:58:33.736723Z",
+  "id": "20261027T005833Z-4623dad37ba74e1e9b84dd55181c213c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas combined Gameplan Stats direct original-observation repair published and locally installed"
+}

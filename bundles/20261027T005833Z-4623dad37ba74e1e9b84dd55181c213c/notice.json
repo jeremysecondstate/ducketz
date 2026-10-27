@@ -1,0 +1,50 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T004932Z-36113c16fecb427a854d2b20931c37e3",
+  "change_id": "20261027T004932Z-36113c16fecb427a854d2b20931c37e3",
+  "details": [
+    "Add an explicit Stats-only v2 revision from exact archived source packages and independently retained native observation proof; preserve v1 export, adoption and idempotent retries.",
+    "Recompute original endpoint returns, recorded targets, Brier scores and saved directions after exact OHLCV, source/interval, receipt/event-clock, boundary and hash checks. Preserve all frozen originals and prior evaluated rows.",
+    "No peer forecast is inserted into local cumulative scientific history. Original labels and policies remain original, and observation provenance names its actual producer without inventing peer or cumulative receipts."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_stats_outcome_revision.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_stats_direct_observations.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_gameplan_stats_direct.py"
+    }
+  ],
+  "limitations": [
+    "Native acquisition and its raw receipts remain with the scientific producer. Portable revisions carry sanitized hash provenance; retain the exact independently reviewed observation artifact.",
+    "Peer installation and any running trader source loading are separate facts. No trader loading or exercise is claimed by these Stats-only checks."
+  ],
+  "local_installation": "Atlas installed all three exact committed files and passed 63 fresh installed cases. The same tested API also exported six actual original observed outcomes; those scientific outputs retain their separate publication identities.",
+  "main_commit": "40c8dabdc7bd83ac911ef262ded1f0525f4e0c5c",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/421",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "A fresh scientific process loads the installed helper. Trader state, model policies, operating bindings, manual starts/stops and schedules are preserved. This Stats-only source change needs no trader restart and creates no peer acceptance or trading prerequisite.",
+  "scope": "shared",
+  "source_commit": "2f522980d6c0d73f8fb5b0f9894aa11289001f07",
+  "summary": "Atlas combined Gameplan Stats direct original-observation repair published and locally installed",
+  "tests": [
+    {
+      "command": "python -B tests/check_isolated_gameplan_stats_direct.py",
+      "completed_at_utc": "2026-10-27T00:54:32.831355+00:00",
+      "passed_cases": 63,
+      "scope": "canonical author, sealed queue, isolated source and fresh main candidate"
+    },
+    {
+      "command": "python -B tests/check_isolated_gameplan_stats_direct.py",
+      "completed_at_utc": "2026-10-27T00:56:13.678784+00:00",
+      "passed_cases": 63,
+      "scope": "exact installed composition with original v1 regressions"
+    }
+  ]
+}
