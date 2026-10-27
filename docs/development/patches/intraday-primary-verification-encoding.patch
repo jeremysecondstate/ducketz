@@ -1,0 +1,38 @@
+--- a/ml/intraday/recovered_population.py
++++ b/ml/intraday/recovered_population.py
+@@ -78,13 +78,18 @@
+ 
+ def wrap_primary(candle):
+     """Retain a genuine primary candle unchanged inside a new-contract wrapper."""
++    return _wrap_primary(candle, None)
++
++
++def _wrap_primary(candle, original_canonical):
++    """Reuse the verifier's exact canonical text for the first owned copy."""
+     if candle.get("population_contract") == POPULATION_CONTRACT:
+         if not verified_recovery_candle(candle):
+             raise ContractError("Invalid existing recovered population candle")
+         return _plain(candle)
+     if not verified_source_observation(candle):
+         raise ContractError("Only a verified genuine primary candle can be wrapped")
+-    original = _plain(candle)
++    original = _plain(candle) if original_canonical is None else json.loads(original_canonical)
+     _session(original, original["opened_at"])
+     native_canonical = _json(original)
+     original = json.loads(native_canonical)
+@@ -233,11 +238,11 @@
+             return False
+         if evidence.get("kind") == "primary_observed":
+             original = evidence["native_primary"]
+-            if _digest(original) != evidence["native_primary_sha256"]:
++            original_canonical = _json(original)
++            if hashlib.sha256(original_canonical.encode()).hexdigest() != evidence["native_primary_sha256"]:
+                 return False
+-            # wrap_primary performs the complete native observation validation.
+-            # Repeating it here doubles the same per-minute proof work.
+-            expected = wrap_primary(original)
++            # Preserve the full native/session proof while reusing its canonical text.
++            expected = _wrap_primary(original, original_canonical)
+         else:
+             expected = recovery_candle(evidence["assessment"], evidence["session"])
+             if expected is None:

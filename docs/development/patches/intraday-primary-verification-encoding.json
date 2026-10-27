@@ -1,0 +1,149 @@
+{
+  "schema": "intraday-primary-verification-encoding-package-v1",
+  "scope": "Shared exact-preimage primary observation wrapper normalization; preserve local model policy and source composition.",
+  "change": "Reuse canonical native text already required by primary proof hash validation for its immediately following initial normalization. Preserve every full native proof/session check, post-stringification normalization, evidence hash, key order and deep ownership boundary.",
+  "patch_sha256": "086ab3adedf424cd2ef7abe1ca91dfbd394d74e8af87308e25310005ee5d224e",
+  "patch_encoding": "UTF-8 LF unified diff with raw before/after source identities.",
+  "sources": {
+    "ml/intraday/recovered_population.py": {
+      "operation": "modify",
+      "before_sha256": "c927e53eb75fe6203d4fec333d79dbe09b8358a536168c8b8f8d4c62e882ea17",
+      "after_sha256": "8616d05b13ad4e00a8ab1560197c48f2033a602753c462bce1b79f45773c3450",
+      "before_normalized_sha256": "73e4a10b1b90feba7c19bbbacc64198911634d1a3b6119f71228b982d2c3bf59",
+      "after_normalized_sha256": "75e2698eff6d7273bba8906d5cb0425339ecc30f91ca2e15eb75fd977e175abd",
+      "before_line_endings": "CRLF",
+      "after_line_endings": "CRLF",
+      "extracts_before": {
+        "_utc": {
+          "source": "def _utc(value):\n    stamp = pd.Timestamp(value)\n    if pd.isna(stamp) or stamp.tzinfo is None:\n        raise ContractError(\"Recovery clocks must be timezone aware\")\n    return stamp.tz_convert(\"UTC\")\n",
+          "sha256": "d442a78dfbdc5c0725af9bbb3efe07d568588284db524c911f55ab84aa43ab02"
+        },
+        "_default": {
+          "source": "def _default(value):\n    if isinstance(value, (datetime, pd.Timestamp)):\n        return _utc(value).isoformat()\n    if isinstance(value, (np.integer, np.floating, np.bool_)):\n        return value.item()\n    raise TypeError(type(value).__name__)\n",
+          "sha256": "e277476c484de997abe9d9ceb8aedd8ef73b99362a637c68b41ac977c30e46c2"
+        },
+        "_json": {
+          "source": "def _json(value):\n    return json.dumps(value, sort_keys=True, separators=(\",\", \":\"), default=_default, allow_nan=False)\n",
+          "sha256": "b03c253a2f6399f7c0e48562b4596455f49eb75c129e7c520023e121c183d273"
+        },
+        "_plain": {
+          "source": "def _plain(value):\n    return json.loads(_json(value))\n",
+          "sha256": "4245d0946dfb56dffcd18ff21b857181a71782dbeea4bcd0d07f7425b9c83c63"
+        },
+        "_digest": {
+          "source": "def _digest(value):\n    return hashlib.sha256(_json(value).encode()).hexdigest()\n",
+          "sha256": "9b8915ab6609ffd27c1a6bc739644102caba71aa3d4e38b36e329b0b7212f453"
+        },
+        "_session": {
+          "source": "def _session(session, opened_at):\n    from .data import SessionBounds\n    if isinstance(session, Mapping):\n        session = SessionBounds(str(session[\"session_id\"]), session[\"session_open\"], session[\"session_close\"])\n    if not session.contains(opened_at) or _utc(opened_at) != _utc(opened_at).floor(\"15min\"):\n        raise ContractError(\"Recovery candle is outside its exact session quarter\")\n    return {\"session_id\": str(session.session_id), \"session_open\": _utc(session.opened_at).isoformat(),\n            \"session_close\": _utc(session.closed_at).isoformat()}\n",
+          "sha256": "3ffdb3e70fcfea932ea0a20b56205d62bd88c47809cb5deac36851a8b311f5fb"
+        },
+        "_wrapper": {
+          "source": "def _wrapper(row, evidence):\n    row = _plain(row)\n    row.update(source_id=SOURCE_ID, source_dataset=SOURCE_DATASET,\n               population_contract=POPULATION_CONTRACT, evidence_json=_json(evidence))\n    return row\n",
+          "sha256": "e8ca944141d15e9cb054b5481f8d967669697370027b155c592d7a2dec325c7e"
+        },
+        "wrap_primary": {
+          "source": "def wrap_primary(candle):\n    \"\"\"Retain a genuine primary candle unchanged inside a new-contract wrapper.\"\"\"\n    if candle.get(\"population_contract\") == POPULATION_CONTRACT:\n        if not verified_recovery_candle(candle):\n            raise ContractError(\"Invalid existing recovered population candle\")\n        return _plain(candle)\n    if not verified_source_observation(candle):\n        raise ContractError(\"Only a verified genuine primary candle can be wrapped\")\n    original = _plain(candle)\n    _session(original, original[\"opened_at\"])\n    native_canonical = _json(original)\n    original = json.loads(native_canonical)\n    row = dict(original, native_source_id=original[\"source_id\"], native_source_dataset=original[\"source_dataset\"],\n               native_interval_seconds=60, observation_kind=\"primary_observed\")\n    evidence = {\"aggregation\": POPULATION_CONTRACT, \"kind\": \"primary_observed\",\n        \"native_primary\": original, \"native_primary_sha256\": hashlib.sha256(native_canonical.encode()).hexdigest(),\n        \"absence_policy\": \"original_verified_primary_observations_preserved\"}\n    # Native proof encoding already normalizes the complete owned JSON tree.\n    # Preserve wrapper key order without encoding that full row again.\n    row = dict(sorted(row.items()))\n    row.update(source_id=SOURCE_ID, source_dataset=SOURCE_DATASET,\n               population_contract=POPULATION_CONTRACT, evidence_json=_json(evidence))\n    return row\n",
+          "sha256": "514b1519a1aba6f1c61d6b9ddd9d9c1ed6b9ef5ad9f2c9d8ca38fd1d62eb1b4a"
+        },
+        "_assessment_valid": {
+          "source": "def _assessment_valid(assessment):\n    if not isinstance(assessment, Mapping) or assessment.get(\"policy\") != POLICY:\n        return False\n    body = {key: value for key, value in assessment.items() if key != \"assessment_sha256\"}\n    if _digest(body) != assessment.get(\"assessment_sha256\"):\n        return False\n    start, end, decision = map(_utc, (assessment[\"start\"], assessment[\"end\"], assessment[\"as_of\"]))\n    return bool(assessment.get(\"symbol\")) and start == start.floor(\"15min\") and end == start+STEP and end <= decision\n",
+          "sha256": "f54458e7c74c14d3022ad19beea6b15b2e654db136012ffc843c776a507cef6a"
+        },
+        "verified_recovery_candle": {
+          "source": "def verified_recovery_candle(candle):\n    \"\"\"Verify frozen source evidence; never reinterpret an older contract.\"\"\"\n    try:\n        if (candle.get(\"population_contract\") != POPULATION_CONTRACT or candle.get(\"source_id\") != SOURCE_ID\n                or candle.get(\"source_dataset\") != SOURCE_DATASET):\n            return False\n        if any(not isinstance(candle.get(key), (bool, np.bool_)) for key in\n               (\"synthetic\", \"no_trade\", \"synthetic_open\", \"synthetic_close\")):\n            return False\n        for key in (*PRICE_FIELDS, \"observed_constituents\", \"synthetic_constituents\", \"source_empty_constituents\"):\n            number = candle.get(key)\n            if isinstance(number, (bool, np.bool_)) or not isinstance(number, (int, float, np.integer, np.floating)) or not math.isfinite(float(number)):\n                return False\n        evidence = candle[\"evidence_json\"]\n        evidence = evidence if isinstance(evidence, Mapping) else json.loads(evidence)\n        if evidence.get(\"aggregation\") != POPULATION_CONTRACT:\n            return False\n        if evidence.get(\"kind\") == \"primary_observed\":\n            original = evidence[\"native_primary\"]\n            if _digest(original) != evidence[\"native_primary_sha256\"]:\n                return False\n            # wrap_primary performs the complete native observation validation.\n            # Repeating it here doubles the same per-minute proof work.\n            expected = wrap_primary(original)\n        else:\n            expected = recovery_candle(evidence[\"assessment\"], evidence[\"session\"])\n            if expected is None:\n                return False\n        # Compare all contract-owned fields, including exact retained evidence.\n        # Callers may add storage/evaluation identifiers without changing meaning.\n        actual = {key: candle.get(key) for key in expected}\n        # Pandas can represent an intentionally absent native clock as NaT/NaN\n        # after mixing derived and observed rows. Only these two nullable fields\n        # may normalize, and only when the frozen evidence expects absence.\n        for key in (\"native_first_opened_at\", \"native_last_opened_at\"):\n            if expected.get(key) is None and pd.isna(actual.get(key)):\n                actual[key] = None\n        if isinstance(actual.get(\"evidence_json\"), Mapping):\n            actual[\"evidence_json\"] = _json(actual[\"evidence_json\"])\n        for key in (\"opened_at\", \"available_at\", \"session_open\", \"session_close\"):\n            actual[key], expected[key] = _utc(actual[key]).isoformat(), _utc(expected[key]).isoformat()\n        # Both expected constructors return canonical JSON values;\n        # only canonical clock strings are assigned above. Validate/normalize\n        # the supplied actual value, retaining the same semantic comparison.\n        return _plain(actual) == expected\n    except (KeyError, TypeError, ValueError, OverflowError, ContractError):\n        return False\n",
+          "sha256": "00fa0d2b8782fdd4b6a0a69aafe8577a86e7b5cc9c12486353330b2df08d976f"
+        }
+      },
+      "extracts_after": {
+        "_utc": {
+          "source": "def _utc(value):\n    stamp = pd.Timestamp(value)\n    if pd.isna(stamp) or stamp.tzinfo is None:\n        raise ContractError(\"Recovery clocks must be timezone aware\")\n    return stamp.tz_convert(\"UTC\")\n",
+          "sha256": "d442a78dfbdc5c0725af9bbb3efe07d568588284db524c911f55ab84aa43ab02"
+        },
+        "_default": {
+          "source": "def _default(value):\n    if isinstance(value, (datetime, pd.Timestamp)):\n        return _utc(value).isoformat()\n    if isinstance(value, (np.integer, np.floating, np.bool_)):\n        return value.item()\n    raise TypeError(type(value).__name__)\n",
+          "sha256": "e277476c484de997abe9d9ceb8aedd8ef73b99362a637c68b41ac977c30e46c2"
+        },
+        "_json": {
+          "source": "def _json(value):\n    return json.dumps(value, sort_keys=True, separators=(\",\", \":\"), default=_default, allow_nan=False)\n",
+          "sha256": "b03c253a2f6399f7c0e48562b4596455f49eb75c129e7c520023e121c183d273"
+        },
+        "_plain": {
+          "source": "def _plain(value):\n    return json.loads(_json(value))\n",
+          "sha256": "4245d0946dfb56dffcd18ff21b857181a71782dbeea4bcd0d07f7425b9c83c63"
+        },
+        "_digest": {
+          "source": "def _digest(value):\n    return hashlib.sha256(_json(value).encode()).hexdigest()\n",
+          "sha256": "9b8915ab6609ffd27c1a6bc739644102caba71aa3d4e38b36e329b0b7212f453"
+        },
+        "_session": {
+          "source": "def _session(session, opened_at):\n    from .data import SessionBounds\n    if isinstance(session, Mapping):\n        session = SessionBounds(str(session[\"session_id\"]), session[\"session_open\"], session[\"session_close\"])\n    if not session.contains(opened_at) or _utc(opened_at) != _utc(opened_at).floor(\"15min\"):\n        raise ContractError(\"Recovery candle is outside its exact session quarter\")\n    return {\"session_id\": str(session.session_id), \"session_open\": _utc(session.opened_at).isoformat(),\n            \"session_close\": _utc(session.closed_at).isoformat()}\n",
+          "sha256": "3ffdb3e70fcfea932ea0a20b56205d62bd88c47809cb5deac36851a8b311f5fb"
+        },
+        "_wrapper": {
+          "source": "def _wrapper(row, evidence):\n    row = _plain(row)\n    row.update(source_id=SOURCE_ID, source_dataset=SOURCE_DATASET,\n               population_contract=POPULATION_CONTRACT, evidence_json=_json(evidence))\n    return row\n",
+          "sha256": "e8ca944141d15e9cb054b5481f8d967669697370027b155c592d7a2dec325c7e"
+        },
+        "wrap_primary": {
+          "source": "def wrap_primary(candle):\n    \"\"\"Retain a genuine primary candle unchanged inside a new-contract wrapper.\"\"\"\n    return _wrap_primary(candle, None)\n",
+          "sha256": "fececd64a7728ccb087250b485f4d18d329fc515f859fc6da7f538b8b3d5f79d"
+        },
+        "_wrap_primary": {
+          "source": "def _wrap_primary(candle, original_canonical):\n    \"\"\"Reuse the verifier's exact canonical text for the first owned copy.\"\"\"\n    if candle.get(\"population_contract\") == POPULATION_CONTRACT:\n        if not verified_recovery_candle(candle):\n            raise ContractError(\"Invalid existing recovered population candle\")\n        return _plain(candle)\n    if not verified_source_observation(candle):\n        raise ContractError(\"Only a verified genuine primary candle can be wrapped\")\n    original = _plain(candle) if original_canonical is None else json.loads(original_canonical)\n    _session(original, original[\"opened_at\"])\n    native_canonical = _json(original)\n    original = json.loads(native_canonical)\n    row = dict(original, native_source_id=original[\"source_id\"], native_source_dataset=original[\"source_dataset\"],\n               native_interval_seconds=60, observation_kind=\"primary_observed\")\n    evidence = {\"aggregation\": POPULATION_CONTRACT, \"kind\": \"primary_observed\",\n        \"native_primary\": original, \"native_primary_sha256\": hashlib.sha256(native_canonical.encode()).hexdigest(),\n        \"absence_policy\": \"original_verified_primary_observations_preserved\"}\n    # Native proof encoding already normalizes the complete owned JSON tree.\n    # Preserve wrapper key order without encoding that full row again.\n    row = dict(sorted(row.items()))\n    row.update(source_id=SOURCE_ID, source_dataset=SOURCE_DATASET,\n               population_contract=POPULATION_CONTRACT, evidence_json=_json(evidence))\n    return row\n",
+          "sha256": "48238d5c042c9a766711dd7c230d3b417a93e0e44c65a25d3130f4a1fba6382d"
+        },
+        "_assessment_valid": {
+          "source": "def _assessment_valid(assessment):\n    if not isinstance(assessment, Mapping) or assessment.get(\"policy\") != POLICY:\n        return False\n    body = {key: value for key, value in assessment.items() if key != \"assessment_sha256\"}\n    if _digest(body) != assessment.get(\"assessment_sha256\"):\n        return False\n    start, end, decision = map(_utc, (assessment[\"start\"], assessment[\"end\"], assessment[\"as_of\"]))\n    return bool(assessment.get(\"symbol\")) and start == start.floor(\"15min\") and end == start+STEP and end <= decision\n",
+          "sha256": "f54458e7c74c14d3022ad19beea6b15b2e654db136012ffc843c776a507cef6a"
+        },
+        "verified_recovery_candle": {
+          "source": "def verified_recovery_candle(candle):\n    \"\"\"Verify frozen source evidence; never reinterpret an older contract.\"\"\"\n    try:\n        if (candle.get(\"population_contract\") != POPULATION_CONTRACT or candle.get(\"source_id\") != SOURCE_ID\n                or candle.get(\"source_dataset\") != SOURCE_DATASET):\n            return False\n        if any(not isinstance(candle.get(key), (bool, np.bool_)) for key in\n               (\"synthetic\", \"no_trade\", \"synthetic_open\", \"synthetic_close\")):\n            return False\n        for key in (*PRICE_FIELDS, \"observed_constituents\", \"synthetic_constituents\", \"source_empty_constituents\"):\n            number = candle.get(key)\n            if isinstance(number, (bool, np.bool_)) or not isinstance(number, (int, float, np.integer, np.floating)) or not math.isfinite(float(number)):\n                return False\n        evidence = candle[\"evidence_json\"]\n        evidence = evidence if isinstance(evidence, Mapping) else json.loads(evidence)\n        if evidence.get(\"aggregation\") != POPULATION_CONTRACT:\n            return False\n        if evidence.get(\"kind\") == \"primary_observed\":\n            original = evidence[\"native_primary\"]\n            original_canonical = _json(original)\n            if hashlib.sha256(original_canonical.encode()).hexdigest() != evidence[\"native_primary_sha256\"]:\n                return False\n            # Preserve the full native/session proof while reusing its canonical text.\n            expected = _wrap_primary(original, original_canonical)\n        else:\n            expected = recovery_candle(evidence[\"assessment\"], evidence[\"session\"])\n            if expected is None:\n                return False\n        # Compare all contract-owned fields, including exact retained evidence.\n        # Callers may add storage/evaluation identifiers without changing meaning.\n        actual = {key: candle.get(key) for key in expected}\n        # Pandas can represent an intentionally absent native clock as NaT/NaN\n        # after mixing derived and observed rows. Only these two nullable fields\n        # may normalize, and only when the frozen evidence expects absence.\n        for key in (\"native_first_opened_at\", \"native_last_opened_at\"):\n            if expected.get(key) is None and pd.isna(actual.get(key)):\n                actual[key] = None\n        if isinstance(actual.get(\"evidence_json\"), Mapping):\n            actual[\"evidence_json\"] = _json(actual[\"evidence_json\"])\n        for key in (\"opened_at\", \"available_at\", \"session_open\", \"session_close\"):\n            actual[key], expected[key] = _utc(actual[key]).isoformat(), _utc(expected[key]).isoformat()\n        # Both expected constructors return canonical JSON values;\n        # only canonical clock strings are assigned above. Validate/normalize\n        # the supplied actual value, retaining the same semantic comparison.\n        return _plain(actual) == expected\n    except (KeyError, TypeError, ValueError, OverflowError, ContractError):\n        return False\n",
+          "sha256": "05ee032f20a028e6f1c9326a1bc56e3569685b48e7609f87f7b04926c88ad443"
+        }
+      }
+    }
+  },
+  "unchanged_dependencies": {
+    "ml/intraday/coverage.py": {
+      "sha256": "a9dffd9d967712b1746ac53c20df236b7d4eaadb3ea47ba13f16ac72c0d2f818",
+      "normalized_sha256": "bf395efe15074b29007fa2f3959e1f301691c075d83902508abd3a021fa2667b",
+      "extracts": {
+        "verified_source_observation": {
+          "source": "def verified_source_observation(candle: Mapping) -> bool:\n    \"\"\"Structural identity and coverage proof for one nonempty source quarter.\"\"\"\n    try:\n        if candle.get(\"population_contract\") != POPULATION_CONTRACT:\n            return False\n        if any(not isinstance(candle.get(key), (bool, np.bool_)) or bool(candle[key])\n               for key in (\"synthetic\", \"no_trade\")):\n            return False\n        prices = [float(candle[key]) for key in (\"open\", \"high\", \"low\", \"close\", \"volume\")]\n        op_price, high, low, close, volume = prices\n        if (not all(math.isfinite(v) for v in prices) or min(prices[:4]) <= 0 or volume < 0\n                or high < max(op_price, close, low) or low > min(op_price, close)):\n            return False\n        if candle.get(\"interval_seconds\") != 900 or candle.get(\"synthetic_constituents\") != 0:\n            return False\n        observed, empty = candle[\"observed_constituents\"], candle[\"source_empty_constituents\"]\n        if (isinstance(observed, (bool, np.bool_)) or isinstance(empty, (bool, np.bool_))\n                or not float(observed).is_integer() or not float(empty).is_integer()\n                or not 1 <= observed <= 15 or empty != 15-observed):\n            return False\n        op, av = _utc(candle[\"opened_at\"]), _utc(candle[\"available_at\"])\n        if op != op.floor(_SOURCE_QUARTER) or av < op+STEP:\n            return False\n        evidence = candle[\"evidence_json\"]\n        evidence = evidence if isinstance(evidence, Mapping) else json.loads(evidence)\n        if evidence.get(\"aggregation\") != POPULATION_CONTRACT or evidence.get(\"source_id\") != candle[\"source_id\"] or evidence.get(\"source_dataset\") != candle[\"source_dataset\"]:\n            return False\n        coverage = evidence[\"source_coverage\"]\n        if not coverage.get(\"basis\") or _utc(coverage[\"opened_at\"]) > op or _utc(coverage[\"closed_at\"]) < op+STEP:\n            return False\n        from .data import _require_native_observations\n        _require_native_observations([candle, *evidence[\"observations\"]])\n        native_step = pd.Timedelta(minutes=1)\n        times = [_utc(row[\"opened_at\"]) for row in evidence[\"observations\"]]\n        if (len(times) != observed or len(set(times)) != len(times) or times != sorted(times)\n                or any(t < op or t+native_step > op+STEP or t != t.floor(_NATIVE_MINUTE) for t in times)):\n            return False\n        if _utc(candle[\"native_first_opened_at\"]) != times[0] or _utc(candle[\"native_last_opened_at\"]) != times[-1]:\n            return False\n        for row, opened in zip(evidence[\"observations\"], times):\n            if row.get(\"source_id\") != candle[\"source_id\"] or row.get(\"synthetic\") is not False:\n                return False\n            available = _utc(row[\"available_at\"])\n            if available > av or available < opened+native_step:\n                return False\n            vals = [float(row[key]) for key in (\"open\",\"high\",\"low\",\"close\",\"volume\")]\n            a,h,l,c,v = vals\n            if not all(math.isfinite(x) for x in vals) or min(vals[:4])<=0 or v<0 or h<max(a,c,l) or l>min(a,c):\n                return False\n        native = evidence[\"observations\"]\n        aggregates = {\"open\": native[0][\"open\"], \"high\": max(row[\"high\"] for row in native),\n                      \"low\": min(row[\"low\"] for row in native), \"close\": native[-1][\"close\"],\n                      \"volume\": sum(row[\"volume\"] for row in native)}\n        if any(not math.isclose(float(candle[key]), float(value), rel_tol=1e-12, abs_tol=1e-12)\n               for key, value in aggregates.items()):\n            return False\n        return True\n    except (KeyError, TypeError, ValueError, OverflowError, ContractError):\n        return False\n",
+          "sha256": "961e7154a46fe55bc20a16035689b5ea51fc759aa28688fdeb87a23f99f4a9a0"
+        }
+      }
+    },
+    "ml/intraday/data.py": {
+      "sha256": "7bf155050d80405b07fd6b6e6475cdd8cb352db888e3bea7e401b160f249e06f",
+      "normalized_sha256": "db76cb5b82ce6f7fcbfea3563bfc61f1b0c15d91773c476451d999f1ae77e96d",
+      "extracts": {
+        "SessionBounds": {
+          "source": "@dataclass(frozen=True)\nclass SessionBounds:\n    session_id: str\n    opened_at: str\n    closed_at: str\n    policy: str = \"explicit-session-bounds\"\n\n    def contains(self, opened_at, duration=STEP) -> bool:\n        start = utc(opened_at)\n        return utc(self.opened_at) <= start and start + duration <= utc(self.closed_at)\n",
+          "sha256": "c9ac2c1658dbe974e1c153072fb27a4c2a40bfbba92f66b08cf33dd144316fc4"
+        },
+        "_require_native_observations": {
+          "source": "def _require_native_observations(rows):\n    \"\"\"Never erase explicit synthetic provenance while normalizing native rows.\"\"\"\n    from ml.market_gap_evidence import MARKERS as markers\n    def valid_flag(value):\n        return isinstance(value, (bool, np.bool_)) and not bool(value)\n    def valid_count(value):\n        return (not isinstance(value, (bool, np.bool_))\n                and isinstance(value, (int, float, np.integer, np.floating))\n                and math.isfinite(float(value)) and float(value) == 0)\n    if isinstance(rows, pd.DataFrame):\n        invalid = any(not rows[key].map(valid_flag).all() for key in markers if key in rows)\n        invalid |= (\"synthetic_constituents\" in rows\n                    and not rows.synthetic_constituents.map(valid_count).all())\n    else:\n        invalid = any(any(key in row and not valid_flag(row[key]) for key in markers)\n            or (\"synthetic_constituents\" in row and not valid_count(row[\"synthetic_constituents\"]))\n            for row in rows)\n    if invalid:\n        raise ContractError(\"Native source observations cannot contain synthetic or no-trade markers\")\n",
+          "sha256": "f1d7850b8265f7489e4b810a639ca8355e52cd3aac1e46bf87e9f3dcbc31f431"
+        }
+      }
+    }
+  },
+  "markers": [
+    "synthetic",
+    "is_synthetic",
+    "is_derived",
+    "no_trade",
+    "is_no_trade",
+    "source_empty",
+    "is_source_empty",
+    "synthetic_open",
+    "synthetic_close"
+  ],
+  "limits": [
+    "Portable tests execute exact extracted primary wrapper, validation and JSON helpers with standard-library date/numeric/session interface doubles. They do not certify pandas/numpy behavior beyond tested equivalent interfaces.",
+    "Full local source regression with real pandas/numpy and exact retained large-population experiment remain separate.",
+    "No live latency attribution or recovery is claimed; publication, installation, loading and natural exercise are separate.",
+    "Alternate-provider constructors remain unchanged and are covered by whole-module narrow-delta review and separate full-source checks."
+  ]
+}
