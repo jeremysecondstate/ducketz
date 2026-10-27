@@ -37,6 +37,7 @@ from .intentions import IntentionStore
 from .prediction import ContractError, digest, encoded, instant
 from .store import utcnow
 from .scout_session_books import ScoutBooks
+from .scout_journal import ScoutJournal
 from .scout_broker import ScoutBrokerAdapter
 from .scout_client import ScoutClient, exception_details
 from .local_forecast import forecast_disposition
@@ -50,6 +51,11 @@ MODE = 'scout-local-broker-account'
 PREFIX = 'scout-local:'
 _NATIVE_PREPARED_DELETE = SchwabSession.cancel_prepared_order
 _CANCELLATION_NOT_SENT = 'scout-local-native-cancellation-not-sent-v1'
+_NATIVE_PROJECTION_READERS = (
+    ('lookup_reservation', ScoutJournal.lookup_reservation),
+    ('order_state', ScoutJournal.order_state),
+    ('lookup_reservation_with_order_state', ScoutJournal.lookup_reservation_with_order_state),
+)
 
 
 class _CancellationForecastIneligible(ContractError):
@@ -247,8 +253,17 @@ class ScoutLocalAccountExecutor:
         return self._recover_record(journal, old), None
 
     def _project(self, journal, record, forecast, disposition):
-        order = self._order(journal, record)
-        lifecycle = journal.order_state(record['request']['request_id'])
+        # This projection gets its own fresh audit after recovery. Never
+        # reuse a recovery pair across IO or bypass a custom reader/order view.
+        if (record['state'] == 'ACCEPTED' and type(journal) is ScoutJournal
+                and self._order is _NATIVE_PROJECT_ORDER
+                and all(getattr(getattr(journal, name, None), '__func__', None) is native
+                        for name, native in _NATIVE_PROJECTION_READERS)):
+            order, lifecycle = journal.lookup_reservation_with_order_state(
+                record['grant']['reservation_id'], expected_request_id=record['request']['request_id'])
+        else:
+            order = self._order(journal, record)
+            lifecycle = journal.order_state(record['request']['request_id'])
         return self._record(forecast, disposition, order=order, require_original_intention=True,
             evidence=dict(request_id=record['request']['request_id'], local_state=record['state'],
                           order_evidence=lifecycle['evidence']))
@@ -704,3 +719,6 @@ _LOCAL_AUTHORIZATION_CODE = next(code for code in ScoutLocalAccountExecutor._ste
                                  if getattr(code, 'co_name', None) == 'local_authorization')
 _LOCAL_SEND_CODE = next(code for code in ScoutLocalAccountExecutor._step.__code__.co_consts
                         if getattr(code, 'co_name', None) == 'send')
+
+# An overridden order projection retains the original separate reader path.
+_NATIVE_PROJECT_ORDER = ScoutLocalAccountExecutor._order
