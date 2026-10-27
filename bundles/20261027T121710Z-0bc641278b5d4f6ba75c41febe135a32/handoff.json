@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T12:17:10.570869Z",
+  "id": "20261027T121710Z-0bc641278b5d4f6ba75c41febe135a32",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout added explicit bounded native expiry maintenance with immutable receipts, reviewed task fences and preserved ordinary collection behavior."
+}

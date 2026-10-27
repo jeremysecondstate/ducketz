@@ -1,0 +1,31 @@
+{
+  "author": "Scout",
+  "change_id": "20261027T120048Z-2fee675f9ed6469d9f087f3f26ec88ff",
+  "files": [
+    "ml/intraday/market_collection.py",
+    "tests/test_intraday_market_collection_expiry_maintenance.py",
+    "docs/development/market-collection-expiry-maintenance.md"
+  ],
+  "limitations": [
+    "The helper only amortizes explicit native expiry transitions; queue JSON still needs complete reads and a fenced write. Offline checks do not establish live latency recovery, market coverage or an external lock holder.",
+    "Production maintenance uses current engineering and data review under existing authority, empty provider adapters, exact saved task hashes and native locks. Ordinary scheduling does not invoke this API.",
+    "Private operating evidence, raw data, models, recipes, credentials and task state remain local."
+  ],
+  "main_sha": "a77df7a014248c10dfad83af6a09412962349872",
+  "privacy_review": "Reviewed shared source and offline-test facts only; no private operating evidence, local paths, credentials, models or task state.",
+  "repository": "jeremysecondstate/ducketz",
+  "review_urls": [
+    "https://github.com/jeremysecondstate/ducketz/pull/433"
+  ],
+  "runtime_implications": "Source integration, local installation, actual worker loading and affected behavior are separate facts. Compatible Scout source loads at the next safe automatic replacement inside an already authorized run; manual stop and the original deadline remain authoritative. Explicit reviewed maintenance can use the installed native helper without provider adapters.",
+  "scope": "Shared native collection processing correctness and explicit maintenance API. Each PC retains its own symbols, private scientific recipe, operating bindings and independent trading state.",
+  "source_branch": "codex/scout/20261027T120048Z-2fee675f9ed6469d9f087f3f26ec88ff",
+  "source_record": "20261027T120048Z-2fee675f9ed6469d9f087f3f26ec88ff",
+  "source_sha": "3838e782443e3cb50ad3fbe35e97a5269c2f7b33",
+  "summary": "Scout added explicit bounded native expiry maintenance with immutable receipts, reviewed task fences and preserved ordinary collection behavior.",
+  "tests": [
+    "Source, isolated courier and reviewed current-main candidates each passed 201 tests across seven whole modules with zero skips. The three stage counts overlap.",
+    "All stages bind 94 exact owned and dependency fingerprints; import evidence and final raw Git blobs verify.",
+    "Fixtures cover strict reviewed task identity, native expiry and orphan receipts, indexes, lock contention, concurrent update fencing, interruption, nonfinite queues and unchanged ordinary selection and retry behavior."
+  ]
+}
