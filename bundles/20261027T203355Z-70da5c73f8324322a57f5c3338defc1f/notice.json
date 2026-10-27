@@ -1,0 +1,61 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261027T202353Z-02eb354c534240fc9934cb8f9c8445d0",
+  "change_id": "20261027T202353Z-02eb354c534240fc9934cb8f9c8445d0",
+  "details": [
+    "Actor Atlas; task ATLAS Trader Representative; shared source applicability on both PCs. Preserve full public sizing validation while reusing its fresh owned indicator payload within one sizing call, removing the repeated decode and canonical hash of the same immutable payload.",
+    "Correct two existing source-readiness call names for the sizing helper and capacity helper. Preserve the existing readiness criteria, full forecast/source/session proof checks, original probabilities and targets, independent execution state, order controls and manual session lifetime.",
+    "Publish only exact reviewed preimage patches, complete extracted source/dependency metadata and an offline parity checker. Each PC reviews matching hunks while retaining local source composition, symbol policy and private bindings."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_owned_indicator_reuse.py",
+      "sha256": "25814c1630f9ec38d3cb642ca4c5ca181d5e6af75abe69639d61b69a708390a0"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-owned-indicator-reuse.json",
+      "sha256": "23fcfb7aa47333e4569a4146b157ddbefb650d169a89b7d56188418921ad1b1a"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-owned-indicator-reuse.patch",
+      "sha256": "bf311c030c062a1a37d3221c020870cd30b5909aa82a0e00338335d83fe5b58e"
+    }
+  ],
+  "limitations": [
+    "37 portable source/ownership parity cases and 251 actual composed candidate cases (37 direct plus 214 pytest) pass with network denied. They do not establish installed code or naturally exercised live behavior.",
+    "Full retained sizing preserves the same 139119095 canonical result bytes, 23606 native proofs and 23744 session checks. One whole-sizing pair was 22.620415 versus 21.494800 seconds; other whole-run variance is not wholly attributed to this repair. Instrumented payload validation calls fall from two to one, saving about 1.16 seconds in that pair. Broad sustained latency recovery remains unproved.",
+    "Original five baseline readiness failures and earlier incomplete fixture/overlay harness failures remain retained privately. The final complete physical source graph with unchanged test and command fixtures passes all 251 checks."
+  ],
+  "local_installation": "Complete531-source generation 2249ba42547605c5a24868b34fa07df5693da948af83f8a5d9a512d537c7bbb8 sealed after exact preimage installation and full source/runtime verification. Three reviewed source members changed from the concurrent completed repair;528 parent members and frozen runtime retained. Actual sealed composed source passed248 offline checks (34realTA plus214 adjacent). The original component251-case result is a separate graph.",
+  "main_commit": "0d9c9894fc03431cec0efb9d17c79cfc2bff44c3",
+  "natural_affected_exercise": "The broad latency incident remains open. Exact retained replay preserves139119095 canonical result bytes,23606 native proofs and23744 session checks. Two indicator payload validation calls become one. Pair timings and their attribution limits remain recorded; sustained affected live recovery is unproved.",
+  "privacy_review": "Generic source, applicability and actual check/install facts only. Private full source composition, original input/account/model/ledger state, process/session/native bindings and task memory remain local. Each PC preserves its own science and symbols. No peer acceptance or nightly prerequisite.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/461",
+  "readiness_repair": "Original unchanged baseline reproduced five stale capacity-call-name failures. Existing step-to-capacity-helper and starter-to-sizing-helper call names now follow actual calls. No added readiness criterion or operating prerequisite.",
+  "related_completion": "20261027T195236Z-010a1fe7eab644fba69421345ccbe403",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Apply matching exact reviewed source hunks while preserving local composition, science, policy and private bindings. Seal the complete exact-byte installed generation with tools/trader_installation.py. Planned renewal remains within an existing manually started session; no initial start, post-stop restart, lifetime extension, broker/provider/order action or live infrastructure exercise. Publication, installation, loaded code and affected natural exercise remain separate.",
+  "runtime_loading": "Publication and actual installed checks do not establish a running process in-memory digest or affected natural behavior. Only ordinary renewal inside an already manually started own session may supply later evidence. No runtime operation was induced.",
+  "scope": "shared",
+  "source_commit": "1b2a462000ed54783f2d13335b32de66a51bb7d3",
+  "source_composition": "Preserve concurrent reviewed snapshot-guard repair 20261027T201904Z-658f5dad4a1d4854a0b0b20989f064c7 and its completed installation. Explicit ownership resolution and independent union review combine its existing starter change with this immutable component; local starter bytes therefore differ from this component preimage package. Apply matching reviewed hunks while retaining both repairs, then seal the complete locally composed graph. No writer was overwritten.",
+  "summary": "Atlas sizing reuses validated owned indicator payload; existing readiness call wiring corrected",
+  "tests": [
+    {
+      "command": "python -B tests/check_intraday_owned_indicator_reuse.py",
+      "network_calls": 0,
+      "passed_cases_each": 37,
+      "scope": "Immutable queue, isolated source and fresh common main"
+    },
+    {
+      "adjacent_pytest_cases": 214,
+      "direct_real_TA_cases": 34,
+      "network_calls": 0,
+      "passed_cases": 248,
+      "scope": "Actual complete sealed local source after explicit concurrent-component composition"
+    }
+  ]
+}

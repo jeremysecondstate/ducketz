@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-27T20:33:55.490610Z",
+  "id": "20261027T203355Z-70da5c73f8324322a57f5c3338defc1f",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas sizing reuses validated owned indicator payload; existing readiness call wiring corrected"
+}
