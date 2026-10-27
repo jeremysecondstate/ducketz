@@ -1,0 +1,108 @@
+{
+  "schema": "intraday-forecast-record-reuse-v1",
+  "targets": {
+    "ml/intraday/intentions.py": {
+      "before_sha256": "9e63f2be236bebe5f2fcc5d5bc78608a27749b2677e7a4e46d4c00f4b14705fb",
+      "after_sha256": "f9a1d157b0f31c231094f310ed6be12918398399783c03dc07cdacba87a2a77a",
+      "before_bytes": 52999,
+      "after_bytes": 55774,
+      "unchanged_methods": {
+        "_forecast": {
+          "owner": "IntentionStore",
+          "sha256": "5e2d8d5d670338192101983b8c0a824c4ec232b503f5231f829aab9155c167c1"
+        },
+        "_ordinary_forecast_marker": {
+          "owner": "IntentionStore",
+          "sha256": "95886498c5d8a5b137c78991717a0efd1d2244884fd6716b556fbffbda96e757"
+        },
+        "record": {
+          "owner": "IntentionStore",
+          "sha256": "9231b06b81385371b00d73045576bb033d635d016700b32162352bc5b5610a5c"
+        },
+        "save_sizing": {
+          "owner": "IntentionStore",
+          "sha256": "98850f7dbe5c7eaa202e5a6b855ab8af5cb9a208d6e605435194cfce4ecd3cc3"
+        }
+      }
+    },
+    "ml/intraday/account_execution.py": {
+      "before_sha256": "64725d7fb75c927c0889866b9a7adc1de66ded3e1e692e75cbb029e9b4c8c7f2",
+      "after_sha256": "7f11185623a586e03ec312ed53411f50c29ba7bbcf2a5e17d52fff1722622e20",
+      "before_bytes": 91012,
+      "after_bytes": 91267,
+      "unchanged_methods": {
+        "_submission_capacity": {
+          "owner": "IntradayAccountExecutor",
+          "sha256": "374cce9ac1428f257dcdc746e7dc9afef2af4153da72180d06394bf4ef8fae5c"
+        },
+        "_submit": {
+          "owner": "IntradayAccountExecutor",
+          "sha256": "8bf750fb60abe97c3a97e859e7fdc267eb8f268d08b935213e2096162b4a99f3"
+        },
+        "_account": {
+          "owner": "IntradayAccountExecutor",
+          "sha256": "d794ada71572cdd1a2b0f4ba22eb667e65b8792cea07df8ca0b04561b86c93b5"
+        },
+        "_capture": {
+          "owner": "IntradayAccountExecutor",
+          "sha256": "82eed7b0db62121838401dd7823cec67fe714fe3309548f4e3aa55035990ff49"
+        }
+      }
+    }
+  },
+  "scope": "Shared one-step final capacity/submission forecast validation reuse; preserve original full validators, exact source markers, scientific payloads and independent execution controls.",
+  "patch_sha256": "e3b334397657ec9e9e0288c3c31791f7b224303811735d61499748c5201bd092",
+  "expected_hunks": 9,
+  "contextvar_source": "_FORECAST_RECORD_SCOPE = ContextVar('intraday_forecast_record_scope', default=None)\n",
+  "owned_functions": {
+    "_forecast_record_scope": {
+      "target": "ml/intraday/intentions.py",
+      "owner": null,
+      "source": "@contextmanager\ndef _forecast_record_scope(owner):\n    previous = _FORECAST_RECORD_SCOPE.get()\n    if previous is not None:\n        previous[1].clear()  # Nested work cannot retain another large proof.\n    proofs, active = {}, [True]\n    token = _FORECAST_RECORD_SCOPE.set((owner, proofs, get_ident(), active))\n    try:\n        yield\n    finally:\n        active[0] = False  # Copied contexts cannot extend this call's lifetime.\n        proofs.clear()\n        _FORECAST_RECORD_SCOPE.reset(token)\n",
+      "sha256": "90bc9fa568d32b3b2c3420197a7cbd55e27ec03535c1bde14a9785f9206e913a"
+    },
+    "_clear_forecast_record_scope": {
+      "target": "ml/intraday/intentions.py",
+      "owner": null,
+      "source": "def _clear_forecast_record_scope(owner):\n    scope = _FORECAST_RECORD_SCOPE.get()\n    if scope is not None and scope[0] is owner and scope[2] == get_ident() and scope[3][0]:\n        scope[1].clear()\n",
+      "sha256": "b2d8a5ba45e3aec7ed85c181b1bbfb1a4fb6bfa49834214c8fe702ccd280f431"
+    },
+    "_ordinary_forecast_preflight": {
+      "target": "ml/intraday/intentions.py",
+      "owner": "IntentionStore",
+      "source": "def _ordinary_forecast_preflight(self, forecast):\n    \"\"\"Close a complete original-validation read before taking a writer.\n\n    The caller holds the store lock through its final write transaction.\n    Normally the independent tree belongs only to this record. A private\n    final capacity/submission scope may retain one unchanged original until\n    that step returns; fresh markers and full caller equality still apply.\n    Cold sizing reads discard the proof before decoding research evidence.\n    \"\"\"\n    with _ordinary.context(self.store.connect(), \"preflight_connection_open\", \"preflight_connection_close\") as db:\n        with _ordinary.phase(\"preflight_begin\"):\n            db.execute(\"BEGIN\")\n        with _ordinary.phase(\"preflight_marker\"):\n            marker = self._ordinary_forecast_marker(db, forecast[\"forecast_id\"])\n        scope = _FORECAST_RECORD_SCOPE.get()\n        proofs = (scope[1] if scope is not None and scope[0] is self\n                  and scope[2] == get_ident() and scope[3][0] else None)\n        previous = proofs.get(forecast[\"forecast_id\"]) if proofs is not None else None\n        if marker is not None and previous is not None and previous[0] == marker:\n            original = previous[1]\n        else:\n            # Drop the old independent tree before decoding a changed one.\n            if proofs is not None:\n                proofs.clear()\n            previous = None\n            with _ordinary.phase(\"preflight_payload_read\"):\n                row = db.execute(\"SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload \"\n                                 \"FROM forecasts WHERE id=?\", (forecast[\"forecast_id\"],)).fetchone()\n            if row is None:\n                raise ContractError(\"Intention requires the original saved forecast\")\n            _ordinary.payload(row[6])\n            with _ordinary.phase(\"preflight_payload_validate\"):\n                original = self.store._forecast_value(row)\n        with _ordinary.phase(\"preflight_caller_compare\"):\n            if original != forecast:\n                raise ContractError(\"Intention requires the original saved forecast\")\n        if (proofs is not None and scope[3][0]\n                and _FORECAST_RECORD_SCOPE.get() is scope):\n            # Retain one independently decoded original, never the caller's\n            # mutable tree. An uncertain source cannot authorize reuse.\n            proofs.clear()\n            if marker is not None:\n                proofs[forecast[\"forecast_id\"]] = (marker, original)\n    return marker, original\n",
+      "sha256": "5ad7c43e98cb7f363a3317cbe50897aaf5cd79c9c1391dca0d5caca81bc61d3e"
+    },
+    "_ordinary_forecast_recheck": {
+      "target": "ml/intraday/intentions.py",
+      "owner": "IntentionStore",
+      "source": "def _ordinary_forecast_recheck(self, db, forecast, marker, original):\n    # Both branches retain full caller equality, including nested/extra\n    # fields. Optional markers only avoid decoding the same original again.\n    with _ordinary.phase(\"writer_marker\"):\n        changed = marker is None or marker != self._ordinary_forecast_marker(db, forecast[\"forecast_id\"])\n    if changed:\n        _clear_forecast_record_scope(self)\n        self._forecast(db, forecast)\n    else:\n        with _ordinary.phase(\"writer_caller_compare\"):\n            if original != forecast:\n                raise ContractError(\"Intention requires the original saved forecast\")\n",
+      "sha256": "63ae604db0ce1fe4f8cb6debc8798cdb04b1f0de8d802aebf04258f22c7275d4"
+    }
+  },
+  "step_scope_source": "with _forecast_record_scope(self.intents):\n    capacity, quote = self._submission_capacity(forecast, original)\n    if not capacity.adjusted_quantity:\n        return self._record(forecast, capacity.disposition, capacity=capacity,\n                             evidence={\"snapshot_id\":self.snapshot_id})\n    return self._submit(forecast, capacity, quote, window, original)\n",
+  "step_before_ast_sha256": "46cb80ed14d39817a7997c016b9b33ffae12413425520984d71fad5747212584",
+  "step_after_ast_sha256": "7a03447a8f4e1942483ba3fc643f667b4780d4c5f7603b36acddde66cad4e867",
+  "unchanged_step_after_removing_scope": true,
+  "clear_only_methods": {
+    "_ordinary_forecast_recheck": {
+      "owner": "IntentionStore",
+      "before_ast_sha256": "4ccacbcbec692541db88581c840b6626b087797ccde7fdf87551d7a4bcc91e8a",
+      "after_source_sha256": "63ae604db0ce1fe4f8cb6debc8798cdb04b1f0de8d802aebf04258f22c7275d4",
+      "only_owned_clear_added": true
+    },
+    "_revision_sizing_row": {
+      "owner": "IntentionStore",
+      "before_ast_sha256": "ed311a005acd5966834f55bb2351700469d6b4fd191f6dcc6785d94746218cb6",
+      "after_source_sha256": "cc5863212cdaa7122dfdf1e6ecbe6bf692878850bb6a305f1cd512151b4a9e97",
+      "only_owned_clear_added": true
+    }
+  },
+  "limitations": [
+    "Portable tests execute only the owned scope/preflight/recheck with a strict SQLite-backed fake full original/hash/index validator. Complete production marker/original-validator and application checks remain separate.",
+    "Only a fresh matching optional source marker permits scoped reuse; uncertain or changed markers keep complete original validation. Every caller equality includes nested/extra fields.",
+    "A single independent validated tree exists only inside final capacity/submission; scientific sizing, source data, probabilities, target definitions, orders, clocks and manual controls remain unchanged.",
+    "Exact full-source hashes bind reviewed Atlas composition; peers apply only reviewed hunks while preserving local operating and scientific policy.",
+    "Source publication, local installation, loaded code and naturally exercised behavior remain separate facts. No live latency recovery assertion or service authority."
+  ]
+}
