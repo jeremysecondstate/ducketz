@@ -30,6 +30,7 @@ import stat
 import uuid
 
 from .scout_protocol import Grant, Request, PARTICIPANT_ID, STREAM, canonical_sha256, _canonical_bytes
+from . import scout_protocol as _scout_protocol
 from .dataset_diagnostics import recovery_phase
 
 
@@ -88,6 +89,41 @@ def _checked_json(payload, digest):
         return value
     except (ValueError, TypeError, UnicodeError, RecursionError) as exc:
         raise JournalCorruptionError("Invalid stored canonical payload") from exc
+
+
+def _record_validation_key(payload, digest):
+    """Key only exact flat DTO values; never coerce bool/float/custom values."""
+    if (type(payload) is not dict or not _hash(digest)
+            or any(type(key) is not str or type(value) not in (str, int)
+                   for key, value in payload.items())):
+        return None
+    return (tuple((key, type(value), value) for key, value in sorted(payload.items())), digest)
+
+
+def _record_validation_contract():
+    # An override retains its original validation calls, including changes made
+    # between rows of the same audit. No custom DTO behavior is memoized.
+    try:
+        return (Request, Grant,
+                *(vars(kind).get(name) for kind in (Request, Grant)
+                  for name in ("__init__", "__post_init__", "payload", "from_payload", "sha256", "validate", "__eq__", "__hash__")),
+                *(_scout_protocol.__dict__.get(name) for name in
+                  ("_payload", "_from_payload", "_json_value", "canonical_sha256",
+                   "_string", "_positive_integer", "_timestamp", "Request", "Grant",
+                   "SCHEMA_VERSION", "PARTICIPANT_ID", "STREAM", "MAX_INTEGER",
+                   "MAX_DECIMAL_LENGTH", "MAX_DECIMAL_SCALE", "_ID", "_SYMBOL",
+                   "_HASH", "_DECIMAL", "_TIME", "fields", "asdict", "datetime",
+                   "timezone", "Mapping", "ProtocolError")),
+                _scout_protocol.hashlib.sha256, _scout_protocol.json.dumps,
+                _scout_protocol.math.isfinite, _hash)
+    except (TypeError, AttributeError):
+        return None
+
+
+def _native_record_validation():
+    current = _record_validation_contract()
+    return (current is not None and len(current) == len(_NATIVE_DTO_VALIDATION)
+            and all(actual is native for actual, native in zip(current, _NATIVE_DTO_VALIDATION)))
 
 
 def _text(value, name):
@@ -250,13 +286,20 @@ class ScoutJournal:
                 with recovery_phase('journal_close', journal=self):
                     db.close()
 
-    def _validate_record(self, record, *, event=False):
+    def _validate_record(self, record, *, event=False, _validation_memo=None):
         keys = _RECORD_KEYS - {"send_token"} | {"send_token_sha256"} if event else _RECORD_KEYS
         if type(record) is not dict or set(record) != keys:
             raise JournalCorruptionError("Invalid record fields")
-        request = Request.from_payload(record["request"])
-        if request.payload() != record["request"] or request.sha256 != record["request_sha256"]:
-            raise JournalCorruptionError("Immutable request differs")
+        memo = (_validation_memo if _validation_memo is not None
+                and _native_record_validation() else None)
+        request_key = _record_validation_key(record["request"], record["request_sha256"]) if memo is not None else None
+        request = memo[0].get(request_key) if request_key is not None else None
+        if request is None:
+            request = Request.from_payload(record["request"])
+            if request.payload() != record["request"] or request.sha256 != record["request_sha256"]:
+                raise JournalCorruptionError("Immutable request differs")
+            if request_key is not None:
+                memo[0][request_key] = request
         if any(record["request"][key] != self.binding[key] for key in _REQUIRED_BINDING):
             raise JournalCorruptionError("Request differs from journal binding")
         grant = record["grant"]
@@ -264,9 +307,15 @@ class ScoutJournal:
             if record["grant_sha256"] is not None:
                 raise JournalCorruptionError("Missing grant with stored hash")
         else:
-            parsed = Grant.from_payload(grant).validate(request)
-            if parsed.payload() != grant or parsed.sha256 != record["grant_sha256"]:
-                raise JournalCorruptionError("Immutable grant differs")
+            grant_key = _record_validation_key(grant, record["grant_sha256"]) if memo is not None else None
+            if grant_key is not None:
+                grant_key = (grant_key, request)
+            if grant_key is None or grant_key not in memo[1]:
+                parsed = Grant.from_payload(grant).validate(request)
+                if parsed.payload() != grant or parsed.sha256 != record["grant_sha256"]:
+                    raise JournalCorruptionError("Immutable grant differs")
+                if grant_key is not None:
+                    memo[1][grant_key] = True
         state = record["state"]
         token = record["send_token_sha256" if event else "send_token"]
         order_id, reason = record["broker_order_id"], record["revoke_reason"]
@@ -310,6 +359,18 @@ class ScoutJournal:
 
     def _audit(self, db, *, legacy=False, include_lifecycle=False):
         with recovery_phase('journal_full_audit', journal=self):
+            # Local to this exact audit, including concurrent/reentrant calls.
+            # Every stored row still gets its fresh canonical/hash check and
+            # complete replay. No state survives the transaction or broker IO.
+            validation_memo = ({}, {})
+
+            def validate(record, *, event=False):
+                validator = self._validate_record
+                if getattr(validator, "__func__", None) is _NATIVE_VALIDATE_RECORD:
+                    validator(record, event=event, _validation_memo=validation_memo)
+                else:
+                    validator(record, event=event)
+
             try:
                 rows = list(db.execute("SELECT id, payload, sha256 FROM control"))
                 if len(rows) != 1 or rows[0][0] != 1:
@@ -336,7 +397,7 @@ class ScoutJournal:
                     if recorded_at.tzinfo is None or recorded_at.utcoffset() is None:
                         raise JournalCorruptionError("Outbox timestamp lacks a timezone")
                     record, rid = event["record"], event["request_id"]
-                    self._validate_record(record, event=True)
+                    validate(record, event=True)
                     if rid != record["request"]["request_id"] or event["request_sha256"] != record["request_sha256"]:
                         raise JournalCorruptionError("Outbox request differs")
                     self._replay(replayed.get(rid), record, event["kind"])
@@ -361,7 +422,7 @@ class ScoutJournal:
                 records = {}
                 for rid, raw, digest in db.execute("SELECT request_id, payload, sha256 FROM records"):
                     record = _checked_json(raw, digest)
-                    self._validate_record(record)
+                    validate(record)
                     if rid != record["request"]["request_id"] or _event_record(record) != replayed.get(rid):
                         raise JournalCorruptionError("Current record differs from durable history")
                     records[rid] = record
@@ -889,3 +950,9 @@ class ScoutJournal:
                 raise JournalStateError("Cancellation send attempt ID reused")
             self._append_lifecycle(db, control, rid, "CANCEL_EVENT", detail, state, event_id)
             return deepcopy(state)
+
+
+# Stable original identities: class/instance overrides keep the legacy call
+# signature. These are not updated when a caller replaces a public attribute.
+_NATIVE_VALIDATE_RECORD = ScoutJournal._validate_record
+_NATIVE_DTO_VALIDATION = _record_validation_contract()
