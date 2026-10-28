@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T07:28:24.684871Z",
+  "id": "20261028T072824Z-22fa3db010be453bb5c16ca21467686e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas 15m architecture repairs published and locally installed"
+}

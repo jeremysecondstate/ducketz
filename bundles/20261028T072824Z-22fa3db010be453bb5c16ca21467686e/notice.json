@@ -1,0 +1,115 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T072103Z-36434456609e4a5c9dc7fbf967e0167f",
+  "change_id": "20261028T072103Z-36434456609e4a5c9dc7fbf967e0167f",
+  "details": [
+    "Bound independent preparation by the existing worker allocation, preserving full-scope frozen policy and original causal references.",
+    "Isolate corrupt execution/scoring originals without reviving superseded work or changing pending orders and UNKNOWN fences.",
+    "Reduce empty model-worker renewals, retain durable per-symbol deferrals and remove redundant snapshot serialization.",
+    "Record actual worker bootstrap source/runtime identity diagnostically; preserve local recipes, bindings and lifecycle authority."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/split_model.py",
+      "sha256": "f0a33616b77a74a821722a7d128d55dd142f3196cef7717050511f9f663db30d"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/split_scoring.py",
+      "sha256": "64e4c7a56414b39fd241ba9032cbf0b072ba0c5fbe093aa709df6bff75732932"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/split_service.py",
+      "sha256": "aece178a537951ed68fb1a35d0a9f4e45f5ec2adbf32495b39a27e8370bcfa08"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/split_queue.py",
+      "sha256": "50a0130bded806048d6378c014ba080546cab60274086f9ff021c0ee36111a7a"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_model_admission.py",
+      "sha256": "8262fe981d182119b5affdbc517676dcf8cf30bc16ed037d43e8e552beace254"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_scoring_continuation.py",
+      "sha256": "ddf868524fb16eca5386298e3e3613bc545c020f4979d04adc086711383c7055"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_queue.py",
+      "sha256": "6dbdbf28f4ffbf7310b6364da4db2f2807ebe5c90a99af9122acc52e2ec6d2e3"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_trader_worker_loaded_evidence.py",
+      "sha256": "576bf4ed02cda64ea7defacfe85cc9242d0d684862e403186142448b73be7518"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_preparation_fairness.py",
+      "sha256": "6d0afa1e615c89198c1ad4faafac0e239eacd06895371976eb443e800b856c13"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/check_trader_worker_failure_evidence.py",
+      "sha256": "fb84806bbff48900c0e7dac8990fb59ac3ccae7a2d8eb35ee6d828d91af9ef85"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_atlas_intraday_audit_package.py",
+      "sha256": "9add3355f8434f32b4cdfc8bb8b7e8e048afe4cf33e6de090ad7602fcf6c772a"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/atlas-intraday-audit.md",
+      "sha256": "a4854d11bd16eb8c21a491a70139705c4c9cba46648b8f75641cb56d0f8898a0"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/atlas-intraday-audit.patch",
+      "sha256": "6f2fcf6d2863bb8cc1dce5ce2d4094feb9f2ddd72671b6945654dfe9c371eb5c"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/atlas-intraday-audit.json",
+      "sha256": "0d45cfe4a0c55c03ade247a0f8d25d93a88bed274725495d51189162a682ba23"
+    }
+  ],
+  "installed_generation": "e5567780caccb525978d2be37dd1baca3e65e3f703fd89307c9c37a7fd4f51b1",
+  "limitations": [
+    "No natural loaded split behavior or live readiness claimed. Offline component measurements do not establish live deadline improvement.",
+    "Private recipes, models, data, account state, ledgers and native identities remain local."
+  ],
+  "main_commit": "7ab3d8a309e614fa42b9d73f10042bdd7ca4ae0b",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/488",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_id": "14a239f36a42c55ba084d2c4699764b92086a33ea4172c38e26d46ba68e3d224",
+  "runtime_implications": "Next normal locally authorized launch or compatible safe continuation under Atlas lifecycle authority. Manual stops preserved; no live controls exercised.",
+  "scope": "shared",
+  "source_commit": "ed5117edc60f945c3146036868fef0c96217735c",
+  "summary": "Atlas 15m architecture repairs published and locally installed",
+  "tests": {
+    "composed": "680 passed and one Windows symlink-privilege skip across the original run and exact two-node retry. Initial two temporary fixture AccessDenied failures remain recorded.",
+    "public": "23 passed and six explicit Atlas-adapter integration skips in queue, isolated source and main candidates.",
+    "source_runtime": "Exact 538-source composition and unchanged pinned runtime; no import/source violations."
+  }
+}
