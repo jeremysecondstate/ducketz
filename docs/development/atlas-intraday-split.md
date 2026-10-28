@@ -1,5 +1,35 @@
 # Atlas independent 15-minute 1A/1B services
 
+## Atlas scheduled-start direction, October 27, 2026
+
+Jeremy explicitly authorized both Atlas traders to start automatically at the
+existing weekday morning wake and required three start commands and three
+separate Windows tasks. This supersedes this document's earlier manual-only
+initial-start wording for that authorized scheduled wake. It does not change
+Scout's operating authority or add a reboot, retry or post-stop restart.
+
+The three entry commands are `Start-15m-Data.cmd` for data-only System 1A,
+`Start-15m-Trader.cmd` for System 1B, and `Start-Gameplan-Trader.cmd` for the
+independent combined Gameplan trader. Each owns a separate Windows task lifetime;
+do not put the long-running data action and trading action in one task or make
+one trader depend on another. The installed native data task supplies its own
+reviewed wake time and weekdays using `--daily-data-wake` and `--data-weekdays`.
+The data command uses the same conventional local datastore default as the
+existing launchers; an explicit `--datastore` argument overrides it.
+
+The existing trader launchers enter their normal installed-generation host.
+Their historical `manual-` session prefixes and protocol field names remain
+unchanged; a scheduled launch is not evidence of a contemporaneous human click.
+Local task definitions and authorization receipts record the actual scheduled
+source. Each daily authorized wake admits a fresh session. A manual stop still
+ends that entire session; generation renewal cannot clear it. No scheduler
+retry or additional wake may resume it. Existing session deadlines, models,
+state, pending orders and UNKNOWN fences remain unchanged. Registration and
+installation never invoke these commands to demonstrate live operation.
+
+The sections below describe the original split installation. Read their initial
+manual-start references subject to this later Atlas-only direction.
+
 Atlas's independent 15-minute trader uses two independent lifetimes. System 1A
 owns data collection and causal input preparation. System 1B owns model work and
 the already manually admitted trading session. The combined Gameplan trader is
