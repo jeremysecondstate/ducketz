@@ -15,6 +15,10 @@ from tkinter import messagebox, ttk
 from app.ui.gameplan_widgets import label as _label, panel as _panel, Tooltip as _Tooltip
 from app.ui.gameplan_execution_data import GameplanExecutionSnapshot, execution_sessions, load_gameplan_execution
 from app.ui.gameplan_execution_widgets import GameplanExecutionPanel
+from app.ui.scout_stats_data import ScoutStatsSnapshot, load_scout_stats, scout_stats_sessions
+from app.ui.scout_stats_widgets import ScoutStatsPanel
+from app.ui.scout_stats_history import HorizonHistorySnapshot, horizon_history_sessions, load_horizon_history
+from app.ui.scout_horizon_stats_widgets import ScoutHorizonStatsPanel
 from app.ui.gameplan_stats_data import (
     GameplanStatsReview, PredictionOutcome, load_gameplan_stats, prediction_metrics,
     review_sessions,
@@ -91,7 +95,7 @@ class GameplanStatsTab:
         self.report_button.pack(side="left", padx=(0, 8))
         self.refresh_button = ttk.Button(self.controls, text="Refresh", command=self.refresh)
         self.refresh_button.pack(side="left")
-        _label(self.page, "Two views of the same session · All times Pacific · Saved evidence only",
+        _label(self.page, "Gameplan horizons + Scout 15-Minute · All times Pacific · Saved evidence only",
                color=MUTED_TEXT, background=BACKGROUND).pack(anchor="w", pady=(3, 1))
         self.status_label = _label(self.page, textvariable=self.status, size=9, color=MUTED_TEXT,
                                    background=BACKGROUND, wraplength=1100, justify="left")
@@ -230,6 +234,10 @@ class GameplanStatsTab:
         self.grid_scope.pack(anchor="w")
         _label(self.body, "Filled measures execution, not profit. Retry attempts are counted separately. Forecast windows do not schedule sales.",
                size=9, color=MUTED_TEXT, background=BACKGROUND).pack(anchor="w", pady=(5, 0))
+        self.scout = ScoutStatsPanel(self.body, self.root)
+        self.scout.frame.pack(fill="x", pady=(18, 4))
+        self.scout_horizons = ScoutHorizonStatsPanel(self.body, self.root)
+        self.scout_horizons.frame.pack(fill="x", pady=(18, 4))
         self._bind_wheel(self.body)
         self.render()
 
@@ -317,9 +325,11 @@ class GameplanStatsTab:
             self.review = None
             self.render()
         self.execution.set_snapshot(None)
+        self.scout.set_snapshot(None)
+        self.scout_horizons.set_snapshot(None)
 
         def work():
-            dates, review, error, execution = (), None, None, None
+            dates, review, error, execution, scout = (), None, None, None, None
             try:
                 prediction_dates = review_sessions(self.datastore_root)
             except Exception:
@@ -328,12 +338,22 @@ class GameplanStatsTab:
                 execution_dates = execution_sessions(self.datastore_root)
             except Exception:
                 execution_dates = ()
-            dates = tuple(sorted(set(prediction_dates) | set(execution_dates), reverse=True))
             try:
-                review = load_gameplan_stats(self.datastore_root, selected or (dates[0] if dates else None))
+                scout_dates = scout_stats_sessions(self.datastore_root)
+            except Exception:
+                scout_dates = ()
+            try:
+                horizon_dates = horizon_history_sessions(self.datastore_root)
+            except Exception:
+                horizon_dates = ()
+            dates = tuple(sorted(set(prediction_dates) | set(execution_dates) | set(scout_dates)
+                                 | set(horizon_dates), reverse=True))
+            requested_session = selected or (dates[0] if dates else None)
+            try:
+                review = load_gameplan_stats(self.datastore_root, requested_session)
             except Exception as exc:
                 error = exc
-            execution_session = review.session if review is not None else selected or (dates[0] if dates else None)
+            execution_session = review.session if review is not None else requested_session
             if execution_session:
                 # This reader opens only the separate saved summary. Execution availability
                 # never gates prediction review or triggers broker/ledger reads in the UI.
@@ -342,7 +362,20 @@ class GameplanStatsTab:
                 except Exception:
                     execution = GameplanExecutionSnapshot(execution_session, "unreadable",
                         "Saved execution summary could not be read. Prediction results remain available.")
-            self._messages.put((request, dates, review, error, execution))
+            try:
+                scout = load_scout_stats(self.datastore_root, execution_session)
+            except Exception:
+                scout = ScoutStatsSnapshot(session=execution_session, status="unreadable",
+                    message="Scout saved evidence could not be read. Refresh to retry.",
+                    prediction_status="unreadable", execution_status="unreadable")
+            self._messages.put(("scout", request, dates, scout))
+            try:
+                horizons = load_horizon_history(self.datastore_root, execution_session) if execution_session else None
+            except Exception:
+                horizons = HorizonHistorySnapshot(session=execution_session, status="unreadable",
+                    message="Saved Scout Gameplan forecast history could not be verified. Refresh to retry.")
+            self._messages.put(("horizons", request, dates, horizons))
+            self._messages.put((request, dates, review, error, execution, scout))
 
         threading.Thread(target=work, name="gameplan-stats-read", daemon=True).start()
 
@@ -352,22 +385,35 @@ class GameplanStatsTab:
         try:
             while True:
                 message = self._messages.get_nowait()
+                if message[0] in {"scout", "horizons"}:
+                    kind, request, dates, saved = message
+                    if request == self._request_id:
+                        (self.scout if kind == "scout" else self.scout_horizons).set_snapshot(saved)
+                        self.date_box.configure(values=dates)
+                        if saved is not None and saved.session:
+                            self.session.set(saved.session)
+                    continue
                 request, dates, review, error = message[:4]
                 if request != self._request_id:
                     continue
                 self._loading = False
                 self.refresh_button.configure(state="normal")
                 self.set_execution(message[4] if len(message) > 4 else None)
+                self.scout.set_snapshot(message[5] if len(message) > 5 else None)
+                if self.scout.snapshot is not None and self.scout.snapshot.session:
+                    self.session.set(self.scout.snapshot.session)
                 if self.execution.snapshot is not None:
                     self.session.set(self.execution.snapshot.session)
                 if error is not None:
                     self.review = None
+                    self.heading.configure(text="Gameplan Stats")
                     self.status.set(str(error))
                     self.status_label.configure(foreground=WARNING)
                     self.report_button.configure(state="disabled")
                     if dates:
                         self.date_box.configure(values=dates)
                     self.render()
+                    self._last_load = time.monotonic()
                 else:
                     self.date_box.configure(values=dates or (review.session,))
                     self.session.set(review.session)
@@ -582,9 +628,12 @@ class GameplanStatsTab:
         observed_start = outcome.observed_start.strftime("%b %d, %H:%M %Z") if outcome.observed_start else "Unavailable"
         observed_end = outcome.observed_end.strftime("%b %d, %H:%M %Z") if outcome.observed_end else "Unavailable"
         move = "Unavailable" if outcome.actual_return is None else f"{outcome.actual_return:+.3%}"
+        raw_probability = format((Decimal(str(outcome.probability)) * 100).normalize(), "f")
         text = (f"Saved call: {outcome.direction.replace('NO_EDGE', 'NEUTRAL').title()}\n"
                 f"Outcome: {CELL_STYLES[outcome.state][3]}\n\n"
                 f"Saved model probability: {outcome.probability:.2%}\n"
+                f"Original unrounded P(up): {raw_probability}% (the exact policy uses this value)\n"
+                f"Saved direction policy: {outcome.direction_policy_description}\n"
                 f"Probability target: return above {outcome.probability_target_threshold:.2%}\n"
                 f"Separate assumed round-trip cost: {outcome.target_cost:.2%}\n"
                 f"Observed return: {move}\nBrier score: {brier_text(outcome.brier)}\n\n"
@@ -603,6 +652,9 @@ class GameplanStatsTab:
 
     def show_definitions(self):
         self._text_dialog("Gameplan Stats · metric definitions",
+            "Current stock direction policy\nBUY at 50.01% or higher; SELL at 49.99% or lower; HOLD strictly between. "
+            "This applies to every stock trader, including both 15-minute traders. "
+            "Historical reviews score their original saved calls without relabeling them.\n\n"
             "Direction accuracy\nCorrect saved bullish/bearish calls divided by scored calls. "
             "A bullish call is correct when the actual return is positive; a bearish call when it is negative. "
             "Neutral calls are excluded. Zero-return moves are incorrect for either direction.\n\n"
@@ -613,6 +665,11 @@ class GameplanStatsTab:
             "including saved opening-gap research in the 1h group. Pending and missing outcomes do not count as failures. "
             "The bottom grid always shows the thirteen 1h execution windows for the selected session. "
             "Its score excludes neutral, pending and missing cells.\n\n"
+            "Scout 15-Minute Trader\nThe separate Scout section uses only its saved live forecasts and local order journals. "
+            "Prediction accuracy uses observed outcomes for forecasts issued before target open; "
+            "synthetic, late, pending, missing and unscorable results are shown separately. "
+            "Its binary target is not-down at the third target candle close relative to the reference open, "
+            "including equality. Orders and fills use saved broker evidence. They do not enter Gameplan horizon totals.\n\n"
             "Results are a saved review snapshot, not a live rescore. Refresh loads newly published reviews; "
             "it does not fetch prices or mature an old forecast. OG Brier retains its cost-adjusted target; YG Brier uses raw positive returns. "
             "Neutral calls are included only in Brier; flat moves fail either directional call. "
