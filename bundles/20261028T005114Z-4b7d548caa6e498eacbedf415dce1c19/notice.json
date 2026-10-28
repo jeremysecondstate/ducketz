@@ -1,0 +1,31 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T004712Z-f38be3fbf0c84933bc74b8793ffe27c7",
+  "change_id": "20261028T004712Z-f38be3fbf0c84933bc74b8793ffe27c7",
+  "commit_sha": "468e944ae80124fd1668630a09a09893bbac4023",
+  "files": [
+    "ml/gameplan_actuals_review.py",
+    "tests/test_gameplan_actuals_direction_report.py"
+  ],
+  "limitations": [
+    "No merge or peer installation claimed.",
+    "Existing immutable reports remain historical; future generation loads the renderer.",
+    "Local adoption preserves separate inherited scoring and data-reader changes; these are not included in this focused portable patch."
+  ],
+  "local_adoption_record": "20261028T004754Z-9203ba21799241a9836224400cc85959",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/475",
+  "remote_sha": "468e944ae80124fd1668630a09a09893bbac4023",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Omit estimate prose, error columns and midpoint/range tables only for saved direction-only recipes. Forecast outcomes, missing diagnostics and historical recipe presentation remain unchanged. No provider calls or trader restart required.",
+  "scope": "shared; applies to Atlas and Scout report rendering",
+  "summary": "Direction-only Stats report presentation fixed; reviewed source published in PR 475",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-28T00:48:50.052803Z",
+      "output_sha256": "a45c2dd525e9a4d8c51872a27f01c2e25670197af78c1fa684318b046b874c07",
+      "passed": 79,
+      "started_at_utc": "2026-10-28T00:48:37.079093Z",
+      "suite": "Actuals review plus saved-recipe report regressions"
+    }
+  ]
+}

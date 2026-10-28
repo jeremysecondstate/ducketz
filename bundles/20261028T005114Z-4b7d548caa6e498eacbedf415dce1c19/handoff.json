@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T00:51:14.289011Z",
+  "id": "20261028T005114Z-4b7d548caa6e498eacbedf415dce1c19",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Direction-only Stats report presentation fixed; reviewed source published in PR 475"
+}
