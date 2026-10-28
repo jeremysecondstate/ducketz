@@ -1,0 +1,27 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T174954Z-52cf658fcf6f414fa90a0d3c700ab661",
+  "change_id": "scout-attempt-write:20261028T174954Z-52cf658fcf6f414fa90a0d3c700ab661",
+  "completion_record": "20261028T174954Z-52cf658fcf6f414fa90a0d3c700ab661",
+  "files": [
+    "ml/intraday/scout_services.py",
+    "tests/test_scout_attempt_persistence.py"
+  ],
+  "limitations": [
+    "Offline native SQLite contention and prerecorded fixtures; no production calls, live training, orders or trader controls.",
+    "Failed historical event was not saved; exact original measurements and clock remain unavailable. Underlying lock holder and broad latency remain unproved.",
+    "Current model role is terminal; installation does not prove actual loading or live recovery. Prior admission/progress/stop incidents remain separate observations."
+  ],
+  "main_sha": "d1872ee6f67c67d592ddc594f212ab82c1d8cf6f",
+  "repository": "jeremysecondstate/ducketz",
+  "review_url": "https://github.com/jeremysecondstate/ducketz/pull/501",
+  "runtime_implications": "Compatible independent-v1 repair preserves frozen attempt payload/time, forecasts and post-work transaction boundary without runner replay. Current terminal role awaits next normal authorized initial launch; preserve task, launcher, bootstrap, manual stop and deadline. No monitor restart or crash respawn.",
+  "scope": "Shared Scout model-service correctness. Each PC retains private recipe, symbols, fitted artifacts and operating bindings.",
+  "source_sha": "c16ca5cf7b1856fa7a56cfd69df6afc5b66bbb0c",
+  "summary": "Scout retries original post-work attempt event through native SQLite contention",
+  "tests": {
+    "composed_installed": "64 passed, zero skipped in each composed and exact installed release; overlapping suites",
+    "regression": "Five intended native contention failures on original source; all seven focused cases pass on final source",
+    "source_queue_courier_main": "64 passed, zero skipped in each final tested candidate; overlapping suites"
+  }
+}

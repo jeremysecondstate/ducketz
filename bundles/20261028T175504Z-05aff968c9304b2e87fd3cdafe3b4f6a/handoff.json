@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T17:55:04.764342Z",
+  "id": "20261028T175504Z-05aff968c9304b2e87fd3cdafe3b4f6a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout retries original post-work attempt event through native SQLite contention"
+}
