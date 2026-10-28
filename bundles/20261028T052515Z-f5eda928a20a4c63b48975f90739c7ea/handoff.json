@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T05:25:15.345274Z",
+  "id": "20261028T052515Z-f5eda928a20a4c63b48975f90739c7ea",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas independent 15-minute services: safe public collection and current-main integration complete"
+}

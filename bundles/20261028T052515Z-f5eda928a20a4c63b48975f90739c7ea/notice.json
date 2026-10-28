@@ -1,0 +1,175 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T051731Z-f5360ba749474e3b8d18b484cdf58ada",
+  "change_id": "20261028T051731Z-f5360ba749474e3b8d18b484cdf58ada",
+  "details": [
+    "This correlated publication revision retains the initial implementation record and source. Narrow test-only AST/file capability guards prevent missing local adapter imports from breaking ordinary public collection. Existing test bodies and fixtures remain AST-identical.",
+    "The complete package was reviewed on current main while preserving peer runtime/store changes. Fresh sealed queue, isolated source candidate and current-main candidate each passed 48 portable tests with six explicit adapter module skips.",
+    "All eight Atlas modules passed 115 cases without skips. Product source and the complete locally installed generation are unchanged; no reseal, task invocation or live trader operation was needed.",
+    "The initial 537-source isolated-runtime verification passed 606 cases with one Windows symlink-permission skip, including hash-bound child fixtures and complete runtime verification before and after."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/split_handoff.py",
+      "sha256": "5507600cc98c1adaa4a2ae6a1afe0d08fa8c4fc82e8f505e7382b8787d14a136"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/split_execution.py",
+      "sha256": "44448cfb7a2cdabb04905e86afa6e78b637fb752fd0c4fa44071c9455efb902c"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/split_model.py",
+      "sha256": "63565bc4e278cf8a686dd2c8b7629e4f1e9a4af8ede44d32a4684fbee25f33b6"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/split_service.py",
+      "sha256": "554ee7d34cbc418d35e8a9441a9464e98ed04c5482a93029e5a8beede0fd9fbf"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/split_scoring.py",
+      "sha256": "584ee86d198ec157cc963c7937359e1c0e807b2d58e9b9946f63cce9bdc1e3be"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tools/intraday_data_host.py",
+      "sha256": "ea480e12eb643d33815573fae76c4cb1789a92a4b0f1d645ab8242da85c93e7b"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_handoff.py",
+      "sha256": "d37208f9ba70bad231796d8cafb390e20ad30903a14b7ce19b3a9ba11156da83"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_historical_context_cache.py",
+      "sha256": "6593e7185a84a086f4217dee67aa9163a9c2312f7bdfeee7c2ce700d946e2073"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_runtime.py",
+      "sha256": "e1265aa2159f84720a3ed8be8fb70a6a263ce4aefd806359e3d8b572baa2e5b7"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_execution.py",
+      "sha256": "972b1d721a05aeec2164c3dbb567d0fce734bfff2a5e0e71462a6fe2d01325ee"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_services.py",
+      "sha256": "6fa493e355f7521165db5ed420a24be4052cef0221e900c499551c71aafb88fc"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_scoring.py",
+      "sha256": "dfcd7201b1d92c121b056e82295dd1e016d857788f086c3c3e7ad1a6050d85c3"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_data_roots.py",
+      "sha256": "dc5782fb60f1ca59faa95b843e69c228c2d9e02144ca2fb02f19a4b289eceb85"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_data_host.py",
+      "sha256": "f1b53c09636c8158f8788a3d5ba6a73e196ce10018cc76e80075b4441c42fc49"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_atlas_intraday_split_package.py",
+      "sha256": "6036f0728e5b1b0b71603af6f3ee90c1ae321e6166d4954549dbb7a9c10bfd8d"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/intraday_split_package_support.py",
+      "sha256": "cf293813e0505dca7211c84b478d43a372325ff4e31e7ca650b9c2fdb450887a"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/atlas-intraday-split.md",
+      "sha256": "e5166adbe4769b9a53e274b68b13ea138c5f2d9bdd2baaa9d9e0c2f2e7f08057"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/atlas-intraday-split.patch",
+      "sha256": "63dd1cbbc0c1a9ace745847e4698da58d4fbfa2d379ac9c55ebe10fd0aeabd14"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/atlas-intraday-split.json",
+      "sha256": "12c02b929db097b3b688195dcc324300ecc11884d1248983c8f6c2294a79b40e"
+    }
+  ],
+  "limitations": [
+    "Six public integration modules explicitly skip when their adapter capabilities are absent; Atlas runs all eight modules fully.",
+    "One symbolic-link fixture was skipped because the Windows user cannot create symbolic links. It is not counted as passed.",
+    "Component timing gains do not establish sustained live whole-cycle or forecast-to-order gains. Actual loaded live manifests and behavior remain unobserved."
+  ],
+  "local_installation": {
+    "existing_data_action_registered": true,
+    "existing_native_prompt_updates": 3,
+    "generation": "960accff6818130b70b1d98e831fbd767ebf217575fbfb3bc2039f88e24a9a95",
+    "other_native_metadata_preserved": true,
+    "owned_product_members_unchanged": 13,
+    "parent_members_preserved": 524,
+    "runtime": "14a239f36a42c55ba084d2c4699764b92086a33ea4172c38e26d46ba68e3d224",
+    "source_members": 537
+  },
+  "main_commit": "18a7308693451c5eb5ff487f00df33c61b63c85a",
+  "ownership": "Completed source ownership released; later changes need fresh review and evidence.",
+  "prior_completion_record": "20261028T044707Z-ece2f5f269ab40d29523cfe69d0b7260",
+  "prior_source_commit": "f94e6fc97c3502dfc5ed97768d89608a0b06e326",
+  "privacy_review": "Only reviewed common source, tests, exact adapter hunks and sanitized evidence are shared. Private recipes, data, fitted models, account state, ledgers, native identities and task memory remain local.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/482",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The existing normal data-only launch selects System 1A. Jeremy manually starts System 1B with the existing Atlas launcher. Source publication, main integration, local installation, native registration and observed runtime are separate facts. No peer acknowledgment or operating prerequisite is added.",
+  "scope": "shared",
+  "source_commit": "794616d3e1a54a85017340cff45b85814ac5ef7c",
+  "summary": "Atlas independent 15-minute services: safe public collection and current-main integration complete",
+  "tests": [
+    {
+      "explicit_adapter_module_skips_each": 6,
+      "passed_each": 48,
+      "scope": "Sealed queue, isolated source candidate and current-main candidate"
+    },
+    {
+      "passed": 115,
+      "scope": "All eight Atlas integration modules after collection guards",
+      "skipped": 0,
+      "test_body_AST_unchanged": true
+    },
+    {
+      "import_violations": 0,
+      "passed": 606,
+      "pinned_runtime_imports": 1916,
+      "scope": "Complete 537-source pinned isolated runtime graph",
+      "skip_reason": "Windows user cannot create symbolic links",
+      "skipped": 1,
+      "source_imports": 184
+    }
+  ]
+}
