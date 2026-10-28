@@ -27,6 +27,7 @@ FAKE_WORKER = r'''
 import importlib.util, json, pathlib, sqlite3, sys, time
 sys.path.insert(0, sys.argv[3])
 from tools.scout_iteration_controller import WorkerLifecycle, PLANNED_EXIT
+from tools import scout_release as release
 from tools.scout_release import atomic_json, validate_release
 from datafetching.runtime_lock import exclusive_runtime_lock
 
@@ -57,7 +58,7 @@ fault_mode=plan.get('authority_fault')
 if fault_mode:
     # Force the exact transition observed in the isolated failure: ready has
     # been published, and the parent now replaces STARTING with RUNNING.
-    native_read_bytes=pathlib.Path.read_bytes
+    native_read_bytes=release._read_once
     active=pathlib.Path(request['active_path'])
     until=time.monotonic()+10
     while True:
@@ -69,6 +70,7 @@ if fault_mode:
         time.sleep(.01)
     fault={'reads':0}
     def authority_read(path):
+        path=pathlib.Path(path)
         if path==active:
             fault['reads']+=1
             if fault['reads']==1:
@@ -84,7 +86,7 @@ if fault_mode:
                     error.winerror=plan['authority_winerror'] if 'authority_winerror' in plan else 32
                 raise error
         return native_read_bytes(path)
-    pathlib.Path.read_bytes=authority_read
+    release._read_once=authority_read
     begin=time.monotonic()
     first_reason=lifecycle.stop_reason()
     first_reads=fault['reads']

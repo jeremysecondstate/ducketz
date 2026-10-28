@@ -755,7 +755,12 @@ def main(argv=None):
         return owner.run()
     finally:
         if args.hold_console and sys.stdin.isatty():
-            input("Scout 15m run ended. Press Enter to close.")
+            try:
+                input("Scout 15m run ended. Press Enter to close.")
+            except (EOFError, OSError):
+                # Windows NUL may report isatty yet immediately reach EOF.
+                # Optional display must preserve the run's result or failure.
+                pass
 
 
 if __name__ == "__main__":
