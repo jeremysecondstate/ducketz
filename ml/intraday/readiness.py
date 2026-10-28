@@ -52,7 +52,8 @@ SOURCE_INTERFACES = {
         "ml/intraday/store.py": {"ShadowStore.observe": {"record_candle"}},
         "ml/intraday/models.py": {
             "fit_ensemble": {"fit_calibrated_estimator", "probability_not_down"},
-            "fit_calibrated_estimator": {"build_estimator", "fit", "fit_chronological"}},
+            "fit_calibrated_estimator": {"build_estimator", "fit", "fit_chronological"},
+            "ChronologicalSigmoid.fit_chronological": {"fit", "_scores"}},
         "ml/intraday/data.py": {"recover_databento_candle": {"recover_databento_candle_step", "sleep"},
             "recover_databento_candle_step": {"fetch_databento_interval_attempt", "resolve_minute_candle", "provider_retry_due", "save"}}},
     "manual_session": {"ml/intraday/live_session.py": {
@@ -90,6 +91,10 @@ SOURCE_INTERFACES = {
 # behavior. Require a complete alternative; partial implementations are not
 # combined into a claim. This is descriptive source evidence, never a live gate.
 SOURCE_INTERFACE_ALTERNATIVES = {
+    "live_account_adapter": [{"ml/intraday/account_execution.py": {
+        **SOURCE_INTERFACES["live_account_adapter"]["ml/intraday/account_execution.py"],
+        "IntradayAccountExecutor.step": {"size_forecast", "_submission_capacity", "_submit"},
+        "IntradayAccountExecutor._submission_capacity": {"available_intraday_capacity"}}}],
     "manual_session": [{"ml/intraday/live_session.py": {
         "run_manual": {"IntradayAccountExecutor", "SchwabSession", "prepare_minute_provider", "forecasting_loop", "scoring_loop"},
         "prepare_minute_provider": {"DatabentoMarketDataProvider"},
