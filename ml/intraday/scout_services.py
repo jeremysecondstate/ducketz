@@ -260,12 +260,15 @@ class _ModelServiceStore(ServiceStore):
                     self._persistence_pause(.2)
                     reason = self._persistence_stop_reason()
                 if reason is not None:
-                    from .runtime import _symbol_exception_diagnostics
-                    metric(self.object_root, "model", "failure_persistence_stopped",
-                           logical_run_id=(self.run_binding or {}).get("logical_run_id"),
-                           cycle_id=pending["cycle_id"], symbol=pending.get("symbol"),
-                           stop_reason=reason, pending_write=pending,
-                           diagnostics=_symbol_exception_diagnostics(exc))
+                    try:
+                        from .runtime import _symbol_exception_diagnostics
+                        metric(self.object_root, "model", "failure_persistence_stopped",
+                               logical_run_id=(self.run_binding or {}).get("logical_run_id"),
+                               cycle_id=pending["cycle_id"], symbol=pending.get("symbol"),
+                               stop_reason=reason, pending_write=pending,
+                               diagnostics=_symbol_exception_diagnostics(exc))
+                    except Exception:
+                        pass  # Diagnostics cannot mask the authority-ended original write.
                     raise _ModelFailurePersistenceStopped(reason) from exc
             else:
                 # The action, including its transaction exit, already succeeded.
