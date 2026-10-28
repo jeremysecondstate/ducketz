@@ -32,8 +32,9 @@ def err(code=None,cls=sqlite3.OperationalError):
   e.sqlite_errorname=next((name for name in ('SQLITE_BUSY','SQLITE_BUSY_RECOVERY','SQLITE_BUSY_SNAPSHOT','SQLITE_BUSY_TIMEOUT','SQLITE_LOCKED','SQLITE_LOCKED_SHAREDCACHE','SQLITE_FULL','SQLITE_IOERR','SQLITE_READONLY','SQLITE_CORRUPT') if getattr(sqlite3,name,None)==code),'SQLITE_TEST_UNKNOWN')
  return e
 
+@pytest.mark.parametrize('role',['scoring','forecast-0','forecast-3'])
 @pytest.mark.parametrize('mode',['busy','locked'])
-def test_native_sqlite_contention_releases_original_operation_without_output_changes(tmp_path,mode):
+def test_native_sqlite_contention_releases_original_operation_without_output_changes(tmp_path,mode,role):
  path=tmp_path/'private.sqlite3';uri=path.as_uri()+'?cache=shared' if mode=='locked' else str(path)
  def connect():return sqlite3.connect(uri,uri=mode=='locked',timeout=0)
  holder=connect();holder.execute('PRAGMA journal_mode=WAL');holder.execute('CREATE TABLE protected(id TEXT PRIMARY KEY,payload TEXT)')
@@ -55,7 +56,7 @@ def test_native_sqlite_contention_releases_original_operation_without_output_cha
   assert caught.value.sqlite_errorcode & 255 in (sqlite3.SQLITE_BUSY,sqlite3.SQLITE_LOCKED)
   pauses=[]
   def pause(n):pauses.append(n);holder.rollback()
-  assert run(setup,pause=pause)=='complete-original-result'
+  assert run(setup,role=role,pause=pause)=='complete-original-result'
   assert calls==[True,True,True] and pauses==[1]
   for db in connections:
    with pytest.raises(sqlite3.ProgrammingError):db.execute('SELECT 1')
@@ -85,15 +86,16 @@ def test_other_failure_exact_object_propagates_without_retry(failure):
  with pytest.raises(type(failure)) as caught:run(action,pause=pauses.append)
  assert caught.value is failure and calls==[True] and not pauses
 
+@pytest.mark.parametrize('role',['scoring','forecast-0','forecast-3'])
 @pytest.mark.parametrize('control',['already-stopped','stop-during-pause','cutoff-during-pause'])
-def test_stop_and_original_cutoff_prevent_second_setup(control):
+def test_stop_and_original_cutoff_prevent_second_setup(control,role):
  stopped=[control=='already-stopped'];clock=[NOW];calls=[];pauses=[];r=renewal();r.stopped=lambda:stopped[0]
  def action():calls.append(True);raise err(sqlite3.SQLITE_BUSY_RECOVERY)
  def pause(n):
   pauses.append(n)
   if control=='stop-during-pause':stopped[0]=True
   else:clock[0]=CLOSE
- with pytest.raises(InterruptedError):run(action,renew=r,clock=lambda:clock[0],pause=pause)
+ with pytest.raises(InterruptedError):run(action,role=role,renew=r,clock=lambda:clock[0],pause=pause)
  assert calls==([] if control=='already-stopped' else[True])
  assert pauses==([] if control=='already-stopped' else[1])
 
@@ -108,14 +110,31 @@ def test_no_retry_is_no_extra_action_or_pause():
  assert calls==[True] and not pauses
 
 
+@pytest.mark.parametrize('role',['scoring','forecast-0','forecast-3'])
 @pytest.mark.parametrize('control',['manual-stop','original-cutoff'])
-def test_successful_setup_rechecks_stop_and_original_deadline_before_return(control):
+def test_successful_setup_rechecks_stop_and_original_deadline_before_return(control,role):
  r=renewal();stopped=[False];current=[NOW];r.stopped=lambda:stopped[0];calls=[]
  def action():
   calls.append(True)
   if control=='manual-stop':stopped[0]=True
   else:current[0]=CLOSE
   return 'completed-local-storage'
- with pytest.raises(InterruptedError):run(action,renew=r,clock=lambda:current[0])
+ with pytest.raises(InterruptedError):run(action,role=role,renew=r,clock=lambda:current[0])
  assert calls==[True]
 
+
+
+@pytest.mark.parametrize('role',['forecast-0','forecast-1','forecast-2','forecast-3','forecast-10','forecast-000'])
+def test_partitioned_forecast_role_retains_exact_identity_and_action(role):
+ calls=[];value=object()
+ assert run(lambda:calls.append(role)or value,role=role)is value
+ assert calls==[role]
+
+@pytest.mark.parametrize('role',['forecast-','forecast--1','forecast-+1','forecast-1.0','forecast-1a',
+                                'forecast-١','forecast-１','forecast- 1','forecast-1 ',
+                                'forecast-1\n','forecast-x','forecasted-0','FORECAST-0','execution-0',None,0])
+def test_unknown_or_non_ascii_partition_role_never_runs_setup(role):
+ calls=[]
+ with pytest.raises(ValueError,match='Unknown admitted storage role'):
+  run(lambda:calls.append(True),role=role)
+ assert not calls

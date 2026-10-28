@@ -1,0 +1,41 @@
+--- a/tools/trader_session_host.py
++++ b/tools/trader_session_host.py
+@@ -591,8 +591,13 @@
+             for role in roles:
+                 if stopping.is_set() or role in done or role in children:
+                     continue
+                 if relay_target is not None:
++                    # A fresh anchor has no lane to drain. Transfer the
++                    # initialized session before admitting work in its old
++                    # controller/runtime; the successor owns the first pass.
++                    if not any(name != "initialize" for name in generations):
++                        continue
+                     if role != "execution" or final_execution_started:
+                         continue
+                     if not any(name != "execution" for name in children):
+                         final_execution_started = True
+@@ -687,9 +692,10 @@
+             if all(role in done for role in roles):
+                 reason = "SESSION_COMPLETE"
+                 break
+             if (relay_target is not None and not children
+-                    and ("execution" in done or "execution" not in roles or final_execution_started)):
++                    and (not any(name != "initialize" for name in generations)
++                         or "execution" in done or "execution" not in roles or final_execution_started)):
+                 # Stop admitting all work before transferring scheduling. The
+                 # old process retains its exact kernel/lock ownership and only
+                 # waits for its successor. It can never schedule again.
+                 latest = relay_selector()
+--- a/tools/trader_worker.py
++++ b/tools/trader_worker.py
+@@ -113,9 +113,9 @@
+         runtime_manifest = selected["runtime_manifest"]
+         expected_python = runtime_manifest["files"][runtime_manifest["python_relative"]]
+         value = {"schema": "trader-worker-loaded-evidence-v1", "diagnostic_only": True,
+                  "at": datetime.now(timezone.utc).isoformat(),
+-                 "protocol": request["protocol"], "turn": request["turn"],
++                 "protocol": renewal.envelope["protocol"], "turn": request["turn"],
+                  "role": request["role"], "generation": request["generation"],
+                  "session_id": renewal.envelope["session"]["session_id"],
+                  "worker_pid": os.getpid(), "worker_birth": process_birth(os.getpid()),
+                  "request_sha256": hashlib.sha256(renewal.request_path.read_bytes()).hexdigest(),
