@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T01:34:37.896425Z",
+  "id": "20261028T013437Z-1f0871c6f51a433c9fa40f083b79e845",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout delivered the requested October 27 saved 15-minute Stats display export privately to Atlas; Atlas UI import is the remaining local display step."
+}

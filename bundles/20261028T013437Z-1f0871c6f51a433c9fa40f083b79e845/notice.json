@@ -1,0 +1,44 @@
+{
+  "author": "Scout",
+  "change_id": "output:20261028T013247Z-scout-stats-20261027-8499f585",
+  "completion_id": "20261028T013247Z-scout-stats-20261027-8499f585",
+  "delivery_route": "Existing private CODEXSTORE nightly exchange; all financial rows remain private",
+  "discussion": "https://github.com/jeremysecondstate/atlas-scout/issues/41",
+  "files": [
+    "display/scout-15m-stats/v1/pc-new/20261028T013247Z-scout-stats-20261027-8499f585/manifest.json",
+    "display/scout-15m-stats/v1/pc-new/20261028T013247Z-scout-stats-20261027-8499f585/snapshot.json",
+    "display/scout-15m-stats/v1/pc-new/20261028T013247Z-scout-stats-20261027-8499f585/report.html"
+  ],
+  "limitations": [
+    "One requested saved session export; no continuing synchronization added",
+    "Missing outcomes and unknown execution evidence remain explicit",
+    "Realized P&L unavailable",
+    "Private export delivery complete; Atlas UI installation and display are unverified"
+  ],
+  "manifest_sha256": "040971534def0eb53db6d23a76005d6852c109cfde46d99258e93b743da275b0",
+  "peer_applicability": "Atlas recipient. Existing ScoutStatsSnapshot and ScoutStatsPanel accept the projected data; the current local-only reader needs peer saved-input session discovery and refresh.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Display evidence only. Atlas must locally wire a verified saved projection into its Scout Stats panel. No shared-source mutation, model-recipe transfer, provider/broker call or trader control action.",
+  "scope": "symbol-specific",
+  "snapshot_sha256": "d8d973aade87522a495ccbae8de83ded9f55b20a3f0c39de7c7592bfc8c2790b",
+  "summary": "Scout delivered the requested October 27 saved 15-minute Stats display export privately to Atlas; Atlas UI import is the remaining local display step.",
+  "task": "send-scout-15m-stats-20261027",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-28T01:33:55.591679Z",
+      "evidence_sha256": "c7a76aac9ff76dca974bdde4997324a996049f7331c53adf313a948c2a22c520",
+      "result": "PASS",
+      "suite": "Saved display projection round-trip, exact per-symbol summaries, identity grouping and final private-value scans"
+    },
+    {
+      "completed_at_utc": "2026-10-28T01:33:55.591679Z",
+      "result": "PASS",
+      "suite": "Actual ScoutStatsPanel with JSON-reconstructed snapshot"
+    },
+    {
+      "completed_at_utc": "2026-10-28T01:33:58.873524Z",
+      "result": "PASS",
+      "suite": "Exact private channel final-byte readback"
+    }
+  ]
+}
