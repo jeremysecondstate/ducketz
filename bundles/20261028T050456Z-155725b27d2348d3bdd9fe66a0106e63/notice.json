@@ -1,0 +1,169 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T044707Z-ece2f5f269ab40d29523cfe69d0b7260",
+  "change_id": "20261028T044707Z-ece2f5f269ab40d29523cfe69d0b7260",
+  "details": [
+    "Independent data-only acquisition/preparation publishes atomic immutable causal snapshots without consumer acknowledgment. Bounded own-symbol model lanes publish compact forecasts immediately; own-order execution/recovery remains independent and manually activated.",
+    "Exact local scientific recipes, original deadlines, current-capacity sizing, manual stops, pending orders and UNKNOWN fences are preserved. Gameplan and peer state are never operating prerequisites.",
+    "19 reviewed public source/tests/docs paths include7 exact consumer adapter hunks. Both PCs preserve their own recipes, symbols, private bindings and supported lifecycle controls."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/split_handoff.py",
+      "sha256": "5507600cc98c1adaa4a2ae6a1afe0d08fa8c4fc82e8f505e7382b8787d14a136"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/split_execution.py",
+      "sha256": "44448cfb7a2cdabb04905e86afa6e78b637fb752fd0c4fa44071c9455efb902c"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/split_model.py",
+      "sha256": "63565bc4e278cf8a686dd2c8b7629e4f1e9a4af8ede44d32a4684fbee25f33b6"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/split_service.py",
+      "sha256": "554ee7d34cbc418d35e8a9441a9464e98ed04c5482a93029e5a8beede0fd9fbf"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/split_scoring.py",
+      "sha256": "584ee86d198ec157cc963c7937359e1c0e807b2d58e9b9946f63cce9bdc1e3be"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tools/intraday_data_host.py",
+      "sha256": "ea480e12eb643d33815573fae76c4cb1789a92a4b0f1d645ab8242da85c93e7b"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_handoff.py",
+      "sha256": "d37208f9ba70bad231796d8cafb390e20ad30903a14b7ce19b3a9ba11156da83"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_historical_context_cache.py",
+      "sha256": "8cc0dcc72521e5c761f98689dc00682a7099b28bea0a5a1f3411a37700f90d93"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_runtime.py",
+      "sha256": "283d36894c9309716f9453b99a8fc33c0d98ddaf69e12af7809149286e69db04"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_execution.py",
+      "sha256": "0f45635a83623f0f67f39a04df10b17c8caf5e3858e73f746f55cbf27208a540"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_services.py",
+      "sha256": "90384bb6b65184ae9d4a188f210bb6f6e5f56dc29ed78df52b11b9ce025f0629"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_scoring.py",
+      "sha256": "ae542335f27e0c76d49c18d3adf42ea440fdece90169a208884657d637b79abe"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_split_data_roots.py",
+      "sha256": "a1ff00cfb6cc0be3ddf7ec22e6024e392093a7ac18776dbf3e27bf3f661a19fc"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_data_host.py",
+      "sha256": "f1b53c09636c8158f8788a3d5ba6a73e196ce10018cc76e80075b4441c42fc49"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_atlas_intraday_split_package.py",
+      "sha256": "7a9aeb84450a19828230abd4d498eb26495a913d8b2847f703ddafa2cd6f79c9"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/intraday_split_package_support.py",
+      "sha256": "c1fa385406deda44bbcde9e1b25d5c2533e8d3763fb31f6370960e750f77e022"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/atlas-intraday-split.md",
+      "sha256": "ba8df23c9197f9d27dbec7512f6afc7f293b987e780219528822d3a264a43fa3"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/atlas-intraday-split.patch",
+      "sha256": "63dd1cbbc0c1a9ace745847e4698da58d4fbfa2d379ac9c55ebe10fd0aeabd14"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/atlas-intraday-split.json",
+      "sha256": "59547036046c8c244369448e8356cbaf6feacdf9eeda3c364ad37689d6129797"
+    }
+  ],
+  "limitations": [
+    "One symlink-permission fixture skipped; allrequired1A/1Bbehavioral fixtures passed.",
+    "Public consumer adapters are exact-hunk packages; differingPC compositions require their own localreview.",
+    "Publication/localinstallation/nativeconfiguration are complete; live loadedservice manifests, sustained contention, forecast-to-order delay and deadline-miss gains are not yetobserved.",
+    "Private recipes, rawdata, fittedmodels, accountstate, ledgers, nativeidentities, taskmemory and originalreceipts remainlocal."
+  ],
+  "local_installation": {
+    "all_native_metadata_preserved": true,
+    "existing_data_task_action": "Registereddata-only with originalschedule/settings/principal/securitydescriptor preserved; neverinvoked",
+    "existing_native_instruction_updates": 3,
+    "generation": "960accff6818130b70b1d98e831fbd767ebf217575fbfb3bc2039f88e24a9a95",
+    "runtime": "14a239f36a42c55ba084d2c4699764b92086a33ea4172c38e26d46ba68e3d224",
+    "source_members": 537,
+    "unowned_parent_members_preserved": 524
+  },
+  "main_integration": {
+    "integrated": false,
+    "main_observed": "f39b6cf1d3303cbf81b46483bcf05d2954f336a4",
+    "reason": "Installedguard rejects changes to reviewed dependencies runtime.py and store.py; immutable source record and peer changes preserved. This doesnot gate localinstallation or operation."
+  },
+  "performance": "Two retained-input fake-quote sizing replays preserve exact decisions: full3.271/12.113seconds, compact0.0032-0.0043seconds; model-side prep5.404/14.211seconds. Context warm verified reuse0.00359seconds vs original0.2030. These component measurements do not establish whole-cycle or live gains.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/480",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Next normal authorized data-only schedule uses installed1A. Jeremy manually starts1B using the existing Atlas launcher. Installation performs no trader start/stop/restart, provider/broker call, productionfit or order. No peerresponse or publication-state operating gate.",
+  "scope": "shared",
+  "source_commit": "f94e6fc97c3502dfc5ed97768d89608a0b06e326",
+  "summary": "Atlas independent15m1A/1B source published and locally installed",
+  "tests": [
+    {
+      "import_violations": 0,
+      "passed": 606,
+      "pinned_runtime_imports": 1916,
+      "scope": "Complete537-source Atlas composition on isolated pinned runtime with full before/after runtime verification",
+      "skip_reason": "Windows user cannot create symbolic links",
+      "skipped": 1,
+      "source_test_imports": 184
+    },
+    {
+      "integration_test_files_explicitly_not_run_on_different_public_consumers": 6,
+      "passed_each": 48,
+      "scope": "Sealedsourcequeue and freshisolated publiccandidate"
+    }
+  ]
+}

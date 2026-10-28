@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T05:04:56.735648Z",
+  "id": "20261028T050456Z-155725b27d2348d3bdd9fe66a0106e63",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas independent15m1A/1B source published and locally installed"
+}
