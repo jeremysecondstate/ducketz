@@ -1,0 +1,28 @@
+{
+  "schema": "intraday-renewal-history-contention-v1",
+  "scope": "Shared retained-history native SQLite contention retry; local recipes, original data and operating controls remain unchanged.",
+  "patch_path": "docs/development/patches/intraday-renewal-history-contention.patch",
+  "patch_sha256": "16ac77b96319678a6c4b1a43dce604ae73ea5d81ad3e8416175c0e8513ed5b24",
+  "local_before_sha256": "27027bb26ea6a64d5d2c9f4cbf58d20e539693e96077eabdcb89c1435294156b",
+  "local_after_sha256": "925a7ea14d0ba91f604b18d2bef00306b7998778dcd6be4551fcec2cf68d16f6",
+  "function_name": "_renewal_histories",
+  "function_ast_sha256": "1219815c174913dbd0dc0201be9f0c2795aa9e63310fde266c5f3134644d1f02",
+  "original_function_ast_sha256": "a47ff62905479af2cb3d223ddd6b6b670905516935d4be48fdfa2f49d68b316a",
+  "files": [
+    {
+      "path": "ml/intraday/live_session.py",
+      "operation": "modify",
+      "before_sha256": "27027bb26ea6a64d5d2c9f4cbf58d20e539693e96077eabdcb89c1435294156b",
+      "after_sha256": "925a7ea14d0ba91f604b18d2bef00306b7998778dcd6be4551fcec2cf68d16f6"
+    }
+  ],
+  "limitations": [
+    "Common main lacks the composed renewal consumer. Portable tests exercise the entire reviewed function from the patch; a hunk projection is not a complete local application reconstruction.",
+    "Local adoption requires the matching exact before bytes or explicit field/hunk review, complete offline composition checks and exact-byte generation sealing.",
+    "Only native SQLite BUSY or LOCKED reads are retried. Genuine missing inputs, corruption and unrelated exceptions retain their existing behavior.",
+    "Publication and installation do not prove runtime loading or recovery. System 1A loads at its next normal authorized launch; do not restart it or rewrite a terminal historical cycle."
+  ],
+  "operation": "modify",
+  "target": "ml/intraday/live_session.py",
+  "before_function_ast_sha256": "a47ff62905479af2cb3d223ddd6b6b670905516935d4be48fdfa2f49d68b316a"
+}
