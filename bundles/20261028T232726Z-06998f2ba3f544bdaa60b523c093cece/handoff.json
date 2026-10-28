@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T23:27:26.231992Z",
+  "id": "20261028T232726Z-06998f2ba3f544bdaa60b523c093cece",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published and installed bounded forecast-cache outcome diagnostics"
+}

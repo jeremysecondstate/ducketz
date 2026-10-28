@@ -1,0 +1,28 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T230253Z-10c60a00fd26498eaceb0ad508218087",
+  "change_id": "20261028T230253Z-10c60a00fd26498eaceb0ad508218087",
+  "files": [
+    "ml/intraday/forecast_header_cache.py",
+    "tests/test_intraday_durable_forecast_diagnostics.py",
+    "tests/test_intraday_forecast_cache_integration.py",
+    "tests/check_isolated_intraday_durable_forecast_diagnostics.py",
+    "docs/development/patches/intraday-durable-forecast-diagnostics.patch",
+    "docs/development/patches/intraday-durable-forecast-diagnostics.json"
+  ],
+  "limitations": [
+    "Portable checker covers the shared cache; differing consumer integration is supplied as reviewed hunks with before/after hashes. Each PC reviews its own composition.",
+    "Historical failure cause cannot be reconstructed from an outcome that was not originally recorded.",
+    "Five existing timing-fixture failures reproduce unchanged on Atlas parent;not reported as passes."
+  ],
+  "main_sha": "260856ac73a7fe09aa80b56fe7a02abd495eee50",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas sealed complete reviewed generation c3f9fbffdb0f958e8de242694ef5f7bad43a7bd5fe643510cfe859352434ceeb. Existing authorized sessions may select it only at normal iteration boundaries. Publication,installation,loading and affected recovery remain separate facts. No lifecycle action or scientific change is introduced.",
+  "scope": "shared",
+  "source_sha": "16b2229a92ad2a37d9d50620fed136e6619704b1",
+  "summary": "Atlas published and installed bounded forecast-cache outcome diagnostics",
+  "tests": [
+    "53 portable offline checks passed on authored,queued,isolated source and main candidates;zero external attempts.",
+    "165 full Atlas installed-composition checks passed with confined imports and offline guards."
+  ]
+}
