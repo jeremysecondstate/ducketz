@@ -200,3 +200,90 @@ def test_service_stop_during_failure_persistence_returns_no_checkpoint(tmp_path,
     metrics=[row for row in receipts if row["phase"]=="failure_persistence_stopped"]
     assert len(metrics)==1 and metrics[0]["pending_write"]["payload"]==payload()
     assert metrics[0]["logical_run_id"]==lifecycle.session_id
+
+
+@pytest.mark.parametrize("reason", ["manual_stop", "session_end"])
+@pytest.mark.parametrize("after_pause", [False, True])
+@pytest.mark.parametrize("failed_diagnostic", ["metric", "exception_chain"])
+def test_stopped_diagnostic_failure_preserves_original_busy_and_stop(
+        tmp_path, monkeypatch, reason, after_pause, failed_diagnostic):
+    stop, waits, box, attempted = [None if after_pause else reason], [], [], []
+    def pause(seconds):
+        waits.append(seconds)
+        box[0].rollback()
+        stop[0] = reason
+    store = make_store(tmp_path, pause=pause, stop_reason=lambda: stop[0])
+    store.connection_timeout = 0
+    metric = candidate.metric
+    def broken_metric(root, role, phase, **values):
+        if phase == "failure_persistence_stopped":
+            attempted.append("metric")
+            raise OSError("fixture stopped receipt unavailable")
+        return metric(root, role, phase, **values)
+    def broken_exception_chain(error):
+        attempted.append("exception_chain")
+        raise RuntimeError("fixture exception diagnostics unavailable")
+    if failed_diagnostic == "metric":
+        monkeypatch.setattr(candidate, "metric", broken_metric)
+    else:
+        monkeypatch.setattr(runtime, "_symbol_exception_diagnostics", broken_exception_chain)
+    box.append(locked(store))
+    try:
+        with pytest.raises(candidate._ModelFailurePersistenceStopped) as caught:
+            store.event("cycle", "symbol_failure", payload(), symbol="DOCU")
+    finally:
+        box[0].rollback(); box[0].close()
+    assert caught.value.reason == reason
+    assert isinstance(caught.value.__cause__, sqlite3.OperationalError)
+    assert caught.value.__cause__.sqlite_errorcode & 0xff == sqlite3.SQLITE_BUSY
+    assert attempted == [failed_diagnostic]
+    assert waits == ([.2] if after_pause else [])
+    with store.connect() as db:
+        assert db.execute("SELECT COUNT(*) FROM events WHERE kind='symbol_failure'").fetchone() == (0,)
+    receipts = [json.loads(line) for line in (tmp_path / "objects/model-metrics.jsonl").read_text().splitlines()]
+    assert [row["phase"] for row in receipts if row["phase"].startswith("failure_persistence_")] == [
+        "failure_persistence_started"]
+
+
+@pytest.mark.parametrize("reason", ["manual_stop", "session_end"])
+def test_service_stopped_receipt_failure_preserves_stopped_result_without_checkpoint(
+        tmp_path, monkeypatch, reason):
+    now = instant("2026-10-28T17:15:35Z")
+    stop, checkpoints, box, waits = [None], [], [], []
+    monkeypatch.setattr(candidate, "_configuration", lambda *a, **k:
+        ("Scout", ("DOCU",), ResearchConfig(models=("fixture",)), {}, "fixture", None))
+    class Runner:
+        def __init__(self, store, **kwargs):
+            self.store = store
+        def run_cycle(self, *args, **kwargs):
+            self.store.connection_timeout = 0
+            self.store.begin_cycle("cycle", {"pc": "Scout", "status": "running", "symbols": ["DOCU"],
+                "started_at": "2026-10-28T17:15:35+00:00"})
+            box.append(locked(self.store))
+            self.store.event("cycle", "symbol_failure", payload(), symbol="DOCU")
+            raise AssertionError("Stopped persistence must not complete a cycle")
+    monkeypatch.setattr(runtime, "ShadowRunner", Runner)
+    metric = candidate.metric
+    def broken_metric(root, role, phase, **values):
+        if phase == "failure_persistence_stopped":
+            raise OSError("fixture stopped receipt unavailable")
+        return metric(root, role, phase, **values)
+    monkeypatch.setattr(candidate, "metric", broken_metric)
+    lifecycle = SimpleNamespace(previous_checkpoint=None, session_id="manual-scout-15m:fixture",
+        started_at=now, wake_at=now, deadline=now + timedelta(hours=5),
+        stop_reason=lambda: stop[0], ready=lambda: None, checkpoint=checkpoints.append)
+    def pause(seconds):
+        waits.append(seconds)
+        box[0].rollback()
+        stop[0] = reason
+    try:
+        result = candidate.run_model_service(repository=tmp_path, datastore=tmp_path,
+            release={}, lifecycle=lifecycle, clock=lambda: now, sleep=pause)
+    finally:
+        for locker in box:
+            locker.rollback(); locker.close()
+    assert result == {"status": "STOPPED", "stop_reason": reason, "failure_persistence_pending": True}
+    assert checkpoints == [] and waits == [.2]
+    with sqlite3.connect(tmp_path / "intraday/shadow.sqlite3") as db:
+        assert db.execute("SELECT COUNT(*) FROM forecasts").fetchone() == (0,)
+        assert db.execute("SELECT COUNT(*) FROM events WHERE kind='symbol_failure'").fetchone() == (0,)
