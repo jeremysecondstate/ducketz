@@ -281,14 +281,18 @@ class _ModelServiceStore(ServiceStore):
             {"operation":"model_cycle_begin", "cycle_id":cycle_id, "payload":frozen})
 
     def event(self, cycle_id, kind, payload, *, symbol=None, recorded_at=None):
-        if kind not in ("symbol_failure", "cycle_started"):
+        failure_progress = kind == "cycle_progress" and "failures" in payload
+        if kind not in ("symbol_failure", "cycle_started") and not failure_progress:
             return super().event(cycle_id, kind, payload, symbol=symbol, recorded_at=recorded_at)
         # Freeze the original payload and row clock before the first attempt.
         frozen = json.loads(encoded(payload))
         recorded = instant(recorded_at or utcnow()).isoformat()
-        # begin_cycle commits its row before this separate start-event write.
-        # Retry the event here so an existing row cannot bypass its evidence.
-        operation = "symbol_failure_event" if kind == "symbol_failure" else "model_cycle_started_event"
+        # Admission and failure updates commit their row before this separate
+        # event write. Retry the event here without replaying the committed row
+        # operation or changing the original event clock.
+        operation = {"symbol_failure": "symbol_failure_event",
+                     "cycle_started": "model_cycle_started_event",
+                     "cycle_progress": "model_failure_progress_event"}[kind]
         pending = {"operation":operation, "cycle_id":cycle_id, "symbol":symbol,
                    "kind":kind, "recorded_at":recorded, "payload":frozen}
         return self._failure_write(lambda: super(_ModelServiceStore, self).event(
