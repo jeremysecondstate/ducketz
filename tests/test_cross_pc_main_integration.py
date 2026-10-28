@@ -334,3 +334,127 @@ def test_verified_push_is_not_republished_after_remote_rewind(published, monkeyp
     monkeypatch.setattr(core, "git", reject_push)
     with pytest.raises(ValueError, match="review before retrying"):
         main_integration.publish(profile, record["id"], tree, approved=True)
+
+
+
+def _fresh_main_retry_tree(published, advanced):
+    app, _, _, _, tree, _ = published
+    git(app, "fetch", "--no-tags", "origin", "refs/heads/main")
+    fresh = tree.parent / "fresh-main-retry"
+    git(app, "worktree", "add", "--detach", str(fresh), advanced)
+    return fresh
+
+
+def _verified_main_retry(published, path="docs/retry.md", content="unrelated new main\n"):
+    _, profile, record, _, tree, _ = published
+    main_integration.prepare(profile, record["id"], tree)
+    verified = main_integration.verify(profile, record["id"], tree, reviewed=True)
+    receipt_path = main_integration._receipt_path(profile, record["id"], verified["main_before"])
+    old_bytes = receipt_path.read_bytes()
+    advanced = _advance_main(published, path, content)
+    fresh = _fresh_main_retry_tree(published, advanced)
+    return verified, receipt_path, old_bytes, advanced, fresh
+
+
+def test_verified_main_race_retries_original_identity_with_fresh_evidence(published, monkeypatch):
+    _, profile, record, source, tree, _ = published
+    first, old_path, old_bytes, advanced, fresh = _verified_main_retry(published)
+    with pytest.raises(ValueError, match="main advanced"):
+        main_integration.publish(profile, record["id"], tree, approved=True)
+    assert old_path.read_bytes() == old_bytes
+    original_checks = core.run_checks
+    calls = []
+
+    def fresh_checks(*args, **kwargs):
+        calls.append(args[0])
+        return original_checks(*args, **kwargs)
+
+    monkeypatch.setattr(core, "run_checks", fresh_checks)
+    prepared = main_integration.prepare(profile, record["id"], fresh)
+    assert prepared["record_id"] == record["id"]
+    assert prepared["source_sha"] == source["commit_sha"]
+    assert prepared["main_before"] == advanced
+    assert prepared["review_required"] is True
+    assert calls == []
+    assert old_path.read_bytes() == old_bytes
+    assert (fresh / "docs/retry.md").read_text() == "unrelated new main\n"
+    second = main_integration.verify(profile, record["id"], fresh, reviewed=True)
+    assert len(calls) == 1 and Path(calls[0]) == fresh
+    assert second["record_id"] == first["record_id"] == record["id"]
+    assert second["source_sha"] == first["source_sha"] == source["commit_sha"]
+    assert second["main_before"] == advanced
+    assert second["candidate_sha"] != first["candidate_sha"]
+    assert second["integration_tests"] != first["integration_tests"]
+    assert git(fresh, "rev-parse", second["candidate_sha"] + "^") == advanced
+    assert old_path.read_bytes() == old_bytes
+    final = main_integration.publish(profile, record["id"], fresh, approved=True)
+    assert final["stage"] == "main_integrated"
+    assert final["verified_remote_sha"] == second["candidate_sha"]
+    assert len(calls) == 1
+    assert old_path.read_bytes() == old_bytes
+    assert git(tree, "rev-parse", "HEAD") == first["candidate_sha"]
+    assert (fresh / "docs/retry.md").read_text() == "unrelated new main\n"
+    assert main_integration._receipt_path(profile, record["id"], advanced) != old_path
+    assert core.state(profile)["records"][record["id"]]["integration_stage"] == "main_integrated"
+
+
+@pytest.mark.parametrize("path", ["app/gameplan.py", "app/dependency.py"])
+def test_verified_main_retry_collision_preserves_both_candidates(published, path):
+    _, profile, record, _, original_tree, _ = published
+    first, old_path, old_bytes, advanced, fresh = _verified_main_retry(published, path, "OTHER = 10\n")
+    before = (git(fresh, "rev-parse", "HEAD"), git(fresh, "status", "--porcelain"),
+              (fresh / path).read_bytes())
+    with pytest.raises(ValueError, match="owned path or reviewed dependency"):
+        main_integration.prepare(profile, record["id"], fresh)
+    assert before == (git(fresh, "rev-parse", "HEAD"), git(fresh, "status", "--porcelain"),
+                      (fresh / path).read_bytes())
+    assert old_path.read_bytes() == old_bytes
+    assert git(original_tree, "rev-parse", "HEAD") == first["candidate_sha"]
+    assert main_integration._remote(fresh, "main") == advanced
+
+
+@pytest.mark.parametrize("corruption", [
+    "committing", "push_pending", "main_integrated",
+    "record_hash", "source_sha", "source_branch",
+    "candidate_none", "candidate_invalid", "candidate_same_head",
+    "same_worktree_wrong_head", "evidence", "message_digest", "actual_message",
+])
+def test_stale_main_receipt_ambiguity_is_not_a_retry(published, corruption):
+    _, profile, record, _, original_tree, _ = published
+    first, old_path, _, advanced, fresh = _verified_main_retry(published)
+    receipt = core.load(old_path)
+    if corruption in {"committing", "push_pending", "main_integrated"}:
+        receipt["stage"] = corruption
+    elif corruption == "record_hash":
+        receipt["record_sha256"] = "0" * 64
+    elif corruption == "source_sha":
+        receipt["source_sha"] = "0" * 40
+    elif corruption == "source_branch":
+        receipt["source_branch"] = "codex/other/" + record["id"]
+    elif corruption == "candidate_none":
+        receipt["candidate_sha"] = None
+    elif corruption == "candidate_invalid":
+        receipt["candidate_sha"] = "invalid"
+    elif corruption == "candidate_same_head":
+        receipt["candidate_sha"] = advanced
+    elif corruption == "same_worktree_wrong_head":
+        receipt["worktree"] = str(fresh)
+    elif corruption == "evidence":
+        receipt["integration_tests"][0]["output_sha256"] = "0" * 64
+    elif corruption == "message_digest":
+        receipt["commit_message_sha256"] = "0" * 64
+    elif corruption == "actual_message":
+        receipt["commit_message"] = "Different frozen integration message\n"
+        receipt["commit_message_sha256"] = core.digest(receipt["commit_message"].encode("utf-8"))
+    core.atomic(old_path, receipt)
+    corrupted_bytes = old_path.read_bytes()
+    before = (git(fresh, "rev-parse", "HEAD"), git(fresh, "status", "--porcelain"),
+              (fresh / "app/gameplan.py").read_bytes())
+    with pytest.raises(ValueError):
+        main_integration.prepare(profile, record["id"], fresh)
+    assert before == (git(fresh, "rev-parse", "HEAD"), git(fresh, "status", "--porcelain"),
+                      (fresh / "app/gameplan.py").read_bytes())
+    assert old_path.read_bytes() == corrupted_bytes
+    assert git(original_tree, "rev-parse", "HEAD") == first["candidate_sha"]
+    assert main_integration._remote(fresh, "main") == advanced
+    assert not main_integration._receipt_path(profile, record["id"], advanced).exists()
