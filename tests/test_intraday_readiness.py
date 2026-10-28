@@ -534,6 +534,85 @@ def test_current_implemented_source_is_ready_for_manual_start_without_starting(l
 
 
 
+def test_original_chronological_calibrator_source_is_recognized(local):
+    installed_sources(local)
+    capabilities = readiness._source_capabilities(local["repository"])
+    component = capabilities["source_component_checks"]["forecasting_and_scoring"]
+    assert component["source_interfaces_verified"]
+    method = component["interface_evidence"]["ml/intraday/models.py:ChronologicalSigmoid.fit_chronological"]
+    assert method["defined"] and method["verified"]
+    assert method["required_calls_present"] == ["_scores", "fit"]
+
+
+def test_empty_chronological_calibrator_cannot_claim_forecasting_source(local):
+    installed_sources(local)
+    source = local["repository"] / "ml/intraday/models.py"
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    classes = [node for node in tree.body
+               if isinstance(node, ast.ClassDef) and node.name == "ChronologicalSigmoid"]
+    assert len(classes) == 1
+    methods = [node for node in classes[0].body
+               if isinstance(node, ast.FunctionDef) and node.name == "fit_chronological"]
+    assert len(methods) == 1
+    methods[0].body = [ast.Pass()]
+    source.write_text(ast.unparse(ast.fix_missing_locations(tree)), encoding="utf-8")
+
+    capabilities = readiness._source_capabilities(local["repository"])
+    component = capabilities["source_component_checks"]["forecasting_and_scoring"]
+    helper = component["interface_evidence"]["ml/intraday/models.py:fit_calibrated_estimator"]
+    assert helper["verified"]
+    assert "fit_chronological" in helper["required_calls_present"]
+    assert not component["source_interfaces_verified"]
+    method = component["interface_evidence"]["ml/intraday/models.py:ChronologicalSigmoid.fit_chronological"]
+    assert method["defined"] and not method["verified"]
+    assert method["required_calls_present"] == []
+    assert "SOURCE_CAPABILITY_UNVERIFIED:forecasting_and_scoring" in capabilities["missing_integration"]
+
+
+def test_delegated_capacity_source_is_recognized(local):
+    installed_sources(local)
+    capabilities = readiness._source_capabilities(local["repository"])
+    component = capabilities["source_component_checks"]["live_account_adapter"]
+    assert component["source_interfaces_verified"]
+    evidence = component["interface_evidence"]
+    step = evidence["ml/intraday/account_execution.py:IntradayAccountExecutor.step"]
+    assert step["verified"] and "_submission_capacity" in step["required_calls_present"]
+    helper = evidence["ml/intraday/account_execution.py:IntradayAccountExecutor._submission_capacity"]
+    assert helper["defined"] and helper["verified"]
+    assert "available_intraday_capacity" in helper["required_calls_present"]
+
+
+def test_empty_delegated_capacity_helper_cannot_claim_account_adapter_source(local):
+    installed_sources(local)
+    source = local["repository"] / "ml/intraday/account_execution.py"
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    classes = [node for node in tree.body
+               if isinstance(node, ast.ClassDef) and node.name == "IntradayAccountExecutor"]
+    assert len(classes) == 1
+    methods = [node for node in classes[0].body
+               if isinstance(node, ast.FunctionDef) and node.name == "_submission_capacity"]
+    assert len(methods) == 1
+    methods[0].body = [ast.Pass()]
+    source.write_text(ast.unparse(ast.fix_missing_locations(tree)), encoding="utf-8")
+
+    capabilities = readiness._source_capabilities(local["repository"])
+    component = capabilities["source_component_checks"]["live_account_adapter"]
+    assert not component["source_interfaces_verified"]
+    key = "ml/intraday/account_execution.py:IntradayAccountExecutor._submission_capacity"
+    alternatives = [variant for variant in component["complete_alternative_evidence"]
+                    if key in variant["interface_evidence"]]
+    assert len(alternatives) == 1
+    evidence = alternatives[0]["interface_evidence"]
+    step = evidence["ml/intraday/account_execution.py:IntradayAccountExecutor.step"]
+    assert step["verified"] and "_submission_capacity" in step["required_calls_present"]
+    helper = evidence[key]
+    assert helper["defined"] and not helper["verified"]
+    assert helper["required_calls_present"] == []
+    assert all(not variant["source_interfaces_verified"]
+               for variant in component["complete_alternative_evidence"])
+    assert "SOURCE_CAPABILITY_UNVERIFIED:live_account_adapter" in capabilities["missing_integration"]
+
+
 def test_comments_empty_adapters_and_unsafe_default_do_not_claim_implemented_source(local):
     installed_sources(local)
     source = local["repository"] / "ml/intraday/account_execution.py"
