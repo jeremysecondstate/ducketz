@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T05:24:48.249442Z",
+  "id": "20261028T052448Z-6a12f79c7a5548038846727380ea4028",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout historical Stats thresholds validated and installed; main retry retained"
+}

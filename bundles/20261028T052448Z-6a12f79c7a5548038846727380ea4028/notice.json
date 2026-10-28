@@ -1,0 +1,157 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T051909Z-1dee74d4a9be4cfb9df8adca04d4b041",
+  "change_id": "20261028T051909Z-1dee74d4a9be4cfb9df8adca04d4b041",
+  "details": [
+    "Selective Atlas PR477 leaf retained peer record20261028T022132Z-602d7f441ec54312af799ec0c717a495/source918851a1ed6a81e931d288539bcb75107d46ee66; broader historical readers and panels remain pending.",
+    "Reject malformed or reversed saved thresholds on every row; preserve original saved calls, probability targets, optional metadata and strict current-policy validation. Recognize both documented current-policy identifiers without changing their recorded names.",
+    "Publish the existing Scout saved-direction reader/helper dependency missing from common main; local installation retains original UI layout, policy cutoffs, symbols, recipes and bindings.",
+    "Source and publication each159strict passes; old-main candidate159passes on671fe653b161957601f89851b27a9ca3a7f334e9; installed Scout122passes. No skips or import/network violations.",
+    "Main is NOT integrated. Atlas advanced main to18a7308693451c5eb5ff487f00df33c61b63c85a; supported publication refused the stale candidate. Preserve original source, prepared candidatec6e52f716cfe2cf01f734c5dd5c8aa8a1923cf26 and receipt. Next is a narrow pinned-helper retry repair with same-ID fresh-main tests; no receipt deletion or verification bypass."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/gameplan_stats_handoff.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_scout_history_direction_metadata.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/gameplan_stats_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/gameplan_saved_direction.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_gameplan_stats_handoff.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_gameplan_saved_direction.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_gameplan_stats_outcome_revision.py"
+    }
+  ],
+  "limitations": [
+    "Local installation does not prove runtime loading; no restart or activation requested.",
+    "No provider/broker calls, production scoring/training, trader/task operations or private exports.",
+    "The broader Atlas PR480/482 split architecture requires field-level local applicability review; do not replace Scout independent services or tuning."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/483",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Installed source is available for normal safe loading. Source publication, pending main integration, peer applicability and loaded runtime remain separate; nightly production continues independently.",
+  "scope": "shared",
+  "source_commit": "826fa94eb5644b89c74eec669ab0ecad7b5c1c00",
+  "summary": "Scout historical Stats thresholds validated and installed; main retry retained",
+  "tests": {
+    "local_installed": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_scout_history_direction_metadata.py",
+          "tests/test_gameplan_stats_handoff.py",
+          "tests/test_gameplan_saved_direction.py",
+          "tests/test_gameplan_stats_data.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/installed-historical-threshold-pytest"
+        ],
+        "completed_at_utc": "2026-10-28T05:21:52.572717Z",
+        "exit_code": 0,
+        "output_sha256": "f35cb5688652220f06771a7c808417031daacb4cd57a125037d83539a74cc466",
+        "result": "........................................................................ [ 59%]\r\n..................................................                       [100%]\r\n122 passed in 11.61s\r\n\n",
+        "started_at_utc": "2026-10-28T05:21:39.126566Z"
+      }
+    ],
+    "prepared_old_main": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_scout_history_direction_metadata.py",
+          "tests/test_gameplan_stats_handoff.py",
+          "tests/test_gameplan_saved_direction.py",
+          "tests/test_gameplan_stats_data.py",
+          "tests/test_gameplan_stats_outcome_revision.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/historical-threshold-pytest"
+        ],
+        "completed_at_utc": "2026-10-28T05:21:34.607895Z",
+        "exit_code": 0,
+        "output_sha256": "13d34dae95c0f9f3f47de1f87d27bd61501b0740c9ffd7245a896cb222beac99",
+        "result": "........................................................................ [ 45%]\r\n........................................................................ [ 90%]\r\n...............                                                          [100%]\r\n159 passed in 18.08s\r\n\n",
+        "started_at_utc": "2026-10-28T05:21:14.862662Z"
+      }
+    ],
+    "publication": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_scout_history_direction_metadata.py",
+          "tests/test_gameplan_stats_handoff.py",
+          "tests/test_gameplan_saved_direction.py",
+          "tests/test_gameplan_stats_data.py",
+          "tests/test_gameplan_stats_outcome_revision.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/historical-threshold-pytest"
+        ],
+        "completed_at_utc": "2026-10-28T05:20:11.627649Z",
+        "exit_code": 0,
+        "output_sha256": "0291781b78199bf2ca714843f86d2733cf13c28ebe33b164d8befb8edb0feb8d",
+        "result": "........................................................................ [ 45%]\r\n........................................................................ [ 90%]\r\n...............                                                          [100%]\r\n159 passed in 18.12s\r\n\n",
+        "started_at_utc": "2026-10-28T05:19:51.887974Z"
+      }
+    ],
+    "sealed_source": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_scout_history_direction_metadata.py",
+          "tests/test_gameplan_stats_handoff.py",
+          "tests/test_gameplan_saved_direction.py",
+          "tests/test_gameplan_stats_data.py",
+          "tests/test_gameplan_stats_outcome_revision.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/historical-threshold-pytest"
+        ],
+        "completed_at_utc": "2026-10-28T05:19:29.899727Z",
+        "exit_code": 0,
+        "output_sha256": "b54ce53a7b680a4f0955717fb3f55f51203bd6ef7107ba9ff7dbf1294494bd37",
+        "result": "........................................................................ [ 45%]\r\n........................................................................ [ 90%]\r\n...............                                                          [100%]\r\n159 passed in 18.93s\r\n\n",
+        "started_at_utc": "2026-10-28T05:19:09.371114Z"
+      }
+    ]
+  }
+}
