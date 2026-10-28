@@ -298,7 +298,9 @@ def test_peer_original_policy_difference_cannot_hide_behind_older_row_whitelist(
     rows[0][field]=value
     local=base(peer,rows=rows)
     before=(peer/"ml/gameplan-actuals-review-latest/run.json").read_bytes()
-    with pytest.raises(ValueError,match="parent publication differs"):
+    # Known current-policy cutoffs fail in the strict reader before parent comparison.
+    expected = "cutoffs disagree with its policy" if field == "direction_up_threshold" else "parent publication differs"
+    with pytest.raises(ValueError,match=expected):
         revision.adopt_revision(peer,package=package,expected_sha256=file_checksum(package),base_run=local,
             expected_base_receipt_sha256=file_checksum(local/"receipt.json"),reviewed_at=NOW)
     assert (peer/"ml/gameplan-actuals-review-latest/run.json").read_bytes()==before

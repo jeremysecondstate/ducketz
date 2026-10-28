@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -17,6 +18,7 @@ from datafetching.symbol_universe import normalize_symbol
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp, verify_manifest, write_manifest
 from ml.gameplan_actuals_review import RUNS, VERSION, _write_json, completed_session_context
 from ml.gameplan_probability_target import RAW_DIRECTION_TARGET, probability_target_contract, probability_target_metadata
+from ml.gameplan_saved_direction import DIRECTION_POLICY_FIELDS
 from ml.independent_stock_targets import STOCK_TARGET_BOUNDARY_TOLERANCE
 
 
@@ -29,8 +31,9 @@ ROW_FIELDS = (
     "model_observed_target", "model_brier_score", "actual_return", "assumed_round_trip_cost",
     "target_window_start", "target_window_end", "actual_start_observed_at", "actual_end_observed_at",
     "probability_target_contract", "gameplan_variant",
+    *DIRECTION_POLICY_FIELDS,
 )
-REQUIRED_ROW_FIELDS = set(ROW_FIELDS) - {"assumed_round_trip_cost", "actual_start_observed_at", "actual_end_observed_at"}
+REQUIRED_ROW_FIELDS = set(ROW_FIELDS) - {"assumed_round_trip_cost", "actual_start_observed_at", "actual_end_observed_at", *DIRECTION_POLICY_FIELDS}
 PACKAGE_FIELDS = {"schema_version", "producer", "action_date", "symbols", "reviewed_at", "outcomes_through",
                   "probability_target_contract", "source_receipt_sha256", "source_manifest_sha256",
                   "source_results_sha256", "source_report_sha256", "coverage_status", "rows"}
@@ -53,6 +56,22 @@ def _scalar(value):
 
 def _bytes(value: dict) -> bytes:
     return (json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8")
+
+
+def _validate_saved_direction_thresholds(row: Mapping) -> None:
+    """Retain optional historical metadata without inferring today's policy."""
+    recorded = {}
+    for key in ("direction_up_threshold", "direction_down_threshold"):
+        value = row.get(key)
+        if value is None:
+            continue
+        if (isinstance(value, bool) or not isinstance(value, (int, float))
+                or not math.isfinite(value) or not 0 <= value <= 1):
+            raise ValueError("Stats package has invalid saved direction thresholds")
+        recorded[key] = value
+    if (len(recorded) == 2
+            and recorded["direction_down_threshold"] > recorded["direction_up_threshold"]):
+        raise ValueError("Stats package has reversed saved direction thresholds")
 
 
 def _validate_package(payload: dict) -> pd.DataFrame:
@@ -78,6 +97,7 @@ def _validate_package(payload: dict) -> pd.DataFrame:
     for row in rows:
         if not isinstance(row, dict) or set(row) - set(ROW_FIELDS) or not REQUIRED_ROW_FIELDS.issubset(row):
             raise ValueError("Stats package contains unsupported prediction fields")
+        _validate_saved_direction_thresholds(row)
         if (row["symbol"] not in symbols or row["action_date"] != payload["action_date"]
                 or not isinstance(row["id"], str) or not row["id"]
                 or row["model_status"] not in {"PROMOTED", "RESEARCH_NOT_PROMOTED", "RESEARCH_NO_TARGET_HISTORY"}):
