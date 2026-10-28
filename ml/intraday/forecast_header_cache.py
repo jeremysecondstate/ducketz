@@ -147,28 +147,44 @@ class DurableForecastHeaders:
     def load(self, identity, signature):
         return self.load_many(identity, [signature]).get(tuple(signature))
 
-    def load_many(self, identity, signatures):
+    def load_many(self, identity, signatures, *, diagnostics=None):
         """Read one inventory's authenticated headers with one cache snapshot."""
         db = None
         found = {}
+        reason, sqlite_errorcode = "budget_disabled", None
+        requested = min(2147483647, len(signatures)) if type(signatures) in {list, tuple} else 0
+        expected_count = rejected = iterated = 0
+        retained = False
         started = time.monotonic()
         if self._remaining <= 0:
+            self._report_load(diagnostics, reason, requested, expected_count,
+                              found, retained, rejected, sqlite_errorcode)
             return {}
         try:
             if not self.path.is_file():
+                reason = "missing_file"
                 return {}
             secret = self._key_material()
             if secret is None:
+                reason = "missing_key"
                 return {}
             db = self._connect()
             db.execute("PRAGMA query_only=ON")
             db.execute("BEGIN")
             context = self._context(db)
             if context is None:
+                reason = "invalid_context"
                 return {}
-            expected = {self._key(identity, signature, context): tuple(signature) for signature in signatures}
+            expected = {}
+            for signature in signatures:
+                iterated = min(2147483647, iterated + 1)
+                requested = iterated
+                expected[self._key(identity, signature, context)] = tuple(signature)
+            expected_count = len(expected)
             if not expected:
+                reason = "empty"
                 return {}
+            reason = "complete"
             rows = db.execute("SELECT cache_key,"
                 "CASE WHEN typeof(payload)='blob' AND length(payload)<=65536 THEN payload ELSE NULL END,"
                 "CASE WHEN typeof(record_mac)='blob' AND length(record_mac)=32 THEN record_mac ELSE NULL END "
@@ -176,29 +192,49 @@ class DurableForecastHeaders:
                 (_encoded(tuple(expected)),))
             for key, raw, mac in rows:
                 if time.monotonic() - started >= self._remaining:
+                    reason = "budget_exhausted"
                     break
                 if (key not in expected or not isinstance(raw, bytes) or len(raw) > 65536
                         or not isinstance(mac, bytes) or len(mac) != 32
                         or not hmac.compare_digest(self._authenticate(secret, raw), mac)):
+                    rejected = min(2147483647, rejected + 1)
                     continue
                 record = json.loads(raw)
                 signature = expected[key]
                 if (not isinstance(record, dict) or set(record) != {'contract', 'identity', 'signature', 'context', 'projection'}
                         or record['contract'] != _CONTRACT or record['identity'] != list(identity)
                         or record['signature'] != list(signature) or record['context'] != list(context)):
+                    rejected = min(2147483647, rejected + 1)
                     continue
                 projection = self._projection(record['projection'], signature)
                 if projection is not None:
                     found[signature] = projection
+                else:
+                    rejected = min(2147483647, rejected + 1)
+            if reason == "complete" and rejected:
+                reason = "invalid_record"
+            retained = True
             return found
         except sqlite3.OperationalError as error:
             # An interrupted optional read cannot invalidate earlier records
             # already authenticated against this exact pinned cache context.
             # Unread or rejected records still use the full source validator.
-            if getattr(error, "sqlite_errorcode", None) == sqlite3.SQLITE_INTERRUPT:
+            sqlite_errorcode = getattr(error, "sqlite_errorcode", None)
+            if sqlite_errorcode == sqlite3.SQLITE_INTERRUPT:
+                reason, retained = "sqlite_interrupt", True
                 return found
+            reason = "sqlite_error"
             return {}
-        except (sqlite3.Error, OSError, ValueError, TypeError, AttributeError):
+        except sqlite3.Error as error:
+            reason = "sqlite_error"
+            sqlite_errorcode = getattr(error, "sqlite_errorcode", None)
+            return {}
+        except OSError:
+            reason = "os_error"
+            return {}
+        except (ValueError, TypeError, AttributeError):
+            reason = "invalid_record"
+            rejected = min(2147483647, rejected + 1)
             return {}
         finally:
             if db is not None:
@@ -207,6 +243,25 @@ class DurableForecastHeaders:
                 except (sqlite3.Error, OSError):
                     pass
             self._remaining -= time.monotonic() - started
+            self._report_load(diagnostics, reason, requested, expected_count,
+                              found, retained, rejected, sqlite_errorcode)
+
+    @staticmethod
+    def _report_load(output, reason, requested, expected, found, retained, rejected, code):
+        """Only fixed scalar outcomes; diagnostics never affect cache results."""
+        if type(output) is not dict:
+            return
+        try:
+            validated = min(2147483647, len(found))
+            output.clear()
+            output.update(schema_version="forecast-cache-load-outcome-v1", reason=reason,
+                requested_count=min(2147483647, requested),
+                expected_count=min(2147483647, expected), validated_count=validated,
+                returned_count=validated if retained else 0,
+                discarded_count=0 if retained else validated, rejected_count=rejected,
+                sqlite_errorcode=code if type(code) is int and 0 <= code <= 2147483647 else None)
+        except Exception:
+            pass
 
     def save(self, identity, signature, projection):
         """Called only with the result of the full source semantic validator."""
