@@ -1,0 +1,81 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T224337Z-a5d7b557e81d4dbaa58d08bcc860e399",
+  "change_id": "20261028T224337Z-a5d7b557e81d4dbaa58d08bcc860e399",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative; common data-only worker renewal after complete acquisition/preparation iterations, applicable after each PC reviews its local installation and bindings.",
+    "Preserve immutable causal snapshots, original acquisition identities and outstanding collection/preparation work while selecting the latest complete installed generation at safe boundaries.",
+    "Preserve independent trader state, all order and UNKNOWN evidence, original model recipes and science, cadence, manual stops, configured wakes and original lifetimes.",
+    "The data-only lifetime holds its original lock and kernel job across worker replacement; exact completion receipts, process identities, original clocks and controller state survive safe installed-generation handoffs. Unknown failures never become a retry or start authority.",
+    "Dependency revision of Completion-Record 20261028T223634Z-b7e8aa1a54f94fec9d71d0b11a5efe74: retain the identical eight owned source bytes while preserving the intervening shared worker-rotation changes. The two data-adapter clock helpers imported from the changed shared module retain identical function definitions."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "path": "tools/intraday_data_host.py",
+      "sha256": "be11fa321f3453e1325eae900cd632335e2b32bd98236e9e7e869b0de7c7de88"
+    },
+    {
+      "operation": "add",
+      "path": "tools/intraday_data_renewal.py",
+      "sha256": "4b078e6fdbc64230e40df6a566847f95f656941b3c1b380fba667db457119cfc"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/data_renewal.py",
+      "sha256": "f086ac7bfc8e271d1528814896200b22d86705f538f3bd77e33901f98b0d2cb0"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_data_host.py",
+      "sha256": "9b853495545cb734a639a486f7101f41fc32a6a2b0b6ac060a978230b4ea65ff"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_data_renewal_protocol.py",
+      "sha256": "9d5238fd13b152cf367fe4361c6494133c61fca872445c9a231694e910e0f63a"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_data_renewal.py",
+      "sha256": "110aa7dbe332e5bbf4f2f7c0da0fd1ea45c5a63ea882d64c86bf5580751431bd"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_data_renewal_integration.py",
+      "sha256": "a88c16630d5f468dc1fcd75c95c0ce3a8351d4a881ed740a3d278bd8bd2d44c4"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/intraday-data-renewal.md",
+      "sha256": "a4f7588d61d104685feb5dc3ae8d61f6b48cde377d59c8207a7670d2d7334dc1"
+    }
+  ],
+  "limitations": [
+    "Public checks exercise the standalone bootstrap, protocol and portable adapter fixtures with no network or production work. The integration fixture is published but excluded from public checks because common main lacks the complete installed Atlas adapters; exact local full-composition regressions are recorded separately. Existing local data recipe modules and installation helpers are not wholesale exported by this completion.",
+    "Offline source checks do not establish loaded or naturally exercised data-worker recovery. Successful publication and local installation remain separate from loading and natural progress.",
+    "Existing uncertain original orders remain fenced pending definitive original-attempt evidence; data renewal never clears order evidence or grants order authority.",
+    "This public dependency revision preserves the prior published completion and its tests. It neither adopts peer execution control into the existing local complete installation nor changes the owned data-renewal source bytes; local installation and natural operation are recorded independently."
+  ],
+  "main_commit": "5a77032bc123719ea8a84de132552416424d824e",
+  "privacy_review": "Generic source, documentation and synthetic offline fixture data only; no private account state, order records, inputs, raw data, fitted models, native bindings, credentials or production logs exported.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Seal the complete reviewed source and dependencies. Existing one-shot data-host lifetimes do not gain new control flow from edited bytes; record any explicitly authorized migration separately. Thereafter data-only workers renew after complete iterations and reselect a complete installed generation. No trader start, stop, restart, lifetime extension, order or schedule change is part of source publication.",
+  "scope": "shared",
+  "source_commit": "49e3efab7d2dbbc06975e5b93fa7f387c7e797ec",
+  "summary": "Data workers renew after completed iterations; reviewed dependency revision integrated",
+  "tests": [
+    {
+      "network_attempts": 0,
+      "passed": 78,
+      "scope": "Each exact public author, immutable queue, isolated source and main candidate; same portable cases repeated",
+      "skipped": 0
+    },
+    {
+      "network_attempts": 0,
+      "passed": 185,
+      "scope": "Complete local source composition with frozen data-renewal overlay and prior regressions",
+      "skipped": 0
+    }
+  ]
+}

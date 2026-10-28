@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T22:46:25.169172Z",
+  "id": "20261028T224625Z-f18a67f0efbb48599cb4b7e09a7b5645",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Data workers renew after completed iterations; reviewed dependency revision integrated"
+}
