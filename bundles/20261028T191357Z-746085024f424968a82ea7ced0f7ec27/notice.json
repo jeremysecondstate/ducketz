@@ -1,0 +1,27 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T190942Z-2f5d094f6aa14a418470d85a15aaf1ed",
+  "change_id": "scout-database-metric-lock:20261028T190942Z-2f5d094f6aa14a418470d85a15aaf1ed",
+  "completion_record": "20261028T190942Z-2f5d094f6aa14a418470d85a15aaf1ed",
+  "files": [
+    "ml/intraday/service_handoff.py",
+    "tests/test_scout_metrics_lock_release.py"
+  ],
+  "limitations": [
+    "Offline SQLite fixtures only; no production calls, real training, orders or trader controls for this repair.",
+    "Reproduction proves contention amplification by telemetry, not historical lock-holder attribution or recovery of earlier failures.",
+    "Existing generations remain pinned; actual loaded manifests and affected runtime evidence are separate from installation."
+  ],
+  "main_sha": "cb6b8a4d193631a837177ff48abb2e1bebe21770",
+  "repository": "jeremysecondstate/ducketz",
+  "review_url": "https://github.com/jeremysecondstate/ducketz/pull/503",
+  "runtime_implications": "Compatible independent-v1 repair buffers up to128scalar timings and flushes existing metrics after successful native close, with post-close overflow count. Preserve original SQL/native errors, commit/rollback, stop/deadline, model recipes, data qualification, historical probabilities and order identities. Current1A and terminal1Bmodel retain normal authorized activation boundaries; no monitor restart or crash respawn.",
+  "scope": "Shared database transaction correctness; each PC retains its private recipe, symbol scope, fitted models and operating bindings.",
+  "source_sha": "d4a6601c3d7eb5bcea6536af06b6bd428b9d30d4",
+  "summary": "Scout releases SQLite writer ownership before database telemetry",
+  "tests": {
+    "composed_installed": "104 passed, zero skipped in each composed and exact installed release; overlapping suites",
+    "regression": "Five intended original-source failures; nine focused cases plus existing handoff checks pass",
+    "source_queue_courier_main": "104 passed, zero skipped in each final candidate; overlapping suites"
+  }
+}

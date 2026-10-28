@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T19:13:57.701753Z",
+  "id": "20261028T191357Z-746085024f424968a82ea7ced0f7ec27",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout releases SQLite writer ownership before database telemetry"
+}
