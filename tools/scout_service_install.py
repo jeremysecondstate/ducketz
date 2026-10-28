@@ -48,9 +48,13 @@ def publish_directory(staging, destination):
 
 def compose_release(*, predecessor_root, predecessor_manifest_sha256, reviewed_source,
                     operations, destination, completion_record, checks,
-                    predecessor_protocol=LEGACY_PROTOCOL):
+                    predecessor_protocol=LEGACY_PROTOCOL, trading_rotation_version=None):
     """Build verified bytes beside the predecessor; never change any selector."""
     previous = validate_release(predecessor_root, predecessor_manifest_sha256, protocol=predecessor_protocol)
+    previous_rotation = previous["manifest"].get("trading_rotation_version")
+    rotation_version = previous_rotation if trading_rotation_version is None else trading_rotation_version
+    if rotation_version not in {None, "scout-trading-rotation-v1"}:
+        raise ValueError("Unsupported trading rotation contract")
     if not completion_record or not checks or not isinstance(operations, list) or not operations:
         raise ValueError("Release composition needs review identity, passing checks and explicit operations")
     if any(not isinstance(check, dict) or check.get("exit_code") != 0 or not check.get("output_sha256")
@@ -109,6 +113,18 @@ def compose_release(*, predecessor_root, predecessor_manifest_sha256, reviewed_s
                 output.parent.mkdir(parents=True, exist_ok=True)
                 output.write_bytes(raw)
                 inventory[path] = sha256(raw)
+        rotation_sources = {"ml/intraday/trading_rotation.py", "ml/intraday/live_session.py",
+                            "tools/scout_service_controller.py"}
+        if rotation_version and not rotation_sources.issubset(inventory):
+            raise ValueError("Trading rotation capability requires the complete worker/controller source")
+        if rotation_version and previous_rotation is None:
+            # Existing filenames can still contain the old model-only lifecycle.
+            # First promotion must review changed bytes for every integration
+            # component; later compatible releases retain the proven capability.
+            changed = {path for path, kind, raw in reviewed if kind != "delete"
+                       and sha256(raw) != previous["manifest"]["files"].get(path)}
+            if not rotation_sources.issubset(changed):
+                raise ValueError("Initial trading rotation requires reviewed changed worker/controller source")
         recipe_raw = read_bytes(previous["recipe_path"])
         if sha256(recipe_raw) != previous["recipe_file_sha256"]:
             raise ValueError("Private recipe changed during composition")
@@ -123,6 +139,8 @@ def compose_release(*, predecessor_root, predecessor_manifest_sha256, reviewed_s
                 "operations": operations, "checks": checks, "private_recipe_unchanged": True,
                 "system_1a_owned_by_1b": False, "trader_started": False,
                 "activation_boundary": "next_normal_authorized_launch_new_independent_controller"}}
+        if rotation_version:
+            manifest["trading_rotation_version"] = rotation_version
         atomic_json(staging / "manifest.json", manifest)
         # Same-volume rename publishes the complete immutable directory. A crash
         # before this point leaves no selectable partial release.

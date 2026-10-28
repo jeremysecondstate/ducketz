@@ -17,6 +17,7 @@ def make_release(tmp_path):
     source.mkdir(parents=True)
     inventory = {}
     for relative, raw in {"model.py": b"VALUE = 'original-model'\n", "unowned.py": b"UNOWNED = 1\n",
+                          "ml/intraday/live_session.py": b"# previous model-only lifecycle\n",
                           **{"tools/" + name: ("# " + name + "\n").encode() for name in install.BOOTSTRAP_FILES}}.items():
         path = source / relative
         path.parent.mkdir(exist_ok=True, parents=True)
@@ -76,6 +77,84 @@ def test_independent_selector_cannot_replace_v1_selector(tmp_path):
     with pytest.raises(ValueError, match="preserve the legacy"):
         install.select_independent_release(selector, selected, expected_selection_sha256=releases.sha256(before))
     assert selector.read_bytes() == before
+
+
+def test_rotation_capability_requires_supported_complete_source(tmp_path):
+    _, spec = specification(tmp_path)
+    with pytest.raises(ValueError, match="Unsupported trading rotation"):
+        install.compose_release(**spec, trading_rotation_version="unknown")
+    with pytest.raises(ValueError, match="complete worker/controller"):
+        install.compose_release(**spec, trading_rotation_version="scout-trading-rotation-v1")
+    assert not Path(spec["destination"]).exists()
+
+
+def rotation_specification(tmp_path):
+    previous, spec = specification(tmp_path)
+    for name in ("ml/intraday/trading_rotation.py", "ml/intraday/live_session.py",
+                 "tools/scout_service_controller.py"):
+        path = Path(spec["reviewed_source"]) / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"# offline reviewed rotation integration fixture\n")
+        old_hash = previous["manifest"]["files"].get(name)
+        spec["operations"].append({"path": name, "operation": "add" if old_hash is None else "modify",
+            "before_sha256": old_hash, "sha256": releases.sha256(path.read_bytes())})
+    return previous, spec
+
+
+def test_rotation_capability_is_pinned_without_changing_recipe(tmp_path):
+    previous, spec = rotation_specification(tmp_path)
+    selected = install.compose_release(**spec, trading_rotation_version="scout-trading-rotation-v1")
+    assert selected["manifest"]["trading_rotation_version"] == "scout-trading-rotation-v1"
+    assert Path(selected["recipe_path"]).read_bytes() == Path(previous["recipe_path"]).read_bytes()
+    assert selected["lifecycle_protocol"] == install.PROTOCOL
+
+
+@pytest.mark.parametrize("missing", ["ml/intraday/live_session.py", "tools/scout_service_controller.py"])
+@pytest.mark.parametrize("unchanged_operation", [False, True])
+def test_initial_rotation_rejects_old_integration_even_when_filenames_exist(tmp_path, missing, unchanged_operation):
+    previous, spec = rotation_specification(tmp_path)
+    operation = next(op for op in spec["operations"] if op["path"] == missing)
+    if unchanged_operation:
+        raw = (Path(previous["source_root"]) / missing).read_bytes()
+        (Path(spec["reviewed_source"]) / missing).write_bytes(raw)
+        operation["sha256"] = releases.sha256(raw)
+    else:
+        spec["operations"].remove(operation)
+    with pytest.raises(ValueError, match="Initial trading rotation requires reviewed changed"):
+        install.compose_release(**spec, trading_rotation_version="scout-trading-rotation-v1")
+    assert not Path(spec["destination"]).exists()
+
+
+def successor_specification(spec, selected, tmp_path, operations):
+    return {**spec, "predecessor_root": selected["release_root"],
+        "predecessor_manifest_sha256": selected["manifest_sha256"], "predecessor_protocol": install.PROTOCOL,
+        "destination": tmp_path / "successor", "operations": operations}
+
+
+def test_compatible_successor_inherits_rotation_capability(tmp_path):
+    _, spec = rotation_specification(tmp_path)
+    first = install.compose_release(**spec, trading_rotation_version="scout-trading-rotation-v1")
+    raw = b"VALUE = 'later-compatible-fix'\n"
+    (Path(spec["reviewed_source"]) / "model.py").write_bytes(raw)
+    operations = [{"path": "model.py", "operation": "modify", "before_sha256": first["manifest"]["files"]["model.py"],
+                   "sha256": releases.sha256(raw)}]
+    second = install.compose_release(**successor_specification(spec, first, tmp_path, operations))
+    assert second["manifest"]["trading_rotation_version"] == "scout-trading-rotation-v1"
+    assert second["recipe_file_sha256"] == first["recipe_file_sha256"]
+
+
+@pytest.mark.parametrize("missing", ["ml/intraday/trading_rotation.py", "ml/intraday/live_session.py",
+                                     "tools/scout_service_controller.py"])
+def test_capable_successor_cannot_delete_required_rotation_source(tmp_path, missing):
+    _, spec = rotation_specification(tmp_path)
+    first = install.compose_release(**spec, trading_rotation_version="scout-trading-rotation-v1")
+    operations = [{"path": missing, "operation": "delete", "before_sha256": first["manifest"]["files"][missing],
+                   "sha256": None}]
+    second = successor_specification(spec, first, tmp_path, operations)
+    with pytest.raises(ValueError, match="complete worker/controller"):
+        install.compose_release(**second)
+    assert not Path(second["destination"]).exists()
+    assert releases.sha256((Path(first["source_root"]) / missing).read_bytes()) == first["manifest"]["files"][missing]
 
 
 @pytest.mark.parametrize("fault", ["before_hash", "after_hash", "operation", "duplicate", "path", "checks"])
