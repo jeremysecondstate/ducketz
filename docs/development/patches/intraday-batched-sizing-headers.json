@@ -1,0 +1,28 @@
+{
+  "schema_version": "batched-recovery-sizing-headers-v1",
+  "actor": "Atlas",
+  "task": "ATLAS 15m Trader Representative",
+  "scope": "shared",
+  "common_runtime": {
+    "path": "ml/intraday/execution_intentions.py",
+    "before_sha256": "8a42034dcb510241e0339aabb06f29bd5e26424e8ec112b77de0278e7169d4df",
+    "after_sha256": "2bbe6c7b84fd610e865bb54fa841ba1e28ab1df39e27c68cfcf23d2222d02eb7"
+  },
+  "legacy_runtime": {
+    "path": "ml/intraday/intentions.py",
+    "before_sha256": "a7d8750c836b75de6ee5bf7b4dfd291fbec8374d665f1040a2d47a85919cb0ec",
+    "after_sha256": "8d10ce0c67fa7f3914b77b708c734b478ddca69643e1cc3d621190e60dcf9679"
+  },
+  "behavior": "Authenticate cold sizing scalar headers in one cache snapshot within the existing protected source read transaction; retain every per-row source revision, physical identity, semantic fallback and fresh writer proof.",
+  "preserved": [
+    "Original forecasts, probabilities, targets, model recipes and policy",
+    "Independent own trader state, UNKNOWN send fences and order identities",
+    "Manual controls, admitted lifetime, cadence and process-renewal boundaries"
+  ],
+  "limitations": [
+    "Offline synthetic regression and component replay only; no full-pipeline or portfolio latency claim",
+    "Publication is separate from local installation, loading and naturally exercised recovery",
+    "Review exact local source beforeimages and architecture; preserve unrelated source differences"
+  ],
+  "runtime_implications": "Complete reviewed local generation installation is required; next natural authorized renewal may select it. No launch, restart, trade or other operating authority is created."
+}
