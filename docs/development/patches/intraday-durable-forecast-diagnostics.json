@@ -1,0 +1,23 @@
+{
+  "schema_version": "intraday-forecast-cache-diagnostics-patch-v1",
+  "patch": "docs/development/patches/intraday-durable-forecast-diagnostics.patch",
+  "patch_sha256": "95a69665517d7ec5229a4ce7a9601002f6b2fd0fde08b41c2014d49d820e75b3",
+  "scope": "Shared optional forecast-header diagnostics; review per-PC consumer composition before applying.",
+  "behavior": "Preserve authenticated scalar proofs, full-source fallback, budgets, scientific decisions, manual stops and independent order evidence.",
+  "consumers": [
+    {
+      "path": "ml/intraday/store.py",
+      "operation": "modify",
+      "before_sha256": "aef3a366ff2c3033608ceebb360ebd106b91518709c59b739b1ac12610205871",
+      "after_sha256": "7d8eb33919d128d02cf4aaa170fda25327315a49eaf8537a2de9da52edc37a6b"
+    },
+    {
+      "path": "ml/intraday/intentions.py",
+      "operation": "modify",
+      "before_sha256": "68b1729cb986defabf2d96ba629bed9faa19ec87ead7910b4b064be1df0bc82f",
+      "after_sha256": "3762932e18407eefec06d459a9f6eff56ae0f8104a35ffc61f214c48924d4825"
+    }
+  ],
+  "limits": "Portable checker exercises the common cache module only. Atlas full installed-composition tests are separately recorded. Differing consumers need reviewed hunk adoption; no whole-file replacement.",
+  "patch_text": "LF unified diff; preserve existing consumer newline convention."
+}

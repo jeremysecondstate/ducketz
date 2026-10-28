@@ -1,0 +1,100 @@
+--- a/ml/intraday/store.py
++++ b/ml/intraday/store.py
+@@ -385,8 +385,28 @@
+                 missing_signatures.append(signature)
+         # Durable reads attest cold/changed originals only. Warm proofs already
+         # retain the same physical/schema/epoch/revision checks above and below.
+-        durable_headers = (durable.load_many(durable_identity, missing_signatures)
+-            if cache_source_certain and missing_signatures else {})
++        durable_headers = {}
++        if cache_source_certain and missing_signatures:
++            if read_timings is None:
++                durable_headers = durable.load_many(durable_identity, missing_signatures)
++            else:
++                report = {}
++                durable_headers = durable.load_many(durable_identity, missing_signatures, diagnostics=report)
++                # Reporting cannot change authenticated proofs or source fallback.
++                try:
++                    read_timings.forecast_cache_read(report)
++                except Exception:
++                    pass
++        elif missing_signatures and read_timings is not None:
++            # A bypassed optional read is distinct from absent or rejected proofs.
++            try:
++                read_timings.forecast_cache_read(dict(schema_version="forecast-cache-load-outcome-v1",
++                    reason="identity_unavailable" if durable_identity is None else "source_unpinned",
++                    requested_count=min(2147483647, len(missing_signatures)), expected_count=0,
++                    validated_count=0, returned_count=0, discarded_count=0,
++                    rejected_count=0, sqlite_errorcode=None))
++            except Exception:
++                pass
+         validated_for_cache = []
+         for row in rows:
+             if stopped():
+--- a/ml/intraday/intentions.py
++++ b/ml/intraday/intentions.py
+@@ -156,6 +156,11 @@
+             returned_count=0, discarded_count=0, rejected_count=0,
+             sqlite_interrupt_count=0, sqlite_busy_count=0, sqlite_locked_count=0,
+             sqlite_other_count=0)
++        self.forecast_cache = dict(schema_version="forecast-cache-outcomes-v1", attempts=0,
++            outcomes={}, requested_count=0, expected_count=0, validated_count=0,
++            returned_count=0, discarded_count=0, rejected_count=0,
++            sqlite_interrupt_count=0, sqlite_busy_count=0, sqlite_locked_count=0,
++            sqlite_other_count=0)
+ 
+     def _detail_clock(self, name):
+         try:
+@@ -252,6 +257,41 @@
+         except Exception:
+             self.read_unavailable = True
+ 
++    def forecast_cache_read(self, report):
++        """Bounded aggregate only; no source identities or exception text."""
++        try:
++            reasons = {"budget_disabled", "missing_file", "missing_key", "invalid_context",
++                "empty", "complete", "budget_exhausted", "sqlite_interrupt",
++                "sqlite_error", "os_error", "invalid_record", "identity_unavailable", "source_unpinned"}
++            names = ("requested_count", "expected_count", "validated_count", "returned_count",
++                     "discarded_count", "rejected_count")
++            if (type(report) is not dict or set(report) != set(names) | {
++                    "schema_version", "reason", "sqlite_errorcode"}
++                    or report["schema_version"] != "forecast-cache-load-outcome-v1"
++                    or report["reason"] not in reasons
++                    or any(type(report[name]) is not int or not 0 <= report[name] <= 2147483647
++                           for name in names)):
++                self.read_unavailable = True
++                return
++            code = report["sqlite_errorcode"]
++            if code is not None and (type(code) is not int or not 0 <= code <= 2147483647):
++                self.read_unavailable = True
++                return
++            stats = self.forecast_cache
++            stats["attempts"] = min(2147483647, stats["attempts"] + 1)
++            outcomes = stats["outcomes"]
++            outcomes[report["reason"]] = min(2147483647, outcomes.get(report["reason"], 0) + 1)
++            for name in names:
++                stats[name] = min(2147483647, stats[name] + report[name])
++            if code is not None:
++                bucket = {sqlite3.SQLITE_INTERRUPT: "sqlite_interrupt_count",
++                          sqlite3.SQLITE_BUSY: "sqlite_busy_count",
++                          sqlite3.SQLITE_LOCKED: "sqlite_locked_count"}.get(code & 255,
++                              "sqlite_other_count")
++                stats[bucket] = min(2147483647, stats[bucket] + 1)
++        except Exception:
++            self.read_unavailable = True
++
+     def payload(self, prefix, raw):
+         # O(1) lengths of the row already read: no encode, new query or tree.
+         # Text characters are deliberately not presented as UTF-8 byte counts.
+@@ -313,7 +353,9 @@
+                         workload=dict(self.workload), diagnostics_unavailable=self.read_unavailable,
+                         thread_cpu_unavailable=self.thread_cpu_unavailable,
+                         sizing_cache={key: dict(value) if isinstance(value, dict) else value
+-                                      for key, value in self.sizing_cache.items()}))
++                                      for key, value in self.sizing_cache.items()},
++                        forecast_cache={key: dict(value) if isinstance(value, dict) else value
++                                        for key, value in self.forecast_cache.items()}))
+ 
+ 
+ class IntentionStore:
