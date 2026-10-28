@@ -484,6 +484,126 @@ def _binding(config):
     return result
 
 
+PROFILE_METADATA_TRANSITION = "nightly-exchange-profile-metadata-transition-v1"
+PROFILE_METADATA_SELECTION = "nightly-exchange-profile-metadata-selection-v1"
+PROFILE_METADATA_PATHS = frozenset((
+    "operating_roles.scout_15m_independent_services.audit_repair",
+    "operating_roles.scout_15m_independent_services.completion_record",
+    "operating_roles.scout_15m_independent_services.manifest_sha256",
+    "operating_roles.scout_15m_independent_services.release_root",
+    "operating_roles.scout_15m_independent_services.source_sha",
+))
+
+
+def _profile_metadata_delta(before, after):
+    """Return only the exact independent-15m metadata differences allowed here."""
+    from copy import deepcopy
+
+    projected = [deepcopy(before), deepcopy(after)]
+    changed = []
+    missing = object()
+    for name in sorted(PROFILE_METADATA_PATHS):
+        parents = name.split(".")
+        values = []
+        for profile in projected:
+            parent = profile
+            for field in parents[:-1]:
+                parent = parent.get(field)
+                if not isinstance(parent, dict):
+                    raise ValueError("Profile transition lacks independent 15m metadata structure")
+            values.append(parent.pop(parents[-1], missing))
+        if ((values[0] is missing) != (values[1] is missing)
+                or values[0] is not missing and values[1] is not missing
+                and _bytes(values[0]) != _bytes(values[1])):
+            changed.append(name)
+    if _bytes(projected[0]) != _bytes(projected[1]) or not changed:
+        raise ValueError("Profile transition changes private bindings outside allowed 15m metadata")
+    return changed
+
+
+def _profile_transition_read(path, limit=MAX_FILE_BYTES):
+    """Transition records are fixed host-local files, never caller-supplied paths."""
+    path = Path(path)
+    if not path.is_file() or any(parent.is_symlink() or getattr(parent, "is_junction", lambda: False)()
+                                 for parent in (path, *path.parents)):
+        raise ValueError("Profile transition evidence must be regular local files")
+    return _read(path, limit)
+
+
+def _verify_profile_metadata_transition(config, action, frozen_binding, current_binding):
+    """Verify an exact locally reviewed metadata transition without rebinding history.
+
+    The selection and profile copies are private local evidence. This function
+    does not grant authority, install source, change the profile, or publish them.
+    The ordinary workflow lock serializes the immutable first-use receipt.
+    """
+    if config.get("actor") != "Scout" or re.fullmatch(r"\d{4}-\d{2}-\d{2}", action) is None:
+        raise ValueError("Profile metadata transitions require the exact Scout action date")
+    session = Path(config["state_root"]) / "sessions" / action
+    directory = session / "profile-metadata-transition"
+    selector_bytes = _profile_transition_read(directory / "selection.json", 2048)
+    selector = _object(selector_bytes)
+    if (set(selector) != {"schema_version", "record_sha256"}
+            or selector["schema_version"] != PROFILE_METADATA_SELECTION):
+        raise ValueError("Invalid immutable profile metadata selection")
+    record_digest = _digest(selector["record_sha256"])
+    record_bytes = _profile_transition_read(directory / "records" / (record_digest + ".json"))
+    if _sha(record_bytes) != record_digest:
+        raise ValueError("Profile metadata transition record bytes changed")
+    record = _object(record_bytes)
+    fields = {"schema_version", "action_date", "actor", "completion_id", "reviewed_completion_record",
+              "original_binding_sha256", "before_profile_sha256", "after_profile_sha256", "changed_paths"}
+    if (set(record) != fields or record["schema_version"] != PROFILE_METADATA_TRANSITION
+            or record["action_date"] != action or record["actor"] != config["actor"]
+            or not isinstance(record["completion_id"], str)
+            or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{7,99}", record["completion_id"]) is None
+            or not isinstance(record["reviewed_completion_record"], str)
+            or re.fullmatch(r"\d{8}T\d{6}Z-[0-9a-f]{32}", record["reviewed_completion_record"]) is None):
+        raise ValueError("Profile metadata transition identity differs")
+    binding_bytes = _profile_transition_read(session / "binding.json")
+    if (_object(binding_bytes) != frozen_binding
+            or _sha(binding_bytes) != _digest(record["original_binding_sha256"])):
+        raise ValueError("Profile metadata transition original binding changed")
+    before_digest = _digest(record["before_profile_sha256"])
+    after_digest = _digest(record["after_profile_sha256"])
+    if (before_digest != frozen_binding["profile_sha256"]
+            or after_digest != current_binding["profile_sha256"]):
+        raise ValueError("Profile metadata transition does not bind the selected profile hashes")
+    profiles = []
+    for digest in (before_digest, after_digest):
+        raw = _profile_transition_read(directory / "profiles" / (digest + ".json"))
+        if _sha(raw) != digest:
+            raise ValueError("Profile metadata transition profile bytes changed")
+        profiles.append(_object(raw))
+    current_profile_bytes = _profile_transition_read(Path(config["local_profile"]))
+    if _sha(current_profile_bytes) != after_digest:
+        raise ValueError("Current profile changed during metadata transition validation")
+    if _profile_metadata_delta(*profiles) != record["changed_paths"]:
+        raise ValueError("Profile metadata transition declared differences changed")
+    # Freeze the selected bytes before any export. A later equally valid record
+    # cannot replace this session's selection or its stable completion identity.
+    selected = directory / "selected.json"
+    if selected.exists() and _profile_transition_read(selected, 2048) != selector_bytes:
+        raise ValueError("An immutable profile metadata selection changed")
+    _write(selected, selector_bytes)
+    return record
+
+
+def _verify_private_exchange_binding(config, action, frozen_binding, current_binding):
+    provenance = {"adapter_sources", "coordination_active_sha256"}
+    before = {key: value for key, value in frozen_binding.items() if key not in provenance}
+    after = {key: value for key, value in current_binding.items() if key not in provenance}
+    if before == after:
+        return
+    if ({key: value for key, value in before.items() if key != "profile_sha256"}
+            != {key: value for key, value in after.items() if key != "profile_sha256"}):
+        raise ValueError("An immutable private exchange binding changed")
+    selection = Path(config["state_root"]) / "sessions" / action / "profile-metadata-transition/selection.json"
+    if not selection.is_file():
+        raise ValueError("An immutable private exchange binding changed without a reviewed profile metadata transition")
+    _verify_profile_metadata_transition(config, action, frozen_binding, current_binding)
+
+
 def _request_document(selected, inputs, now):
     value = _object(_read(selected["files"]["request.json"]))
     if (selected["inputs"] != inputs or set(value) != {"schema_version", "challenge", "requested_at", "expires_at"}
@@ -799,10 +919,7 @@ def _run(config, native, action, review, clock, allow_snapshot_refresh):
     current_binding = _binding(config)
     if binding_path.exists():
         frozen_binding = _object(_read(binding_path))
-        provenance = {"adapter_sources", "coordination_active_sha256"}
-        if ({key: value for key, value in frozen_binding.items() if key not in provenance}
-                != {key: value for key, value in current_binding.items() if key not in provenance}):
-            raise ValueError("An immutable private exchange binding changed")
+        _verify_private_exchange_binding(config, action, frozen_binding, current_binding)
     else:
         _frozen(binding_path, current_binding)
     exported = local["steps"]["local_handoff"]["output"]
