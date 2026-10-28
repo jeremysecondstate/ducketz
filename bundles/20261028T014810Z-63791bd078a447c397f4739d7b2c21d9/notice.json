@@ -1,0 +1,37 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T014534Z-652715a720a9421a944e35f81f4b2694",
+  "change_id": "20261028T014534Z-652715a720a9421a944e35f81f4b2694",
+  "commit_sha": "da93d368d083f89a8a3097738055fbb8cb76e843",
+  "files": [
+    "app/ui/scout_stats_data.py",
+    "app/ui/scout_stats_widgets.py",
+    "app/ui/scout_stats_peer.py",
+    "tests/test_scout_stats_peer.py",
+    "tests/test_scout_stats_peer_integration.py",
+    "app/ui/gameplan_stats.py"
+  ],
+  "limitations": [
+    "Private exports, financial rows, operating data, databases and fitted models are excluded from shared source.",
+    "The installed main helper rejected source-base ancestry against current main; main integration remains pending and the draft PR includes reviewed Stats scaffolding dependencies.",
+    "Peer installation remains unverified. No broker/provider calls, model training or trader operation are authorized by this source notice."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/476",
+  "remote_sha": "da93d368d083f89a8a3097738055fbb8cb76e843",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Read-only display support with local evidence precedence and independent Atlas/Gameplan populations. Local UI installation verification is recorded separately.",
+  "scope": "shared",
+  "summary": "Atlas published verified saved Scout Stats display support",
+  "supersedes": [
+    "20261028T014258Z-d8ef52695e634e66bbc483f30c01ee04"
+  ],
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-28T01:46:42.398561Z",
+      "coverage": "Offline synthetic Scout and Atlas data, widgets and integration; pinned archives, summaries, sessions, refresh, source time, slow reads and stale messages",
+      "output_sha256": "a6988ba20c072fa0044cb7806be2e98249992933def31b25fa7f872dfea3636b",
+      "result": "129 passed, no skips",
+      "started_at_utc": "2026-10-28T01:46:18.299388Z"
+    }
+  ]
+}

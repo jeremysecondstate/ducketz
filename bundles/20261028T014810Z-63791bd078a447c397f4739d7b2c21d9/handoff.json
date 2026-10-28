@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T01:48:10.003039Z",
+  "id": "20261028T014810Z-63791bd078a447c397f4739d7b2c21d9",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published verified saved Scout Stats display support"
+}
