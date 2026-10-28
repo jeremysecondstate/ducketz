@@ -327,7 +327,7 @@ class IntentionStore(_OriginalIntentionStore):
         return rows[0][1], rows[0][2]
 
     @contextmanager
-    def _recovery_sizing_reader(self, db, measure, read_timings=None):
+    def _recovery_sizing_reader(self, db, measure, read_timings=None, *, forecast_ids=None):
         """Share exact sizing metadata only inside this pinned read snapshot.
 
         The bound reader becomes unusable on context exit. No schema, epoch,
@@ -349,12 +349,43 @@ class IntentionStore(_OriginalIntentionStore):
                 self._recovery_row_identity = physical
             if generation < self._recovery_row_highwater:
                 raise ContractError("Recovery sizing generation regressed")
+            prefetched = None
+            if forecast_ids is not None:
+                # Fresh workers retain no in-memory row proofs. Read their
+                # authenticated scalar headers once for this exact pinned
+                # source inventory, rather than reopening its cache per row.
+                with detail("sizing_index_read"):
+                    indexed = db.execute("SELECT i.forecast_id,i.id,r.generation FROM intraday_intentions i "
+                        "LEFT JOIN recovery_sizing_revisions r ON r.forecast_id=i.forecast_id "
+                        "WHERE i.forecast_id IN (SELECT value FROM json_each(?))",
+                        (encoded(tuple(forecast_ids)),)).fetchall()
+                missing = []
+                for item in indexed:
+                    revision = item[2]
+                    if type(revision) is not int or not 0 <= revision <= generation:
+                        raise ContractError("Recovery sizing row revision is invalid")
+                    signature = tuple(item)
+                    previous = self._recovery_row_cache.get(item[0])
+                    if previous is None or previous[0] != signature:
+                        missing.append(signature)
+                from .sizing_header_cache import DurableSizingHeaders
+                try:
+                    durable_identity = (str(self.store.path.resolve()), *physical)
+                except OSError:
+                    durable_identity = None
+                headers = (DurableSizingHeaders(self.store.path).load_many(durable_identity, missing)
+                    if missing and durable_identity is not None
+                    and opened is not None and opened == (stat.st_dev, stat.st_ino) else {})
+                # Even an empty result is a completed optional-cache attempt:
+                # misses retain the original full validator, without per-row
+                # cache retries. The row reader still checks every source proof.
+                prefetched = durable_identity, headers
         active = True
         def read(forecast_id):
             if not active or not db.in_transaction:
                 raise ContractError("Recovery sizing reader lost its pinned source snapshot")
             return self._revision_sizing_row(db, forecast_id, measure, read_timings,
-                                             generation, stat, physical)
+                                             generation, stat, physical, prefetched)
         try:
             yield read, generation
             # A pinned connection can still read its original database after
@@ -372,7 +403,7 @@ class IntentionStore(_OriginalIntentionStore):
         with self._recovery_sizing_reader(db, measure, read_timings) as (read, _):
             return read(forecast_id)
 
-    def _revision_sizing_row(self, db, forecast_id, measure, read_timings, generation, stat, physical):
+    def _revision_sizing_row(self, db, forecast_id, measure, read_timings, generation, stat, physical, prefetched=None):
         """Validate a row using the enclosing snapshot's exact source proof."""
         detail = read_timings.detail if read_timings is not None else lambda stage: nullcontext()
         with measure("sizing_read"):
@@ -400,7 +431,10 @@ class IntentionStore(_OriginalIntentionStore):
                 cache_source_certain = False
             previous = self._recovery_row_cache.get(forecast_id)
             if previous is None or previous[0] != signature:
-                saved = durable.load(durable_identity, signature) if cache_source_certain else None
+                if prefetched is not None and prefetched[0] == durable_identity:
+                    saved = prefetched[1].get(signature) if cache_source_certain else None
+                else:
+                    saved = durable.load(durable_identity, signature) if cache_source_certain else None
                 if saved is not None:
                     previous = (signature, saved["side"], saved["desired_quantity"], saved["calculated_at"])
                     self._recovery_row_cache[forecast_id] = previous
@@ -608,7 +642,8 @@ class IntentionStore(_OriginalIntentionStore):
                         raise ContractError("Native 15m order lacks original persisted intention")
                     if any(header["pc"] != actor for header in headers):
                         raise ContractError("Recovery forecast belongs to another actor")
-                with self._recovery_sizing_reader(db, measure, read_timings) as (read_sizing, generation):
+                with self._recovery_sizing_reader(db, measure, read_timings,
+                                                  forecast_ids=tuple(pending)) as (read_sizing, generation):
                     for key, observations in pending.items():
                         intention_row, intention, _ = read_sizing(key)
                         if intention is None:
