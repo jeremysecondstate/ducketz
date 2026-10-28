@@ -27,6 +27,17 @@ VERSION = "manual-atlas-15m-session-v1"
 SCOUT_VERSION = "manual-scout-15m-session-v1"
 
 
+def _execution_store_busy(error):
+    import sqlite3
+    if not isinstance(error, sqlite3.OperationalError):
+        return False
+    code = getattr(error, "sqlite_errorcode", None)
+    if isinstance(code, int):
+        return code & 0xff in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
+    return str(error).lower() in {"database is locked", "database table is locked",
+                                  "database schema is locked", "database is busy"}
+
+
 def automatic_stop_deadline(started):
     """Latch 5pm on this manual session's Pacific date, including across DST."""
     return instant(started).astimezone(PACIFIC).replace(
@@ -866,79 +877,82 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         next_recovery = instant(clock())
         try:
             while not should_stop():
-                status("RUNNING")
                 try:
+                    status("RUNNING")
                     due_forecasts = queue.due(clock())
+                    for forecast in due_forecasts:
+                        # A prior symbol in this snapshot may have just received a
+                        # longer provider wait. No later symbol bypasses that wait.
+                        if should_stop() or not queue.broker_due(clock()):
+                            break
+                        try:
+                            service_step_started = time.perf_counter()
+                            result = executor.step(forecast)
+                            if independent_services:
+                                from .scout_services import metric
+                                metric(root / "intraday/services", "trading", "forecast_to_order_disposition",
+                                       forecast_id=forecast["forecast_id"], symbol=forecast["symbol"],
+                                       forecast_age_seconds=max(0, (instant(clock())-instant(forecast["issued_at"])).total_seconds()),
+                                       execution_step_seconds=time.perf_counter()-service_step_started,
+                                       disposition=result.get("disposition"),
+                                       deadline_miss=instant(clock()) >= instant(forecast["target_close"]))
+                            store.event(session_id,"execution_step",result,symbol=forecast["symbol"])
+                            emit({"event":"execution_disposition","symbol":forecast["symbol"],
+                                "forecast_id":forecast["forecast_id"],
+                                **{key:result.get(key) for key in ("side","desired_quantity","adjusted_quantity",
+                                    "disposition","submission_status","submitted_quantity","filled_quantity")}})
+                            disposition = result["disposition"]
+                            if disposition == "previous_intention_reconciliation" or result["evidence"].get("proven_unsent_retry_eligible"):
+                                queue.defer(forecast["forecast_id"],now=clock(),seconds=result["evidence"].get("retry_after_seconds") or 3,broker_wait=True)
+                            elif disposition == "submission_recovery_required":
+                                # UNKNOWN is never requeued for submission. Status
+                                # recovery and other symbols still honor its wait.
+                                queue.broker_wait(now=clock(),seconds=result["evidence"].get("retry_after_seconds") or 3)
+                                queue.complete(forecast["forecast_id"],disposition)
+                            elif result["kind"] == "sizing_unavailable":
+                                queue.complete(forecast["forecast_id"],"sizing_unavailable")
+                            else:
+                                queue.complete(forecast["forecast_id"],disposition)
+                        except Exception as exc:
+                            delay = retry_delay(exc,clock())
+                            queue.defer(forecast["forecast_id"],now=clock(),seconds=delay,broker_wait=True)
+                            store.event(session_id,"execution_retry",{"forecast_id":forecast["forecast_id"],
+                                "error_type":type(exc).__name__,"message":str(exc),"retry_after_seconds":delay,
+                                "diagnostics":_symbol_exception_diagnostics(exc)},symbol=forecast["symbol"])
+                            break
+                    if not should_stop() and instant(clock()) >= next_recovery and queue.broker_due(clock()):
+                        try:
+                            executor.recover()
+                            delay = 3
+                        except Exception as exc:
+                            delay = retry_delay(exc,clock())
+                            queue.broker_wait(now=clock(),seconds=delay)
+                            store.event(session_id,"order_recovery_retry",{"error_type":type(exc).__name__,
+                                "message":str(exc),"retry_after_seconds":delay,
+                                "diagnostics":_symbol_exception_diagnostics(exc)})
+                        next_recovery = instant(clock()) + timedelta(seconds=delay)
+                    if (lifecycle is not None and iteration_ready.is_set() and not should_stop()
+                            and not queue.due(clock())):
+                        # All currently eligible steps finished; any wait is already
+                        # durable in the queue/broker-retry tables. Resting/UNKNOWN
+                        # orders retain their broker identities and reservations.
+                        planned_restart[0] = True
+                        lifecycle.phase("draining", cycle_id=boundary_cycle[0])
+                        stopped.set()
+                        break
+                    if not should_stop():
+                        sleep(1)
                 except Exception as exc:
-                    import sqlite3
-                    if (independent_services and isinstance(exc, sqlite3.OperationalError)
-                            and any(word in str(exc).lower() for word in ("locked", "busy"))):
-                        emit({"event":"execution_queue_busy", "retry_after_seconds":.2})
+                    if not independent_services or not _execution_store_busy(exc):
+                        raise
+                    # Handler writes can contend too. Keep the same active run,
+                    # pending identities and absolute retry floor; no respawn.
+                    emit({"event":"execution_store_busy", "retry_after_seconds":.2,
+                          "diagnostics":_symbol_exception_diagnostics(exc)})
+                    if not should_stop():
                         sleep(.2)
-                        continue  # Recheck manual authority before another read.
-                    raise
-                for forecast in due_forecasts:
-                    # A prior symbol in this snapshot may have just received a
-                    # longer provider wait. No later symbol bypasses that wait.
-                    if should_stop() or not queue.broker_due(clock()):
-                        break
-                    try:
-                        service_step_started = time.perf_counter()
-                        result = executor.step(forecast)
-                        if independent_services:
-                            from .scout_services import metric
-                            metric(root / "intraday/services", "trading", "forecast_to_order_disposition",
-                                   forecast_id=forecast["forecast_id"], symbol=forecast["symbol"],
-                                   forecast_age_seconds=max(0, (instant(clock())-instant(forecast["issued_at"])).total_seconds()),
-                                   execution_step_seconds=time.perf_counter()-service_step_started,
-                                   disposition=result.get("disposition"),
-                                   deadline_miss=instant(clock()) >= instant(forecast["target_close"]))
-                        store.event(session_id,"execution_step",result,symbol=forecast["symbol"])
-                        emit({"event":"execution_disposition","symbol":forecast["symbol"],
-                            "forecast_id":forecast["forecast_id"],
-                            **{key:result.get(key) for key in ("side","desired_quantity","adjusted_quantity",
-                                "disposition","submission_status","submitted_quantity","filled_quantity")}})
-                        disposition = result["disposition"]
-                        if disposition == "previous_intention_reconciliation" or result["evidence"].get("proven_unsent_retry_eligible"):
-                            queue.defer(forecast["forecast_id"],now=clock(),seconds=result["evidence"].get("retry_after_seconds") or 3,broker_wait=True)
-                        elif disposition == "submission_recovery_required":
-                            # UNKNOWN is never requeued for submission. Status
-                            # recovery and other symbols still honor its wait.
-                            queue.broker_wait(now=clock(),seconds=result["evidence"].get("retry_after_seconds") or 3)
-                            queue.complete(forecast["forecast_id"],disposition)
-                        elif result["kind"] == "sizing_unavailable":
-                            queue.complete(forecast["forecast_id"],"sizing_unavailable")
-                        else:
-                            queue.complete(forecast["forecast_id"],disposition)
-                    except Exception as exc:
-                        delay = retry_delay(exc,clock())
-                        queue.defer(forecast["forecast_id"],now=clock(),seconds=delay,broker_wait=True)
-                        store.event(session_id,"execution_retry",{"forecast_id":forecast["forecast_id"],
-                            "error_type":type(exc).__name__,"message":str(exc),"retry_after_seconds":delay,
-                            "diagnostics":_symbol_exception_diagnostics(exc)},symbol=forecast["symbol"])
-                        break
-                if not should_stop() and instant(clock()) >= next_recovery and queue.broker_due(clock()):
-                    try:
-                        executor.recover()
-                        delay = 3
-                    except Exception as exc:
-                        delay = retry_delay(exc,clock())
-                        queue.broker_wait(now=clock(),seconds=delay)
-                        store.event(session_id,"order_recovery_retry",{"error_type":type(exc).__name__,
-                            "message":str(exc),"retry_after_seconds":delay,
-                            "diagnostics":_symbol_exception_diagnostics(exc)})
-                    next_recovery = instant(clock()) + timedelta(seconds=delay)
-                if (lifecycle is not None and iteration_ready.is_set() and not should_stop()
-                        and not queue.due(clock())):
-                    # All currently eligible steps finished; any wait is already
-                    # durable in the queue/broker-retry tables. Resting/UNKNOWN
-                    # orders retain their broker identities and reservations.
-                    planned_restart[0] = True
-                    lifecycle.phase("draining", cycle_id=boundary_cycle[0])
-                    stopped.set()
-                    break
-                if not should_stop():
-                    sleep(1)
+                    # The loop rechecks manual stop, deadline and pending broker
+                    # persistence before any further effect or handoff.
         except KeyboardInterrupt:
             manual_stop_requested[0] = True
             stopped.set()
@@ -1002,8 +1016,15 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                            else "STOPPED")
             status(final_state,broker_orders_automatically_cancelled=False,
                    stop_reason=stop_reason(),worker_errors=worker_errors)
-            store.event(session_id,"manual_session_stopped",{"pending_order_identity_preserved":True,
-                        "stop_reason":stop_reason(),"worker_errors":worker_errors})
+            stopped_event = {"pending_order_identity_preserved":True,
+                             "stop_reason":stop_reason(),"worker_errors":worker_errors}
+            try:
+                store.event(session_id,"manual_session_stopped",stopped_event)
+            except Exception as exc:
+                if not independent_services or not _execution_store_busy(exc):
+                    raise
+                emit({"event":"manual_session_stopped_store_busy", **stopped_event,
+                      "diagnostics":_symbol_exception_diagnostics(exc)})
         return {"session_id":session_id,"status":final_state, "stop_reason":stop_reason(),
                 **({"generation": lifecycle.generation} if lifecycle is not None else {})}
 
