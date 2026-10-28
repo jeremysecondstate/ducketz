@@ -465,12 +465,13 @@ def test_transient_authority_read_sharing_is_bounded_without_false_revocation(tm
     from tools import scout_release as release
     lifecycle, _ = lifecycle_fixture(tmp_path, monkeypatch)
     active = Path(lifecycle.request["active_path"])
-    original_read = Path.read_bytes
+    original_read = release._read_once
     reads, elapsed = [], [0.0]
     monkeypatch.setattr(release.time, "monotonic", lambda: elapsed[0])
     monkeypatch.setattr(release.time, "sleep", lambda seconds: elapsed.__setitem__(0, elapsed[0] + seconds))
 
     def sharing_once(path):
+        path = Path(path)
         if path == active:
             reads.append(path)
             if len(reads) == 1:
@@ -479,7 +480,7 @@ def test_transient_authority_read_sharing_is_bounded_without_false_revocation(tm
                 raise error
         return original_read(path)
 
-    monkeypatch.setattr(Path, "read_bytes", sharing_once)
+    monkeypatch.setattr(release, "_read_once", sharing_once)
     assert lifecycle.stop_reason() is None
     assert len(reads) == 2
     assert elapsed[0] > 0
@@ -491,7 +492,7 @@ def test_stop_or_deadline_during_authority_read_retry_prevents_effects(tmp_path,
     from tools import scout_release as release
     lifecycle, _ = lifecycle_fixture(tmp_path, monkeypatch)
     active = Path(lifecycle.request["active_path"])
-    original_read = Path.read_bytes
+    original_read = release._read_once
     reads, elapsed = [], [0.0]
     monkeypatch.setattr(release.time, "monotonic", lambda: elapsed[0])
 
@@ -503,6 +504,7 @@ def test_stop_or_deadline_during_authority_read_retry_prevents_effects(tmp_path,
             lifecycle.clock = lambda: controller.instant(lifecycle.deadline)
 
     def sharing_once(path):
+        path = Path(path)
         if path == active:
             reads.append(path)
             if len(reads) == 1:
@@ -512,7 +514,7 @@ def test_stop_or_deadline_during_authority_read_retry_prevents_effects(tmp_path,
         return original_read(path)
 
     monkeypatch.setattr(release.time, "sleep", pause)
-    monkeypatch.setattr(Path, "read_bytes", sharing_once)
+    monkeypatch.setattr(release, "_read_once", sharing_once)
     assert lifecycle.stop_reason() == authority
     assert lifecycle.stop_detail == {"reason": authority, "stage": "after_authority_read"}
     with pytest.raises(InterruptedError, match="no effect authority"):
@@ -524,12 +526,13 @@ def test_permanent_authority_read_failure_is_latched_even_after_reader_recovers(
     from tools import scout_release as release
     lifecycle, _ = lifecycle_fixture(tmp_path, monkeypatch)
     active = Path(lifecycle.request["active_path"])
-    original_read = Path.read_bytes
+    original_read = release._read_once
     elapsed, reads = [0.0], []
     monkeypatch.setattr(release.time, "monotonic", lambda: elapsed[0])
     monkeypatch.setattr(release.time, "sleep", lambda seconds: elapsed.__setitem__(0, elapsed[0] + seconds))
 
     def held(path):
+        path = Path(path)
         if path == active:
             reads.append(path)
             error = PermissionError("precise permanent authority-state sharing failure")
@@ -537,7 +540,7 @@ def test_permanent_authority_read_failure_is_latched_even_after_reader_recovers(
             raise error
         return original_read(path)
 
-    monkeypatch.setattr(Path, "read_bytes", held)
+    monkeypatch.setattr(release, "_read_once", held)
     assert lifecycle.stop_reason() == "controller_failure"
     assert 0 < elapsed[0] <= 1.01
     assert 2 <= len(reads) <= 102
@@ -545,7 +548,7 @@ def test_permanent_authority_read_failure_is_latched_even_after_reader_recovers(
                        "error_type": "PermissionError", "error": "precise permanent authority-state sharing failure",
                        "winerror": 32}
     assert lifecycle.stop_detail == expected_detail
-    monkeypatch.setattr(Path, "read_bytes", original_read)
+    monkeypatch.setattr(release, "_read_once", original_read)
     assert lifecycle.stop_reason() == "controller_failure"
     assert lifecycle.stop_detail == expected_detail
     with pytest.raises(InterruptedError, match="boundary interrupted"):
@@ -575,11 +578,12 @@ def test_nonsharing_authority_read_failure_is_immediate_and_latched(tmp_path, mo
     from tools import scout_release as release
     lifecycle, _ = lifecycle_fixture(tmp_path, monkeypatch)
     active = Path(lifecycle.request["active_path"])
-    original_read = Path.read_bytes
+    original_read = release._read_once
     reads, sleeps = [], []
     monkeypatch.setattr(release.time, "sleep", sleeps.append)
 
     def failed(path):
+        path = Path(path)
         if path == active:
             reads.append(path)
             error = PermissionError("nonsharing authority-read rejection")
@@ -588,12 +592,12 @@ def test_nonsharing_authority_read_failure_is_immediate_and_latched(tmp_path, mo
             raise error
         return original_read(path)
 
-    monkeypatch.setattr(Path, "read_bytes", failed)
+    monkeypatch.setattr(release, "_read_once", failed)
     assert lifecycle.stop_reason() == "controller_failure"
     assert reads == [active] and sleeps == []
     assert lifecycle.stop_detail["winerror"] == winerror
     assert lifecycle.stop_detail["error"] == "nonsharing authority-read rejection"
-    monkeypatch.setattr(Path, "read_bytes", original_read)
+    monkeypatch.setattr(release, "_read_once", original_read)
     assert lifecycle.stop_reason() == "controller_failure"
 
 

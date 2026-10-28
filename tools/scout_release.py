@@ -24,16 +24,114 @@ def _sharing_denial(exc):
     return code in {5, 32, 33} or (os.name == "nt" and code is None and exc.errno == errno.EACCES)
 
 
+def _windows_error(code, path, destination=None):
+    import ctypes
+    error = ctypes.WinError(code)
+    # Match ordinary Python file errors: retain native error classification and
+    # the exact affected paths in status, console and diagnostic records.
+    error.filename = str(path)
+    if destination is not None:
+        error.filename2 = str(destination)
+    return error
+
+
+def _open_shared_reader(path):
+    """Read a complete file without obstructing atomic Windows replacement.
+
+    An open handle retains the predecessor's bytes if a writer renames a new
+    complete file over this path. No delete or write access is granted to this
+    reader; sharing only permits other handles to perform those operations.
+    """
+    path = Path(path)
+    if os.name != "nt":
+        return path.open("rb")
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+    handle = create(str(path), 0x80000000, 0x1 | 0x2 | 0x4, None, 3, 0x80, None)
+    if handle is None or handle == ctypes.c_void_p(-1).value:
+        raise _windows_error(ctypes.get_last_error(), path)
+    try:
+        # Ownership transfers to the CRT only after a valid descriptor exists.
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY | os.O_NOINHERIT)
+        if descriptor == -1:
+            raise OSError(errno.EBADF, "Windows reader handle conversion failed")
+    except BaseException:
+        close(handle)
+        raise
+    try:
+        return os.fdopen(descriptor, "rb")
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+def _read_once(path):
+    with _open_shared_reader(path) as stream:
+        return stream.read()
+
+
 def read_bytes(path):
     """Bounded Windows sharing retry; no caller may enable effects while waiting."""
     deadline = time.monotonic() + 1.0
     while True:
         try:
-            return Path(path).read_bytes()
+            return _read_once(path)
         except PermissionError as exc:
             if not _sharing_denial(exc) or time.monotonic() >= deadline:
                 raise
             time.sleep(min(0.01, max(0, deadline - time.monotonic())))
+
+
+def _replace_once(source, destination):
+    """Atomically publish beside readers retaining the complete predecessor.
+
+    MoveFileEx (os.replace) rejects open Windows destinations even when their
+    readers share delete access. FileRenameInfoEx supplies the corresponding
+    atomic replacement semantics without removing the destination first.
+    """
+    if os.name != "nt":
+        return os.replace(source, destination)
+    import ctypes
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+    rename = kernel.SetFileInformationByHandle
+    rename.argtypes = (wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD)
+    rename.restype = wintypes.BOOL
+    class RenameInfo(ctypes.Structure):
+        _fields_ = [("Flags", wintypes.DWORD), ("RootDirectory", wintypes.HANDLE),
+                    ("FileNameLength", wintypes.DWORD), ("FileName", wintypes.WCHAR * 1)]
+    name = str(Path(destination).absolute()).encode("utf-16-le")
+    buffer = ctypes.create_string_buffer(RenameInfo.FileName.offset + len(name) + 2)
+    info = ctypes.cast(buffer, ctypes.POINTER(RenameInfo)).contents
+    info.Flags = 0x1 | 0x2  # REPLACE_IF_EXISTS | POSIX_SEMANTICS, never unlink first.
+    info.RootDirectory, info.FileNameLength = None, len(name)
+    ctypes.memmove(ctypes.addressof(buffer) + RenameInfo.FileName.offset, name, len(name))
+    handle = create(str(Path(source)), 0x00010000, 0x1 | 0x2 | 0x4, None, 3, 0x80, None)
+    if handle is None or handle == ctypes.c_void_p(-1).value:
+        raise _windows_error(ctypes.get_last_error(), source, destination)
+    try:
+        if rename(handle, 22, buffer, len(buffer)):  # FileRenameInfoEx
+            return
+        error = ctypes.get_last_error()
+    finally:
+        close(handle)
+    if error in {1, 50, 87, 120}:  # Unsupported OS/filesystem/API: retain legacy path.
+        return os.replace(source, destination)
+    raise _windows_error(error, source, destination)
 
 
 def atomic_json(path, value):
@@ -51,7 +149,7 @@ def atomic_json(path, value):
         deadline = time.monotonic() + 1.0
         while True:
             try:
-                os.replace(temporary, path)
+                _replace_once(temporary, path)
                 break
             except PermissionError as exc:
                 if not _sharing_denial(exc) or time.monotonic() >= deadline:
