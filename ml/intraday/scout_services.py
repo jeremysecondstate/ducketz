@@ -27,6 +27,40 @@ _METRIC_LOCK = threading.Lock()
 
 class ServiceExecutionQueue(ExecutionQueue):
     """Bounded pending forecast work; order recovery remains journal-owned."""
+    def __init__(self, *args, **kwargs):
+        self._broker_retry_floor = None
+        self._pending_broker_wait = None
+        super().__init__(*args, **kwargs)
+
+    def _persist_broker_wait(self):
+        due = self._pending_broker_wait
+        if due is None:
+            return
+        with self.store.connect() as db:
+            db.execute("INSERT INTO intraday_live_retry VALUES('broker',?) ON CONFLICT(scope) "
+                       "DO UPDATE SET next_attempt_at=max(next_attempt_at,excluded.next_attempt_at)", (due,))
+        self._pending_broker_wait = None
+
+    def broker_wait(self, *, now, seconds):
+        # Retain the original absolute provider floor even if its write fails.
+        # Every effect and planned handoff passes broker_due before proceeding.
+        due = instant(now) + timedelta(seconds=max(3.0, float(seconds)))
+        self._broker_retry_floor = max(due, self._broker_retry_floor or due)
+        self._pending_broker_wait = self._broker_retry_floor.isoformat()
+        self._persist_broker_wait()
+
+    def broker_due(self, now):
+        self._persist_broker_wait()
+        if self._broker_retry_floor is not None and instant(now) < self._broker_retry_floor:
+            return False
+        return super().broker_due(now)
+
+    def defer(self, forecast_id, *, now, seconds, broker_wait=False):
+        if broker_wait:
+            # A failed forecast-row write cannot discard a provider retry floor.
+            self.broker_wait(now=now, seconds=seconds)
+        return super().defer(forecast_id, now=now, seconds=seconds, broker_wait=False)
+
     def retire(self, now):
         with self.store.connect() as db:
             rows = db.execute("SELECT q.forecast_id,q.symbol,f.reference_at,f.issued_at,f.payload FROM intraday_live_queue q "
