@@ -26,6 +26,28 @@ from .final_scoring import score_saved_session_outcomes
 _METRIC_LOCK = threading.Lock()
 
 
+def _data_worker_retry_detail(worker, error, attempt, *, pc, source_session, release):
+    """Bounded cause evidence only; diagnostic failure cannot stop a retry."""
+    detail = {"worker": worker, "error_type": type(error).__name__, "attempt": attempt,
+              "role": "data", "pc": pc, "source_session": source_session,
+              "manifest_sha256": release["manifest_sha256"]}
+    try:
+        message = str(error)
+        detail.update(message=message[:512], message_truncated=len(message) > 512)
+    except Exception:
+        detail["message_unavailable"] = True
+    try:
+        from .runtime import _symbol_exception_diagnostics
+        diagnostics = _symbol_exception_diagnostics(error)
+        # Keep the existing bounded locations/native categories, without the
+        # optional dataset profile or any traceback locals, source or payload.
+        detail["diagnostics"] = {key: diagnostics[key] for key in
+            ("schema_version", "exception_chain", "chain_truncated")}
+    except Exception:
+        detail["diagnostics_unavailable"] = True
+    return detail
+
+
 def _write_retry_identity(pending, error):
     """Bounded correlation only; never duplicate private pending payloads."""
     return {"schema": "scout-native-write-retry-v1", "operation_id": uuid.uuid4().hex,
@@ -563,7 +585,8 @@ def run_data_service(*, repository, datastore, release, clock=utcnow, sleep=time
                             return
                     except Exception as exc:
                         attempts += 1
-                        detail = {"worker": name, "error_type": type(exc).__name__, "attempt": attempts}
+                        detail = _data_worker_retry_detail(name, exc, attempts, pc=pc,
+                            source_session=session, release=release)
                         errors.append(detail)
                         del errors[:-32]
                         try:
