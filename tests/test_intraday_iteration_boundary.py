@@ -370,7 +370,7 @@ def test_generation_status_survives_brief_native_observer_handle(tmp_path, monke
     kernel.CloseHandle.restype = wintypes.BOOL
     target = tmp_path / "intraday/manual-session.json"
     held, releasers, denied = [], [], []
-    publish, replace_file = scout_release.atomic_json, scout_release.os.replace
+    publish, replace_file = scout_release.atomic_json, scout_release._replace_once
     def observed_replace(source, destination):
         try:
             return replace_file(source, destination)
@@ -378,7 +378,7 @@ def test_generation_status_survives_brief_native_observer_handle(tmp_path, monke
             if destination == target:
                 denied.append(error.winerror)
             raise
-    monkeypatch.setattr(scout_release.os, "replace", observed_replace)
+    monkeypatch.setattr(scout_release, "_replace_once", observed_replace)
     def hold_then_publish(path, value):
         if path == target and value["status"] == "RUNNING" and not held:
             # A genuine read-only Windows handle without FILE_SHARE_DELETE,

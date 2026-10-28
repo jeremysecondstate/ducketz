@@ -314,3 +314,39 @@ def test_lost_native_console_falls_back_to_original_stdout(monkeypatch):
     finally:
         console.close()
     assert redirected.getvalue() == "after detach\n"
+
+
+@pytest.mark.parametrize("prompt_error", [EOFError, OSError])
+@pytest.mark.parametrize("outcome", ["stopped", "failed", "exception"])
+def test_nul_console_prompt_preserves_original_run_result(tmp_path, monkeypatch, prompt_error, outcome):
+    # The existing Windows task redirects stdin from NUL, which can report
+    # isatty while input() raises instead of accepting an interactive line.
+    console = RecordingConsole()
+    original = PermissionError("original controller state replacement failure")
+    state, prompts = {}, []
+    def run():
+        state["status"] = "STOPPED" if outcome == "stopped" else "FAILED"
+        if outcome == "exception":
+            raise original
+        return 0 if outcome == "stopped" else 1
+    def input_unavailable(message):
+        prompts.append(message)
+        raise prompt_error("NUL input unavailable")
+    owner = SimpleNamespace(run=run, request_stop=lambda: None)
+    monkeypatch.setattr(candidate, "selected_release", lambda _: selection(tmp_path))
+    monkeypatch.setattr(candidate, "probe", lambda *args, **kwargs: {"wake_at": "fixture", "deadline": "fixture"})
+    monkeypatch.setattr(candidate, "ConsoleDisplay", lambda: console)
+    monkeypatch.setattr(candidate, "ServiceController", lambda **kwargs: owner)
+    monkeypatch.setattr(candidate.signal, "signal", lambda *args: None)
+    monkeypatch.setattr(candidate.sys, "stdin", SimpleNamespace(isatty=lambda: True))
+    monkeypatch.setattr(candidate, "input", input_unavailable, raising=False)
+    args = ["--live", "--hold-console", "--repository", str(tmp_path), "--datastore", str(tmp_path),
+            "--selector", str(tmp_path / "selected.json")]
+    if outcome == "exception":
+        with pytest.raises(PermissionError) as caught:
+            candidate.main(args)
+        assert caught.value is original
+    else:
+        assert candidate.main(args) == (0 if outcome == "stopped" else 1)
+    assert state == {"status": "STOPPED" if outcome == "stopped" else "FAILED"}
+    assert prompts == ["Scout 15m run ended. Press Enter to close."]
