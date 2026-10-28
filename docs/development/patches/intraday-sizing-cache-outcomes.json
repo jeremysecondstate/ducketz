@@ -1,0 +1,26 @@
+{
+  "schema": "intraday-sizing-cache-outcomes-patch-v1",
+  "actor": "Atlas",
+  "scope": "shared generic diagnostics; each PC reviews local composition before adoption",
+  "target": "ml/intraday/intentions.py",
+  "before_sha256": "8d10ce0c67fa7f3914b77b708c734b478ddca69643e1cc3d621190e60dcf9679",
+  "after_sha256": "68b1729cb986defabf2d96ba629bed9faa19ec87ead7910b4b064be1df0bc82f",
+  "patch": "docs/development/patches/intraday-sizing-cache-outcomes.patch",
+  "patch_sha256": "8e58e324113039434f225b800752948021cc7a12bae27938b16d5be0d6d62dfe",
+  "integration_cases": "docs/development/patches/intraday-sizing-cache-outcomes.integration.py",
+  "integration_cases_sha256": "bb8d58d7056a156015ea515730a0df01ab4c39507b42c51e24ad5daa875dbf17",
+  "semantics": [
+    "Fixed aggregate batch cache preflight outcomes, including identity_unavailable and source_unpinned skips. Attempts includes bypassed batch evaluations; individual non-batch cache loads remain outside aggregated reporting.",
+    "No source IDs, paths, key material, record signatures, payloads or exception text. Fixed reason/counter schema and bounded numeric SQLite error buckets.",
+    "Existing source identity/revision/schema/epoch/HMAC validation, cache returns, interruption-prefix/fallback behavior, remaining-budget clock calls, model science, independent order state, UNKNOWN fences, controls and deadlines remain unchanged."
+  ],
+  "review": "Consumer target contains existing local composition beyond common main. Review and apply owned hunks; never replace the complete consumer. Preserve source newline style. Exact before/after reconstruction and synthetic integration validated in the producing local composition.",
+  "checks": {
+    "portable": "python -B tests/check_intraday_sizing_outcomes_package.py",
+    "local": "11 new synthetic consumer cases and 146 existing recovery cases; no provider or broker access. Integration fixture requires existing adapted recovery APIs and exact original-source fixtures."
+  },
+  "limitations": [
+    "Diagnostic evidence aids the next natural recurrence; it neither establishes the original cache-miss cause nor resolves original uncertain sends.",
+    "Publication, local installation, loaded code and natural affected-path exercise are separate facts."
+  ]
+}

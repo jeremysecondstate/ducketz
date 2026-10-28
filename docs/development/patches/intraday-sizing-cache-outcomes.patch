@@ -1,0 +1,102 @@
+--- a/ml/intraday/intentions.py
++++ b/ml/intraday/intentions.py
+@@ -151,6 +151,11 @@
+         self.read_details = {}
+         self.workload = {}
+         self.read_unavailable = self.thread_cpu_unavailable = False
++        self.sizing_cache = dict(schema_version="sizing-cache-outcomes-v1", attempts=0,
++            outcomes={}, requested_count=0, expected_count=0, validated_count=0,
++            returned_count=0, discarded_count=0, rejected_count=0,
++            sqlite_interrupt_count=0, sqlite_busy_count=0, sqlite_locked_count=0,
++            sqlite_other_count=0)
+ 
+     def _detail_clock(self, name):
+         try:
+@@ -212,6 +217,41 @@
+         except Exception:
+             self.read_unavailable = True
+ 
++    def cache_read(self, report):
++        """Bounded aggregate only; no source identities or exception text."""
++        try:
++            reasons = {"budget_disabled", "missing_file", "missing_key", "invalid_context",
++                "empty", "complete", "budget_exhausted", "sqlite_interrupt",
++                "sqlite_error", "os_error", "invalid_record", "identity_unavailable", "source_unpinned"}
++            names = ("requested_count", "expected_count", "validated_count", "returned_count",
++                     "discarded_count", "rejected_count")
++            if (type(report) is not dict or set(report) != set(names) | {
++                    "schema_version", "reason", "sqlite_errorcode"}
++                    or report["schema_version"] != "sizing-cache-load-outcome-v1"
++                    or report["reason"] not in reasons
++                    or any(type(report[name]) is not int or not 0 <= report[name] <= 2147483647
++                           for name in names)):
++                self.read_unavailable = True
++                return
++            code = report["sqlite_errorcode"]
++            if code is not None and (type(code) is not int or not 0 <= code <= 2147483647):
++                self.read_unavailable = True
++                return
++            stats = self.sizing_cache
++            stats["attempts"] = min(2147483647, stats["attempts"] + 1)
++            outcomes = stats["outcomes"]
++            outcomes[report["reason"]] = min(2147483647, outcomes.get(report["reason"], 0) + 1)
++            for name in names:
++                stats[name] = min(2147483647, stats[name] + report[name])
++            if code is not None:
++                bucket = {sqlite3.SQLITE_INTERRUPT: "sqlite_interrupt_count",
++                          sqlite3.SQLITE_BUSY: "sqlite_busy_count",
++                          sqlite3.SQLITE_LOCKED: "sqlite_locked_count"}.get(code & 255,
++                              "sqlite_other_count")
++                stats[bucket] = min(2147483647, stats[bucket] + 1)
++        except Exception:
++            self.read_unavailable = True
++
+     def payload(self, prefix, raw):
+         # O(1) lengths of the row already read: no encode, new query or tree.
+         # Text characters are deliberately not presented as UTF-8 byte counts.
+@@ -271,7 +311,9 @@
+                                        for key, value in phase.items()}
+                                 for name, phase in self.read_details.items()},
+                         workload=dict(self.workload), diagnostics_unavailable=self.read_unavailable,
+-                        thread_cpu_unavailable=self.thread_cpu_unavailable))
++                        thread_cpu_unavailable=self.thread_cpu_unavailable,
++                        sizing_cache={key: dict(value) if isinstance(value, dict) else value
++                                      for key, value in self.sizing_cache.items()}))
+ 
+ 
+ class IntentionStore:
+@@ -362,9 +404,31 @@
+                     durable_identity = (str(self.store.path.resolve()), *physical)
+                 except OSError:
+                     durable_identity = None
+-                headers = (DurableSizingHeaders(self.store.path).load_many(durable_identity, missing)
+-                    if missing and durable_identity is not None
+-                    and opened is not None and opened == (stat.st_dev, stat.st_ino) else {})
++                headers = {}
++                if (missing and durable_identity is not None
++                        and opened is not None and opened == (stat.st_dev, stat.st_ino)):
++                    durable = DurableSizingHeaders(self.store.path)
++                    if read_timings is None:
++                        headers = durable.load_many(durable_identity, missing)
++                    else:
++                        report = {}
++                        headers = durable.load_many(durable_identity, missing, diagnostics=report)
++                        # Reporting is optional even for custom diagnostic consumers.
++                        try:
++                            read_timings.cache_read(report)
++                        except Exception:
++                            pass
++                elif missing and read_timings is not None:
++                    # A bypassed batch lookup is distinct from a cache miss.
++                    # Preserve the source-proof checks and original fallback.
++                    try:
++                        read_timings.cache_read(dict(schema_version="sizing-cache-load-outcome-v1",
++                            reason="identity_unavailable" if durable_identity is None else "source_unpinned",
++                            requested_count=min(2147483647, len(missing)), expected_count=0,
++                            validated_count=0, returned_count=0, discarded_count=0,
++                            rejected_count=0, sqlite_errorcode=None))
++                    except Exception:
++                        pass
+                 # Even an empty result is a completed optional-cache attempt:
+                 # misses retain the original full validator, without per-row
+                 # cache retries. The row reader still checks every source proof.
