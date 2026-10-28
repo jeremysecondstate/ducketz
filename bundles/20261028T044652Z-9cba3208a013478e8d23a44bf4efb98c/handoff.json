@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T04:46:52.732448Z",
+  "id": "20261028T044652Z-9cba3208a013478e8d23a44bf4efb98c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout: verify complete calibration and delegated capacity readiness wiring"
+}

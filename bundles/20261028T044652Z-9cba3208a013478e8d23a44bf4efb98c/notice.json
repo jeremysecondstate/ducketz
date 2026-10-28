@@ -1,0 +1,99 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T044047Z-ce91597dd0aa417ebc9ebf16d98b7ce5",
+  "change_id": "20261028T044047Z-ce91597dd0aa417ebc9ebf16d98b7ce5",
+  "details": [
+    "Calibrator helper and target method require their fitting/score calls; empty method no longer qualifies.",
+    "Complete delegated capacity alternative retains all original adapter requirements and rejects an empty target helper.",
+    "Scout installed only applicable helper/calibrator hunks and two controls beside its exact predecessor; all other source and the exact private recipe retained.",
+    "Original direct-capacity layout retained locally. Peer source installation and loaded runtime are separate facts."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/readiness.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_readiness.py"
+    }
+  ],
+  "limitations": [
+    "Structural source wiring does not establish chronological data separation or scientific model quality.",
+    "Six older manual-session/preflight diagnostic tests fail identically in exact local predecessor and composed release;69 relevant tests pass with only those six names deselected. Failures preserved for separate repair.",
+    "No provider/broker calls, production training, trader/task activation, or loaded runtime claim."
+  ],
+  "main_commit": "f39b6cf1d3303cbf81b46483bcf05d2954f336a4",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/479",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source integrated on main. Preserve each PC recipe and active source layout during selective adoption. Scout selected compatible diagnostic release; await normal safe loading without restarting or attaching to traders.",
+  "scope": "shared",
+  "source_commit": "b220d27138d660829b72819eb526cbc0d70b08cd",
+  "summary": "Scout: verify complete calibration and delegated capacity readiness wiring",
+  "tests": {
+    "local_focused": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_intraday_readiness.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/readiness-pytest",
+          "-k",
+          "not test_current_implemented_source_reports_preflight_required_without_starting and not test_new_source_and_fresh_forecasts_do_not_replace_loaded_gameplan_proof and not test_runtime_probe_errors_are_private_bounded_and_cli_still_exits_two and not test_scout_missing_prestart_evidence_is_private_and_blocked and not test_scout_prepared_manual_source_needs_no_atlas_state_or_process_probe and not test_scout_source_does_not_enable_scout_live_execution"
+        ],
+        "completed_at_utc": "2026-10-28T04:45:32.554010Z",
+        "exit_code": 0,
+        "output_sha256": "1c8dd094b354bb05c4f930a9fca2fa27a9e50af98eff54e9289447523d183a85",
+        "result": ".....................................................................    [100%]\r\n69 passed, 6 deselected in 9.15s",
+        "started_at_utc": "2026-10-28T04:45:22.328181Z"
+      }
+    ],
+    "publication": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_intraday_readiness.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/readiness-pytest"
+        ],
+        "completed_at_utc": "2026-10-28T04:43:15.480766Z",
+        "exit_code": 0,
+        "output_sha256": "d927b288d9113dbe3770af2cf9aedcc05b1da692cee7fba6c61ac418ecab3eb1",
+        "result": "..................................................................       [100%]\r\n66 passed in 7.34s",
+        "started_at_utc": "2026-10-28T04:43:07.099873Z"
+      }
+    ],
+    "queued": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_intraday_readiness.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/readiness-pytest"
+        ],
+        "completed_at_utc": "2026-10-28T04:40:57.719534Z",
+        "exit_code": 0,
+        "output_sha256": "aaf479f04385d16c136974d21fef81928ac1ef826c8ed9d559aa152baf20af43",
+        "result": "..................................................................       [100%]\r\n66 passed in 8.89s",
+        "started_at_utc": "2026-10-28T04:40:47.468475Z"
+      }
+    ]
+  }
+}
