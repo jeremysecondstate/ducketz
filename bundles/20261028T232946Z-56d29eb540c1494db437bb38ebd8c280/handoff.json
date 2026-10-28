@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T23:29:46.296052Z",
+  "id": "20261028T232946Z-56d29eb540c1494db437bb38ebd8c280",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout forecast evidence retries preserve committed forecast delivery"
+}
