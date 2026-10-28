@@ -366,6 +366,9 @@ class GameplanStatsTab:
                 scout = ScoutStatsSnapshot(session=execution_session, status="unreadable",
                     message="Scout saved evidence could not be read. Refresh to retry.",
                     prediction_status="unreadable", execution_status="unreadable")
+            # Display the independent Scout projection immediately. Parsing a
+            # larger local Atlas history must not hold the peer panel empty.
+            self._messages.put(("scout", request, dates, scout))
             try:
                 atlas = load_atlas_stats(self.datastore_root, execution_session)
             except Exception:
@@ -382,6 +385,14 @@ class GameplanStatsTab:
         try:
             while True:
                 message = self._messages.get_nowait()
+                if message[0] == "scout":
+                    _, request, dates, scout = message
+                    if request == self._request_id:
+                        self.scout.set_snapshot(scout)
+                        self.date_box.configure(values=dates)
+                        if scout is not None and scout.session:
+                            self.session.set(scout.session)
+                    continue
                 request, dates, review, error = message[:4]
                 if request != self._request_id:
                     continue

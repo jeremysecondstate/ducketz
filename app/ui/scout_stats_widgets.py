@@ -68,6 +68,8 @@ class ScoutStatsPanel:
         self._text(self.frame, "Live saved evidence · Separate from Gameplan horizons", color=MUTED_TEXT).pack(fill="x", padx=14)
         self.session_label = self._text(self.frame, "", size=10, bold=True)
         self.session_label.pack(fill="x", padx=14, pady=(6, 3))
+        self.source_label = self._text(self.frame, "", size=9, color=MUTED_TEXT)
+        self.source_label.pack(fill="x", padx=14, pady=(0, 3))
         self.state_label = self._text(self.frame, "", size=9, color=MUTED_TEXT)
         self.state_label.pack(fill="x", padx=14, pady=(0, 10))
         self.columns = tk.Frame(self.frame, background=SURFACE)
@@ -183,6 +185,12 @@ class ScoutStatsPanel:
         self._orders = {}
         self.detail_label.configure(text="Select an order to inspect saved fill evidence.")
         self.session_label.configure(text=f"Session {snapshot.session} · All times Pacific" if snapshot and snapshot.session else "No saved session selected")
+        exported_at = getattr(snapshot, "exported_at", None)
+        if exported_at:
+            self.source_label.configure(text=f"Source: Scout saved export · Exported {_time(exported_at)}\n"
+                f"Export: {getattr(snapshot, 'completion_id', '')}")
+        else:
+            self.source_label.configure(text=f"Source: Local {self.actor} saved evidence" if snapshot else "")
         self.state_label.configure(text=snapshot.message if snapshot else f"Saved {self.actor} 15-Minute evidence has not been loaded.")
         self.warning_label.configure(text="\n".join(snapshot.warnings) if snapshot else "")
         prediction_available = snapshot is not None and self._available(snapshot.prediction_status)

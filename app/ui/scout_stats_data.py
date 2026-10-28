@@ -1,6 +1,7 @@
 """Small, read-only Scout 15-minute projections for Gameplan Stats.
 
-Only saved live forecasts and Scout's registered private order journals are read.
+Only saved live forecasts, registered private order journals and locally verified
+peer display exports are read.
 This reader deliberately imports no acquisition, model, execution or store writer.
 It projects scalar forecast fields in SQL; fitted inputs and model arrays never
 leave SQLite. Prediction outcome revisions and cumulative order evidence each
@@ -37,6 +38,9 @@ class ScoutStatsSnapshot:
     warnings: tuple[str, ...] = ()
     prediction_status: str = "missing"
     execution_status: str = "missing"
+    source: str = "local"
+    exported_at: str | None = None
+    completion_id: str | None = None
 
 
 def _root(value):
@@ -326,7 +330,9 @@ def scout_stats_sessions(datastore_root=None):
     root = _root(datastore_root)
     forecasts, _, _ = _predictions(root, None, datetime.now(timezone.utc), discovery=True)
     orders, _, _ = _orders(root, None)
-    return tuple(sorted({day for row in (*forecasts, *orders) if (day := _session(row.get("reference_at")))}, reverse=True))
+    from app.ui.scout_stats_peer import peer_stats_sessions
+    local = {day for row in (*forecasts, *orders) if (day := _session(row.get("reference_at")))}
+    return tuple(sorted(local | set(peer_stats_sessions(root)), reverse=True))
 
 
 def load_scout_stats(datastore_root=None, session=None, *, now=None):
@@ -341,6 +347,19 @@ def load_scout_stats(datastore_root=None, session=None, *, now=None):
         session = sessions[0] if sessions else None
     forecasts, prediction_status, prediction_warnings = _predictions(root, session, now)
     orders, execution_status, execution_warnings = _orders(root, session)
+    # Atlas can have a prediction store containing only Atlas rows. An empty
+    # readable store therefore also permits the separate saved Scout input.
+    # Never combine peer rows with local Scout populations or conceal local
+    # partial/unreadable evidence behind an export.
+    if session is not None and not forecasts and not orders and {prediction_status, execution_status} <= {"read", "missing"}:
+        from app.ui.scout_stats_peer import load_peer_stats
+        peer = load_peer_stats(root, session)
+        if peer is not None:
+            saved = dict(peer["snapshot"])
+            saved.update(forecasts=tuple(saved["forecasts"]), orders=tuple(saved["orders"]),
+                         warnings=tuple(saved["warnings"]), source="Scout saved export",
+                         exported_at=peer["generated_at"], completion_id=peer["completion_id"])
+            return ScoutStatsSnapshot(**saved)
     warnings = tuple(dict.fromkeys((*prediction_warnings, *execution_warnings)))
     statuses = {prediction_status, execution_status}
     status = "read" if statuses == {"read"} else "missing" if statuses == {"missing"} else "partial"
