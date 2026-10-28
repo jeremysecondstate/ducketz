@@ -18,14 +18,50 @@ import uuid
 
 from .prediction import ContractError, STEP, TARGET_VERSION, digest, encoded, instant
 from .store import ShadowStore, utcnow
+from .immutable_file_witness import file_integrity_witness, stat_witness
 
 SCHEMA = "scout-service-ready-v1"
 EXTERNAL = "scout-external-input-v1"
 
 
 def file_witness(path):
-    info = Path(path).stat()
-    return [info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns]
+    # Preserve the original envelope and pinned older readers. Strong change
+    # proofs are additive forecast fields, captured after full verification.
+    return stat_witness(Path(path).stat())
+
+
+def _integrity_witness(path):
+    try:
+        return file_integrity_witness(path)
+    except ValueError as error:
+        raise ContractError(str(error)) from error
+
+
+def _verified_file_witness(path, expected_hash):
+    """Model/publication path only: hash bytes without rebuilding a matrix."""
+    before = _integrity_witness(path)
+    hasher = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            hasher.update(block)
+    after = _integrity_witness(path)
+    if before != after or hasher.hexdigest() != expected_hash:
+        raise ContractError("Retained immutable execution evidence changed")
+    return after
+
+
+def _verify_file_witness(path, witness, expected_hash, integrity=None):
+    current = _integrity_witness(path)
+    if integrity is not None:
+        valid = current == integrity and current["metadata"] == witness
+    else:
+        # Preserve old frozen forecasts without treating their weak Windows
+        # metadata as a content proof. They retain full hash verification; new
+        # records use the strong witness and do not reread a training matrix.
+        valid = (isinstance(witness, list) and current["metadata"] == witness
+                 and _verified_file_witness(path, expected_hash) == current)
+    if not valid:
+        raise ContractError("Retained immutable execution evidence changed")
 
 
 @dataclass(frozen=True)
@@ -98,13 +134,13 @@ def execution_envelope(key, raw, forecast):
     if (indicators.get("forecast_snapshot_hash") != key
             or indicators.get("symbol") != forecast["symbol"]):
         raise ContractError("Compact indicator source changed")
-    for path_key, witness_key in (("object_path", "object_witness"),
-                                  ("indicator_object_path", "indicator_object_witness")):
-        if file_witness(value[path_key]) != value[witness_key]:
-            raise ContractError("Retained immutable execution evidence changed")
+    proofs = forecast.get("execution_integrity_witnesses", {})
+    for path_key, witness_key, hash_key in (("object_path", "object_witness", "snapshot_hash"),
+            ("indicator_object_path", "indicator_object_witness", "indicator_snapshot_hash")):
+        _verify_file_witness(value[path_key], value[witness_key], value[hash_key], proofs.get(path_key))
     if forecast.get("scientific_forecast_hash"):
-        if file_witness(forecast["scientific_forecast_path"]) != forecast["scientific_forecast_witness"]:
-            raise ContractError("Retained scientific forecast evidence changed")
+        _verify_file_witness(forecast["scientific_forecast_path"], forecast["scientific_forecast_witness"],
+                             forecast["scientific_forecast_hash"], forecast.get("scientific_forecast_integrity"))
     return value
 
 
@@ -353,6 +389,14 @@ class ServiceStore(ShadowStore):
             value = {**value, "execution_input_hash": digest(row[1])}
             if self.run_binding is not None:
                 value.update(self.run_binding)
+            # This model/publication process rechecks exact retained bytes after
+            # fitting, then binds native change proofs into the forecast. Older
+            # trading processes ignore these additive fields; their original
+            # five-field witnesses and snapshot envelope stay byte compatible.
+            value["execution_integrity_witnesses"] = {
+                path_key: _verified_file_witness(row[1][path_key], row[1][hash_key])
+                for path_key, hash_key in (("object_path", "snapshot_hash"),
+                                           ("indicator_object_path", "indicator_snapshot_hash"))}
             # Keep the complete scientific output, including every feature,
             # recipe and individual fit diagnostic. The trading queue receives
             # a separate small immutable forecast with the same probabilities,
@@ -367,14 +411,20 @@ class ServiceStore(ShadowStore):
             model_fields = ("name", "status", "probability_not_down", "version", "training_seconds", "inference_seconds")
             value = {**value, "scientific_forecast_hash": scientific_hash, "scientific_forecast_path": str(path),
                      "scientific_forecast_witness": file_witness(path),
+                     "scientific_forecast_integrity": _verified_file_witness(path, scientific_hash),
                      "features_hash": digest(value.get("features", {})),
                      "dataset_manifest": {name:manifest[name] for name in summary_fields if name in manifest},
                      "models": [{name:model[name] for name in model_fields if name in model}
                                 for model in value.get("models", [])]}
             value.pop("features", None)
-            if len(encoded(value).encode("utf-8")) > 60 * 1024:
-                raise ContractError("Execution forecast exceeds the bounded 64KiB record contract; full output retained")
         return super().save_forecast(value, intent=intent)
+
+    def _validate_forecast_record(self, value, raw):
+        # ShadowStore has now added direction, classification and forecast ID.
+        # Bound the exact serialization supplied to INSERT, not an allowance
+        # for fields that another layer is about to append.
+        if value.get("execution_input_hash") and len(raw.encode("utf-8")) > 65536:
+            raise ContractError("Execution forecast exceeds the bounded 64KiB record contract; full output retained")
 
     @staticmethod
     def scientific_forecast(forecast):

@@ -13,6 +13,7 @@ import json
 import sqlite3
 
 from filelock import FileLock
+from .immutable_file_witness import file_integrity_witness
 
 INDEX_VERSION = "intraday-market-receipt-index-v1"
 INDEX_NAME = "receipts.sqlite3"
@@ -218,6 +219,7 @@ class SnapshotRef(Mapping):
     """Immutable index headers with explicit verified loading on a cache miss."""
     def __init__(self, root, entry):
         self._root, self._entry = Path(root), dict(entry)
+        self._verified_witness = self._verified_contract = None
         self._header = json.loads(entry["header_json"])
         self._path = (self._root/entry["relative_path"]).resolve()
         if _relative(self._root,self._path) != entry["relative_path"]:
@@ -248,18 +250,37 @@ class SnapshotRef(Mapping):
 
     def load_verified(self):
         path = self._check_file()
+        contract = _receipt_validation_contract()
+        before = file_integrity_witness(path)
         snapshot = json.loads(path.read_text(encoding="utf-8"))
         if _entry(self._root,path,snapshot) != tuple(self._entry[key] for key in
                 ("snapshot_id", "source_id", "symbol", "source_kind", "receipt_ns", "available_ns",
                  "relative_path", "sha256", "status", "header_json", "file_bytes", "modified_ns")):
             raise ValueError("Immutable snapshot does not match its receipt index")
+        after = file_integrity_witness(path)
+        if before != after or contract != _receipt_validation_contract():
+            raise ValueError("Immutable snapshot changed during receipt validation")
+        self._verified_witness, self._verified_contract = after, contract
         # Do not retain raw records across thousands of historical references.
         # The caller may cache its derived vector, not this unbounded raw union.
         return snapshot
 
     def verify_unchanged(self):
-        """Cheap cache-hit guard; full content is checked by load_verified()."""
-        self._check_file()
+        """A header alone cannot authorize reuse of a derived context vector."""
+        path = self._check_file()
+        if self._verified_witness is None or self._verified_contract != _receipt_validation_contract():
+            self.load_verified()
+        elif file_integrity_witness(path) != self._verified_witness:
+            raise ValueError("Invalid immutable market snapshot: file changed after validation")
+
+
+def _receipt_validation_contract():
+    from . import market_collection as collection
+    functions = (_entry, _relative, collection.instant, collection.snapshot_digest,
+                 collection.canonical, json.loads, json.dumps, file_integrity_witness,
+                 SnapshotRef.load_verified)
+    return (collection.VERSION, tuple((function, getattr(function, "__code__", None))
+                                      for function in functions))
 
 
 def read_indexed_snapshots(root, entries, *, lazy=False):

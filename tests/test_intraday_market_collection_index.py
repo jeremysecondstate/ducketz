@@ -82,8 +82,10 @@ def test_lazy_headers_do_not_read_payloads_and_verify_on_demand(tmp_path,monkeyp
     assert len(refs)==1 and isinstance(refs[0],SnapshotRef)
     assert refs[0]["snapshot_sha256"]==saved["snapshot_sha256"] and reads==[]
     refs[0].verify_unchanged()
-    assert reads==[] and refs[0].load_verified()==saved and reads==[path]
-    assert refs[0].load_verified()==saved and reads==[path,path]
+    assert reads==[path]  # A new ref must verify content before authorizing a cache hit.
+    refs[0].verify_unchanged()
+    assert reads==[path] and refs[0].load_verified()==saved and reads==[path,path]
+    assert refs[0].load_verified()==saved and reads==[path,path,path]
     path.write_bytes(path.read_bytes()+b" ")
     with pytest.raises(ValueError,match="changed"):
         refs[0].verify_unchanged()

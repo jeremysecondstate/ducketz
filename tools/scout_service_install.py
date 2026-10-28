@@ -135,6 +135,26 @@ def compose_release(*, predecessor_root, predecessor_manifest_sha256, reviewed_s
 
 
 BOOTSTRAP_FILES = ("scout_service_controller.py", "scout_iteration_controller.py", "scout_process.py", "scout_release.py")
+
+
+def manual_launcher_source(*, python_executable, bootstrap):
+    """Bind a local manual entrypoint to the same pinned controller as its task.
+
+    No arguments means the existing manual activation. Explicit --check and
+    --stop are passed without an implicit --live, so checking cannot start a
+    trader and stopping cannot create a fresh logical run. The controller owns
+    argument validation; unsupported legacy recipe overrides fail explicitly.
+    """
+    values = [str(python_executable), str(bootstrap)]
+    if any(not value or any(c in value for c in '\r\n"%!') for value in values):
+        raise ValueError("Unsafe Windows launcher binding")
+    command = '"' + values[0] + '" -B -u "' + values[1] + '"'
+    return ("@echo off\r\nsetlocal DisableDelayedExpansion\r\n"
+            "title Scout 15m Trader\r\nset \"PYTHONDONTWRITEBYTECODE=1\"\r\n"
+            "if \"%~1\"==\"\" (\r\n  " + command + " --live --hold-console\r\n"
+            ") else (\r\n  " + command + " %*\r\n)\r\nexit /b %errorlevel%\r\n").encode("utf-8")
+
+
 LAUNCH_SOURCE = '''"""Verified independent Scout bootstrap. --live is initial trading activation."""
 import hashlib
 import json
