@@ -1,0 +1,27 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T151738Z-bde9f7c580c34a5f994257fe47304b39",
+  "change_id": "scout-retry-receipts:20261028T151738Z-bde9f7c580c34a5f994257fe47304b39",
+  "completion_record": "20261028T151738Z-bde9f7c580c34a5f994257fe47304b39",
+  "files": [
+    "ml/intraday/scout_services.py",
+    "tests/test_scout_model_failure_persistence.py",
+    "tests/test_scout_retry_receipts.py"
+  ],
+  "limitations": [
+    "Best-effort diagnostics may be absent when receipt I/O fails; absence does not prove recovery.",
+    "No provider/broker/training/trader control calls. Underlying lock holder and broad latency remain unresolved.",
+    "Preserve independent model/trading lifecycles; no controller protocol change or automatic crash retry."
+  ],
+  "main_sha": "832376233c87d9fe9fdfc4f3aad6bfc591e67a7b",
+  "repository": "jeremysecondstate/ducketz",
+  "review_url": "https://github.com/jeremysecondstate/ducketz/pull/493",
+  "runtime_implications": "Compatible Scout model code loads through safe planned replacement. Trading process remains pinned under the installed independent protocol until next normal authorized initial launch. Scientific payloads, order effects and retry timing are unchanged.",
+  "scope": "Shared Scout service diagnostics only. Each PC retains its recipe, fitted models, symbols and local operating authority.",
+  "source_sha": "a3d8e91026a1dd272aa66791ef8f5e92216d2b9d",
+  "summary": "Scout native persistence retry receipts bind original operations to committed recovery without replay",
+  "tests": {
+    "installed_scout": "43 passed, zero skipped on exact composed immutable source; seven new native receipt cases",
+    "source_courier_main": "43 passed, zero skipped on each final source, courier and current-main candidate suite; overlapping checks"
+  }
+}

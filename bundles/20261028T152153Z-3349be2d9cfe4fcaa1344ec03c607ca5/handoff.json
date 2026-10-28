@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T15:21:53.794918Z",
+  "id": "20261028T152153Z-3349be2d9cfe4fcaa1344ec03c607ca5",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout native persistence retry receipts bind original operations to committed recovery without replay"
+}
