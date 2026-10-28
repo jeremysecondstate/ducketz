@@ -27,7 +27,7 @@ def installation(root):
     (runtime_path / "python").mkdir(parents=True)
     (runtime_path / "manifest.json").write_bytes(runtime_raw)
     (runtime_path / "python/python.exe").write_bytes(b"offline python fixture")
-    sources = {host.HOST: b"# fixture data bootstrap\n", host.INSTALLER: b"# fixture installer\n"}
+    sources = {host.HOST: b"# fixture data bootstrap\n", host.INSTALLER: b"# fixture installer\n", host.DATA_PROTOCOL: b"# fixture data protocol\n"}
     manifest = {"schema": host.SCHEMA, "protocol": 1,
                 "source_files": {name: digest(raw) for name, raw in sources.items()},
                 "runtime": {"id": runtime_id, "manifest_sha256": runtime_id}}
@@ -57,11 +57,11 @@ def test_selects_exact_complete_bootstrap_without_importing_application(tmp_path
     assert selected == {"generation": generation, "python": runtime / "python/python.exe"}
 
 
-@pytest.mark.parametrize("member", ["generation", "host", "installer", "runtime", "python"])
+@pytest.mark.parametrize("member", ["generation", "host", "installer", "protocol", "runtime", "python"])
 def test_bootstrap_byte_corruption_is_rejected(tmp_path, member):
     generation, runtime = installation(tmp_path)
     target = {"generation": generation / "manifest.json", "host": generation / "source" / host.HOST,
-              "installer": generation / "source" / host.INSTALLER, "runtime": runtime / "manifest.json",
+              "installer": generation / "source" / host.INSTALLER, "protocol": generation / "source" / host.DATA_PROTOCOL, "runtime": runtime / "manifest.json",
               "python": runtime / "python/python.exe"}[member]
     target.write_bytes(target.read_bytes() + b"corrupt")
     with pytest.raises(ValueError):
@@ -188,3 +188,66 @@ def test_existing_schedule_is_explicit_data_only_binding_and_forwarded_unchanged
 def test_unknown_or_partial_schedule_does_not_invent_rollover_authority(tmp_path,binding):
     with pytest.raises(SystemExit):
         host.main(["--repository",str(tmp_path),"--datastore",str(tmp_path),*binding])
+
+
+def test_continuous_launch_enters_one_data_lifetime_not_an_error_retry(tmp_path, monkeypatch):
+    generation,runtime=installation(tmp_path);calls=[];bound=[]
+    monkeypatch.setattr(host,"bind_parent_lifetime",lambda selected:bound.append(selected))
+    monkeypatch.setattr(host.subprocess,"run",lambda argv,**kwargs:calls.append(argv) or SimpleNamespace(returncode=9))
+    assert host.launch(tmp_path,options(tmp_path))==9
+    assert len(calls)==len(bound)==1 and "--controller" in calls[0]
+    assert "--request" not in calls[0] and "--trader" not in calls[0]
+
+
+def test_verification_never_enters_controller_or_kernel_job(tmp_path,monkeypatch):
+    installation(tmp_path);calls=[]
+    monkeypatch.setattr(host,"bind_parent_lifetime",lambda selected:pytest.fail("Verification created lifetime"))
+    monkeypatch.setattr(host.subprocess,"run",lambda argv,**kwargs:calls.append(argv) or SimpleNamespace(returncode=0))
+    assert host.launch(tmp_path,options(tmp_path,verify_only=True))==0
+    assert "--verify-only" in calls[0] and "--controller" not in calls[0]
+
+
+def test_each_lane_selects_current_generation_and_unproven_runtime_stays_full_verified(tmp_path,monkeypatch):
+    settings=options(tmp_path);settings.installation=tmp_path
+    generation,runtime=installation(tmp_path);selections=[];commands=[]
+    monkeypatch.setattr(host,"select_generation",lambda root:selections.append(root) or {"generation":generation,"python":runtime/"python/python.exe"})
+    import tools.intraday_data_renewal as protocol
+    import contextlib
+    @contextlib.contextmanager
+    def owned(root):yield
+    monkeypatch.setattr(protocol,"own_data_session",owned)
+    monkeypatch.setattr(protocol,"bind_kernel_lifetime",lambda:None)
+    def run(**kwargs):
+        commands.extend(kwargs['command']('prep-0',tmp_path/('request'+str(i)+'.json')) for i in range(3))
+        assert kwargs['envelope']['session']['session_id'].startswith('data-atlas-1a:')
+        assert kwargs['envelope']['options']['symbol_workers'] is None
+        return 0
+    monkeypatch.setattr(protocol,"run_protocol",run)
+    assert host.run_controller(settings)==0
+    assert len(selections)==4 and all('--request' in cmd for cmd in commands)
+    assert all('--full-verify' in cmd for cmd in commands)  # No completed verified receipt yet.
+    assert all('--live' not in cmd and '--trader' not in cmd for cmd in commands)
+
+
+@pytest.mark.parametrize('matching',[True,False])
+def test_runtime_cache_requires_exact_completed_bootstrap_receipt(tmp_path,monkeypatch,matching):
+    import contextlib
+    import tools.intraday_data_renewal as protocol
+    settings=options(tmp_path);settings.installation=tmp_path
+    generation,runtime=installation(tmp_path);manifest=json.loads((generation/'manifest.json').read_bytes())
+    selected={'generation':generation,'python':runtime/'python/python.exe'}
+    monkeypatch.setattr(host,'select_generation',lambda root:selected)
+    @contextlib.contextmanager
+    def owned(root):yield
+    monkeypatch.setattr(protocol,'own_data_session',owned);monkeypatch.setattr(protocol,'bind_kernel_lifetime',lambda:None)
+    def run(**kwargs):
+        first=tmp_path/'first.json';raw=encoded({'turn':'turn-a','token':'token-a'});first.write_bytes(raw)
+        assert '--full-verify' in kwargs['command']('prep-0',first)
+        first.with_suffix('.claim.json').write_bytes(encoded({'turn':'turn-a','token':'token-a' if matching else 'wrong','pid':123}))
+        first.with_suffix('.loaded.json').write_bytes(encoded({'turn':'turn-a','worker_pid':123,
+            'runtime_id':manifest['runtime']['id'],'full_runtime_verified':True,'request_sha256':digest(raw)}))
+        second=kwargs['command']('prep-0',tmp_path/'second.json')
+        assert ('--full-verify' not in second)==matching
+        return 0
+    monkeypatch.setattr(protocol,'run_protocol',run)
+    assert host.run_controller(settings)==0
