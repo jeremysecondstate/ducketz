@@ -1,0 +1,70 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T203826Z-d6a97eb0796b4cd0bc508f573508ece5",
+  "change_id": "20261028T203826Z-d6a97eb0796b4cd0bc508f573508ece5",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative; shared test-only continuation of Completion-Record 20261028T202135Z-e4fcd91fb52f4dedba807885ab529a31.",
+    "Eight portable cases distinguish an existing projection read from a new append across four committed source corruptions; all source and final writer guards remain unchanged.",
+    "Exact local legacy fixture patch supplies a new event to require the writer recheck. Common base lacks that legacy fixture; preserve architecture-specific source and review the patch per local beforeimage.",
+    "Preserve original science, probability, targets, independent state, UNKNOWN evidence, policies and controls."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_intraday_warm_fixture_package.py",
+      "sha256": "284814ecb5173dba58c9498ab32fa5a38b6fd295101e57df89630badb7c6d93f"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_distinct_recovery_boundaries.py",
+      "sha256": "7bdd2f1625d56b1c1ad9af66bc8bc8ae73c0ab96940ea568365e35e3f4d37327"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/intraday-warm-fixture-boundary.json",
+      "sha256": "8d09d513be12e1eba386d8883eb2542caea43a087784e11a398387b49a79b9b1"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/intraday-warm-fixture-boundary.patch",
+      "sha256": "495a9ffd4a0351adb6f69362da5d7f97013d8620734a84429dda050af984f084"
+    }
+  ],
+  "limitations": [
+    "Test-only correction.31 common offline cases cover8new snapshot/append boundaries and23existing partial-header cases; local22-case warm suite is validated separately after adoption.",
+    "No source/runtime behavior, generation, trading/account state, schedule or control change. No broker/provider/model/trader/order/task operations.",
+    "The original SNDK uncertain send, historical cold fallback trigger and unloaded1A journal repair are separate incidents; these tests do not prove their natural recovery."
+  ],
+  "main_commit": "3dff0ceb11407f5906db420fb3155d7f8c886a2a",
+  "privacy_review": "Generic synthetic offline fixtures and exact test-only patch metadata; no credentials, account records, native bindings, observations, fitted models or private operating evidence.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No production source or dependency change; tests are excluded from the sealed application inventory. Keep selected generation and loaded sessions unchanged.",
+  "scope": "shared",
+  "source_commit": "468a9753bb190c46b47c4894c6f70de759a66b97",
+  "summary": "Correct warm recovery fixture boundaries; common and local tests pass",
+  "tests": [
+    {
+      "check": "tests/check_intraday_warm_fixture_package.py",
+      "network_attempts": 0,
+      "passed": 31,
+      "scope": "Exact common author, queue, source and main candidates",
+      "skipped": 0
+    },
+    {
+      "network_attempts": 0,
+      "passed": 31,
+      "scope": "Atlas local portable package",
+      "skipped": 0
+    },
+    {
+      "network_attempts": 0,
+      "passed": 22,
+      "scope": "Atlas complete corrected local warm fixture",
+      "skipped": 0
+    }
+  ]
+}

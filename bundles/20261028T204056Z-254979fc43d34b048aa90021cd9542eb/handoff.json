@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T20:40:56.404067Z",
+  "id": "20261028T204056Z-254979fc43d34b048aa90021cd9542eb",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Correct warm recovery fixture boundaries; common and local tests pass"
+}
