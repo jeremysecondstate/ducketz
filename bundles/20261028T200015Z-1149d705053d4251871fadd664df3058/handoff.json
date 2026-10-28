@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T20:00:15.503489Z",
+  "id": "20261028T200015Z-1149d705053d4251871fadd664df3058",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Batch authenticated recovery sizing headers; tested common source published"
+}

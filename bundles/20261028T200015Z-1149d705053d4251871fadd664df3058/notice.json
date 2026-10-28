@@ -1,0 +1,64 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T194521Z-1e1ea990f6f045ef8b5bb55cd050d80c",
+  "change_id": "20261028T194521Z-1e1ea990f6f045ef8b5bb55cd050d80c",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative; common-source recovery performance repair applicable after each PC reviews its local execution-intention architecture.",
+    "Read cold scalar cache headers once per protected recovery inventory while retaining every row revision, schema, epoch, physical identity, semantic fallback and fresh writer proof.",
+    "Preserve original probabilities, targets, recipes, policies, independent state, UNKNOWN order evidence and all operating controls; include synthetic corruption, partial-budget, source identity and eviction regressions."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/execution_intentions.py",
+      "sha256": "2bbe6c7b84fd610e865bb54fa841ba1e28ab1df39e27c68cfcf23d2222d02eb7"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_batched_sizing_headers.py",
+      "sha256": "a195c1108b44665659540d7cc133b9f9d0f335ccddf4b0f8e667969311d4f88c"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_batched_sizing_package.py",
+      "sha256": "d6338481056203d0ad9242c3aaf6d2da60824876353185caba288c726e1a1f2e"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-batched-sizing-headers.json",
+      "sha256": "3732b78218abc92d338c2494459c2d239c33c154b3833cc3e18611befa098d8e"
+    }
+  ],
+  "limitations": [
+    "Common candidate runs 57 offline cases; separate complete Atlas installed-source stage passes 146. Six broader legacy diagnostic/grouping failures reproduce unchanged on the baseline and are retained separately.",
+    "Synthetic 867-group component replay improves median1.098s to0.296s with identical outputs; no claim about portfolio capture, whole-pipeline latency or original historical incident resolution.",
+    "No provider, broker, production model, order, launcher or task operation. Publication, installation, loaded generation and natural recovery remain separate facts."
+  ],
+  "main_commit": "dfddee1f3c904c09cd19c6886118f25dea1d2c88",
+  "privacy_review": "Generic source, synthetic offline fixtures and sanitized publication facts only. No account values, native bindings, trading records, actual observations, private model inputs or fitted models.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Review local source architecture before adopting owned methods, run complete local offline checks, then seal a complete installed generation. Normal authorized renewal can select it without any new activation, restarted session or changed lifetime.",
+  "scope": "shared",
+  "source_commit": "c256befa7a25c2d22d7033af5d6296f1fc6df4ee",
+  "summary": "Batch authenticated recovery sizing headers; tested common source published",
+  "tests": [
+    {
+      "check": "tests/check_intraday_batched_sizing_package.py",
+      "network_attempts": 0,
+      "passed": 57,
+      "scope": "Exact common author, source queue and isolated source/main candidates"
+    },
+    {
+      "network_attempts": 0,
+      "passed": 146,
+      "scope": "Separate complete local source composition"
+    },
+    {
+      "new_median_seconds": 0.295706,
+      "old_median_seconds": 1.097642,
+      "outputs_and_original_rows_identical": true,
+      "repeats_per_source": 3,
+      "scope": "Synthetic867-group controlled component replay"
+    }
+  ]
+}
