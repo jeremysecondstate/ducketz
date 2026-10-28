@@ -1,0 +1,99 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T062030Z-902641b0c80445418cfd7edbf813c3e0",
+  "change_id": "20261028T062030Z-902641b0c80445418cfd7edbf813c3e0",
+  "details": [
+    "Selective PR476 adoption retains Atlas record 20261028T014534Z-652715a720a9421a944e35f81f4b2694/source da93d368d083f89a8a3097738055fbb8cb76e843; historical archive support from PR477 remains separate.",
+    "Readable local dates and records survive malformed unrelated export receipts; peer verification warnings are separate and partial/unreadable local evidence prevents fallback.",
+    "Export-only corruption remains unavailable; pinned bytes, identity and summaries are rechecked; contradictory target support is rejected.",
+    "Scout panel shows source, export time and immutable export identity. Local forecasts, probabilities, targets, saved direction metadata, model recipes and Gameplan tab are preserved.",
+    "Source queue, isolated publication and fresh main each71passes with no skips or import/network violations. Final Scout installed checks97passes with no skips; initial96pass/one-skip evidence retained.",
+    "Scout selectively installed exact seven reviewed paths with originals retained; main preserves intervening Atlas startup source. Actual loaded runtime remains unverified."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/scout_stats_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/scout_stats_widgets.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/scout_stats_peer.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_scout_stats_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_scout_stats_ui.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_scout_stats_peer.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_scout_stats_peer_fallback.py"
+    }
+  ],
+  "limitations": [
+    "Strict offline synthetic SQLite, archive and native Tk fixtures only; no private operating exports, providers, brokers, production models or trader actions.",
+    "This leaf adds reader/panel dependencies absent from main, preserving existing Scout tab registration; Atlas tab scaffolding and historical archive UI remain separate adoption work."
+  ],
+  "main_commit": "b2fec4999372909a63777022509e88b5720073d9",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/486",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source and common main are remotely verified; Scout local source is installed and verified. No application restart or runtime-loaded claim; use normal safe UI loading.",
+  "scope": "shared",
+  "source_commit": "77ad6cdc2c71562df355c42affcb4ee2fe750376",
+  "summary": "Scout saved-export Stats adopted safely, integrated and locally installed",
+  "tests": {
+    "fresh_main": [
+      {
+        "completed_at_utc": "2026-10-28T06:22:36.140941Z",
+        "exit_code": 0,
+        "output_sha256": "8c264543c445f65d67788eabf6073041381a391ee820dec49076dc961805639e",
+        "result": ".......................................................................  [100%]\r\n71 passed in 1.75s\r\n\n",
+        "started_at_utc": "2026-10-28T06:22:33.527605Z"
+      }
+    ],
+    "installed_scout_final": [
+      {
+        "completed_at_utc": "2026-10-28T06:25:12.244929Z",
+        "exit_code": 0,
+        "output_sha256": "79b9d2c8bdb252a347c770d778ed0117b41fe403eccb8f33ebcd4d9afe4e2100",
+        "result": "........................................................................ [ 74%]\r\n.........................                                                [100%]\r\n97 passed in 11.28s\r\n\n",
+        "started_at_utc": "2026-10-28T06:24:59.685457Z"
+      }
+    ],
+    "isolated_publication": [
+      {
+        "completed_at_utc": "2026-10-28T06:20:59.866515Z",
+        "exit_code": 0,
+        "output_sha256": "fff17e9861a60423febeaf9cd0eefbaec37718d7bd9fbd19ccad6afdd7db4a51",
+        "result": ".......................................................................  [100%]\r\n71 passed in 1.70s\r\n\n",
+        "started_at_utc": "2026-10-28T06:20:57.268112Z"
+      }
+    ],
+    "queued_source": [
+      {
+        "completed_at_utc": "2026-10-28T06:20:32.970354Z",
+        "exit_code": 0,
+        "output_sha256": "d41892378c620985772401e3f3be6c4b8a7ee2395d47389b208a2515f8106573",
+        "result": ".......................................................................  [100%]\r\n71 passed in 1.61s\r\n\n",
+        "started_at_utc": "2026-10-28T06:20:30.570326Z"
+      }
+    ]
+  }
+}
