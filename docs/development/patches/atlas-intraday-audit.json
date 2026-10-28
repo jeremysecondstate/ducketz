@@ -1,0 +1,67 @@
+{
+  "actor": "Atlas",
+  "applicability": "Common split infrastructure and exact Atlas adapters. Preserve each PC model recipes, local bindings, independent state and lifecycle controls. Differing consumer preimages require local reviewed adaptation.",
+  "direct_files": {
+    "docs/development/atlas-intraday-audit.md": "a4854d11bd16eb8c21a491a70139705c4c9cba46648b8f75641cb56d0f8898a0",
+    "ml/intraday/split_model.py": "f0a33616b77a74a821722a7d128d55dd142f3196cef7717050511f9f663db30d",
+    "ml/intraday/split_queue.py": "50a0130bded806048d6378c014ba080546cab60274086f9ff021c0ee36111a7a",
+    "ml/intraday/split_scoring.py": "64e4c7a56414b39fd241ba9032cbf0b072ba0c5fbe093aa709df6bff75732932",
+    "ml/intraday/split_service.py": "aece178a537951ed68fb1a35d0a9f4e45f5ec2adbf32495b39a27e8370bcfa08",
+    "tests/check_atlas_intraday_audit_package.py": "9add3355f8434f32b4cdfc8bb8b7e8e048afe4cf33e6de090ad7602fcf6c772a",
+    "tests/check_trader_worker_failure_evidence.py": "fb84806bbff48900c0e7dac8990fb59ac3ccae7a2d8eb35ee6d828d91af9ef85",
+    "tests/test_intraday_split_model_admission.py": "8262fe981d182119b5affdbc517676dcf8cf30bc16ed037d43e8e552beace254",
+    "tests/test_intraday_split_preparation_fairness.py": "6d0afa1e615c89198c1ad4faafac0e239eacd06895371976eb443e800b856c13",
+    "tests/test_intraday_split_queue.py": "6dbdbf28f4ffbf7310b6364da4db2f2807ebe5c90a99af9122acc52e2ec6d2e3",
+    "tests/test_intraday_split_scoring_continuation.py": "ddf868524fb16eca5386298e3e3613bc545c020f4979d04adc086711383c7055",
+    "tests/test_trader_worker_loaded_evidence.py": "576bf4ed02cda64ea7defacfe85cc9242d0d684862e403186142448b73be7518"
+  },
+  "extracts": {
+    "_record_loaded": {
+      "sha256": "3a500edafe4fabac35d0817e6bc20163ba5096f56ac0448f2be2c9864280c09e",
+      "source": "def _record_loaded(renewal, selected):\n    \"\"\"Retain actual verified bootstrap identity without creating authority.\n\n    Use the generation returned by this process's bootstrap, never a later\n    active selector. A separate receipt leaves the continuation protocol and\n    original request/response bytes unchanged. Failure to write diagnostics\n    cannot interrupt a session or change a planned renewal disposition.\n    \"\"\"\n    temporary = None\n    try:\n        import hashlib\n        import uuid\n        from datetime import datetime, timezone\n        from ml.trader_renewal import process_birth\n\n        request = renewal.request\n        worker, python = Path(__file__).resolve(), Path(sys.executable).resolve()\n        worker_sha = hashlib.sha256(worker.read_bytes()).hexdigest()\n        python_sha = hashlib.sha256(python.read_bytes()).hexdigest()\n        source = Path(selected[\"source_root\"]).resolve()\n        expected_worker = selected[\"manifest\"][\"source_files\"][\"tools/trader_worker.py\"]\n        runtime_manifest = selected[\"runtime_manifest\"]\n        expected_python = runtime_manifest[\"files\"][runtime_manifest[\"python_relative\"]]\n        value = {\"schema\": \"trader-worker-loaded-evidence-v1\", \"diagnostic_only\": True,\n                 \"at\": datetime.now(timezone.utc).isoformat(),\n                 \"protocol\": request[\"protocol\"], \"turn\": request[\"turn\"],\n                 \"role\": request[\"role\"], \"generation\": request[\"generation\"],\n                 \"session_id\": renewal.envelope[\"session\"][\"session_id\"],\n                 \"worker_pid\": os.getpid(), \"worker_birth\": process_birth(os.getpid()),\n                 \"request_sha256\": hashlib.sha256(renewal.request_path.read_bytes()).hexdigest(),\n                 \"sealed_generation\": selected[\"generation\"],\n                 \"source_manifest_sha256\": selected[\"manifest_sha256\"],\n                 \"runtime_id\": selected[\"runtime_id\"],\n                 \"runtime_manifest_sha256\": selected[\"manifest\"][\"runtime\"][\"manifest_sha256\"],\n                 \"worker_sha256\": worker_sha, \"python_sha256\": python_sha,\n                 \"worker_matches_bootstrap\": worker == source / \"tools/trader_worker.py\" and worker_sha == expected_worker,\n                 \"python_matches_bootstrap\": python == Path(selected[\"python\"]).resolve() and python_sha == expected_python,\n                 \"isolated\": bool(sys.flags.isolated), \"no_site\": bool(sys.flags.no_site)}\n        raw = (json.dumps(value, sort_keys=True, allow_nan=False) + \"\\n\").encode(\"utf-8\")\n        target = renewal.request_path.with_suffix(\".loaded.json\")\n        temporary = target.with_name(\".\" + target.name + \".\" + uuid.uuid4().hex + \".partial\")\n        with temporary.open(\"xb\") as stream:\n            stream.write(raw)\n            stream.flush()\n            os.fsync(stream.fileno())\n        # Atomic no-replace publication: preserve any earlier complete receipt.\n        os.link(temporary, target)\n        return True\n    except BaseException as exc:\n        try:\n            print(\"Worker loaded-source evidence unavailable: \" + type(exc).__name__, file=sys.stderr)\n        except BaseException:\n            pass\n        return False\n    finally:\n        if temporary is not None:\n            try:\n                temporary.unlink(missing_ok=True)\n            except OSError:\n                pass\n"
+    },
+    "main": {
+      "sha256": "f4170e71dacd316757a41241a2e8083e83294639eec74cc3e79e8b8fd10cccb5",
+      "source": "def main(argv=None):\n    parser = argparse.ArgumentParser(description=__doc__)\n    parser.add_argument(\"--generation\", required=True, type=Path)\n    parser.add_argument(\"--request\", type=Path)\n    parser.add_argument(\"--verify-only\", action=\"store_true\")\n    args = parser.parse_args(argv)\n    if args.verify_only and args.request is not None:\n        parser.error(\"Verification cannot also run a session request\")\n    if not args.verify_only and args.request is None:\n        parser.error(\"A living session request is required\")\n    selected = bootstrap(args.generation, full=args.verify_only)\n    if args.verify_only:\n        print(json.dumps({\"verified\": True, \"generation\": selected[\"generation\"],\n                          \"runtime_id\": selected[\"runtime_id\"]}, sort_keys=True))\n        return 0\n    from tools.trader_session_host import bind_kernel_lifetime\n    bind_kernel_lifetime()\n    from ml.trader_renewal import Renewal, PlannedRenewal, PLANNED_EXIT\n    renewal = Renewal(args.request)\n    renewal.claim()\n    _record_loaded(renewal, selected)\n    os.environ[\"DUCKETZ_TRADER_RENEWAL_REQUEST\"] = str(args.request)\n    try:\n        try:\n            result = run(renewal)\n            renewal.finish(result)\n            return 0\n        except PlannedRenewal:\n            # No leases/threads may remain past this boundary. OS process exit is\n            # acknowledged before the anchor admits the next generation.\n            return PLANNED_EXIT\n        except (KeyboardInterrupt, InterruptedError):\n            if not renewal.stopped():\n                raise\n            renewal.finish({\"status\":\"STOPPED\"})\n            return 0\n    except BaseException as exc:\n        _record_failure(renewal, exc, args.generation)\n        raise\n"
+    }
+  },
+  "files": [
+    {
+      "after_sha256": "27027bb26ea6a64d5d2c9f4cbf58d20e539693e96077eabdcb89c1435294156b",
+      "before_sha256": "1091e027fadba5888309910cf65e6d2445a371b82710c6ed9e3f8e6b3ffc626b",
+      "operation": "modify",
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "after_sha256": "8b8c77a87d08c78e1614941c826f31b5abf54f20f1b071a7ec169c2e314f64a9",
+      "before_sha256": "e5fae3c89cc0646f4c84296359e7d33b3b29427c7ba0cb05a31252c5a2a27388",
+      "operation": "modify",
+      "path": "tools/trader_worker.py"
+    },
+    {
+      "after_sha256": "01a182d89fe131d69af87fbc808a42fd02398134c91d94ccf773478ad4d18a2b",
+      "before_sha256": "9017be57625185672a4ea4d20a25f1e9f52459cf4b7ff65cda8c065c99859394",
+      "operation": "modify",
+      "path": "tests/test_intraday_recovery_forecast_reuse.py"
+    }
+  ],
+  "limitations": "Portable hunk projection is not full adapter installation proof. Atlas exact preimage reconstruction and composed offline runtime checks are recorded privately; installation and loaded runtime behavior are separate.",
+  "offline_tests": [
+    "tests/test_intraday_split_model_admission.py",
+    "tests/test_intraday_split_scoring_continuation.py",
+    "tests/test_intraday_split_queue.py",
+    "tests/test_trader_worker_loaded_evidence.py",
+    "tests/test_intraday_split_preparation_fairness.py"
+  ],
+  "patch": "docs/development/patches/atlas-intraday-audit.patch",
+  "patch_sha256": "6f2fcf6d2863bb8cc1dce5ce2d4094feb9f2ddd72671b6945654dfe9c371eb5c",
+  "portable_tests": [
+    "tests/test_intraday_split_queue.py",
+    "tests/test_trader_worker_loaded_evidence.py"
+  ],
+  "reviewed_checkout_base": "90704d21801f60426493bd6cc650a7fac38d4f61",
+  "reviewed_public_base": "7f0b041adc8634c9ef2b17330e22a65d3a30c720",
+  "schema": "atlas-intraday-split-package-v1",
+  "scope": "shared",
+  "task": "atlas-15m-architecture-audit-repair"
+}
