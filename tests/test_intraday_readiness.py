@@ -686,3 +686,87 @@ def test_order_cutoff_does_not_block_manual_start_preparation(local):
     assert result["reason_codes"] == []
     assert result["submission_time"]["state"] != "before_submission_cutoff"
     assert result["execution_authorized"] is False
+
+
+def test_complete_manual_provider_delegation_is_recognized(local):
+    installed_sources(local)
+    component = readiness._source_capabilities(local["repository"])["source_component_checks"]["manual_session"]
+    assert component["source_interfaces_verified"]
+    evidence = component["interface_evidence"]
+    caller = evidence["ml/intraday/live_session.py:run_manual"]
+    helper = evidence["ml/intraday/live_session.py:prepare_minute_provider"]
+    assert caller["verified"] and "prepare_minute_provider" in caller["required_calls_present"]
+    assert helper["defined"] and helper["verified"]
+    assert helper["required_calls_present"] == ["DatabentoMarketDataProvider"]
+
+
+def test_empty_manual_provider_helper_cannot_claim_manual_source(local):
+    installed_sources(local)
+    source = local["repository"] / "ml/intraday/live_session.py"
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    helpers = [node for node in tree.body
+               if isinstance(node, ast.FunctionDef) and node.name == "prepare_minute_provider"]
+    assert len(helpers) == 1
+    helpers[0].body = [ast.Pass()]
+    source.write_text(ast.unparse(ast.fix_missing_locations(tree)), encoding="utf-8")
+    capabilities = readiness._source_capabilities(local["repository"])
+    component = capabilities["source_component_checks"]["manual_session"]
+    assert not component["source_interfaces_verified"]
+    key = "ml/intraday/live_session.py:prepare_minute_provider"
+    alternatives = [variant for variant in component["complete_alternative_evidence"]
+                    if key in variant["interface_evidence"]]
+    assert len(alternatives) == 1
+    evidence = alternatives[0]["interface_evidence"]
+    assert evidence["ml/intraday/live_session.py:run_manual"]["verified"]
+    assert evidence[key]["defined"] and not evidence[key]["verified"]
+    assert evidence[key]["required_calls_present"] == []
+    assert "SOURCE_CAPABILITY_UNVERIFIED:manual_session" in capabilities["missing_integration"]
+
+
+def test_disconnected_manual_provider_helper_cannot_claim_manual_source(local):
+    installed_sources(local)
+    source = local["repository"] / "ml/intraday/live_session.py"
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    callers = [node for node in tree.body
+               if isinstance(node, ast.FunctionDef) and node.name == "run_manual"]
+    assert len(callers) == 1
+    calls = [node for node in ast.walk(callers[0]) if isinstance(node, ast.Call)
+             and isinstance(node.func, ast.Name) and node.func.id == "prepare_minute_provider"]
+    assert len(calls) == 1
+    calls[0].func.id = "disconnected_provider"
+    source.write_text(ast.unparse(ast.fix_missing_locations(tree)), encoding="utf-8")
+    capabilities = readiness._source_capabilities(local["repository"])
+    component = capabilities["source_component_checks"]["manual_session"]
+    assert not component["source_interfaces_verified"]
+    key = "ml/intraday/live_session.py:prepare_minute_provider"
+    alternatives = [variant for variant in component["complete_alternative_evidence"]
+                    if key in variant["interface_evidence"]]
+    assert len(alternatives) == 1
+    evidence = alternatives[0]["interface_evidence"]
+    assert evidence[key]["verified"]
+    caller = evidence["ml/intraday/live_session.py:run_manual"]
+    assert not caller["verified"]
+    assert "prepare_minute_provider" not in caller["required_calls_present"]
+    assert "SOURCE_CAPABILITY_UNVERIFIED:manual_session" in capabilities["missing_integration"]
+
+
+def test_direct_manual_provider_layout_remains_recognized(local):
+    installed_sources(local)
+    source = local["repository"] / "ml/intraday/live_session.py"
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    callers = [node for node in tree.body
+               if isinstance(node, ast.FunctionDef) and node.name == "run_manual"]
+    assert len(callers) == 1
+    calls = [node for node in ast.walk(callers[0]) if isinstance(node, ast.Call)
+             and isinstance(node.func, ast.Name) and node.func.id == "prepare_minute_provider"]
+    assert len(calls) == 1
+    calls[0].func.id = "DatabentoMarketDataProvider"
+    tree.body = [node for node in tree.body if not
+                 (isinstance(node, ast.FunctionDef) and node.name == "prepare_minute_provider")]
+    source.write_text(ast.unparse(ast.fix_missing_locations(tree)), encoding="utf-8")
+    component = readiness._source_capabilities(local["repository"])["source_component_checks"]["manual_session"]
+    assert component["source_interfaces_verified"]
+    evidence = component["interface_evidence"]
+    assert "ml/intraday/live_session.py:prepare_minute_provider" not in evidence
+    caller = evidence["ml/intraday/live_session.py:run_manual"]
+    assert caller["verified"] and "DatabentoMarketDataProvider" in caller["required_calls_present"]
