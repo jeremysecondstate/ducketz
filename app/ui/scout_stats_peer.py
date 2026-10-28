@@ -216,10 +216,23 @@ def verify_export(directory, expected_manifest_sha256=None, expected_snapshot_sh
     if expected_snapshot_sha256 is not None:
         _require(_hash(raw_files["snapshot.json"]) == expected_snapshot_sha256, "snapshot hash differs")
     payload = _json(raw_files["snapshot.json"])
+    return validate_payload(payload, expected_identity={name: manifest[name] for name in
+                            ("producer", "recipient", "session", "generated_at", "completion_id", "source_files")})
+
+
+def validate_payload(payload, expected_identity=None):
+    """Validate one display projection, including archives with a shared manifest."""
     _fields(payload, _PAYLOAD, _PAYLOAD)
-    _require(payload["schema_version"] == "scout-15m-display-export-v1", "unsupported snapshot schema")
-    for name in ("producer", "recipient", "session", "generated_at", "completion_id", "source_files"):
-        _require(payload[name] == manifest[name], "snapshot and manifest identity differ")
+    _require(payload["schema_version"] == "scout-15m-display-export-v1"
+             and payload["producer"] == "Scout" and payload["recipient"] == "Atlas", "unsupported snapshot schema or identity")
+    _day(payload["session"])
+    _stamp(payload["generated_at"])
+    _require(isinstance(payload["completion_id"], str) and _ID.fullmatch(payload["completion_id"]), "invalid completion identity")
+    _fields(payload["source_files"], _SOURCE_FILES, _SOURCE_FILES)
+    for digest in payload["source_files"].values():
+        _require(isinstance(digest, str) and _SHA.fullmatch(digest), "invalid source hash")
+    for name, expected in (expected_identity or {}).items():
+        _require(payload.get(name) == expected, "snapshot and manifest identity differ")
     _rows(payload["snapshot"], payload["session"])
     from app.ui.scout_stats_data import execution_summary, prediction_summary
     forecasts, orders = payload["snapshot"]["forecasts"], payload["snapshot"]["orders"]
@@ -264,7 +277,17 @@ def _archives(datastore_root):
 
 def peer_stats_sessions(datastore_root):
     """Discover explicitly imported sessions; loading always rechecks all bytes."""
-    return tuple(sorted({receipt["session"] for _, receipt in _archives(datastore_root)}, reverse=True))
+    from app.ui.scout_stats_history import history_15m_sessions
+    direct = {receipt["session"] for _, receipt in _archives(datastore_root)}
+    try:
+        historical = set(history_15m_sessions(datastore_root))
+    except (ValueError, OSError, TypeError, KeyError):
+        if not direct:
+            raise
+        # Direct imports retain independent integrity and remain selectable.
+        # Loading one displays the separate history verification failure.
+        historical = set()
+    return tuple(sorted(direct | historical, reverse=True))
 
 
 def load_peer_stats(datastore_root, session):
@@ -277,4 +300,16 @@ def load_peer_stats(datastore_root, session):
         payload = verify_export(directory, receipt["manifest_sha256"], receipt["snapshot_sha256"])
         _require(payload["session"] == session and payload["completion_id"] == receipt["completion_id"], "local receipt identity differs")
         candidates.append(payload)
+    from app.ui.scout_stats_history import load_history_15m
+    try:
+        historical = load_history_15m(datastore_root, session)
+    except (ValueError, OSError, TypeError, KeyError):
+        if not candidates:
+            raise
+        warning = "Historical Scout import could not be verified; showing independently verified direct export."
+        candidates = [dict(payload, snapshot=dict(payload["snapshot"],
+            warnings=list(dict.fromkeys((*payload["snapshot"]["warnings"], warning))))) for payload in candidates]
+        historical = None
+    if historical is not None:
+        candidates.append(historical)
     return max(candidates, key=lambda payload: (_stamp(payload["generated_at"]), payload["completion_id"])) if candidates else None
