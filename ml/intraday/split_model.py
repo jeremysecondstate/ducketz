@@ -8,7 +8,7 @@ import time
 from .prediction import ContractError, STEP, digest, instant
 from .runtime import ShadowRunner
 from .store import ShadowStore
-from .split_handoff import ReadySnapshots
+from .split_handoff import ReadySnapshots, ready_scientific_configuration_hashes
 
 ARCHITECTURE = "independent-1a1b-v1"
 IDLE_ADMISSION_SECONDS = 15.
@@ -69,7 +69,8 @@ def model_pass(*, store, queue, session, config, handoff, state=None,
     ready_error = None
     try:
         records = handoff.ready(now=now, configuration_hash=digest(configuration),
-            scientific_configuration_hash=digest({key: value for key, value in configuration.items() if key != "symbol_workers"}))
+            scientific_configuration_hash=digest({key: value for key, value in configuration.items() if key != "symbol_workers"}),
+            scientific_configuration_hashes=ready_scientific_configuration_hashes(configuration))
     except sqlite3.OperationalError as exc:
         ready_error = _storage_contention(exc)
         if ready_error is None:
