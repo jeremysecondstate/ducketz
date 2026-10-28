@@ -1,0 +1,54 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T061841Z-63ada25217dd4a40abec306df120ec7f",
+  "change_id": "20261028T061841Z-63ada25217dd4a40abec306df120ec7f",
+  "details": [
+    "Actor Atlas; task independent-three-start-commands; shared bootstrap and Atlas-only operating applicability.",
+    "A data-only start command enters an existing complete installed generation independently of both traders.",
+    "Direct Atlas human authority permits both traders to start at the existing weekday wake, through three separate native task lifetimes. Manual stops still end that session; no retry, reboot or additional wake is authorized.",
+    "Scout retains its own operating authority and scientific recipes; peer source adoption does not supply scheduled trading authority."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "Start-15m-Data.cmd",
+      "sha256": "de019e6246a4c22086df2aaea3704e0f581d201f7b089235efbbcdb7237ebc23"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/atlas-intraday-split.md",
+      "sha256": "dc9b294bf521cc11290cfa085b5877476775865d06f3e98605fab5176b453243"
+    }
+  ],
+  "limitations": [
+    "This bootstrap requires a previously reviewed complete local installed generation; common main alone is not the complete Atlas runtime.",
+    "No provider, broker, production model, trader or scheduled action was invoked for verification.",
+    "Private native task definitions, operating bindings and authority receipts remain local. Native task installation and observed runtime behavior are separate and are not asserted by this source notice."
+  ],
+  "main_commit": "a9ef330110cdd56ec343517dca5858cff9e31005",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/485",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The locally authorized scheduled wake may start each Atlas trader through its existing launcher independently of data preparation. Registration itself never starts a process. A manual stop ends that session; renewal cannot clear it.",
+  "scope": "shared",
+  "source_commit": "b7fcc25c4faa9e2037778915366ee33ef03ac696",
+  "summary": "Atlas three independent start commands: data launcher and scheduled-start direction published",
+  "tests": [
+    {
+      "command": "python -B -m pytest tests/test_intraday_data_host.py --noconftest -q -p no:cacheprovider",
+      "completed_at_utc": "2026-10-28T06:21:37.313318Z",
+      "exit_code": 0,
+      "output_sha256": "4b82e3383419b9b5150aeb2ce1a5b3f2bc85443c98aae9a54b7cf6dc16d4bf00",
+      "result": "23 passed; zero skips",
+      "stage": "fresh main candidate",
+      "started_at_utc": "2026-10-28T06:21:36.161244Z"
+    },
+    {
+      "result": "23 passed in each stage; zero skips; six exact source/dependency fingerprints bound to checks",
+      "stage": "source capture and isolated source candidate"
+    },
+    {
+      "result": "Whole two-file owned diff and dependency closure reviewed; command wrapper verified by exact bytes and command semantics",
+      "stage": "review"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T06:23:28.139052Z",
+  "id": "20261028T062328Z-eeaea50ee7164ab2af33b912d108c61e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas three independent start commands: data launcher and scheduled-start direction published"
+}
