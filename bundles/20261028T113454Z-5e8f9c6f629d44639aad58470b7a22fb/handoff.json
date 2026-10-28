@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T11:34:54.665410Z",
+  "id": "20261028T113454Z-5e8f9c6f629d44639aad58470b7a22fb",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas split startup storage, pristine controller relay and loaded receipts repaired and installed"
+}

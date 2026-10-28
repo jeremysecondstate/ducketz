@@ -1,0 +1,98 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T113118Z-083f491c066e4f74842dcc3ec0edbde9",
+  "change_id": "20261028T113118Z-083f491c066e4f74842dcc3ec0edbde9",
+  "details": [
+    "Actor Atlas; task Trader Representative; shared renewal correctness for a matching reviewed controller. Transfer an initialized session before its first operating pass when the selected controller or runtime differs. Preserve initialization once, session owner and token, controls, original clocks and orders.",
+    "Once any operating lane has been dispatched, retain the existing complete-work drain and final execution pass. A pristine transfer neither invents an execution pass nor makes scientific admission wait behind it. Stop and rollback paths remain unchanged.",
+    "Loaded-source diagnostics read the already validated envelope protocol because actual host requests omit that field. Keep original request bytes, bootstrap identities, one-time receipt publication and diagnostic-only failure behavior.",
+    "Publish narrow consumer hunks and exact extracted source plus offline regressions. Canonical base lacks full Atlas adapters; each PC reviews applicability and preserves local science, bindings, independent states and operating authority.",
+    "Already admitted split forecast partitions use the same exact ASCII forecast-N role syntax in cold storage setup. Keep native SQLite-only retry, original stop and cutoff checks, adapter architecture and frozen index bounds. Other roles and malformed names retain rejection.",
+    "This revision retains the initial controller and worker diagnostic repairs, keeps original consumer line endings, and supersedes an unpublished narrower source package with the complete reviewed startup repair. Historical source records, generations and failed-session evidence are preserved.",
+    "Rebased reviewed source revision retains original Completion-Record 20261028T112721Z-7e6fcd4f3e9e4207809d954de6577556 and published source a04fb0b31b5dfb7ac067b73a393f29f56fb02903 as ancestry. A concurrent main update changed an adapter dependency; fresh candidate checks bind the current canonical source. No foreign runtime is installed."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/trader-initial-controller-relay.patch",
+      "sha256": "ce14fb84bd7d75b3230582d24492b8fe7250e01ad59a70ad56eb016771bd2298"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/trader-initial-controller-relay.json",
+      "sha256": "5e5188cc843b6a43679d46814fb056be75b3fa7750c0b6139c9c757b77ef0fdd"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_trader_initial_controller_handoff.py",
+      "sha256": "4a3c6d7d23e8edba802c3107442681e8e59761447e04628d6b93ed758c5325b2"
+    },
+    {
+      "operation": "add",
+      "path": "tests/trader_initial_controller_handoff_fixture.py",
+      "sha256": "934e6e81f9af9753848ec1e7c7d4e956803961afa6046b6651c9419d5eb38e3b"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_trader_worker_loaded_evidence.py",
+      "sha256": "f87884e1bb40c0d9ac8fa199f6790af86b4bec982c5917b61b93b30f445f9268"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_trader_initial_controller_relay.py",
+      "sha256": "4340b49ebdd6bbfb715cb07426d039fff9f488dbda257f1ef2a6db0d78527fb9"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/renewal_storage.py",
+      "sha256": "9cfb175d49db25b7784a5c6ccff5a3ae565a8a9dc8ceab01f3aaff8f50593bb5"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_renewal_storage.py",
+      "sha256": "e1b258c4d95930dca8cb50d9532a7e2c721ddaf8732b60c8ff4572f74dcaf658"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_partitioned_storage_setup.py",
+      "sha256": "ad55438937d1a58c9c2a65d08ae84ada6ae0bd4118acbbae88817b93085b664a"
+    }
+  ],
+  "limitations": [
+    "Canonical checks pass five portable controller cases and 69 worker/storage cases; eight explicit skips identify absent full-controller, Renewal or lane adapters. Full local composition passes 137 cases; the final adapter applicability guard separately passes 12 actual-adapter cases.",
+    "The original slow startup execution subphase is not attributed. The observed failed session remains ended; no AI restart, replay or provider/broker/model operation is performed. Existing independent data and Gameplan operation continue.",
+    "Exact local generation sealing and actual installed checks are separate from source publication. Natural loaded manifests and affected operation are recorded separately; offline checks do not prove live recovery."
+  ],
+  "local_installation": "Atlas selected complete538-source generation 8325df7c3dfde6167781051b8bda26134dbb805050bfcdba0efed6e51d1c8d44 retaining existing runtime14a239f36a42c55ba084d2c4699764b92086a33ea4172c38e26d46ba68e3d224. The prior generation and original failed session remain preserved. Installation is separate from actual loading and affected natural recovery.",
+  "main_commit": "06272a42432cc65d41dfb99f97d0ba2d339c3f35",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/491",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install exact reviewed consumer hunks and the shared storage helper, preserving local science, independent states, original deadlines and controls, then seal the complete generation. Ended sessions stay ended; the next authorized daily admission can use the repair. Already running sessions retain safe planned renewal. No schedule or start authority changes.",
+  "scope": "shared",
+  "source_commit": "841b85d14de360721ef6010ff84038286b54cf73",
+  "summary": "Atlas split startup storage, pristine controller relay and loaded receipts repaired and installed",
+  "tests": [
+    {
+      "command": "python -B tests/check_trader_initial_controller_relay.py and worker-diagnostics mode",
+      "completed_at_utc": "2026-10-28T11:33:03.389575+00:00",
+      "controller_cases": 5,
+      "explicit_unavailable_adapter_skips": 8,
+      "scope": "Fresh canonical author, immutable queue, isolated source and main candidate",
+      "worker_storage_cases": 69
+    },
+    {
+      "completed_at_utc": "2026-10-28T11:32:21.784979+00:00",
+      "output_sha256": "069d2e78678bae476242d3e3aca038bedc96ff93cbd612bc031305421124c583",
+      "passed_cases": 137,
+      "scope": "Complete actual sealed Atlas source composition",
+      "skips": 0
+    },
+    {
+      "actual_helper_cases": 24,
+      "conflicting_request_protocol_cases": 1,
+      "grammar_cases": 1114932,
+      "repeated_relay_stop_cases": 2,
+      "scope": "Independent adversarial review"
+    }
+  ]
+}
