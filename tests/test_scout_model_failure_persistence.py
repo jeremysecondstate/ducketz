@@ -48,7 +48,7 @@ def test_native_failure_event_retries_exact_original_payload_and_clock(tmp_path,
     store=make_store(tmp_path,pause=pause)
     box.append(locked(store))
     stamp=instant("2026-10-28T17:15:37Z")
-    monkeypatch.setattr(candidate,"utcnow",lambda:stamp)
+    monkeypatch.setattr(candidate,"utcnow",lambda:stamp.isoformat())
     try:
         store.event("cycle","symbol_failure",original,symbol="DOCU")
     finally:
@@ -57,7 +57,10 @@ def test_native_failure_event_retries_exact_original_payload_and_clock(tmp_path,
         rows=db.execute("SELECT symbol,recorded_at,payload FROM events WHERE kind='symbol_failure'").fetchall()
     assert waits==[.2]
     assert rows==[("DOCU",stamp.isoformat(),candidate.encoded(payload()))]
-    assert not (tmp_path/"objects/model-metrics.jsonl").exists()
+    receipts=[json.loads(line) for line in (tmp_path/"objects/model-metrics.jsonl").read_text().splitlines()]
+    assert [row["phase"] for row in receipts]==["failure_persistence_started","failure_persistence_recovered"]
+    assert receipts[0]["operation_id"]==receipts[1]["operation_id"]
+    assert receipts[1]["busy_count"]==1
 
 @pytest.mark.parametrize("reason",["manual_stop","session_end"])
 def test_busy_stop_preserves_exact_pending_evidence_and_cause_without_retry(tmp_path,reason):
@@ -74,7 +77,9 @@ def test_busy_stop_preserves_exact_pending_evidence_and_cause_without_retry(tmp_
     finally:
         locker.rollback();locker.close()
     assert waits==[]
-    rows=[json.loads(line) for line in (tmp_path/"objects/model-metrics.jsonl").read_text().splitlines()]
+    receipts=[json.loads(line) for line in (tmp_path/"objects/model-metrics.jsonl").read_text().splitlines()]
+    assert [row["phase"] for row in receipts]==["failure_persistence_started","failure_persistence_stopped"]
+    rows=[row for row in receipts if row["phase"]=="failure_persistence_stopped"]
     assert len(rows)==1 and rows[0]["logical_run_id"]=="manual-scout-15m:fixture"
     assert rows[0]["cycle_id"]=="cycle" and rows[0]["symbol"]=="DOCU"
     assert rows[0]["phase"]=="failure_persistence_stopped" and rows[0]["stop_reason"]==reason
@@ -190,6 +195,8 @@ def test_service_stop_during_failure_persistence_returns_no_checkpoint(tmp_path,
         for locker in box:locker.rollback();locker.close()
     assert result=={"status":"STOPPED","stop_reason":"manual_stop","failure_persistence_pending":True}
     assert checkpoints==[]
-    metrics=[json.loads(line) for line in (tmp_path/"intraday/services/model-metrics.jsonl").read_text().splitlines()]
+    receipts=[json.loads(line) for line in (tmp_path/"intraday/services/model-metrics.jsonl").read_text().splitlines()]
+    assert [row["phase"] for row in receipts]==["failure_persistence_started","failure_persistence_stopped"]
+    metrics=[row for row in receipts if row["phase"]=="failure_persistence_stopped"]
     assert len(metrics)==1 and metrics[0]["pending_write"]["payload"]==payload()
     assert metrics[0]["logical_run_id"]==lifecycle.session_id
