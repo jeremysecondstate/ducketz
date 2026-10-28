@@ -22,6 +22,10 @@ from .prediction import ContractError, PACIFIC, STEP, TARGET_VERSION, Unresolved
 from .store import ShadowStore, utcnow
 
 
+class ModelPersistenceStopped(Exception):
+    """Control signal: authority ended while exact model evidence remained pending."""
+
+
 @dataclass(frozen=True)
 class ResearchConfig:
     models: tuple = ("logistic", "gaussian_nb", "knn", "lda", "random_forest", "extra_trees",
@@ -309,6 +313,9 @@ class ShadowRunner:
                 symbol = futures[future]
                 try:
                     results[symbol] = future.result()
+                except ModelPersistenceStopped:
+                    # Drain the owned pool, then preserve the service stop result.
+                    raise
                 except Exception as exc:
                     from .data import AcquisitionPending
                     error = {"type":type(exc).__name__,"message":str(exc),"recorded_at":instant(self.clock()).isoformat(),
