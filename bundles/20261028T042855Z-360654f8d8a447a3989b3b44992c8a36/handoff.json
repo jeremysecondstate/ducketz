@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T04:28:55.432117Z",
+  "id": "20261028T042855Z-360654f8d8a447a3989b3b44992c8a36",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout independent 1A data and 1B model/trading services main-integrated and locally installed"
+}
