@@ -1,0 +1,89 @@
+{
+  "actor": "Atlas",
+  "applicability": "Common split infrastructure and exact Atlas adapters. Preserve each PC model recipes, local bindings, independent state and lifecycle controls. Differing consumer preimages require local reviewed adaptation.",
+  "direct_files": {
+    "docs/development/atlas-intraday-split.md": "ba8df23c9197f9d27dbec7512f6afc7f293b987e780219528822d3a264a43fa3",
+    "ml/intraday/split_execution.py": "44448cfb7a2cdabb04905e86afa6e78b637fb752fd0c4fa44071c9455efb902c",
+    "ml/intraday/split_handoff.py": "5507600cc98c1adaa4a2ae6a1afe0d08fa8c4fc82e8f505e7382b8787d14a136",
+    "ml/intraday/split_model.py": "63565bc4e278cf8a686dd2c8b7629e4f1e9a4af8ede44d32a4684fbee25f33b6",
+    "ml/intraday/split_scoring.py": "584ee86d198ec157cc963c7937359e1c0e807b2d58e9b9946f63cce9bdc1e3be",
+    "ml/intraday/split_service.py": "554ee7d34cbc418d35e8a9441a9464e98ed04c5482a93029e5a8beede0fd9fbf",
+    "tests/check_atlas_intraday_split_package.py": "7a9aeb84450a19828230abd4d498eb26495a913d8b2847f703ddafa2cd6f79c9",
+    "tests/intraday_split_package_support.py": "c1fa385406deda44bbcde9e1b25d5c2533e8d3763fb31f6370960e750f77e022",
+    "tests/test_intraday_data_host.py": "f1b53c09636c8158f8788a3d5ba6a73e196ce10018cc76e80075b4441c42fc49",
+    "tests/test_intraday_historical_context_cache.py": "8cc0dcc72521e5c761f98689dc00682a7099b28bea0a5a1f3411a37700f90d93",
+    "tests/test_intraday_split_data_roots.py": "a1ff00cfb6cc0be3ddf7ec22e6024e392093a7ac18776dbf3e27bf3f661a19fc",
+    "tests/test_intraday_split_execution.py": "0f45635a83623f0f67f39a04df10b17c8caf5e3858e73f746f55cbf27208a540",
+    "tests/test_intraday_split_handoff.py": "d37208f9ba70bad231796d8cafb390e20ad30903a14b7ce19b3a9ba11156da83",
+    "tests/test_intraday_split_runtime.py": "283d36894c9309716f9453b99a8fc33c0d98ddaf69e12af7809149286e69db04",
+    "tests/test_intraday_split_scoring.py": "ae542335f27e0c76d49c18d3adf42ea440fdece90169a208884657d637b79abe",
+    "tests/test_intraday_split_services.py": "90384bb6b65184ae9d4a188f210bb6f6e5f56dc29ed78df52b11b9ce025f0629",
+    "tools/intraday_data_host.py": "ea480e12eb643d33815573fae76c4cb1789a92a4b0f1d645ab8242da85c93e7b"
+  },
+  "files": [
+    {
+      "after_sha256": "d5c4a4cf48e3bd1ae15e8a73d45387bea0e026527f3c45357b94ebc10dff0ac7",
+      "before_sha256": "74129b3ac1b85d0a576302ad192834999263c69f97faf8ed440095c1ca03ddd1",
+      "operation": "modify",
+      "path": "ml/intraday/runtime.py"
+    },
+    {
+      "after_sha256": "1091e027fadba5888309910cf65e6d2445a371b82710c6ed9e3f8e6b3ffc626b",
+      "before_sha256": "0cb85df3c1db15db8bcc6f4484d80b2d698d34020b6bc3d5cea287ee5453d94d",
+      "operation": "modify",
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "after_sha256": "3a24b0d51e0b047e39f0d5834bb6d1d094d4a1358d8cd098080787abcc4a32d0",
+      "before_sha256": "91893c1af272dabbd0a5aef6d68f6e2a21807599866b58f4e5b80e16da5d0b49",
+      "operation": "modify",
+      "path": "ml/intraday/historical_market_inputs.py"
+    },
+    {
+      "after_sha256": "9feba9fd7779bbcd3f1033e74debb1e2ef78bbd9c8085d88c5eeee3db4dfe1c1",
+      "before_sha256": "c00d3e9e93d2f286d6a8cbc97cbac83cca7edbb2f63f79a4b36fd89433983a71",
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "after_sha256": "99a1acb4177725b9b3376ec159aa2d9b87cac942b3747324c56508aeef541556",
+      "before_sha256": "ef5f66da00ecceed4e6bd9c0809647a5d57849170cf50c74095ee8421f27a322",
+      "operation": "modify",
+      "path": "ml/intraday/starter_sizing.py"
+    },
+    {
+      "after_sha256": "84f155ea4906cf8ffe0098099ce4de131e1ad0dd0bfb6ac8dd44647830e34152",
+      "before_sha256": "837dbf631512ab6b25851680290a4245764657eab7991a48e57055b352af5ffc",
+      "operation": "modify",
+      "path": "ml/intraday/candle_collection.py"
+    },
+    {
+      "after_sha256": "e5fae3c89cc0646f4c84296359e7d33b3b29427c7ba0cb05a31252c5a2a27388",
+      "before_sha256": "d90159b5a32eea4595940351f86fee5ae8fb918c7727a947a70a107688958a86",
+      "operation": "modify",
+      "path": "tools/trader_worker.py"
+    }
+  ],
+  "limitations": "Portable hunk projection is not full adapter installation proof. Atlas exact preimage reconstruction and composed offline runtime checks are recorded privately; installation and loaded runtime behavior are separate.",
+  "offline_tests": [
+    "tests/test_intraday_split_handoff.py",
+    "tests/test_intraday_historical_context_cache.py",
+    "tests/test_intraday_split_runtime.py",
+    "tests/test_intraday_split_execution.py",
+    "tests/test_intraday_split_services.py",
+    "tests/test_intraday_split_scoring.py",
+    "tests/test_intraday_split_data_roots.py",
+    "tests/test_intraday_data_host.py"
+  ],
+  "patch": "docs/development/patches/atlas-intraday-split.patch",
+  "patch_sha256": "63dd1cbbc0c1a9ace745847e4698da58d4fbfa2d379ac9c55ebe10fd0aeabd14",
+  "portable_tests": [
+    "tests/test_intraday_split_handoff.py",
+    "tests/test_intraday_data_host.py"
+  ],
+  "reviewed_checkout_base": "90704d21801f60426493bd6cc650a7fac38d4f61",
+  "reviewed_public_base": "cf7bb6360879bfc2896a948350f1ebcfd1cc01a9",
+  "schema": "atlas-intraday-split-package-v1",
+  "scope": "shared",
+  "task": "independent-atlas-15m-1a1b"
+}
