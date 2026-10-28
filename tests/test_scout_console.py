@@ -145,14 +145,16 @@ def test_planned_rotations_forward_each_generation_final_output_and_phase(tmp_pa
     monkeypatch.setattr(FakeWorker, "poll", poll)
     monkeypatch.setattr(FakeWorker, "close", close)
     assert h.run() == 0 and console.closed
-    assert len([w for w in h.workers if w.role == "trading"]) == 1
+    for role in ("model", "trading"):
+        assert len([w for w in h.workers if w.role == role]) >= 3
     for worker in h.workers:
         prefix = f"[{worker.role} g{worker.request['generation']}] "
         assert console.lines.count(prefix + "fixture stdout") == 1
         assert console.lines.count(prefix + "fixture final stderr") == 1
     phases = [json.loads(line) for line in console.lines if line.startswith("{") and '"scout_worker_phase"' in line]
     assert {item["role"] for item in phases} == {"trading", "model"}
-    assert any(item["generation"] > 1 for item in phases if item["role"] == "model")
+    for role in ("model", "trading"):
+        assert any(item["generation"] > 1 for item in phases if item["role"] == role)
     statuses = [json.loads(line) for line in console.lines if line.startswith("{") and '"scout_controller_status"' in line]
     assert statuses[-1]["status"] == "STOPPED" and statuses[-1]["stop_reason"] == "session_end"
     assert all(item["deadline"] == h.owner.state["deadline"] for item in statuses)
