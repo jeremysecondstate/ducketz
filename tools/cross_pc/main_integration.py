@@ -174,7 +174,26 @@ def _existing_candidate(profile, record_id, root, entry, record, source_sha):
         return None
     _, receipt = _load_receipt(profile, record_id, main_before)
     if (receipt.get("record_sha256") != entry["record_sha256"] or receipt.get("source_sha") != source_sha
-            or receipt.get("candidate_sha") not in {None, head} or receipt.get("worktree") != str(root)):
+            or receipt.get("source_branch") != profile["branch_prefix"] + record_id):
+        raise ValueError("existing integration candidate receipt mismatch")
+    candidate = receipt.get("candidate_sha")
+    if (receipt.get("stage") == "prepared" and isinstance(candidate, str) and SHA.fullmatch(candidate)
+            and candidate != head and receipt.get("worktree") != str(root)):
+        # An unrelated one-commit main advance can share the old candidate's
+        # parent. Validate that frozen transaction before treating this fresh
+        # tree as a new attempt; never rewrite the old receipt or reuse tests.
+        message = receipt.get("commit_message")
+        old_worktree = receipt.get("worktree")
+        if (not isinstance(old_worktree, str) or not Path(old_worktree).is_absolute()
+                or not isinstance(message, str)
+                or core.digest(message.encode("utf-8")) != receipt.get("commit_message_sha256")):
+            raise ValueError("existing integration candidate receipt mismatch")
+        core.verify_test_evidence(receipt.get("integration_tests"), record["fingerprints"])
+        _verify_commit(root, record, candidate, main_before)
+        if core.git_text(root, "log", "-1", "--format=%B", candidate) != message.strip():
+            raise ValueError("existing integration candidate message mismatch")
+        return None
+    if (receipt.get("candidate_sha") not in {None, head} or receipt.get("worktree") != str(root)):
         raise ValueError("existing integration candidate receipt mismatch")
     if receipt.get("stage") == "committing":
         _validate_pending(receipt, root, entry, record, source_sha)
