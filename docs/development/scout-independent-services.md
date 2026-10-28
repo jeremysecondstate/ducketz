@@ -238,3 +238,26 @@ preparation throughput, production model latency, live forecast-to-order delay,
 database wait attribution or the number of future deadline misses. The
 reproducible fixture is `benchmark_rows` in
 `tests/test_intraday_context_verified_reuse.py`.
+
+## Separate manual starts and activity windows
+
+System 1A and System 1B retain separate native tasks and manual launchers. The
+1A launcher requests its existing data task once only when it is not already
+running, then displays that service's saved status, preparation metrics and new
+log output. An already running task is reused; the native task must retain its
+IgnoreNew policy for concurrent requests. Disabled or unavailable tasks fail
+explicitly without being enabled or replaced. The display never activates 1B.
+
+`tools/scout_data_console.py` is a standalone, bounded activity viewer. Its
+default mode only reads the data service's files; `--start` explicitly requests
+the configured existing data task. `--once` reads one bounded snapshot and exits.
+It preserves recorded timestamps, distinguishes saved status from verified
+process health, and reports missing or unreadable evidence. Closing its window
+or pressing Ctrl+C closes only the display; it never stops the data service.
+
+The separate 1B launcher delegates to the existing cured trading wrapper. Both
+model and trading output belong to 1B. The generic manual trading shortcut must
+use that same current wrapper and preserve explicit offline-check/stop argument
+semantics. Neither manual launcher starts the other part, changes schedules,
+restarts an already running worker, or couples the two lifecycles. Local task
+names, paths and wrappers remain private installation bindings.
