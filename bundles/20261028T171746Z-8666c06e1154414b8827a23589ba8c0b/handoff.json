@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T17:17:46.225455Z",
+  "id": "20261028T171746Z-8666c06e1154414b8827a23589ba8c0b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Independent Scout data preparation has a separate manual start and activity console"
+}

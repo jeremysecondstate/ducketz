@@ -1,0 +1,26 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T171439Z-4f1457ad21954ca19ac5202653a58028",
+  "change_id": "scout-separate-starts:20261028T171439Z-4f1457ad21954ca19ac5202653a58028",
+  "completion_record": "20261028T171439Z-4f1457ad21954ca19ac5202653a58028",
+  "files": [
+    "tools/scout_data_console.py",
+    "tests/test_scout_data_console.py",
+    "docs/development/scout-independent-services.md"
+  ],
+  "limitations": [
+    "Saved status is labelled evidence, not process-health proof. No affected trading or data-processing recovery is inferred from display.",
+    "Default observer is read-only. Explicit manual start requires the existing enabled IgnoreNew data-only task. Closing display never stops either service."
+  ],
+  "main_sha": "fb608e2d2cd78ee137951aeb8bb7fa19f90b561e",
+  "repository": "jeremysecondstate/ducketz",
+  "review_url": "https://github.com/jeremysecondstate/ducketz/pull/499",
+  "runtime_implications": "Standalone display/launcher installation requires no worker reload or restart. Both existing independent services remained running; schedules, release selection, model recipes and order controls were preserved.",
+  "scope": "Shared standalone display correctness; native task and launcher bindings, service data and model recipes remain local.",
+  "source_sha": "89ddadfa165b4ac0be29b0b7394c87feb95b0ce6",
+  "summary": "Independent Scout data preparation has a separate manual start and activity console",
+  "tests": {
+    "installation": "Exact helper bytes plus three offline trading-wrapper checks and read-only data display smoke check; actual separate console buffers show continuing output.",
+    "source_queue_courier_main": "27 passed, zero skipped on final source, sealed completion, courier and main candidates; overlapping suites"
+  }
+}
