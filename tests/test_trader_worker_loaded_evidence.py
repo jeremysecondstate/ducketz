@@ -21,8 +21,9 @@ else:
     # Exercise the exact packaged functions without requiring private adapters.
     package = json.loads((_ROOT / "docs/development/patches/atlas-intraday-audit.json").read_bytes())
     historical = json.loads((_ROOT / "docs/development/patches/trader-worker-failure-evidence.json").read_bytes())
+    protocol_fix = json.loads((_ROOT / "docs/development/patches/trader-initial-controller-relay.json").read_bytes())
     extracts = []
-    for document, name in ((package, "_record_loaded"), (historical, "_record_failure"), (package, "main")):
+    for document, name in ((protocol_fix, "_record_loaded"), (historical, "_record_failure"), (package, "main")):
         entry = document["extracts"][name]
         if hashlib.sha256(entry["source"].encode()).hexdigest() != entry["sha256"]:
             raise AssertionError("Reviewed worker extract changed: " + name)
@@ -45,11 +46,12 @@ def loaded(tmp_path, monkeypatch):
         source.write_text(_PACKAGED_SOURCE, encoding="utf-8")
         monkeypatch.setattr(worker, "__file__", str(source), raising=False)
     request_path = tmp_path / "forecast-3-exactturn.json"
-    request = {"protocol": "manual-trader-renewal-v1", "role": "forecast-3",
+    request = {"role": "forecast-3",
                "turn": "exactturn", "generation": 27, "token": "private-token"}
     request_path.write_text(json.dumps(request), encoding="utf-8")
     renewal = SimpleNamespace(request=request, request_path=request_path,
-                              envelope={"session": {"session_id": "original-day-session"}},
+                              envelope={"protocol": "manual-trader-renewal-v1",
+                                        "session": {"session_id": "original-day-session"}},
                               stopped=lambda: False, claim=lambda: None, finish=lambda result: None)
     renewal_module = ModuleType("ml.trader_renewal")
     renewal_module.process_birth = lambda pid: "fixture-worker-birth"
@@ -103,6 +105,8 @@ def test_actual_bootstrap_retained_before_lane_work_and_later_selection(loaded, 
         assert worker.main(args) == (75 if outcome == "renewal" else 0)
     value = json.loads(receipt.read_bytes())
     assert value["diagnostic_only"] is True
+    assert value["protocol"] == renewal.envelope["protocol"]
+    assert "protocol" not in renewal.request
     assert value["source_manifest_sha256"] == "a" * 64
     assert value["runtime_id"] == value["runtime_manifest_sha256"] == "b" * 64
     assert value["worker_matches_bootstrap"] and value["python_matches_bootstrap"]
@@ -153,3 +157,68 @@ def test_verify_only_does_not_write_loaded_session_receipt(loaded, monkeypatch, 
     monkeypatch.setattr(worker, "_record_loaded", lambda *args: pytest.fail("verification is not a loaded lane"))
     assert worker.main(["--generation", str(tmp_path), "--verify-only"]) == 0
     assert not renewal.request_path.with_suffix(".loaded.json").exists()
+
+
+@pytest.mark.parametrize("trader", ["intraday", "gameplan"])
+@pytest.mark.parametrize("role", ["initialize", "execution"])
+def test_real_renewal_reads_protocol_only_from_validated_envelope(loaded, tmp_path, trader, role):
+    """The host's actual wire request carries no top-level protocol field."""
+    import runpy
+    renewal, selected, _ = loaded
+    protocol_source = _ROOT / "ml/trader_renewal.py"
+    if not protocol_source.is_file():
+        pytest.skip("Real installed Renewal adapter is not present on this public base")
+    real = runpy.run_path(str(protocol_source))
+    envelope_path = tmp_path / "session.json"
+    envelope = {"protocol": real["PROTOCOL"], "token": renewal.request["token"],
+                "trader": trader, "session": {"session_id": "original-day-session"}}
+    envelope_path.write_text(json.dumps(envelope), encoding="utf-8")
+    request = dict(renewal.request, envelope=str(envelope_path), role=role,
+                   response=str(renewal.request_path.with_suffix(".response.json")))
+    renewal.request_path.write_text(json.dumps(request), encoding="utf-8")
+    original_request, original_envelope = renewal.request_path.read_bytes(), envelope_path.read_bytes()
+    validated = real["Renewal"](renewal.request_path)
+    assert "protocol" not in validated.request
+    assert worker._record_loaded(validated, selected)
+    value = json.loads(renewal.request_path.with_suffix(".loaded.json").read_bytes())
+    assert value["protocol"] == real["PROTOCOL"]
+    assert value["role"] == role and value["session_id"] == envelope["session"]["session_id"]
+    assert value["request_sha256"] == hashlib.sha256(original_request).hexdigest()
+    assert renewal.request_path.read_bytes() == original_request
+    assert envelope_path.read_bytes() == original_envelope
+    assert not renewal.request_path.with_suffix(".claim.json").exists()
+    assert not Path(request["response"]).exists()
+
+
+@pytest.mark.parametrize("protocol", [None, "unsupported-renewal-v999"])
+def test_invalid_real_envelope_is_rejected_before_loaded_diagnostics(loaded, tmp_path, protocol):
+    import runpy
+    renewal, _, _ = loaded
+    protocol_source = _ROOT / "ml/trader_renewal.py"
+    if not protocol_source.is_file():
+        pytest.skip("Real installed Renewal adapter is not present on this public base")
+    real = runpy.run_path(str(protocol_source))
+    envelope_path = tmp_path / "session.json"
+    envelope = {"token": renewal.request["token"], "session": {"session_id": "original-day-session"}}
+    if protocol is not None:
+        envelope["protocol"] = protocol
+    envelope_path.write_text(json.dumps(envelope), encoding="utf-8")
+    renewal.request_path.write_text(json.dumps(dict(renewal.request, envelope=str(envelope_path))), encoding="utf-8")
+    with pytest.raises((KeyError, RuntimeError)):
+        real["Renewal"](renewal.request_path)
+    assert not renewal.request_path.with_suffix(".loaded.json").exists()
+    assert not renewal.request_path.with_suffix(".claim.json").exists()
+
+
+def test_missing_diagnostic_envelope_protocol_cannot_change_lane_result(loaded, monkeypatch):
+    renewal, _, _ = loaded
+    renewal.envelope.pop("protocol")
+    finished = []
+    renewal.finish = finished.append
+    monkeypatch.setattr(worker, "run", lambda context: {"status": "COMPLETED"})
+    original_request = renewal.request_path.read_bytes()
+    assert worker.main(["--generation", str(renewal.request_path.parent),
+                        "--request", str(renewal.request_path)]) == 0
+    assert finished == [{"status": "COMPLETED"}]
+    assert not renewal.request_path.with_suffix(".loaded.json").exists()
+    assert renewal.request_path.read_bytes() == original_request

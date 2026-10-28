@@ -31,7 +31,9 @@ def retry_renewal_storage_setup(action, *, role, stopped, permitted, pause):
     a stale recovery snapshot. Other errors keep their original failure path.
     This is continuation inside the same worker, never restart-on-error.
     """
-    if role not in {"execution", "forecast", "scoring", "candles", "market_inputs"}:
+    partitioned_forecast = (isinstance(role, str) and role.startswith("forecast-")
+                            and role[9:].isascii() and role[9:].isdigit())
+    if role not in {"execution", "forecast", "scoring", "candles", "market_inputs"} and not partitioned_forecast:
         raise ValueError("Unknown admitted storage role")
     retries = 0
     while not stopped() and permitted():
