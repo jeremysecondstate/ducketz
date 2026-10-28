@@ -22,6 +22,7 @@ from .store import utcnow
 from .service_handoff import ReadySpool, ServiceStore, full_snapshot
 from .live_session import ExecutionQueue, _execution_store_busy
 from .final_scoring import score_saved_session_outcomes
+from .runtime import ModelPersistenceStopped
 
 _METRIC_LOCK = threading.Lock()
 
@@ -236,7 +237,7 @@ def _model_checkpoint(store, lifecycle, result, symbols):
             "inspection": inspection}
 
 
-class _ModelFailurePersistenceStopped(Exception):
+class _ModelFailurePersistenceStopped(ModelPersistenceStopped):
     """Authority ended while an exact model write remained pending."""
     def __init__(self, reason):
         self.reason = reason
@@ -307,7 +308,7 @@ class _ModelServiceStore(ServiceStore):
 
     def event(self, cycle_id, kind, payload, *, symbol=None, recorded_at=None):
         failure_progress = kind == "cycle_progress" and "failures" in payload
-        if kind not in ("symbol_failure", "cycle_started", "cycle_attempt_measured") and not failure_progress:
+        if kind not in ("symbol_failure", "cycle_started", "cycle_attempt_measured", "forecast_persisted") and not failure_progress:
             return super().event(cycle_id, kind, payload, symbol=symbol, recorded_at=recorded_at)
         # Freeze the original payload and row clock before the first attempt.
         frozen = json.loads(encoded(payload))
@@ -319,6 +320,7 @@ class _ModelServiceStore(ServiceStore):
         operation = {"symbol_failure": "symbol_failure_event",
                      "cycle_started": "model_cycle_started_event",
                      "cycle_attempt_measured": "model_cycle_attempt_event",
+                     "forecast_persisted": "model_forecast_persisted_event",
                      "cycle_progress": "model_failure_progress_event"}[kind]
         pending = {"operation":operation, "cycle_id":cycle_id, "symbol":symbol,
                    "kind":kind, "recorded_at":recorded, "payload":frozen}
