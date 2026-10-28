@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T16:22:36.166239Z",
+  "id": "20261028T162236Z-f48766f8a18e45ebaca18585624d17bb",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas retained history preparation retries native SQLite contention"
+}

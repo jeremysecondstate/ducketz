@@ -1,0 +1,82 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T161347Z-0cbd4ca7ec974a69bcc2a895e94c4ead",
+  "change_id": "20261028T161347Z-0cbd4ca7ec974a69bcc2a895e94c4ead",
+  "details": [
+    "Actor Atlas; task ATLAS Trader Representative; shared correctness applicable to either PC after review of its own retained-history consumer.",
+    "Only native SQLite OperationalError BUSY or LOCKED becomes the existing retryable AcquisitionPending signal. Do not negative-cache that transient read as missing history.",
+    "Preserve genuine missing/corrupt inputs, original cycle/reference/target deadline, causal observations, model recipes and probabilities, independent data/trader lifecycles, order identities, manual stops and UNKNOWN fences."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-renewal-history-contention.json",
+      "sha256": "7d7e71d76d23516dd388f71a7280bdae16f64510c99e2db326747e759559cad1"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-renewal-history-contention.patch",
+      "sha256": "16ac77b96319678a6c4b1a43dce604ae73ea5d81ad3e8416175c0e8513ed5b24"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_renewal_history_contention.py",
+      "sha256": "a0c341033f7c2e9c54d1a575ae9a79f7731e114210fc9b29a9a641aceb923bee"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_renewal_history_contention.py",
+      "sha256": "977283bdc2dd68f9d4a70f85eec026e4a83b9aef83152009bd0d053cf506f07a"
+    }
+  ],
+  "limitations": [
+    "The public common base lacks the complete renewal consumer. This packet carries one reviewed entire-function compatibility hunk with exact local before/after hashes, not a full application replacement.",
+    "Portable author, immutable queue, isolated source and fresh main candidates each pass 23 checks with two explicit unavailable-adapter skips. Complete local and exact selected-parent composition fixtures each pass all 25 checks. Network and process attempts are zero.",
+    "Historical diagnostic evidence did not retain the native SQLite error code; the original terminal cycle stays unchanged. Exact native BUSY/LOCKED classification and same-original-cycle retry are established offline.",
+    "Source publication, sealed local installation, actual loading and affected natural exercise are separate facts. No operating session or provider/broker/model/order/task action is induced."
+  ],
+  "main_commit": "fa3195b76faac6749f4b5132c79a1e1e83f238f7",
+  "privacy_review": "Generic shared source, synthetic fixtures and sanitized source/validation facts only. No credentials, local bindings, native identities, account/ledger state, raw observations, models or task memory.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Adopt only applicable reviewed hunks and seal a complete exact-byte generation through tools/trader_installation.py. System 1A loads at its next normal authorized launch; supported trader renewal may naturally load a selected generation. Never start/restart for verification or replay an expired opportunity.",
+  "scope": "shared",
+  "source_commit": "8f25db43559ccedd9428fe67270e0bd700bff032",
+  "summary": "Atlas retained history preparation retries native SQLite contention",
+  "tests": [
+    {
+      "check": "tests/check_isolated_intraday_renewal_history_contention.py",
+      "network_or_process_attempts": 0,
+      "passed": 23,
+      "scope": "public author",
+      "skipped": 2
+    },
+    {
+      "check": "tests/check_isolated_intraday_renewal_history_contention.py",
+      "network_or_process_attempts": 0,
+      "passed": 23,
+      "scope": "immutable queue",
+      "skipped": 2
+    },
+    {
+      "check": "tests/check_isolated_intraday_renewal_history_contention.py",
+      "network_or_process_attempts": 0,
+      "passed": 23,
+      "scope": "isolated source",
+      "skipped": 2
+    },
+    {
+      "check": "tests/check_isolated_intraday_renewal_history_contention.py",
+      "network_or_process_attempts": 0,
+      "passed": 23,
+      "scope": "fresh main candidate",
+      "skipped": 2
+    },
+    {
+      "check": "tests/check_isolated_intraday_renewal_history_contention.py",
+      "network_or_process_attempts": 0,
+      "passed": 25,
+      "scope": "complete local source and exact selected-parent composition",
+      "skipped": 0
+    }
+  ]
+}
