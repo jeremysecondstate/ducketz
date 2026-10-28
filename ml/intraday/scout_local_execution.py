@@ -526,7 +526,10 @@ class ScoutLocalAccountExecutor:
             original = self.intents.get(forecast['forecast_id'])
         if original is None:
             with dataset_phase("snapshot_load"):
-                frozen = _saved_inputs(self.store, forecast['cycle_id'], forecast['symbol'])
+                compact_reader = getattr(self.store, 'execution_inputs', None)
+                frozen = (compact_reader(forecast['cycle_id'], forecast['symbol'], forecast=forecast)
+                          if callable(compact_reader) else
+                          _saved_inputs(self.store, forecast['cycle_id'], forecast['symbol']))
                 if frozen is None or frozen[0] != forecast['snapshot_hash']:
                     raise ContractError('Original forecast inputs unavailable')
             quote = portfolio.quotes[forecast['symbol']]

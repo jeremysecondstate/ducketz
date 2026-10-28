@@ -356,7 +356,7 @@ class ShadowRunner:
         return {"cycle_id":cycle_id,**summary,"forecasts":results}
 
     def _symbol(self,cycle_id,symbol,history,reference,cutoff,mode,intent,on_published,cycle_started_perf,
-                allow_execution=True,supervised_policy=None):
+                allow_execution=True,supervised_policy=None,prepare_only=False):
         if self.stopped():
             raise InterruptedError("Manual stop before symbol work; no model or forecast substituted")
         existing=self.store.forecast(cycle_id,symbol)
@@ -420,6 +420,10 @@ class ShadowRunner:
             else:
                 snapshot["candles"]=json.loads(used.to_json(orient="records",date_format="iso"))
             frozen=self.store.freeze_inputs(cycle_id,symbol,snapshot)
+        if prepare_only:
+            # System 1A executes the identical causal builder and freeze path,
+            # then stops before training or creating an executable forecast.
+            return frozen
         snapshot_hash,snapshot=frozen
         if (snapshot.get("manifest", {}).get("preparation_only")
                 or snapshot.get("inference", {}).get("preparation_only")

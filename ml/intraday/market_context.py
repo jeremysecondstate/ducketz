@@ -1127,6 +1127,7 @@ def augment_dataset(dataset, snapshots: Iterable[Mapping], *, training_decision_
         manager = ContextCache(cache_path)
     with manager as cache:
         builder = cache.build if cache is not None else build_market_context
+        row_builder = cache.build_row if cache is not None else build_market_context
         for row_index, reference in enumerate(dataset.training_reference_at):
             reference = instant(reference)
             if reference not in decisions:
@@ -1134,11 +1135,12 @@ def augment_dataset(dataset, snapshots: Iterable[Mapping], *, training_decision_
             decision = decisions[reference]
             if not reference + timedelta(minutes=15) <= decision < reference + timedelta(minutes=30):
                 raise ContractError("Historical context decision must follow reference close and precede target open")
-            context = builder(_indexed_candidates(index, decision), symbol=dataset.inference["symbol"],
+            context = row_builder(_indexed_candidates(index, decision), symbol=dataset.inference["symbol"],
                               cutoff=decision, source_ids=source_ids, contract=contract)
             context_values[row_index] = context.values
             context_hashes.append(context.snapshot_sha256)
-            rows_with_source += int(any(e.get("records_used") for e in context.source_evidence))
+            rows_with_source += int(context.has_source if cache is not None else
+                                    any(e.get("records_used") for e in context.source_evidence))
         inference = builder(_indexed_candidates(index, inference_cutoff), symbol=dataset.inference["symbol"],
                             cutoff=inference_cutoff, source_ids=source_ids, contract=contract)
     if instant(inference_cutoff) < instant(dataset.inference["information_available_at"]):

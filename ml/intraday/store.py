@@ -111,7 +111,10 @@ class ShadowStore:
             before = self.path.stat()
         except OSError:
             before = None
-        db = sqlite3.connect(self.path, timeout=30)
+        options = {"timeout": getattr(self, "connection_timeout", 30)}
+        if getattr(self, "connection_factory", None) is not None:
+            options["factory"] = self.connection_factory
+        db = sqlite3.connect(self.path, **options)
         identities = getattr(self, "_connection_source_identities", None)
         if identities is None:
             identities = self._connection_source_identities = {}
@@ -133,6 +136,9 @@ class ShadowStore:
     @staticmethod
     def _snapshot_value(key, raw):
         value = json.loads(raw)
+        if isinstance(value, dict) and value.get("schema") == "scout-external-input-v1":
+            from .service_handoff import full_snapshot
+            return full_snapshot(key, value)
         if not isinstance(value, dict) or digest(value) != key:
             raise ContractError("Persisted snapshot evidence hash changed")
         return value

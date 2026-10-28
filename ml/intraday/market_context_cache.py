@@ -11,13 +11,17 @@ cache contention can lose that optional optimization, never the derived result.
 from __future__ import annotations
 
 from contextlib import AbstractContextManager
+from collections import OrderedDict
 from dataclasses import dataclass
 import hashlib
 import json
 import math
 from pathlib import Path
 import sqlite3
+import threading
 import zlib
+
+import numpy as np
 
 from .market_context import (
     MarketContext, _hash, _json, _selectors, _build_resolved_context, instant,
@@ -38,10 +42,88 @@ MAX_PENDING_ENTRIES = 4096
 # budget; restore them only from that exact contract and rehash the full context.
 CONTEXT_FORMAT = "fixed-feature-contract-v1"
 
+# This is a disposable process-local working set for the independent data
+# service, not another source of market evidence. Store immutable packed bytes,
+# not caller-owned arrays or MarketContext's nested mutable evidence mappings.
+# Sparse historical context compresses particularly well. Both bytes and entry
+# count are bounded; eviction only returns work to the durable verified cache.
+MAX_REUSE_BYTES = 128 * 1024 * 1024
+MAX_REUSE_ENTRIES = 65536
+
+
+@dataclass(frozen=True, slots=True)
+class ContextRow:
+    values: np.ndarray
+    snapshot_sha256: str
+    has_source: bool
+
+
+@dataclass(frozen=True, slots=True)
+class _VerifiedRow:
+    packed: bytes
+    size: int
+    snapshot_sha256: str
+    has_source: bool
+
+    def weight(self, key):
+        # Include conservative per-entry Python/key/index overhead instead of
+        # bounding compressed payload bytes alone.
+        return len(self.packed) + 4 * (len(key[0]) + len(key[1])) + 1024
+
+    @classmethod
+    def from_context(cls, context):
+        values = np.asarray(context.values, dtype="<f8")
+        return cls(zlib.compress(values.tobytes()), values.nbytes,
+                   context.snapshot_sha256,
+                   any(e.get("records_used") for e in context.source_evidence))
+
+    def row(self):
+        # The bounded object originated in this process after the original
+        # cache/derivation checks. No disk bytes or caller references enter it.
+        # A bytes-backed array cannot be made writable by a consumer.
+        raw = zlib.decompress(self.packed)
+        if len(raw) != self.size:
+            raise ContractError("Verified context working set changed")
+        return ContextRow(np.frombuffer(raw, dtype="<f8"), self.snapshot_sha256,
+                          self.has_source)
+
+
+class _VerifiedRows:
+    def __init__(self):
+        self.entries = OrderedDict()
+        self.bytes = 0
+        self.lock = threading.Lock()
+
+    def get(self, key):
+        with self.lock:
+            value = self.entries.get(key)
+            if value is not None:
+                self.entries.move_to_end(key)
+            return value
+
+    def publish(self, entries):
+        with self.lock:
+            for key, value in entries.items():
+                weight = value.weight(key)
+                if weight > MAX_REUSE_BYTES or MAX_REUSE_ENTRIES < 1:
+                    continue
+                previous = self.entries.pop(key, None)
+                if previous is not None:
+                    self.bytes -= previous.weight(key)
+                self.entries[key] = value
+                self.bytes += weight
+                while self.bytes > MAX_REUSE_BYTES or len(self.entries) > MAX_REUSE_ENTRIES:
+                    removed_key, removed = self.entries.popitem(last=False)
+                    self.bytes -= removed.weight(removed_key)
+
+
+_VERIFIED_ROWS = _VerifiedRows()
+
 
 # The optimization applies only to this native canonical serializer. Overrides
 # retain the original helper, including its exceptions and interpretation.
 _NATIVE_CONTEXT_CLASS = MarketContext
+_NATIVE_BUILD_CONTEXT = _build_resolved_context
 _NATIVE_OWNED_DIGEST = _owned_context_digest
 _NATIVE_CONTEXT_SNAPSHOT = _context_module._context_snapshot
 _NATIVE_HASH, _NATIVE_JSON = _hash, _json
@@ -173,6 +255,11 @@ class ContextCache(AbstractContextManager):
         self._contracts = {}
         self._digest_fragments = {}
         self._lazy_refs = {}
+        self._plain_refs = {}
+        self._verified_pending = {}
+        self._verified_pending_bytes = 0
+        self.row_reuse_hits = 0
+        self._reuse_namespace = str(self.path.resolve())
         self.implementation_sha256 = _implementation_digest()
 
     def _contract(self, source_ids, contract, selectors):
@@ -240,7 +327,11 @@ class ContextCache(AbstractContextManager):
                 # historical decision adds no evidence and scales poorly.
                 for snapshot in self._lazy_refs.values():
                     snapshot.verify_unchanged()
+                for snapshot, expected in self._plain_refs.values():
+                    if snapshot.get("snapshot_sha256") != expected or snapshot_digest(snapshot) != expected:
+                        raise ContractError("Immutable receipt changed during context preparation")
                 self._flush()
+                _VERIFIED_ROWS.publish(self._verified_pending)
         finally:
             if self.connection is not None:
                 self.connection.close()
@@ -248,8 +339,10 @@ class ContextCache(AbstractContextManager):
             self._active = False
             self._pending.clear()
             self._pending_bytes = 0
+            self._verified_pending.clear()
+            self._verified_pending_bytes = 0
 
-    def build(self, snapshots, *, symbol, cutoff, source_ids=None, contract=None):
+    def _inputs(self, snapshots, *, symbol, cutoff, source_ids=None, contract=None):
         if not self._active:
             raise RuntimeError("ContextCache requires a dataset context")
         cutoff = instant(cutoff)
@@ -271,12 +364,57 @@ class ContextCache(AbstractContextManager):
                     self._lazy_refs[identity] = snapshot
             elif snapshot.get("snapshot_sha256") != snapshot_digest(snapshot):
                 raise ContractError("Market snapshot content hash mismatch")
+            else:
+                previous = self._plain_refs.get(id(snapshot))
+                if previous is not None and previous[1] != snapshot["snapshot_sha256"]:
+                    raise ContractError("Immutable receipt changed during context preparation")
+                self._plain_refs[id(snapshot)] = (snapshot, snapshot["snapshot_sha256"])
             selected.append(snapshot)
         contract, contract_sha256 = self._contract(source_ids, contract, selectors)
         key = _hash({"cache_version": VERSION, "implementation_sha256": self.implementation_sha256,
                      "contract_sha256": contract_sha256, "symbol": symbol,
                      "cutoff": cutoff.isoformat(), "receipts": sorted(
                          (s["source_id"], s["snapshot_id"], s["snapshot_sha256"]) for s in selected)})
+        return selected, contract, contract_sha256, selectors, cutoff, key
+
+    def build(self, snapshots, *, symbol, cutoff, source_ids=None, contract=None):
+        inputs = self._inputs(snapshots, symbol=symbol, cutoff=cutoff,
+                              source_ids=source_ids, contract=contract)
+        return self._build(inputs, symbol=symbol, source_ids=source_ids)
+
+    def build_row(self, snapshots, *, symbol, cutoff, source_ids=None, contract=None):
+        """Reuse an exact verified historical vector without decoding its JSON.
+
+        This deliberately does not replace public ``build``: inference still
+        receives the complete checked context and durable cache corruption is
+        checked by that original path. Historical reuse is an independent
+        in-memory derivation witness, released only after source checks at a
+        successful dataset boundary. A recipe's context schema and source
+        selectors are already part of the key; recipe-specific labels, row
+        selection and support gates remain outside this reusable projection.
+        """
+        inputs = self._inputs(snapshots, symbol=symbol, cutoff=cutoff,
+                              source_ids=source_ids, contract=contract)
+        native = (_native_context_serializer()
+                  and _build_resolved_context is _NATIVE_BUILD_CONTEXT
+                  and _context_module._build_resolved_context is _NATIVE_BUILD_CONTEXT)
+        key = (self._reuse_namespace, inputs[-1])
+        saved = (self._verified_pending.get(key) or _VERIFIED_ROWS.get(key)) if native else None
+        if saved is not None:
+            self.hits += 1
+            self.row_reuse_hits += 1
+            return saved.row()
+        context = self._build(inputs, symbol=symbol, source_ids=source_ids)
+        value = _VerifiedRow.from_context(context)
+        weight = value.weight(key)
+        if (native and len(self._verified_pending) < MAX_REUSE_ENTRIES
+                and self._verified_pending_bytes + weight <= MAX_REUSE_BYTES):
+            self._verified_pending[key] = value
+            self._verified_pending_bytes += weight
+        return value.row()
+
+    def _build(self, inputs, *, symbol, source_ids):
+        selected, contract, contract_sha256, selectors, cutoff, key = inputs
         row = self._pending.get(key)
         if row is None and self.connection is not None:
             try:

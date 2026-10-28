@@ -52,6 +52,7 @@ def test_many_original_journals_keep_all_subphases_and_existing_phase_slots(env,
     assert set(observed) == {
         "inventory_validation", "journal_constructor", "journal_safe_path", "journal_connect",
         "journal_connection_setup", "journal_begin_immediate", "journal_schema_validation",
+        "journal_audit_image", "journal_audit_reuse",
         "journal_full_audit", "journal_commit", "journal_close", "journal_records",
         "journal_record_recovery", "clearance_initial_gate", "clearance_pretransport",
         "clearance_commitment", "broker_status",
@@ -155,7 +156,7 @@ def test_constructor_audit_inherits_expected_original_identity_before_object_is_
     with diagnostics.capture_dataset_build() as profile:
         with books._open_item(item) as reopened:
             assert reopened.journal_id == original.journal_id
-    for name in ("journal_constructor", "journal_safe_path", "journal_full_audit", "journal_connect"):
+    for name in ("journal_constructor", "journal_safe_path", "journal_audit_reuse", "journal_connect"):
         assert all(row["original_journal_id"] == item["journal_id"]
                    for row in groups(profile)[name]["slow_samples"])
     wrong = dict(item, journal_id="f" * 32)
@@ -164,7 +165,7 @@ def test_constructor_audit_inherits_expected_original_identity_before_object_is_
             books._open_item(wrong)
     assert groups(failed)["journal_constructor"]["error_count"] == 1
     assert all(row["original_journal_id"] == wrong["journal_id"]
-               for row in groups(failed)["journal_full_audit"]["slow_samples"])
+               for row in groups(failed)["journal_audit_reuse"]["slow_samples"])
     assert hashlib.sha256(original.path.read_bytes()).hexdigest() == before
 
 

@@ -177,13 +177,21 @@ def size_forecast(forecast, *, forecast_snapshot, account_equity: AvailableInput
     snapshot_hash = forecast["snapshot_hash"]
     # The indicator entry validates the same complete snapshot before use.
     # Preserve malformed-input rejection before extracting its candle argument.
-    if not isinstance(forecast_snapshot, Mapping) or "candles" not in forecast_snapshot:
+    if (not isinstance(forecast_snapshot, Mapping) or
+            ("candles" not in forecast_snapshot and forecast_snapshot.get("schema") != "scout-external-input-v1")):
         if digest(forecast_snapshot) != snapshot_hash:
             raise ContractError("Original forecast snapshot hash changed")
-    indicators = indicator_snapshot(forecast_snapshot["candles"], symbol=policy.symbol,
-        reference_at=forecast["reference_at"], data_cutoff=forecast["training_cutoff"],
-        indicator_specs=policy.indicators, window_policy=policy.window,
-        forecast_snapshot=forecast_snapshot, forecast_snapshot_hash=snapshot_hash)
+    if (isinstance(forecast_snapshot, Mapping)
+            and forecast_snapshot.get("schema") == "scout-external-input-v1"):
+        from .service_handoff import execution_envelope, ExecutionIndicators
+        verified = execution_envelope(snapshot_hash, forecast_snapshot, forecast)
+        original = verified["indicators"]
+        indicators = ExecutionIndicators(verified["indicator_snapshot_hash"], digest(original), encoded(original))
+    else:
+        indicators = indicator_snapshot(forecast_snapshot["candles"], symbol=policy.symbol,
+            reference_at=forecast["reference_at"], data_cutoff=forecast["training_cutoff"],
+            indicator_specs=policy.indicators, window_policy=policy.window,
+            forecast_snapshot=forecast_snapshot, forecast_snapshot_hash=snapshot_hash)
     reference, reason = independent_reference(forecast, account_equity=account_equity, quote=quote,
         calculated_at=calculated_at, maximum_quote_age_seconds=maximum_quote_age_seconds)
     result = evaluate_size(forecast, indicators, symbol_policy=policy, symbol_reference=reference,
@@ -198,6 +206,9 @@ def size_forecast(forecast, *, forecast_snapshot, account_equity: AvailableInput
                         "quote": asdict(quote) if quote is not None else None,
                         "maximum_quote_age_seconds": maximum_quote_age_seconds},
                    reference_failure_reason=reason)
+    if isinstance(forecast_snapshot, Mapping) and forecast_snapshot.get("schema") == "scout-external-input-v1":
+        payload["indicator_evidence"] = {"sha256": forecast_snapshot["indicator_snapshot_hash"],
+                                         "object_path": forecast_snapshot["indicator_object_path"]}
     return type(result)(digest(payload), encoded(payload))
 
 

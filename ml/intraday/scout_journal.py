@@ -63,6 +63,45 @@ _LIFECYCLE_SCHEMA = {
 _SCHEMA = _SUBMISSION_SCHEMA | _LIFECYCLE_SCHEMA
 _TERMINAL = frozenset({"FILLED", "CANCELLED", "REJECTED"})
 
+# A witness is an exact complete SQL image and its detached, fully replayed
+# result. It never relies on mtimes, PRAGMA data_version, control heads or a
+# caller's assurance that older rows did not change. The next transaction reads
+# every stored row again while holding the existing SQLite write reservation.
+# Changed bytes (including acknowledgements and lifecycle evidence) must pass
+# the complete original audit before they can establish another witness.
+_AUDIT_WITNESS_ENTRIES = 64
+_AUDIT_WITNESS_BYTES = 64 * 1024 * 1024
+_audit_witnesses = OrderedDict()
+_audit_witness_lock = threading.Lock()
+_audit_witness_bytes = 0
+_AUDIT_IMAGE_QUERIES = (
+    "SELECT type,name,tbl_name,rootpage,sql FROM sqlite_master ORDER BY type,name",
+    "SELECT id,payload,sha256 FROM control ORDER BY id",
+    "SELECT request_id,payload,sha256 FROM records ORDER BY request_id",
+    "SELECT sequence,event_id,payload,sha256 FROM events ORDER BY sequence",
+    "SELECT event_id,event_sha256 FROM acknowledgements ORDER BY event_id",
+    "SELECT id,payload,sha256 FROM lifecycle_control ORDER BY id",
+    "SELECT sequence,event_id,payload,sha256 FROM lifecycle_events ORDER BY sequence",
+    "SELECT request_id,payload,sha256 FROM lifecycle_records ORDER BY request_id",
+    "SELECT evidence_id,request_id,evidence_sha256 FROM lifecycle_evidence_ids ORDER BY evidence_id",
+)
+
+
+def _complete_audit_image(db):
+    image, cost = [], 0
+    for query in _AUDIT_IMAGE_QUERIES:
+        table = []
+        for row in db.execute(query):
+            # Reserve for exact raw rows, decoded state and Python containers.
+            # Stop collecting at the bound; the full audit still validates an
+            # oversized journal rather than retaining an unbounded witness.
+            cost += 8 * (128 + sum(sys.getsizeof(value) for value in row))
+            if cost > _AUDIT_WITNESS_BYTES:
+                return None, cost
+            table.append(tuple((type(value), value) for value in row))
+        image.append(tuple(table))
+    return tuple(image), cost
+
 
 class JournalError(ValueError):
     """The local journal operation cannot safely proceed."""
@@ -716,6 +755,51 @@ class ScoutJournal:
             raise JournalCorruptionError("Transition changed immutable record fields")
 
     def _audit(self, db, *, legacy=False, include_lifecycle=False):
+        """Reuse a completed audit only for freshly read, exactly equal rows.
+
+        Callers receive detached state and retain their existing transaction,
+        write durability and one-send checks. An override or validator change
+        keeps the original full audit path; no cached interpretation crosses a
+        validation contract change or broker response.
+        """
+        global _audit_witness_bytes
+        key, cost = None, 0
+        if (not legacy and type(db) is _NATIVE_AUDIT_CONNECTION
+                and db.row_factory is None and db.text_factory is str
+                and db.in_transaction and db.isolation_level is None
+                and _native_audit_validation(self)):
+            with recovery_phase('journal_audit_image', journal=self):
+                image, cost = _complete_audit_image(db)
+                if image is not None:
+                    key = (str(self.path), tuple(sorted(self.binding.items())), image)
+            if key is not None:
+                with _audit_witness_lock:
+                    cached = _audit_witnesses.get(key)
+                    if cached is not None:
+                        _audit_witnesses.move_to_end(key)
+                if cached is not None and _native_audit_validation(self):
+                    with recovery_phase('journal_audit_reuse', journal=self):
+                        result = deepcopy(cached[0])
+                    if _native_audit_validation(self):
+                        if self._journal_id is not None and result[0]['journal_id'] != self._journal_id:
+                            raise JournalCorruptionError("Journal version, identity or binding differs")
+                        return result if include_lifecycle else result[:4]
+        result = self._audit_uncached(db, legacy=legacy, include_lifecycle=True)
+        # Recheck native implementations after the complete audit. A custom
+        # callback must not establish a witness for later native validation.
+        if key is not None and _native_audit_validation(self):
+            detached = deepcopy(result)
+            with _audit_witness_lock:
+                if key not in _audit_witnesses:
+                    _audit_witnesses[key] = (detached, cost)
+                    _audit_witness_bytes += cost
+                while (len(_audit_witnesses) > _AUDIT_WITNESS_ENTRIES
+                       or _audit_witness_bytes > _AUDIT_WITNESS_BYTES):
+                    _, (_, removed) = _audit_witnesses.popitem(last=False)
+                    _audit_witness_bytes -= removed
+        return result if include_lifecycle else result[:4]
+
+    def _audit_uncached(self, db, *, legacy=False, include_lifecycle=False):
         with recovery_phase('journal_full_audit', journal=self):
             # Local to this exact audit, including concurrent/reentrant calls.
             # Every stored row is freshly decoded and matched to checked exact
@@ -1147,9 +1231,10 @@ class ScoutJournal:
     def get_with_order_state(self, request_id):
         """Read one submission and lifecycle from the same complete audit.
 
-        The original transaction, identity/schema checks and full replay remain
-        mandatory. Returned values share no mutable state with the journal, and
-        the transaction closes before the caller performs broker work.
+        The original transaction and identity/schema checks remain mandatory.
+        An exactly unchanged complete SQL image may reuse its validated replay.
+        Returned values share no mutable state with the journal, and the
+        transaction closes before the caller performs broker work.
         """
         with self._transaction() as db:
             _, records, _, _, (_, states, _) = self._audit(db, include_lifecycle=True)
@@ -1315,3 +1400,88 @@ class ScoutJournal:
 # signature. These are not updated when a caller replaces a public attribute.
 _NATIVE_VALIDATE_RECORD = ScoutJournal._validate_record
 _NATIVE_DTO_VALIDATION = _record_validation_contract()
+
+
+# Audit reuse is only an optimization of the installed native validator. Keep
+# instrumented/custom journal implementations on the original path, including
+# callers replacing a validator after a witness was established.
+_AUDIT_METADATA_NAMES = frozenset({'__module__', '__doc__', '__dict__', '__weakref__',
+    '__annotations__', '__slotnames__', '__firstlineno__', '__static_attributes__'})
+_AUDIT_BEHAVIOR_HOOKS = ('__getattribute__', '__getattr__', '__setattr__', '__delattr__',
+                        '__new__', '__getstate__', '__deepcopy__', '__reduce__', '__reduce_ex__')
+_NATIVE_AUDIT_CLASS = tuple((name, value) for name, value in vars(ScoutJournal).items()
+                            if name not in _AUDIT_METADATA_NAMES)
+_NATIVE_AUDIT_HOOKS = tuple(vars(ScoutJournal).get(name) for name in _AUDIT_BEHAVIOR_HOOKS)
+_AUDIT_GLOBAL_NAMES = (
+    '_checked_json', '_encoded', '_audit_event_record', '_text', '_hash', '_complete_audit_image',
+    'deepcopy', 'asdict', 'datetime', 'timezone', 'canonical_sha256', '_canonical_bytes',
+    'Request', 'Grant', 'VERSION', 'LEGACY_VERSION', 'LIFECYCLE_VERSION', 'OUTBOX_VERSION',
+    '_AUDIT_IMAGE_QUERIES', '_native_canonical_validation', '_native_record_validation',
+)
+_NATIVE_AUDIT_GLOBALS = tuple(globals()[name] for name in _AUDIT_GLOBAL_NAMES)
+_NATIVE_AUDIT_CONSTANTS = tuple(frozenset(value) for value in
+                              (_REQUIRED_BINDING, _RECORD_KEYS, _TERMINAL))
+_NATIVE_AUDIT_FULLMATCH = re.fullmatch
+_NATIVE_AUDIT_CONNECTION = sqlite3.Connection
+_AUDIT_HORIZON_NAMES = ('FillEvidence', 'OrderEvidence', '_number', '_utc',
+                       'validate_fill_time_provenance', 'Decimal', 'InvalidOperation',
+                       'datetime', 'timezone', 'Mapping', 're', 'LedgerError')
+_AUDIT_EVIDENCE_NAMES = ('__init__', '__post_init__', '__getattribute__', '__getattr__',
+    '__setattr__', '__delattr__', '__getstate__', '__deepcopy__', '__reduce__', '__reduce_ex__',
+    '__dataclass_fields__', '__dataclass_params__', '__slots__')
+_native_audit_horizon = None
+
+
+def _native_audit_horizon_validation():
+    global _native_audit_horizon
+    # Preserve the journal's small import surface. Empty/submission-only
+    # journals have never needed the optional order-evidence implementation.
+    module = sys.modules.get('ml.stock_trader.horizon_ledger')
+    if module is None:
+        return _native_audit_horizon is None
+    if type(module) is not ModuleType:
+        return False
+    members = vars(module)
+    if _native_audit_horizon is None:
+        if any(not _python_function_origin(members.get(name), name, module)
+               for name in _AUDIT_HORIZON_NAMES[2:5]):
+            return False
+        kinds = tuple(members.get(name) for name in _AUDIT_HORIZON_NAMES[:2])
+        if any(type(kind) is not type or kind.__module__ != module.__name__
+               or kind.__name__ != name for name, kind in zip(_AUDIT_HORIZON_NAMES, kinds)):
+            return False
+        with _audit_witness_lock:
+            if _native_audit_horizon is None:
+                _native_audit_horizon = (module,
+                    tuple((name, members.get(name)) for name in _AUDIT_HORIZON_NAMES),
+                    tuple(tuple((name, vars(kind).get(name)) for name in _AUDIT_EVIDENCE_NAMES)
+                          for kind in kinds))
+    original_module, original_members, original_classes = _native_audit_horizon
+    if (module is not original_module
+            or any(members.get(name) is not value for name, value in original_members)):
+        return False
+    for name, native in zip(_AUDIT_HORIZON_NAMES, original_classes):
+        current = vars(members[name])
+        if any(current.get(name) is not value for name, value in native):
+            return False
+    return True
+
+
+def _native_audit_validation(journal):
+    if (type(journal) is not ScoutJournal or type(journal.binding) is not dict
+            or any(type(key) is not str or type(value) is not str for key, value in journal.binding.items())
+            or re.fullmatch is not _NATIVE_AUDIT_FULLMATCH
+            or not _native_canonical_validation() or not _native_record_validation()):
+        return False
+    current = vars(ScoutJournal)
+    if (any(current.get(name) is not value for name, value in _NATIVE_AUDIT_CLASS)
+            or any(current.get(name) is not value for name, value in
+                   zip(_AUDIT_BEHAVIOR_HOOKS, _NATIVE_AUDIT_HOOKS))
+            or any(name in vars(journal) for name, _ in _NATIVE_AUDIT_CLASS)
+            or any(globals().get(name) is not value for name, value in
+                   zip(_AUDIT_GLOBAL_NAMES, _NATIVE_AUDIT_GLOBALS))
+            or any(frozenset(value) != native for value, native in zip(
+                (_REQUIRED_BINDING, _RECORD_KEYS, _TERMINAL), _NATIVE_AUDIT_CONSTANTS))
+            or not _native_audit_horizon_validation()):
+        return False
+    return True
