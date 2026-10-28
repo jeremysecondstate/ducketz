@@ -17,6 +17,8 @@ from app.ui.gameplan_execution_data import GameplanExecutionSnapshot, execution_
 from app.ui.gameplan_execution_widgets import GameplanExecutionPanel
 from app.ui.scout_stats_data import ScoutStatsSnapshot, load_scout_stats, scout_stats_sessions
 from app.ui.scout_stats_widgets import AtlasStatsPanel, ScoutStatsPanel
+from app.ui.scout_stats_history import HorizonHistorySnapshot, horizon_history_sessions, load_horizon_history
+from app.ui.scout_horizon_stats_widgets import ScoutHorizonStatsPanel
 from app.ui.atlas_stats_data import AtlasStatsSnapshot, atlas_stats_sessions, load_atlas_stats
 from app.ui.gameplan_stats_data import (
     GameplanStatsReview, PredictionOutcome, load_gameplan_stats, prediction_metrics,
@@ -237,6 +239,8 @@ class GameplanStatsTab:
         self.atlas.frame.pack(fill="x", pady=(18, 4))
         self.scout = ScoutStatsPanel(self.body, self.root)
         self.scout.frame.pack(fill="x", pady=(18, 4))
+        self.scout_horizons = ScoutHorizonStatsPanel(self.body, self.root)
+        self.scout_horizons.frame.pack(fill="x", pady=(18, 4))
         self._bind_wheel(self.body)
         self.render()
 
@@ -325,6 +329,7 @@ class GameplanStatsTab:
             self.render()
         self.execution.set_snapshot(None)
         self.scout.set_snapshot(None)
+        self.scout_horizons.set_snapshot(None)
         self.atlas.set_snapshot(None)
 
         def work():
@@ -345,7 +350,12 @@ class GameplanStatsTab:
                 atlas_dates = atlas_stats_sessions(self.datastore_root)
             except Exception:
                 atlas_dates = ()
-            dates = tuple(sorted(set(prediction_dates) | set(execution_dates) | set(scout_dates) | set(atlas_dates), reverse=True))
+            try:
+                scout_horizon_dates = horizon_history_sessions(self.datastore_root)
+            except Exception:
+                scout_horizon_dates = ()
+            dates = tuple(sorted(set(prediction_dates) | set(execution_dates) | set(scout_dates)
+                                 | set(atlas_dates) | set(scout_horizon_dates), reverse=True))
             requested_session = selected or (dates[0] if dates else None)
             try:
                 review = load_gameplan_stats(self.datastore_root, requested_session)
@@ -370,6 +380,12 @@ class GameplanStatsTab:
             # larger local Atlas history must not hold the peer panel empty.
             self._messages.put(("scout", request, dates, scout))
             try:
+                scout_horizons = load_horizon_history(self.datastore_root, execution_session) if execution_session else None
+            except Exception:
+                scout_horizons = HorizonHistorySnapshot(session=execution_session, status="unreadable",
+                    message="Saved Scout Gameplan forecast history could not be verified. Refresh to retry.")
+            self._messages.put(("horizons", request, dates, scout_horizons))
+            try:
                 atlas = load_atlas_stats(self.datastore_root, execution_session)
             except Exception:
                 atlas = AtlasStatsSnapshot(session=execution_session, status="unreadable",
@@ -392,6 +408,14 @@ class GameplanStatsTab:
                         self.date_box.configure(values=dates)
                         if scout is not None and scout.session:
                             self.session.set(scout.session)
+                    continue
+                if message[0] == "horizons":
+                    _, request, dates, scout_horizons = message
+                    if request == self._request_id:
+                        self.scout_horizons.set_snapshot(scout_horizons)
+                        self.date_box.configure(values=dates)
+                        if scout_horizons is not None and scout_horizons.session:
+                            self.session.set(scout_horizons.session)
                     continue
                 request, dates, review, error = message[:4]
                 if request != self._request_id:
