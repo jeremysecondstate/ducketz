@@ -529,6 +529,9 @@ class ShadowStore:
         except Exception:
             pass
 
+    def _validate_forecast_record(self, value, raw):
+        """Optional storage contract for the final immutable serialization."""
+
     def save_forecast(self, payload, *, intent=None):
         # Return exactly the persisted JSON representation. Model metadata can
         # contain tuples; their decoded list form must compare identically on
@@ -594,7 +597,9 @@ class ShadowStore:
             key = digest(value)
             value["forecast_id"] = key
             intent_value = self._intent(key, value, intent)
-            db.execute("INSERT INTO forecasts VALUES(?,?,?,?,?,?,?)", (key, value["pc"], value["symbol"], value["cycle_id"], value["reference_at"], value["issued_at"], encoded(value)))
+            raw = encoded(value)
+            self._validate_forecast_record(value, raw)
+            db.execute("INSERT INTO forecasts VALUES(?,?,?,?,?,?,?)", (key, value["pc"], value["symbol"], value["cycle_id"], value["reference_at"], value["issued_at"], raw))
             db.execute("INSERT INTO intents VALUES(?,?,?,?)", (digest(intent_value), key, value["issued_at"], encoded(intent_value)))
             proof = self._published_forecast_header_proof(db, value)
         # Publish optional proof only after the scientific source commits.
