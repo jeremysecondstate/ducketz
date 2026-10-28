@@ -1,0 +1,105 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T063818Z-7915d8ce20ad4046a3ae094c4857cd3e",
+  "change_id": "20261028T063818Z-7915d8ce20ad4046a3ae094c4857cd3e",
+  "details": [
+    "Selective PR477 composition retains Atlas record 20261028T022132Z-602d7f441ec54312af799ec0c717a495/source 918851a1ed6a81e931d288539bcb75107d46ee66.",
+    "Historical 15-minute and Gameplan dates remain separate populations; pinned archives, indexed revisions, identities, source provenance and recomputed summaries are verified.",
+    "Existing local Scout and independently verified direct exports retain precedence and corruption isolation; preserve target-support guards and private model recipes.",
+    "The separate horizon panel shows one selected revision, original probabilities, direction policy descriptions, target definitions, unavailable research populations and immutable source identity.",
+    "Current Scout tab composition preserves existing Gameplan and independent horizon filters; refresh clears old snapshots and ignores stale progressive responses.",
+    "Source queue, isolated publication and fresh main each passed155 offline tests without skips or import/network violations, binding49 source/dependency files. Scout installed composition passed157 without skips or violations, with50 imported files bound.",
+    "Exact eight-path source is installed; seven paths changed and one existing integration test was already identical. Originals, application HEAD/index, watchlist, profile, strict readers, model policy and pinned release are preserved."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/gameplan_stats.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/scout_horizon_stats_widgets.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/scout_stats_history.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/scout_stats_peer.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_scout_horizon_stats_ui.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_scout_stats_history.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_scout_stats_history_integration.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_scout_stats_integration.py"
+    }
+  ],
+  "limitations": [
+    "Strict offline synthetic archives, SQLite and native Tk fixtures only; no private exports, provider/broker calls, production models or trader operations.",
+    "Explicitly imported history is read only. This adoption does not transfer private operating history or copy peer model tuning."
+  ],
+  "main_commit": "7f0b041adc8634c9ef2b17330e22a65d3a30c720",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/487",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source and common main are remotely verified; Scout local source is installed and verified. Actual loaded UI remains unverified until its next normal safe load; no application or trader restart.",
+  "scope": "shared",
+  "source_commit": "399d796096c969f8f62d00761cf56810321366fb",
+  "summary": "Scout historical Stats selectively adopted, integrated and locally verified",
+  "tests": {
+    "fresh_main": [
+      {
+        "completed_at_utc": "2026-10-28T06:40:58.531345Z",
+        "exit_code": 0,
+        "output_sha256": "47a66e6236887b675f749f336a708f60e71f0a3fa7bf1ac1d0af67fc46c81452",
+        "result": "........................................................................ [ 46%]\r\n........................................................................ [ 92%]\r\n...........                                                              [100%]\r\n155 passed in 19.28s\r\n\n",
+        "started_at_utc": "2026-10-28T06:40:38.102137Z"
+      }
+    ],
+    "installed_scout_final": [
+      {
+        "completed_at_utc": "2026-10-28T06:42:52.373134Z",
+        "exit_code": 0,
+        "output_sha256": "c9b4e12efd8ae5afb1766795aacb22971e1167eb9fa6c51fa37d2646b96576b2",
+        "result": "........................................................................ [ 45%]\r\n........................................................................ [ 91%]\r\n.............                                                            [100%]\r\n157 passed in 19.95s\r\n\n",
+        "started_at_utc": "2026-10-28T06:42:31.238132Z"
+      }
+    ],
+    "isolated_publication": [
+      {
+        "completed_at_utc": "2026-10-28T06:39:31.249105Z",
+        "exit_code": 0,
+        "output_sha256": "05710ce956e72caddc9617ba6c3b6bf876ea71ec015a453cf7393dd56b1fb3bf",
+        "result": "........................................................................ [ 46%]\r\n........................................................................ [ 92%]\r\n...........                                                              [100%]\r\n155 passed in 19.99s\r\n\n",
+        "started_at_utc": "2026-10-28T06:39:10.124796Z"
+      }
+    ],
+    "queued_source": [
+      {
+        "completed_at_utc": "2026-10-28T06:38:39.461658Z",
+        "exit_code": 0,
+        "output_sha256": "183758d5888b32a3f18eb2251f000c2ba302b558c1bce3d64b2c3491bd125131",
+        "result": "........................................................................ [ 46%]\r\n........................................................................ [ 92%]\r\n...........                                                              [100%]\r\n155 passed in 19.70s\r\n\n",
+        "started_at_utc": "2026-10-28T06:38:18.730168Z"
+      }
+    ]
+  }
+}
