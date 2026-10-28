@@ -1,0 +1,27 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T185117Z-906a1508974f4659ba7c8b90df235fef",
+  "change_id": "scout-data-retry-diagnostics:20261028T185117Z-906a1508974f4659ba7c8b90df235fef",
+  "completion_record": "20261028T185117Z-906a1508974f4659ba7c8b90df235fef",
+  "files": [
+    "ml/intraday/scout_services.py",
+    "tests/test_scout_data_retry_diagnostics.py"
+  ],
+  "limitations": [
+    "Offline SQLite and data-service fixtures only; no production calls, real training, orders or trader controls.",
+    "Earlier type-only error receipts lost their message/source chain; the original cause and underlying lock holder remain unproved.",
+    "Current processes remain pinned to earlier loaded releases. Installation does not establish new loading or affected behavior."
+  ],
+  "main_sha": "fdaef1663f2c80dc48c885dca703a1d12bc884b7",
+  "repository": "jeremysecondstate/ducketz",
+  "review_url": "https://github.com/jeremysecondstate/ducketz/pull/502",
+  "runtime_implications": "Compatible independent-v1 diagnostics only; bounded top-level message, causal locations and native categories with data/session/release identity. Formatter failures cannot change existing worker retry. Preserve data population, qualification, recipe, historical scoring, manual stop and deadline. Current1A awaits next normal authorized activation; terminal model retains its separate normal initial-launch boundary. No monitor controls.",
+  "scope": "Shared Scout data-service diagnostic correctness. Each PC retains private recipe, symbols, fitted artifacts and operating bindings.",
+  "source_sha": "eae0004df017079a6cd0b0f282ec82befcd1417f",
+  "summary": "Scout data worker retries retain bounded native cause and source identity",
+  "tests": {
+    "composed_installed": "75 passed, zero skipped in each composed and exact installed release; overlapping suites",
+    "regression": "Six intended failures on original source; six focused cases pass on final source",
+    "source_queue_courier_main": "75 passed, zero skipped in each final candidate; overlapping suites"
+  }
+}

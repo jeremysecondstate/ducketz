@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T18:55:53.917125Z",
+  "id": "20261028T185553Z-2e1989ec09f246718178e5dbb1c4201c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout data worker retries retain bounded native cause and source identity"
+}
