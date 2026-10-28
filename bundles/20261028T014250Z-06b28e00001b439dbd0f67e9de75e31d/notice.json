@@ -1,0 +1,40 @@
+{
+  "author": "Scout",
+  "change_id": "output:20261028T013851Z-scout-stats-history-c3e74b4c",
+  "completion_id": "20261028T013851Z-scout-stats-history-c3e74b4c",
+  "delivery_route": "Existing private CODEXSTORE nightly exchange; financial rows are not in Git",
+  "discussion": "https://github.com/jeremysecondstate/atlas-scout/issues/41#issuecomment-6458393176",
+  "files": [
+    "display/scout-15m-stats/v1/pc-new/20261028T013851Z-scout-stats-history-c3e74b4c/manifest.json",
+    "display/scout-15m-stats/v1/pc-new/20261028T013851Z-scout-stats-history-c3e74b4c/index.json",
+    "display/scout-15m-stats/v1/pc-new/20261028T013851Z-scout-stats-history-c3e74b4c/gameplan-horizons/index.json"
+  ],
+  "index_sha256": "14e43629d93030bf812f0e0d6acba18f4fb97e19eb4b6932e8b59f7a92846188",
+  "limitations": [
+    "Only recovered saved completed evidence; no absent date fabricated",
+    "Historical target contracts, outcome cutoffs and source warnings remain explicit",
+    "Explicit no-saved baselines have no performance scores",
+    "Retained revisions are alternatives and must not be added together",
+    "Private delivery complete; Atlas UI adoption unverified"
+  ],
+  "manifest_sha256": "40c881fa4dbff3a6ad89a030ae3d18d6cc136637a0a4dc577ba0efa5bf577ef4",
+  "peer_applicability": "Atlas recipient: add verified saved Scout historical dates to Gameplan Stats; use the existing ScoutStatsSnapshot display interface and strict horizon-package reader; retain separate populations and original contracts.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Historical display import only; no active Gameplan, model recipe, database, provider or trader control change. Existing October27 delivery is preserved.",
+  "scope": "symbol-specific",
+  "summary": "Scout delivered the requested historical Scout Stats privately to Atlas, with separate 15-minute and Gameplan horizon inventories and retained revisions.",
+  "task": "send-historical-scout-stats",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-28T01:41:42.399650Z",
+      "evidence_sha256": "8f30b4a2918b0142330ea8774e57d39bc090253b5dbecd72676a1d420cdbf6bb",
+      "result": "PASS",
+      "suite": "Independent historical projection, frozen file hashes, original summary reconstruction, actual ScoutStatsPanel input, strict horizon package validation and latest-revision selection"
+    },
+    {
+      "completed_at_utc": "2026-10-28T01:42:11.283900Z",
+      "result": "PASS",
+      "suite": "Raw and decoded private-value scans and exact final private-channel readback"
+    }
+  ]
+}
