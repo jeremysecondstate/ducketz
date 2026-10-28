@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T15:55:05.876781Z",
+  "id": "20261028T155505Z-f6f452f9d211499ba1e454945dab3f53",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout model admission preserves original cycle and start event through native SQLite contention"
+}

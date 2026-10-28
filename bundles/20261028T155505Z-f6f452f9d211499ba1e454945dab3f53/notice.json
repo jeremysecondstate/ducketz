@@ -1,0 +1,26 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T154923Z-21124aebbd8f4ed6b1e12942f44d0706",
+  "change_id": "scout-cycle-admission:20261028T154923Z-21124aebbd8f4ed6b1e12942f44d0706",
+  "completion_record": "20261028T154923Z-21124aebbd8f4ed6b1e12942f44d0706",
+  "files": [
+    "ml/intraday/scout_services.py",
+    "tests/test_scout_cycle_admission.py"
+  ],
+  "limitations": [
+    "Offline fixture/native SQLite checks only; no production calls or process controls.",
+    "Underlying live lock holder remains unproved; installation is separate from loaded repair and affected behavior.",
+    "Terminal failed role has no automatic crash retry; independent trading remains unchanged."
+  ],
+  "main_sha": "37c98ded6e6dee544d1caa4c6040f5641c8d9948",
+  "repository": "jeremysecondstate/ducketz",
+  "review_url": "https://github.com/jeremysecondstate/ducketz/pull/494",
+  "runtime_implications": "Compatible independent-v1 source repair. Retry frozen original admission and separate cycle_started evidence under existing stop/deadline checks. Terminal role requires next normal authorized initial launch; no controller/bootstrap/task/launcher changes.",
+  "scope": "Shared Scout model-service correctness only. Every PC retains private recipes, fitted artifacts, symbols and operating authority.",
+  "source_sha": "564cec903ae45b05f6925a6ca9863b58c222b551",
+  "summary": "Scout model admission preserves original cycle and start event through native SQLite contention",
+  "tests": {
+    "installed_scout": "51 passed, zero skipped on exact composed and installed source; eight new admission cases",
+    "source_courier_main": "51 passed, zero skipped on each sealed source, courier and main candidate; overlapping suites"
+  }
+}
