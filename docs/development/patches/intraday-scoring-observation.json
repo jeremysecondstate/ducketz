@@ -1,0 +1,41 @@
+{
+  "schema": "intraday-scoring-observation-package-v1",
+  "normalization": "CRLF to LF only",
+  "patch": "docs/development/patches/intraday-scoring-observation.patch",
+  "patch_sha256": "9f6566318a57d3a01f540884c9e122647ea5ca3764ac4b25488d31108c8ad508",
+  "files": [
+    {
+      "path": "ml/intraday/scoring_observation.py",
+      "operation": "add",
+      "before_sha256": null,
+      "after_sha256": "d20768a3742ec5e048929327e42ae6ff2f99de7697a4bee5da8f021378797d29"
+    },
+    {
+      "path": "ml/intraday/final_scoring.py",
+      "operation": "modify",
+      "before_sha256": "97245ede5626fc2c2ddaa5f1cf09456827927b1f1ec12634ad233848e9fedd34",
+      "after_sha256": "ab47c10762761c5f9dad6e6d3ef131f897ee6b3ba4b26fd04ec6ac2968d5cc95"
+    },
+    {
+      "path": "ml/intraday/split_scoring.py",
+      "operation": "modify",
+      "before_sha256": "64e4c7a56414b39fd241ba9032cbf0b072ba0c5fbe093aa709df6bff75732932",
+      "after_sha256": "9b85cf9e2d044a6bfb92e719287106d5fd06f940b0e99a58533bb40cc3c63799"
+    }
+  ],
+  "direct_files": {
+    "tests/test_intraday_scoring_observation.py": "9023b56bf52512f8c36409140bd8ac95b038b4cc5327dfc44e51fb89a39b9125",
+    "tests/check_intraday_scoring_observation_packet.py": "b6d445b33f6af965ea96ce45d8fc5628898a9c691f5f59c19416461a4b9f45b0"
+  },
+  "purpose": "Reuse the original completed recovery observation validation once per scoring eligibility decision without weakening continuity proof or corruption rejection.",
+  "source_distribution": "Runtime changes are patch data only; this packet does not replace active public runtime modules or claim that the common checkout has the complete observation adapters.",
+  "local_applicability": "Recipients must review exact source preimages, their complete local observation adapter behavior and offline integration before adopting or sealing. Preserve local recipes, probabilities, targets, feature order, data population, original outcomes and independent trader controls.",
+  "required_adapter_interfaces": [
+    "ml/intraday/data.py:completed_15m_observation and synthetic_continuity_verified",
+    "ml/intraday/coverage.py:RECOVERY_POPULATION_CONTRACT",
+    "ml/intraday/recovered_population.py:verified_recovery_candle"
+  ],
+  "portable_verification": "Exact normalized source patch reconstruction plus inert helper dispatch; real recovery and scorer integration is explicitly not run.",
+  "local_integration_verification": "The checker --integration requires exact reviewed runtime postimages and uses actual local adapters and existing offline scorer/recovery suites. Source publication, local installation, loaded runtime and naturally exercised recovery remain separate facts.",
+  "applicability_assumption": "For RECOVERY_POPULATION_CONTRACT, the original completed_15m_observation and synthetic_continuity_verified predicates both dispatch to the same full pure verified_recovery_candle validator. Reusing the first successful result is valid only while those local semantics remain equivalent and do not mutate evidence or add different checks. Recipients must review their actual local semantic dependencies before applying this source packet."
+}

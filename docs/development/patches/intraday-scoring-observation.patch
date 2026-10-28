@@ -1,0 +1,63 @@
+--- /dev/null
++++ b/ml/intraday/scoring_observation.py
+@@ -0,0 +1,19 @@
++"""Preserve scoring eligibility without rebuilding the same recovery proof twice."""
++from __future__ import annotations
++
++from .coverage import RECOVERY_POPULATION_CONTRACT
++from .data import completed_15m_observation, synthetic_continuity_verified
++
++
++def completed_scoring_observation(candle):
++    """Require both completed-quarter and synthetic-continuity evidence.
++
++    Recovery observations use the same complete validator for both conditions.
++    Its successful result already proves continuity, so retain that result for
++    this call only. Other populations keep their separate original checks.
++    """
++    if not completed_15m_observation(candle):
++        return False
++    if candle.get("population_contract") == RECOVERY_POPULATION_CONTRACT:
++        return True
++    return synthetic_continuity_verified(candle)
+--- a/ml/intraday/final_scoring.py
++++ b/ml/intraday/final_scoring.py
+@@ -65,7 +65,7 @@
+     targets retain ordinary immutable-original validation and atomic observation.
+     No acquisition, model, execution client, queue or worker is constructed.
+     """
+-    from .data import completed_15m_observation, synthetic_continuity_verified
++    from .scoring_observation import completed_scoring_observation
+     now, membership = instant(as_of), set(symbols)
+     if actor not in {"Atlas", "Scout"} or not membership:
+         raise ContractError("Final scoring requires this manual session's actor and symbols")
+@@ -87,8 +87,7 @@
+             # Preserve validation of every saved candle for this eligible
+             # symbol, including older/future/unrelated corrupt evidence.
+             for candle in store.observed_candles(symbol):
+-                if (instant(candle["available_at"]) <= now and completed_15m_observation(candle)
+-                        and synthetic_continuity_verified(candle)):
++                if (instant(candle["available_at"]) <= now and completed_scoring_observation(candle)):
+                     latest[(symbol, candle.get("source_id"), candle.get("source_dataset"),
+                             candle.get("population_contract"), instant(candle["opened_at"]))] = candle
+             loaded_symbols.add(symbol)
+--- a/ml/intraday/split_scoring.py
++++ b/ml/intraday/split_scoring.py
+@@ -36,7 +36,7 @@
+ 
+ def scoring_pass(*, root, store, session, config, clock, stopped=lambda: False):
+     """Mirror exact complete observations and score preserved saved directions."""
+-    from .data import completed_15m_observation, synthetic_continuity_verified
++    from .scoring_observation import completed_scoring_observation
+     from .final_scoring import score_saved_session_outcomes
+     from .coverage import RECOVERY_POPULATION_CONTRACT
+ 
+@@ -76,7 +76,7 @@
+                     != (symbol, opened_at, available_at)):
+                 raise ContractError("System 1A original candle identity changed")
+             if (candle.get("availability_kind") != "actual" or instant(candle["available_at"]) > now
+-                    or not completed_15m_observation(candle) or not synthetic_continuity_verified(candle)):
++                    or not completed_scoring_observation(candle)):
+                 continue
+             if (instant(candle["opened_at"]).astimezone(PACIFIC).date().isoformat() != day
+                     or candle.get("population_contract") != config.population_contract
