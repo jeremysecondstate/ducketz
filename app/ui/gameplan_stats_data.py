@@ -21,6 +21,7 @@ from ml.gameplan_probability_target import (
     LEGACY_COST_TARGET, RAW_DIRECTION_TARGET, observed_probability_target,
     probability_target_contract, probability_target_metadata,
 )
+from ml.gameplan_saved_direction import CURRENT_DIRECTION_POLICIES, saved_gameplan_direction
 
 VERSION = "gameplan-actuals-review-v1"
 PACIFIC = ZoneInfo("America/Los_Angeles")
@@ -51,6 +52,19 @@ class PredictionOutcome:
     observed_start: datetime | None
     observed_end: datetime | None
     probability_target_contract: str = LEGACY_COST_TARGET
+    direction_policy_version: str | None = None
+    direction_up_threshold: float | None = None
+    direction_down_threshold: float | None = None
+
+    @property
+    def direction_policy_description(self) -> str:
+        if self.direction_policy_version in CURRENT_DIRECTION_POLICIES:
+            return (f"BUY at {self.direction_up_threshold:.2%} or higher; "
+                    f"SELL at {self.direction_down_threshold:.2%} or lower; HOLD between "
+                    f"({self.direction_policy_version}).")
+        if self.direction_policy_version:
+            return f"Historical saved call under {self.direction_policy_version}; its original direction is retained."
+        return "Historical saved call; its original direction is retained."
 
     @property
     def probability_target_threshold(self) -> float:
@@ -220,6 +234,7 @@ def _outcome(row: dict) -> PredictionOutcome:
         raise GameplanStatsError("A saved forecast has an invalid probability or outcome status")
     if direction not in {"BULLISH", "BEARISH", "NO_EDGE"} or row["model_group"] not in HORIZONS:
         raise GameplanStatsError("A saved forecast has an unsupported direction or horizon")
+    _, direction_metadata = saved_gameplan_direction(row, probability)
     start, end = _timestamp(row["target_window_start"], "target start"), _timestamp(row["target_window_end"], "target end")
     if start >= end:
         raise GameplanStatsError("A saved forecast has an invalid target window")
@@ -248,7 +263,7 @@ def _outcome(row: dict) -> PredictionOutcome:
     return PredictionOutcome(
         str(row["id"]), str(row["symbol"]), str(row["model_group"]), str(row["route"]),
         str(row["target_role"]), direction, status, probability, correct, brier,
-        actual_return, cost, start, end, *observed, contract,
+        actual_return, cost, start, end, *observed, contract, **direction_metadata,
     )
 
 
