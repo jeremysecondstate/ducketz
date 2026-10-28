@@ -1,0 +1,18 @@
+--- a/tests/test_intraday_warm_header_cache.py
++++ b/tests/test_intraday_warm_header_cache.py
+@@ -218,6 +218,8 @@
+ def test_warm_recovery_rechecks_committed_change_between_read_and_writer(tmp_path, monkeypatch, damage):
+     store, original, intents, order = prepared(tmp_path)
+     group(intents, original, observation(order))
++    # Keep the proof warm while requiring a new projection in the writer.
++    pending = observation(order, key="new-after-warm", at="2026-10-08T17:18:00Z")
+     connect = store.connect
+     calls = []
+     @contextmanager
+@@ -237,5 +239,5 @@
+                     other.execute("DELETE FROM forecasts")
+     monkeypatch.setattr(store, "connect", interleaved)
+     with pytest.raises(ContractError):
+-        group(intents, original, observation(order))
++        group(intents, original, pending)
+     assert len(calls) == 2
