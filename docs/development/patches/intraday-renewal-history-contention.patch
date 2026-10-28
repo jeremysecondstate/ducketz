@@ -1,0 +1,65 @@
+--- a/ml/intraday/live_session.py
++++ b/ml/intraday/live_session.py
+@@ -472,55 +472,61 @@
+ def _renewal_histories(root, store, session, config):
+     """Load retained observations only when an admitted pass needs a symbol.
+ 
+     Idle fresh interpreters must not repeatedly read every original history.
+     Within a generation the existing acquisition code can augment the mapping;
+     the original session cutoff and each cycle's frozen inputs stay unchanged.
+     """
+-    from .data import load_local_history
++    from .data import AcquisitionPending, load_local_history
+     from .coverage import RECOVERY_POPULATION_CONTRACT
+ 
+     class Histories(dict):
+         def __init__(self):
+             super().__init__()
+             self.missing = set()
+             self.loading = threading.RLock()
+ 
+         def _load(self, symbol):
+             with self.loading:
+                 if super().__contains__(symbol) or symbol in self.missing or symbol not in session["symbols"]:
+                     return
+                 try:
+                     self[symbol] = load_local_history(root, symbol, source_dataset=config.source_dataset,
+                         **({"population_contract": config.population_contract} if config.population_contract else {}),
+                         **({"recovery_cutoff": instant(session["started_at"])}
+                            if config.population_contract == RECOVERY_POPULATION_CONTRACT else {}))
+                 except Exception as exc:
++                    code = getattr(exc, "sqlite_errorcode", None)
++                    if (isinstance(exc, sqlite3.OperationalError) and type(code) is int
++                            and code & 255 in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)):
++                        # A busy local catalog has not established missing data.
++                        # Preserve the exact cycle and retry through acquisition.
++                        raise AcquisitionPending("local_history_storage_contention", retry_after_seconds=1) from exc
+                     self.missing.add(symbol)
+                     store.event(session["session_id"], "history_unavailable",
+                                 {"error_type": type(exc).__name__, "message": str(exc)}, symbol=symbol)
+ 
+         def __getitem__(self, symbol):
+             self._load(symbol)
+             return super().__getitem__(symbol)
+ 
+         def __contains__(self, symbol):
+             self._load(symbol)
+             return super().__contains__(symbol)
+ 
+         def get(self, symbol, default=None):
+             self._load(symbol)
+             return super().get(symbol, default)
+ 
+         def values(self):
+             # Legacy LiveHistories can infer its population contract from the
+             # retained manifests, but only after a real cycle was admitted.
+             for symbol in session["symbols"]:
+                 self._load(symbol)
+             return super().values()
+ 
+         def __iter__(self):
+             for symbol in session["symbols"]:
+                 self._load(symbol)
+             return super().__iter__()
+ 
+     return Histories()
