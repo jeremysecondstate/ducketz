@@ -1,0 +1,173 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T053455Z-9b36947273a8494fabe9ae4afe45f52c",
+  "change_id": "20261028T053455Z-9b36947273a8494fabe9ae4afe45f52c",
+  "details": [
+    "Validated stale prepared receipt classification retains original completion identity, exact old evidence and ambiguity/collision rejection; sixteen new regression cases.",
+    "Source, publication and fresh main each204passes with one Windows symlink-permission skip. Selective pinned installation234passes with the same skip; other28pinned files and all queues preserved.",
+    "Original Stats record 20261028T051909Z-1dee74d4a9be4cfb9df8adca04d4b041 and source 826fa94eb5644b89c74eec669ab0ecad7b5c1c00 now integrated at 86be866e8a76cd85b0a694ad55511838e2564ca9 after159fresh tests with no skips; old prepared candidate and receipt unchanged.",
+    "Prior Stats local installation remains installed; no model recipe, symbols, bindings, scheduler or trader controls changed.",
+    "PR484 and PR483 are retained source reviews after separate authorized common-main publication; no GitHub merge event."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tools/cross_pc/main_integration.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_cross_pc_main_integration.py"
+    }
+  ],
+  "limitations": [
+    "Strict offline fixtures; no provider/broker, production scoring/training, trader activation/restart or private exports.",
+    "Broader saved-export reader and historical Stats UI adoption remain separate pending work; preserve current strict direction metadata and local model ownership."
+  ],
+  "main_commit": "ffb200f9606d7b31fb3232812e014bdf237aa897",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/484",
+  "related_completion_records": [
+    {
+      "main_commit": "86be866e8a76cd85b0a694ad55511838e2564ca9",
+      "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/483",
+      "record_id": "20261028T051909Z-1dee74d4a9be4cfb9df8adca04d4b041",
+      "source_commit": "826fa94eb5644b89c74eec669ab0ecad7b5c1c00"
+    }
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Infrastructure helper is installed and verified; Stats source retains its prior installation. Actual application runtime loading remains separate and unverified; normal safe loading requires no requested restart.",
+  "scope": "shared",
+  "source_commit": "055ed79029a74aeb43858673ca17dfd2994697b5",
+  "summary": "Scout main retry repaired and installed; original Stats integration completed",
+  "tests": {
+    "exact_pinned_composition": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_cross_pc_main_integration.py",
+          "tests/test_cross_pc_core.py",
+          "tests/test_cross_pc_install_drift.py",
+          "tests/test_cross_pc_requests.py",
+          "tests/test_cross_pc_incoming.py",
+          "tests/test_cross_pc_drive_signal.py",
+          "tests/test_cross_pc_communication_cli.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/main-retry-pytest"
+        ],
+        "completed_at_utc": "2026-10-28T05:41:42.534633Z",
+        "exit_code": 0,
+        "output_sha256": "7df5a33ae94e86a7daaaf51af92f8a513c12b4d0ea0378786239efa956325ddf",
+        "result": "........................................................................ [ 30%]\r\n..........................s............................................. [ 61%]\r\n........................................................................ [ 91%]\r\n...................                                                      [100%]\r\n234 passed, 1 skipped in 260.22s (0:04:20)\r\n\n",
+        "started_at_utc": "2026-10-28T05:37:21.262719Z"
+      }
+    ],
+    "fresh_helper_main": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_cross_pc_main_integration.py",
+          "tests/test_cross_pc_core.py",
+          "tests/test_cross_pc_install_drift.py",
+          "tests/test_cross_pc_requests.py",
+          "tests/test_cross_pc_incoming.py",
+          "tests/test_cross_pc_drive_signal.py",
+          "tests/test_cross_pc_communication_cli.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/main-retry-pytest"
+        ],
+        "completed_at_utc": "2026-10-28T05:49:34.814752Z",
+        "exit_code": 0,
+        "output_sha256": "d153ac6e2312efb01f5d01a8d625cf6c094306e943b23b0c2bb93a8b35e6318a",
+        "result": "........................................................................ [ 35%]\r\n..........................s............................................. [ 70%]\r\n.............................................................            [100%]\r\n204 passed, 1 skipped in 243.07s (0:04:03)\r\n\n",
+        "started_at_utc": "2026-10-28T05:45:30.894826Z"
+      }
+    ],
+    "isolated_publication": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_cross_pc_main_integration.py",
+          "tests/test_cross_pc_core.py",
+          "tests/test_cross_pc_install_drift.py",
+          "tests/test_cross_pc_requests.py",
+          "tests/test_cross_pc_incoming.py",
+          "tests/test_cross_pc_drive_signal.py",
+          "tests/test_cross_pc_communication_cli.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/main-retry-pytest"
+        ],
+        "completed_at_utc": "2026-10-28T05:44:36.822250Z",
+        "exit_code": 0,
+        "output_sha256": "672b502da72c1018338ac6f7468264a99085673715d548e3611c98b11118707b",
+        "result": "........................................................................ [ 35%]\r\n..........................s............................................. [ 70%]\r\n.............................................................            [100%]\r\n204 passed, 1 skipped in 256.53s (0:04:16)\r\n\n",
+        "started_at_utc": "2026-10-28T05:40:19.330893Z"
+      }
+    ],
+    "original_stats_fresh_main": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_scout_history_direction_metadata.py",
+          "tests/test_gameplan_stats_handoff.py",
+          "tests/test_gameplan_saved_direction.py",
+          "tests/test_gameplan_stats_data.py",
+          "tests/test_gameplan_stats_outcome_revision.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/historical-threshold-pytest"
+        ],
+        "completed_at_utc": "2026-10-28T05:51:00.318619Z",
+        "exit_code": 0,
+        "output_sha256": "0036ef2f6813504215bed908a385b06d76e40a90fc884e2dcb10dbdb690ab6cc",
+        "result": "........................................................................ [ 45%]\r\n........................................................................ [ 90%]\r\n...............                                                          [100%]\r\n159 passed in 18.92s\r\n\n",
+        "started_at_utc": "2026-10-28T05:50:39.826318Z"
+      }
+    ],
+    "sealed_source": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_cross_pc_main_integration.py",
+          "tests/test_cross_pc_core.py",
+          "tests/test_cross_pc_install_drift.py",
+          "tests/test_cross_pc_requests.py",
+          "tests/test_cross_pc_incoming.py",
+          "tests/test_cross_pc_drive_signal.py",
+          "tests/test_cross_pc_communication_cli.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/main-retry-pytest"
+        ],
+        "completed_at_utc": "2026-10-28T05:39:07.405720Z",
+        "exit_code": 0,
+        "output_sha256": "4084fc0165c874542250892e2352a151e1c7ec69555f653e1ea69f2f8fb0cfd0",
+        "result": "........................................................................ [ 35%]\r\n..........................s............................................. [ 70%]\r\n.............................................................            [100%]\r\n204 passed, 1 skipped in 250.53s (0:04:10)\r\n\n",
+        "started_at_utc": "2026-10-28T05:34:56.029822Z"
+      }
+    ]
+  }
+}
