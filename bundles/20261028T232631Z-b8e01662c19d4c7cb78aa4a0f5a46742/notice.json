@@ -1,0 +1,29 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T232258Z-7115c1df03284b48b699c4666c03b917",
+  "change_id": "20261028T232258Z-7115c1df03284b48b699c4666c03b917",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative. Preserve data-only operation, original science, clocks, receipt authentication, independent order evidence, manual stops and all scheduled-task settings.",
+    "Fixed phase, atomic-write substage, bounded exception chain, native error codes and sanitized source frames improve evidence without error retries or lifecycle activation.",
+    "Related prior completed publication retains Completion-Record20261028T230253Z-10c60a00fd26498eaceb0ad508218087; forecast-cache diagnostics source16b2229a92ad2a37d9d50620fed136e6619704b1/main260856ac73a7fe09aa80b56fe7a02abd495eee50. Its portable53/full165 checks and local installation are separately recorded; this notice supplies the previously deferred Git-only communication."
+  ],
+  "files": [
+    "tools/intraday_data_renewal.py",
+    "tests/test_intraday_data_renewal_diagnostics.py",
+    "tests/check_intraday_data_renewal_diagnostics_package.py"
+  ],
+  "limitations": [
+    "Original PermissionError lacked operation, native codes and traceback; its cause remains unknown. Offline classification is not demonstrated natural recovery.",
+    "Pre-loop/terminal-persistence and already suppressed status-storage errors retain limited existing coverage. No provider, broker, model, launcher, task or live trading operation was induced."
+  ],
+  "main_sha": "d225f0a81f9d532357b7a8fb9848613bd0e25539",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Seal reviewed complete generation; a failed data lifetime remains ended. Diagnostics can be loaded at the next normal authorized admission. Publication, installation, loaded generation and affected natural recovery remain separate facts.",
+  "scope": "shared",
+  "source_sha": "6567a2121a2bcbfd5f43230194a843c06e791832",
+  "summary": "Atlas published and tested bounded data-renewal failure evidence",
+  "tests": [
+    "11 confined offline diagnostic checks passed on authored, queued, isolated source and main candidates with zero external attempts.",
+    "93 complete Atlas installed-source checks passed; additional baseline replay proves read and replace faults previously shared the same class-only record."
+  ]
+}

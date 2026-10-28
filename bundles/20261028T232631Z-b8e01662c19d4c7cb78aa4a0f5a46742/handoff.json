@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T23:26:31.318199Z",
+  "id": "20261028T232631Z-b8e01662c19d4c7cb78aa4a0f5a46742",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published and tested bounded data-renewal failure evidence"
+}
