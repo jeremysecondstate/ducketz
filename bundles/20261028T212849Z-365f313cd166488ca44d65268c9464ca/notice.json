@@ -1,0 +1,69 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T212526Z-7a2226ff2ed54b1cb6c4244df4285445",
+  "change_id": "20261028T212526Z-7a2226ff2ed54b1cb6c4244df4285445",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative; common diagnostics for attempted and skipped batch sizing-cache preflight, applicable after each PC reviews its own local dependency composition.",
+    "Record fixed bounded outcome counters and SQLite numeric error categories without source identities, keys, payloads or exception text; existing cache returns, HMAC validation, original source fallback and budget clock calls stay unchanged.",
+    "Preserve original model recipes, probabilities, targets, independent state and UNKNOWN evidence, orders, manual controls, cadence and session lifetime. Individual non-batch cache reads remain outside the new aggregated diagnostics."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/sizing_header_cache.py",
+      "sha256": "035605c8a02d12dd29a1f23f31c60ade93242a54598c26af648e6c64be9b696a"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_sizing_cache_diagnostics.py",
+      "sha256": "15e7f066a6f0a5f1aad20d584726d6addce92970d14d8dfff4d97b7803edff4b"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_sizing_outcomes_package.py",
+      "sha256": "372cc2e2ce1e0e5191611837876f1523a51ae3427c9d0c4702179248d3cde32d"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-sizing-cache-outcomes.patch",
+      "sha256": "8e58e324113039434f225b800752948021cc7a12bae27938b16d5be0d6d62dfe"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-sizing-cache-outcomes.json",
+      "sha256": "0c59276a860feec800331fb0cf0c2ff7edbb52a323ae24536553d2a2b0f83ef3"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-sizing-cache-outcomes.integration.py",
+      "sha256": "bb8d58d7056a156015ea515730a0df01ab4c39507b42c51e24ad5daa875dbf17"
+    }
+  ],
+  "limitations": [
+    "Pass1416 full-sizing cost was established; its actual cache-miss cause was not recorded. New diagnostics aid causal investigation on a natural recurrence; they do not prove original cause or incident resolution.",
+    "Local recovery consumer differs from common main; exact local scoped patch and synthetic integration cases are provided rather than replacing the complete consumer. Portable common tests cover optional cache behavior, while local full-composition checks validate the consumer patch.",
+    "No provider/broker/model-production/order/trader/task invocation. Original uncertain send requires definitive original-attempt evidence."
+  ],
+  "main_commit": "ce5f07a823701b7616063c21b51d0bd427ac422b",
+  "privacy_review": "Generic source and synthetic fixture data only; no account state, orders, private inputs, raw data, models, native bindings, credentials or logs exported.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Seal complete reviewed local source/dependencies. Natural authorized renewal may load new diagnostics; no start/restart, lifetime extension or control change. Source publication, installation, loading and affected natural exercise remain separate.",
+  "scope": "shared",
+  "source_commit": "fb464776d84916f10845e22c2931dfc7b1fcaea9",
+  "summary": "Bounded optional sizing-cache outcomes published with exact local consumer patch",
+  "tests": [
+    {
+      "network_attempts": 0,
+      "passed": 58,
+      "scope": "Exact common author, queue, isolated source and main candidates",
+      "skipped": 0
+    },
+    {
+      "network_attempts": 0,
+      "passed": 157,
+      "scope": "Complete local539-source composition; CRLF-preserving consumer patch",
+      "skipped": 0,
+      "unchanged_parent_source_members": 537
+    }
+  ]
+}

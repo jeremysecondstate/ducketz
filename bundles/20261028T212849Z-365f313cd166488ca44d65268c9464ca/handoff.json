@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T21:28:49.018915Z",
+  "id": "20261028T212849Z-365f313cd166488ca44d65268c9464ca",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Bounded optional sizing-cache outcomes published with exact local consumer patch"
+}
