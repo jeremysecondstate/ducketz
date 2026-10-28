@@ -214,11 +214,64 @@ class RetryLedger:
             raise ValueError("Invalid or unbounded provider retry journal")
         return state
 
+    def _job_path(self, key):
+        if not isinstance(key, str):
+            raise ValueError("A provider retry job key must be a string")
+        digest = hashlib.sha256(key.encode("utf-8")).hexdigest()
+        return self.path.with_name(self.path.name + ".jobs") / digest[:2] / (digest + ".json")
+
+    def _read_job(self, path, *, key=None):
+        """Read one bounded overflow job; a damaged finalized job is not absent."""
+        with path.open("rb") as handle:
+            raw = handle.read(65537)
+        if len(raw) > 65536:
+            raise ValueError("Provider retry job exceeds its byte bound")
+        def invalid_constant(value):
+            raise ValueError("Non-finite provider retry job value")
+        value = json.loads(raw, parse_constant=invalid_constant)
+        json.dumps(value, allow_nan=False)  # Also reject overflowing numeric literals.
+        if (not isinstance(value, dict) or set(value) != {"schema", "key", "state"}
+                or value.get("schema") != "provider-retry-job-v1"
+                or not isinstance(value.get("key"), str)
+                or not isinstance(value.get("state"), dict)
+                or path != self._job_path(value["key"])
+                or (key is not None and value["key"] != key)):
+            raise ValueError("Invalid provider retry job identity or state")
+        return value["key"], value["state"]
+
+    def _write_job(self, key, value):
+        """Keep new identities outside the bounded, backwards-compatible map."""
+        path = self._job_path(key)
+        raw = json.dumps({"schema": "provider-retry-job-v1", "key": key, "state": value},
+                         sort_keys=True, allow_nan=False).encode("utf-8")
+        if not isinstance(value, dict) or len(raw) > 65536:
+            raise ValueError("Invalid or oversized provider retry job state")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
+        try:
+            with temporary.open("xb") as handle:
+                handle.write(raw); handle.flush(); os.fsync(handle.fileno())
+            _replace_retry_journal(temporary, path)
+        except BaseException as failure:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError as cleanup_error:
+                failure.add_note("Retry job temporary cleanup failed: " + str(cleanup_error))
+            raise
+
     def _save(self, key, value):
         with self._lock():
             state = self._load()
+            job_path = self._job_path(key)
+            if job_path.exists():
+                self._read_job(job_path, key=key)
+                if key in state:
+                    raise ValueError("Duplicate provider retry job identity")
+                self._write_job(key, value)
+                return
             if key not in state and len(state) >= 2000:
-                raise ValueError("Provider retry journal job bound exceeded")
+                self._write_job(key, value)
+                return
             state[key] = value
             self.path.parent.mkdir(parents=True, exist_ok=True)
             temporary = self.path.with_name(self.path.name + "." + uuid.uuid4().hex + ".tmp")
@@ -237,13 +290,28 @@ class RetryLedger:
 
     def state(self, key):
         with self._lock():
-            return dict(self._load().get(key, {}))
+            state = self._load()
+            path = self._job_path(key)
+            if path.exists():
+                _, value = self._read_job(path, key=key)
+                if key in state:
+                    raise ValueError("Duplicate provider retry job identity")
+                return dict(value)
+            return dict(state.get(key, {}))
 
     def due_keys(self):
         now = _utc(self.clock())
         with self._lock():
-            due=[(value["next_retry_at"],key) for key,value in self._load().items()
+            state = self._load()
+            due=[(value["next_retry_at"],key) for key,value in state.items()
                 if value.get("status") == "retry_pending" and _utc(value["next_retry_at"]) <= now]
+            root = self.path.with_name(self.path.name + ".jobs")
+            for path in root.rglob("*.json"):
+                key, value = self._read_job(path)
+                if key in state:
+                    raise ValueError("Duplicate provider retry job identity")
+                if value.get("status") == "retry_pending" and _utc(value["next_retry_at"]) <= now:
+                    due.append((value["next_retry_at"], key))
             return tuple(key for _,key in sorted(due))  # Oldest due work cannot be starved.
 
     def reset(self, key):
