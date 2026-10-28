@@ -8,11 +8,14 @@ terminal role failures are recorded without an automatic crash respawn.
 from __future__ import annotations
 
 import argparse
+import codecs
 import json
 import os
 from pathlib import Path
+import queue
 import signal
 import sys
+import threading
 import time
 import uuid
 
@@ -37,6 +40,132 @@ PLANNED_EXIT = 75
 
 def selected_release(selector):
     return resolve_selection(selector, protocol=PROTOCOL)
+
+
+def default_console_sink():
+    """Open the attached Windows console lazily in the display thread.
+
+    Scheduled-task stdout may be redirected to a file despite an attached
+    console. CONOUT$ restores visible output without changing that task/action.
+    With no attached console, retain the original stdout destination.
+    """
+    native, attempted = None, False
+    def write(text):
+        nonlocal native, attempted
+        if not attempted:
+            attempted = True
+            if os.name == "nt":
+                try:
+                    native = open("CONOUT$", "w", encoding="utf-8", errors="replace", buffering=1)
+                except OSError:
+                    pass
+        if native is not None:
+            try:
+                print(text, file=native, flush=True)
+                return
+            except (OSError, ValueError):
+                try:
+                    native.close()
+                except OSError:
+                    pass
+                native = None
+        print(text, flush=True)
+    return write
+
+
+class ConsoleDisplay:
+    """Bounded, disposable display; a stalled console never stalls a worker/controller.
+
+    Worker logs remain the original evidence. Only this daemon touches stdout;
+    controller operations enqueue without waiting, including during shutdown.
+    """
+    def __init__(self, sink=None, *, capacity=256):
+        self.sink = sink if sink is not None else default_console_sink()
+        self.queue = queue.Queue(maxsize=capacity)
+        self.closing = threading.Event()
+        self.dropped = 0
+        self.thread = threading.Thread(target=self._write, name="scout-console", daemon=True)
+        try:
+            self.thread.start()
+        except RuntimeError:
+            self.thread = None  # Display resources are never a launch prerequisite.
+
+    def emit(self, text):
+        if self.thread is None:
+            return
+        try:
+            if self.dropped:
+                self.queue.put_nowait("[Scout console] " + str(self.dropped) +
+                    " display messages omitted; original worker logs are retained.")
+                self.dropped = 0
+            self.queue.put_nowait(str(text)[:32768])
+        except queue.Full:
+            self.dropped += 1
+
+    def _write(self):
+        while not self.closing.is_set() or not self.queue.empty():
+            try:
+                text = self.queue.get(timeout=.1)
+            except queue.Empty:
+                continue
+            try:
+                self.sink(text)
+            except Exception:
+                pass  # Console failure cannot revoke trading/model authority.
+            finally:
+                self.queue.task_done()
+
+    def close(self):
+        self.closing.set()
+        if self.thread is not None:
+            self.thread.join(timeout=.2)
+
+
+def display(console, text):
+    try:
+        if console is not None:
+            console.emit(text)
+    except Exception:
+        pass  # Display is never an operating dependency.
+
+
+class LogTail:
+    """Bounded per-generation read-only cursor for combined worker stdout/stderr."""
+    def __init__(self, path, label):
+        self.path, self.label = Path(path), label
+        self.offset, self.pending = 0, ""
+        self.decoder = codecs.getincrementaldecoder("utf-8")("replace")
+
+    def drain(self, console, *, final=False):
+        try:
+            limit = 262144 if final else 65536
+            with self.path.open("rb") as stream:
+                size = stream.seek(0, 2)
+                if size < self.offset:
+                    self.offset, self.pending = 0, ""
+                    self.decoder.reset()
+                    display(console, self.label + " log truncated externally: " + str(self.path))
+                if final and size - self.offset > limit:
+                    display(console, self.label + " console backlog omitted; full log: " + str(self.path))
+                    self.offset, self.pending = size - limit, ""
+                    self.decoder.reset()
+                stream.seek(self.offset)
+                raw = stream.read(limit)
+                self.offset += len(raw)
+            self.pending += self.decoder.decode(raw, final=final and self.offset >= size)
+            while "\n" in self.pending or len(self.pending) >= 16384:
+                end = self.pending.find("\n", 0, 16384)
+                count = end + 1 if end >= 0 else min(16384, len(self.pending))
+                text, self.pending = self.pending[:count], self.pending[count:]
+                display(console, self.label + " " + text.rstrip("\r\n"))
+            if final and self.pending:
+                display(console, self.label + " " + self.pending)
+                self.pending = ""
+        except FileNotFoundError:
+            pass  # File is created when the suspended worker is constructed.
+        except Exception as exc:
+            display(console, self.label + " console read unavailable: " + type(exc).__name__ +
+                    "; original log: " + str(self.path))
 
 
 class ServiceLifecycle(WorkerLifecycle):
@@ -97,7 +226,9 @@ class ServiceController:
     def __init__(self, *, selector, repository, datastore, wake_at, deadline,
                  clock=utcnow, sleep=time.sleep, worker_factory=ManagedWorker,
                  select=selected_release, startup_timeout=300, drain_timeout=120,
-                 monotonic=time.monotonic):
+                 monotonic=time.monotonic, console=None, heartbeat_seconds=30):
+        self.console = console if console is not None else ConsoleDisplay()
+        self.heartbeat_seconds, self._last_console = heartbeat_seconds, None
         self.selector, self.repository, self.datastore = Path(selector), Path(repository), Path(datastore)
         self.clock, self.sleep, self.select, self.worker_factory = clock, sleep, select, worker_factory
         self.startup_timeout, self.drain_timeout, self.monotonic = startup_timeout, drain_timeout, monotonic
@@ -123,9 +254,40 @@ class ServiceController:
             self.state["status"] = status
         atomic_json(self.root / "run.json", self.state)
         atomic_json(self.active_path, self.state)
-        if self._reported_status != self.state["status"]:
-            print("Scout 1B " + self.state["status"] + "; run " + self.run_id, flush=True)
-            self._reported_status = self.state["status"]
+        self._console_status()
+
+    def _console_status(self, *, force=False):
+        try:
+            self._render_console_status(force=force)
+        except Exception:
+            pass  # Even incomplete status evidence cannot make display a gate.
+
+    def _render_console_status(self, *, force=False):
+        roles = {role: {"status": value["status"], "generation": value["generation"],
+                       "requested_manifest": value["release"]["manifest_sha256"],
+                       "error": str(value.get("error") or value.get("result", {}).get("error") or "")[:2048],
+                       "log": str(self.root / role / str(value["generation"]) / (role + ".log"))}
+                 for role, value in self.state["roles"].items()}
+        signature = json.dumps([self.state["status"], roles, self.state.get("stop_reason")], sort_keys=True)
+        now = self.monotonic()
+        if (force or signature != self._reported_status or self._last_console is None
+                or now - self._last_console >= self.heartbeat_seconds):
+            display(self.console, json.dumps({"event": "scout_controller_status",
+                "recorded_at": instant(self.clock()).isoformat(), "session_id": self.run_id,
+                "status": self.state["status"], "roles": roles,
+                "deadline": self.state["deadline"], "stop_reason": self.state.get("stop_reason")}, sort_keys=True))
+            self._reported_status, self._last_console = signature, now
+
+    def _drain_console(self, role, *, final=False):
+        runtime = self.runtime.get(role)
+        if runtime is not None:
+            runtime["tail"].drain(self.console, final=final)
+
+    def _close_worker(self, role, timeout):
+        try:
+            self.workers[role].close(timeout=timeout)
+        finally:
+            self._drain_console(role, final=True)
 
     def stop_reason(self):
         if self.stop_path.exists():
@@ -177,12 +339,14 @@ class ServiceController:
         self.save()
         if self.stop_reason():
             return
-        worker = self.worker_factory([sys.executable, "-B", str(Path(__file__).resolve()),
+        worker = self.worker_factory([sys.executable, "-B", "-u", str(Path(__file__).resolve()),
             "--worker", str(request_path)], cwd=str(role_root),
-            env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONPATH=""),
+            env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONPATH="",
+                     PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8:replace"),
             log_path=role_root / (role + ".log"), start_suspended=True)
         self.workers[role] = worker
-        self.runtime[role] = {"root": role_root, "started": self.monotonic(), "ready": False, "draining": None}
+        self.runtime[role] = {"root": role_root, "started": self.monotonic(), "ready": False, "draining": None,
+                              "tail": LogTail(role_root / (role + ".log"), f"[{role} g{generation}]")}
         role_state["worker"] = {"pid": worker.pid, "create_time": worker.create_time, "job_name": worker.job_name}
         self.save()
         if self.stop_reason():
@@ -223,8 +387,9 @@ class ServiceController:
             if self.monotonic() - empty_since >= self.drain_timeout:
                 raise RuntimeError("Scout role exited with owned descendants still running")
             return
-        worker.close(timeout=self.drain_timeout)
+        self._close_worker(role, self.drain_timeout)
         del self.workers[role]
+        display(self.console, f"[{role} g{self.state['roles'][role]['generation']}] exited code={exit_code}")
         atomic_json(runtime["root"] / "exit.json", {"role": role, "exit_code": exit_code,
             "session_id": self.run_id, "generation": self.state["roles"][role]["generation"],
             "observed_at": instant(self.clock()).isoformat()})
@@ -246,6 +411,7 @@ class ServiceController:
             self.save("DEGRADED")
 
     def _poll_role(self, role):
+        self._drain_console(role)
         worker, runtime = self.workers[role], self.runtime[role]
         code = worker.poll()
         if code is not None:
@@ -255,6 +421,11 @@ class ServiceController:
         if phase_path.exists():
             phase = json.loads(read_bytes(phase_path))
             self._validate_header(role, phase)
+            if runtime.get("console_phase") != phase["phase"]:
+                display(self.console, json.dumps({"event": "scout_worker_phase", "role": role,
+                    "generation": phase["generation"], "phase": phase["phase"],
+                    "release": phase["release"], "session_id": self.run_id}, sort_keys=True))
+                runtime["console_phase"] = phase["phase"]
             if phase["phase"] in {"ready", "iteration_execution", "draining", "checkpointed"}:
                 runtime["ready"] = True
                 self.state["roles"][role]["status"] = "RUNNING"
@@ -266,6 +437,15 @@ class ServiceController:
             raise TimeoutError("Scout " + role + " drain timed out; pending identities retained")
 
     def run(self, *, lock_factory=application_locks):
+        try:
+            return self._run(lock_factory=lock_factory)
+        finally:
+            try:
+                self.console.close()
+            except Exception:
+                pass
+
+    def _run(self, *, lock_factory=application_locks):
         selected = self.select(self.selector)
         with lock_factory(selected, self.datastore):
             self._prior_run_exited()
@@ -273,6 +453,7 @@ class ServiceController:
             self.save("WAITING")
             try:
                 while instant(self.clock()) < instant(self.state["wake_at"]) and not self.stop_reason():
+                    self._console_status()
                     self.sleep(min(1, (instant(self.state["wake_at"]) - instant(self.clock())).total_seconds()))
                 if not self.stop_reason():
                     self.save("STARTING")
@@ -289,13 +470,14 @@ class ServiceController:
                                 error_type=type(exc).__name__, error=str(exc))
                             self.save("DEGRADED")
                             if role in self.workers:
-                                self.workers[role].close(timeout=self.drain_timeout)
+                                self._close_worker(role, self.drain_timeout)
                                 del self.workers[role]
                     if not self.workers:
                         self.save("FAILED", stop_reason="all_roles_failed", automatic_retry=False)
                         return 1
                     if self.state["status"] != "DEGRADED":
                         self.save("RUNNING" if all(r["ready"] for r in self.runtime.values()) else "STARTING")
+                    self._console_status()
                     self.sleep(0.1)
                 self.save("STOPPING", stop_reason=reason)
             except KeyboardInterrupt:
@@ -312,12 +494,12 @@ class ServiceController:
                 while self.workers and self.monotonic() < until:
                     for role, worker in tuple(self.workers.items()):
                         if worker.poll() is not None and worker.job_empty():
-                            worker.close(timeout=max(0, until - self.monotonic()))
+                            self._close_worker(role, max(0, until - self.monotonic()))
                             del self.workers[role]
                     if self.workers:
                         self.sleep(0.1)
                 for role, worker in tuple(self.workers.items()):
-                    worker.close(timeout=self.drain_timeout)
+                    self._close_worker(role, self.drain_timeout)
                     del self.workers[role]
             self.save("STOPPED", stop_reason=reason)
             return 0
@@ -367,7 +549,7 @@ def probe_release(selected, datastore, started_at):
             "release": release_identity(selected), "trader_started": False, "system_1a_started": False}
 
 
-def probe(selected, datastore, output_root):
+def probe(selected, datastore, output_root, *, console=None):
     """Keep application imports out of the long-lived controller parent."""
     output_root = Path(output_root)
     output_root.mkdir(parents=True, exist_ok=True)
@@ -375,16 +557,22 @@ def probe(selected, datastore, output_root):
     request_path, result_path = output_root / (identity + ".request.json"), output_root / (identity + ".result.json")
     atomic_json(request_path, {**release_identity(selected), "datastore": str(datastore),
                               "started_at": utcnow().isoformat(), "output": str(result_path)})
-    worker = ManagedWorker([sys.executable, "-B", str(Path(__file__).resolve()), "--probe", str(request_path)],
-        cwd=str(output_root), env=dict(os.environ, PYTHONPATH="", PYTHONDONTWRITEBYTECODE="1"),
-        log_path=output_root / (identity + ".log"))
+    log_path = output_root / (identity + ".log")
+    display(console, "Scout startup: validating saved recipe/calendar; probe log: " + str(log_path))
+    worker = ManagedWorker([sys.executable, "-B", "-u", str(Path(__file__).resolve()), "--probe", str(request_path)],
+        cwd=str(output_root), env=dict(os.environ, PYTHONPATH="", PYTHONDONTWRITEBYTECODE="1",
+                                      PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8:replace"),
+        log_path=log_path)
     try:
         if worker.wait(timeout=120) != 0:
             raise RuntimeError("Offline Scout recipe/calendar probe failed: " + str(request_path))
         worker.await_empty(timeout=10)
         return json.loads(read_bytes(result_path))
     finally:
-        worker.close()
+        try:
+            worker.close()
+        finally:
+            LogTail(log_path, "[startup probe]").drain(console, final=True)
 
 
 def main(argv=None):
@@ -419,12 +607,19 @@ def main(argv=None):
     if args.selector is None or args.repository is None:
         parser.error("--selector and --repository are required")
     selected = selected_release(args.selector)
-    prepared = probe(selected, args.datastore, args.repository / "scratch/scout-independent-probes")
     if args.check:
+        prepared = probe(selected, args.datastore, args.repository / "scratch/scout-independent-probes")
         print(json.dumps(prepared, sort_keys=True))
         return 0
+    console = ConsoleDisplay()
+    try:
+        prepared = probe(selected, args.datastore, args.repository / "scratch/scout-independent-probes", console=console)
+    except BaseException:
+        console.close()
+        raise
+    display(console, "Scout startup validated; wake=" + prepared["wake_at"] + "; deadline=" + prepared["deadline"])
     owner = ServiceController(selector=args.selector, repository=args.repository, datastore=args.datastore,
-        wake_at=prepared["wake_at"], deadline=prepared["deadline"])
+        wake_at=prepared["wake_at"], deadline=prepared["deadline"], console=console)
     signal.signal(signal.SIGINT, lambda *_: owner.request_stop())
     signal.signal(signal.SIGTERM, lambda *_: owner.request_stop())
     try:
