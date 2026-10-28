@@ -1,0 +1,178 @@
+--- a/ml/intraday/live_session.py
++++ b/ml/intraday/live_session.py
+@@ -55,6 +55,8 @@
+               CREATE TABLE IF NOT EXISTS intraday_live_retry(
+                 scope TEXT PRIMARY KEY,next_attempt_at TEXT NOT NULL);
+             """)
++            from .split_queue import install_indexes
++            install_indexes(db)
+ 
+     def enqueue(self, forecast):
+         if forecast["mode"] != "live":
+@@ -84,23 +86,11 @@
+                 "ensemble_status":forecast["ensemble_status"]}),flush=True)
+ 
+     def due(self, now):
+-        current = instant(now).isoformat()
+-        if not self.broker_due(now):
+-            return []
+-        with self.store.connect() as db:
+-            # Newer forecasts supersede unsent queued work for the same symbol.
+-            rows = db.execute("""SELECT q.forecast_id FROM intraday_live_queue q JOIN forecasts f ON f.id=q.forecast_id
+-                WHERE q.session_id=? AND q.status='pending' AND q.next_attempt_at<=?
+-                AND NOT EXISTS(SELECT 1 FROM intraday_live_queue n JOIN forecasts nf ON nf.id=n.forecast_id
+-                    WHERE n.session_id=q.session_id AND n.symbol=q.symbol
+-                    AND (nf.reference_at>f.reference_at OR (nf.reference_at=f.reference_at AND n.issued_at>q.issued_at)))
+-                ORDER BY f.reference_at,q.symbol,q.forecast_id""",
+-                              (self.session_id,current)).fetchall()
+-        ids = [row[0] for row in rows]
+-        if not ids:
+-            return []
+-        forecasts = {f["forecast_id"]:f for f in self.store.forecasts(pc=self.actor, forecast_ids=ids)}
+-        return [forecasts[identity] for identity in ids]
++        return list(self.iter_due(now))
++
++    def iter_due(self, now, *, stopped=lambda: False):
++        from .split_queue import due_forecasts
++        return due_forecasts(self, now, stopped=stopped)
+ 
+     def broker_due(self, now):
+         with self.store.connect() as db:
+@@ -545,6 +535,7 @@
+     """
+     from .account_execution import execution_failure_evidence
+     from .cancellation import retry_delay
++    from .split_queue import broker_due_for_pass, due_for_pass
+ 
+     session = renewal.session
+     close_at = instant(session["close_at"])
+@@ -553,8 +544,12 @@
+         return {"status": "STOPPED", "role": "execution"}
+     if instant(clock()) >= close_at:
+         return {"status": "COMPLETED", "role": "execution"}
+-    for forecast in queue.due(clock()):
+-        if renewal.stopped() or instant(clock()) >= close_at or not queue.broker_due(clock()):
++    queue_storage_retries = []
++    due = due_for_pass(queue, clock(),
++        stopped=lambda: renewal.stopped() or instant(clock()) >= close_at, retries=queue_storage_retries)
++    for forecast in due:
++        if (renewal.stopped() or instant(clock()) >= close_at
++                or not broker_due_for_pass(queue, clock(), retries=queue_storage_retries)):
+             break
+         try:
+             step_started_at, step_started_perf = instant(clock()), time.perf_counter()
+@@ -608,7 +603,8 @@
+                 "diagnostics": execution_failure_evidence(exc)}, symbol=forecast["symbol"])
+             break
+     if (not renewal.stopped() and instant(clock()) < close_at
+-            and instant(clock()) >= next_recovery and queue.broker_due(clock())):
++            and instant(clock()) >= next_recovery
++            and broker_due_for_pass(queue, clock(), retries=queue_storage_retries)):
+         try:
+             executor.recover()
+             delay = 3
+@@ -623,8 +619,11 @@
+         return {"status": "STOPPED", "role": "execution"}
+     if instant(clock()) >= close_at:
+         return {"status": "COMPLETED", "role": "execution"}
+-    renewal.checkpoint({"next_recovery": next_recovery.isoformat()},
+-                       (instant(clock()) + timedelta(seconds=1)).isoformat())
++    continuation = {"next_recovery": next_recovery.isoformat()}
++    if queue_storage_retries:
++        continuation["queue_storage_retries"] = queue_storage_retries
++    renewal.checkpoint(continuation,
++                       (instant(clock()) + timedelta(seconds=3 if queue_storage_retries else 1)).isoformat())
+     raise RuntimeError("Renewal checkpoint must end the worker")
+ 
+ 
+--- a/tools/trader_worker.py
++++ b/tools/trader_worker.py
+@@ -89,6 +89,68 @@
+                            watchlist=watchlist,renewal=renewal)
+ 
+ 
++def _record_loaded(renewal, selected):
++    """Retain actual verified bootstrap identity without creating authority.
++
++    Use the generation returned by this process's bootstrap, never a later
++    active selector. A separate receipt leaves the continuation protocol and
++    original request/response bytes unchanged. Failure to write diagnostics
++    cannot interrupt a session or change a planned renewal disposition.
++    """
++    temporary = None
++    try:
++        import hashlib
++        import uuid
++        from datetime import datetime, timezone
++        from ml.trader_renewal import process_birth
++
++        request = renewal.request
++        worker, python = Path(__file__).resolve(), Path(sys.executable).resolve()
++        worker_sha = hashlib.sha256(worker.read_bytes()).hexdigest()
++        python_sha = hashlib.sha256(python.read_bytes()).hexdigest()
++        source = Path(selected["source_root"]).resolve()
++        expected_worker = selected["manifest"]["source_files"]["tools/trader_worker.py"]
++        runtime_manifest = selected["runtime_manifest"]
++        expected_python = runtime_manifest["files"][runtime_manifest["python_relative"]]
++        value = {"schema": "trader-worker-loaded-evidence-v1", "diagnostic_only": True,
++                 "at": datetime.now(timezone.utc).isoformat(),
++                 "protocol": request["protocol"], "turn": request["turn"],
++                 "role": request["role"], "generation": request["generation"],
++                 "session_id": renewal.envelope["session"]["session_id"],
++                 "worker_pid": os.getpid(), "worker_birth": process_birth(os.getpid()),
++                 "request_sha256": hashlib.sha256(renewal.request_path.read_bytes()).hexdigest(),
++                 "sealed_generation": selected["generation"],
++                 "source_manifest_sha256": selected["manifest_sha256"],
++                 "runtime_id": selected["runtime_id"],
++                 "runtime_manifest_sha256": selected["manifest"]["runtime"]["manifest_sha256"],
++                 "worker_sha256": worker_sha, "python_sha256": python_sha,
++                 "worker_matches_bootstrap": worker == source / "tools/trader_worker.py" and worker_sha == expected_worker,
++                 "python_matches_bootstrap": python == Path(selected["python"]).resolve() and python_sha == expected_python,
++                 "isolated": bool(sys.flags.isolated), "no_site": bool(sys.flags.no_site)}
++        raw = (json.dumps(value, sort_keys=True, allow_nan=False) + "\n").encode("utf-8")
++        target = renewal.request_path.with_suffix(".loaded.json")
++        temporary = target.with_name("." + target.name + "." + uuid.uuid4().hex + ".partial")
++        with temporary.open("xb") as stream:
++            stream.write(raw)
++            stream.flush()
++            os.fsync(stream.fileno())
++        # Atomic no-replace publication: preserve any earlier complete receipt.
++        os.link(temporary, target)
++        return True
++    except BaseException as exc:
++        try:
++            print("Worker loaded-source evidence unavailable: " + type(exc).__name__, file=sys.stderr)
++        except BaseException:
++            pass
++        return False
++    finally:
++        if temporary is not None:
++            try:
++                temporary.unlink(missing_ok=True)
++            except OSError:
++                pass
++
++
+ def _record_failure(renewal, exc, generation):
+     """Retain bounded private cause evidence, never a handoff or recovery claim."""
+     try:
+@@ -168,6 +230,7 @@
+     from ml.trader_renewal import Renewal, PlannedRenewal, PLANNED_EXIT
+     renewal = Renewal(args.request)
+     renewal.claim()
++    _record_loaded(renewal, selected)
+     os.environ["DUCKETZ_TRADER_RENEWAL_REQUEST"] = str(args.request)
+     try:
+         try:
+--- a/tests/test_intraday_recovery_forecast_reuse.py
++++ b/tests/test_intraday_recovery_forecast_reuse.py
+@@ -30,7 +30,8 @@
+     for path in (durable.path, durable.key_path):
+         assert path.parent == env.store.path.parent and path != env.store.path
+         path.unlink(missing_ok=True)
+-    env.store._forecast_header_cache.clear()
++    # The durable fast path need not create the optional in-memory fallback.
++    getattr(env.store, "_forecast_header_cache", {}).clear()
+     env.store._execution_forecast_cache.clear()
+     decoded = decoding_spy(env, monkeypatch)
+     count = len(env.broker.submissions)

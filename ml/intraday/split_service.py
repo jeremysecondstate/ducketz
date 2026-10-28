@@ -7,6 +7,7 @@ lifetime. Consumer acknowledgement is neither required nor consulted.
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 import json
 import os
@@ -62,14 +63,18 @@ def _ensure_collection_thread(current, *, once, now, close_at, finished, start):
 
 class DataService:
     """One bounded current-reference preparation pass, injectable offline."""
-    def __init__(self, *, runner, handoff, incoming, session_id, clock=utcnow):
+    def __init__(self, *, runner, handoff, incoming, session_id, clock=utcnow, assigned_symbols=None):
         self.runner, self.handoff, self.incoming = runner, handoff, incoming
         self.session_id, self.clock = session_id, clock
+        self.assigned_symbols = tuple(runner.symbols if assigned_symbols is None else assigned_symbols)
+        if (not self.assigned_symbols or len(set(self.assigned_symbols)) != len(self.assigned_symbols)
+                or not set(self.assigned_symbols) <= set(runner.symbols)):
+            raise ContractError("Data lane changed the original local symbol ownership")
 
-    def pass_once(self):
+    def pass_once(self, *, reference_at=None):
         from .live_session import eligible_reference, latest_completed_reference
-        reference = latest_completed_reference(self.clock(),
-            publication_offset_seconds=self.runner.config.publication_offset_seconds)
+        reference = (instant(reference_at) if reference_at is not None else
+            latest_completed_reference(self.clock(), publication_offset_seconds=self.runner.config.publication_offset_seconds))
         if not eligible_reference(reference):
             return {"status": "OUTSIDE_DEFINED_REFERENCE", "reference_at": reference.isoformat()}
         configuration_hash = digest(asdict(self.runner.config))
@@ -78,10 +83,10 @@ class DataService:
             configuration_hash=configuration_hash, mode="live", experiment=experiment))
         ready_symbols = {row["symbol"] for row in self.handoff.ready(self.clock(), configuration_hash=configuration_hash)
                          if row["cycle_id"] == cycle_id}
-        pending = [symbol for symbol in self.runner.symbols if symbol not in ready_symbols]
+        pending = [symbol for symbol in self.assigned_symbols if symbol not in ready_symbols]
         if not pending:
             return {"status": "prepared", "reference_at": reference.isoformat(), "cycle_id": cycle_id,
-                    "prepared_symbols": list(self.runner.symbols), "reused_ready_index": True}
+                    "prepared_symbols": list(self.assigned_symbols), "reused_ready_index": True}
         with self.runner.store.connect() as db:
             old = db.execute("SELECT payload FROM cycles WHERE id=?", (cycle_id,)).fetchone()
             frozen_symbols = {row[0] for row in db.execute("SELECT symbol FROM symbol_inputs WHERE cycle_id=?", (cycle_id,))}
@@ -119,13 +124,106 @@ class DataService:
             acquisition={"kind": "independent_system_1a_exact_interval",
                          "original_target_close": (reference + 3 * STEP).isoformat()})
         ready_symbols.update(row["symbol"] for row in published)
-        evidence = {"status": "prepared" if len(ready_symbols) == len(self.runner.symbols) else result["status"], "reference_at": reference.isoformat(),
+        evidence = {"status": "prepared" if set(self.assigned_symbols) <= ready_symbols else result["status"], "reference_at": reference.isoformat(),
             "cycle_id": result["cycle_id"], "prepared_symbols": [row["symbol"] for row in published],
             "preparation_pass_seconds": time.perf_counter() - began,
             "deadline_missed": instant(self.clock()) >= reference + 3 * STEP,
             "consumer_acknowledgement_required": False}
         self.runner.store.event(self.session_id, "system_1a_preparation_pass", evidence)
         return evidence
+
+
+class PreparationScheduler:
+    """Bounded independent symbol preparation; no cross-quarter barrier.
+
+    The existing full-scope policy is frozen once before lane admission. Each
+    symbol has its own store and incoming-history closure; its old work cannot
+    change a different symbol's reference or block that symbol's next quarter.
+    """
+    def __init__(self, *, runner, handoff, service_factory, session_id, clock=utcnow):
+        self.runner, self.handoff, self.service_factory = runner, handoff, service_factory
+        self.session_id, self.clock = session_id, clock
+        self.pool = ThreadPoolExecutor(max_workers=runner.config.symbol_workers,
+                                       thread_name_prefix="system-1a-preparation")
+        self.services, self.running = {}, {}
+        self.last_symbol = None
+
+    def poll(self):
+        completed = []
+        for symbol, (reference, future) in list(self.running.items()):
+            if not future.done():
+                continue
+            del self.running[symbol]
+            try:
+                completed.append(future.result())
+            except Exception as exc:
+                self.runner.store.event(self.session_id, "system_1a_symbol_preparation_error", {
+                    "reference_at": reference.isoformat(), "error_type": type(exc).__name__,
+                    "other_symbols_continue": True}, symbol=symbol)
+        return completed
+
+    def _envelope(self, reference, cycle_id, experiment):
+        with self.runner.store.connect() as db:
+            row = db.execute("SELECT payload FROM cycles WHERE id=?", (cycle_id,)).fetchone()
+        if row is None:
+            # An empty explicit subset performs only the existing policy/cycle
+            # freeze. It invokes no acquisition, preparation or training. Never
+            # run this on an existing cycle or overwrite its progress summary.
+            self.runner.prepare_cycle({}, reference_at=reference, mode="live", experiment=experiment,
+                retry_symbols=[], acquisition={"kind": "independent_system_1a_exact_interval",
+                    "original_target_close": (reference + 3 * STEP).isoformat()})
+            with self.runner.store.connect() as db:
+                row = db.execute("SELECT payload FROM cycles WHERE id=?", (cycle_id,)).fetchone()
+        return json.loads(row[0])
+
+    def _prepare(self, symbol, reference, cycle_id, envelope):
+        service = self.services[symbol]
+        service.runner.store.begin_cycle(cycle_id, envelope)
+        # Preserve a snapshot frozen by the earlier whole-scope installation
+        # even if its publication was interrupted before this generation.
+        frozen = self.runner.store.inputs(cycle_id, symbol)
+        if frozen is not None:
+            retained = service.runner.store.freeze_inputs(cycle_id, symbol, frozen[1])
+            if retained[0] != frozen[0]:
+                raise ContractError("Data lane already owns different original inputs")
+        return service.pass_once(reference_at=reference)
+
+    def pass_once(self):
+        from .live_session import eligible_reference, latest_completed_reference
+        completed = self.poll()
+        reference = latest_completed_reference(self.clock(),
+            publication_offset_seconds=self.runner.config.publication_offset_seconds)
+        if not eligible_reference(reference):
+            return {"status": "OUTSIDE_DEFINED_REFERENCE", "reference_at": reference.isoformat()}
+        configuration_hash = digest(asdict(self.runner.config))
+        experiment = "system-1a:" + self.runner.pc.lower() + ":" + reference.astimezone(PACIFIC).date().isoformat()
+        cycle_id = digest(dict(pc=self.runner.pc, reference_at=reference.isoformat(),
+            configuration_hash=configuration_hash, mode="live", experiment=experiment))
+        ready = {row["symbol"] for row in self.handoff.ready(self.clock(), configuration_hash=configuration_hash)
+                 if row["cycle_id"] == cycle_id}
+        symbols = list(self.runner.symbols)
+        start = symbols.index(self.last_symbol) + 1 if self.last_symbol in symbols else 0
+        ordered = symbols[start:] + symbols[:start]
+        envelope = None
+        for symbol in ordered:
+            if len(self.running) >= self.runner.config.symbol_workers:
+                break  # No hidden executor backlog; one in-flight pass per symbol.
+            if symbol in ready or symbol in self.running:
+                continue
+            if envelope is None:
+                envelope = self._envelope(reference, cycle_id, experiment)
+            if symbol not in self.services:
+                self.services[symbol] = self.service_factory(symbol)
+            self.running[symbol] = (reference, self.pool.submit(self._prepare, symbol, reference, cycle_id, envelope))
+            self.last_symbol = symbol
+        return {"status": "prepared" if set(symbols) <= ready else "PREPARING",
+            "reference_at": reference.isoformat(), "cycle_id": cycle_id,
+            "prepared_symbols": [symbol for symbol in symbols if symbol in ready],
+            "in_flight_symbols": list(self.running), "completed_passes": completed,
+            "consumer_acknowledgement_required": False}
+
+    def close(self):
+        self.pool.shutdown(wait=True, cancel_futures=True)
 
 
 def _status(path, value):
@@ -188,26 +286,35 @@ def run_data_service(*, repository, datastore, profile, watchlist, config,
         journal = AcquisitionJournal(base / "acquisition.sqlite3")
         session = {"session_id": session_id, "symbols": list(symbols), "started_at": started.isoformat()}
         histories = _renewal_histories(root, collection_store, session, config)
-        preparation_histories, preparation_reference = None, None
         runner = ShadowRunner(store=store, pc=actor, symbols=symbols, config=config, clock=clock,
             datastore=root, stopped=shutdown.is_set,
             selected_config_path=root / "intraday/model-supervision/active.json")
-        def incoming(reference):
-            nonlocal preparation_histories, preparation_reference
-            if preparation_reference != reference:
-                # A new cycle reopens the original local history inventory so
-                # completed nightly catch-up is visible without restarting 1A.
-                # Within one frozen cycle the existing snapshot remains final.
-                preparation_reference = reference
-                preparation_histories = _renewal_histories(root, collection_store,
-                    {**session, "started_at": instant(clock()).isoformat()}, config)
-            preparation_histories.missing.clear()
-            return LiveHistories(histories=preparation_histories, provider=provider, store=collection_store,
-                journal=journal, reference_at=reference, clock=clock, sleep=pause, bounded=True,
-                stopped=shutdown.is_set, reuse_saved=True, population_contract=config.population_contract,
-                restore_eagerly=False, datastore=root)
-        service = DataService(runner=runner, handoff=handoff, incoming=incoming,
-                              session_id=session_id, clock=clock)
+        def incoming_for_lane():
+            preparation_histories, preparation_reference = None, None
+            def incoming(reference):
+                nonlocal preparation_histories, preparation_reference
+                if preparation_reference != reference:
+                    # Each lane owns this closure. A later reference in another
+                    # lane cannot replace histories still used by old work.
+                    preparation_reference = reference
+                    preparation_histories = _renewal_histories(root, collection_store,
+                        {**session, "started_at": instant(clock()).isoformat()}, config)
+                preparation_histories.missing.clear()
+                return LiveHistories(histories=preparation_histories, provider=provider, store=collection_store,
+                    journal=journal, reference_at=reference, clock=clock, sleep=pause, bounded=True,
+                    stopped=shutdown.is_set, reuse_saved=True, population_contract=config.population_contract,
+                    restore_eagerly=False, datastore=root)
+            return incoming
+        def service_for_symbol(symbol):
+            lane_runner = ShadowRunner(store=ShadowStore(base / ("preparation-" + symbol + ".sqlite3")),
+                pc=actor, symbols=symbols, config=config, clock=clock, datastore=root,
+                stopped=shutdown.is_set, selected_config_path=root / "intraday/model-supervision/active.json")
+            return DataService(runner=lane_runner, handoff=handoff, incoming=incoming_for_lane(),
+                               session_id=session_id, clock=clock, assigned_symbols=(symbol,))
+        scheduler = None if once else PreparationScheduler(runner=runner, handoff=handoff,
+            service_factory=service_for_symbol, session_id=session_id, clock=clock)
+        service = scheduler or DataService(runner=runner, handoff=handoff, incoming=incoming_for_lane(),
+                                           session_id=session_id, clock=clock)
         threads, market_collector = [], None
         context_window, candle_thread = None, None
         lifecycle = {"schema_version": VERSION, "actor": actor, "session_id": session_id,
@@ -320,7 +427,6 @@ def run_data_service(*, repository, datastore, profile, watchlist, config,
                         lifecycle["new_preparation_close_at"] = data_close_at.isoformat()
                         histories = _renewal_histories(root, collection_store,
                             {**session, "started_at": instant(clock()).isoformat()}, config)
-                        preparation_histories, preparation_reference = None, None
                         event("system_1a_scheduled_data_window_resumed", {
                             "previous_close_at": original_close.isoformat(), "close_at": data_close_at.isoformat(),
                             "admitted_at": instant(clock()).isoformat(), "daily_data_wake": daily_data_wake,
@@ -339,6 +445,8 @@ def run_data_service(*, repository, datastore, profile, watchlist, config,
                             market_collector = None
                         result = {"status": "FINAL_COLLECTION_CATCHUP",
                                   "final_collection_complete": collection_finished.is_set()}
+                        if scheduler is not None:
+                            result["completed_preparation_passes"] = scheduler.poll()
                     _status(status_path, {**lifecycle, "status": "RUNNING", "heartbeat_at": instant(clock()).isoformat(),
                                           "latest_pass": result})
                 except Exception as exc:
@@ -350,11 +458,14 @@ def run_data_service(*, repository, datastore, profile, watchlist, config,
                         raise
                 if once:
                     return result
-                if instant(clock()) >= data_close_at and collection_finished.is_set():
+                if (instant(clock()) >= data_close_at and collection_finished.is_set()
+                        and (scheduler is None or not scheduler.running)):
                     return {"status": "COMPLETED", "final_collection_complete": True}
                 pause(3)
         finally:
             shutdown.set()
+            if scheduler is not None:
+                scheduler.close()
             for thread in threads:
                 thread.join(timeout=2)
             if market_collector is not None:

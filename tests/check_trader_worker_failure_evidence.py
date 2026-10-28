@@ -23,6 +23,7 @@ NAMES = ("_record_failure", "main")
 
 
 def load_worker():
+    loaded_extract = None
     if PACKAGE.is_file():
         metadata = json.loads(PACKAGE.read_text(encoding="utf-8"))
         patch_bytes = PACKAGE.with_suffix(".patch").read_bytes()
@@ -34,22 +35,33 @@ def load_worker():
         extracts = {node.name: ast.get_source_segment(text, node) + "\n"
                     for node in tree.body
                     if isinstance(node, ast.FunctionDef) and node.name in NAMES}
+        loaded_extract = next((ast.get_source_segment(text, node) + "\n"
+                               for node in tree.body if isinstance(node, ast.FunctionDef)
+                               and node.name == "_record_loaded"), None)
         if PACKAGE.is_file():
             metadata = json.loads(PACKAGE.read_text(encoding="utf-8"))
             for name in NAMES:
-                if extracts[name] != metadata["extracts"][name]["source"]:
+                current = extracts[name]
+                # Later composition may add only the diagnostic loaded receipt;
+                # preserve and verify the original failure package verbatim.
+                loaded_call = "    _record_loaded(renewal, selected)\n"
+                if name == "main" and loaded_extract is not None and current.count(loaded_call) == 1:
+                    current = current.replace(loaded_call, "", 1)
+                if current != metadata["extracts"][name]["source"]:
                     raise AssertionError("Installed worker differs from reviewed extract: " + name)
     else:
         metadata = json.loads(PACKAGE.read_text(encoding="utf-8"))
         extracts = {name: metadata["extracts"][name]["source"] for name in NAMES}
     if PACKAGE.is_file():
-        for name, source in extracts.items():
+        for name in NAMES:
+            source = metadata["extracts"][name]["source"]
             expected = metadata["extracts"][name]["sha256"]
             if hashlib.sha256(source.encode()).hexdigest() != expected:
                 raise AssertionError("Reviewed extract hash differs: " + name)
     namespace = {"__file__": str(SOURCE), "argparse": argparse, "json": json,
                  "os": os, "Path": Path, "sys": sys}
-    exec(compile("\n".join(extracts.values()), str(SOURCE), "exec"), namespace)
+    source = "\n".join(([loaded_extract] if loaded_extract else []) + list(extracts.values()))
+    exec(compile(source, str(SOURCE), "exec"), namespace)
     return namespace
 
 

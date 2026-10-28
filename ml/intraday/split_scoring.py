@@ -107,7 +107,10 @@ def scoring_pass(*, root, store, session, config, clock, stopped=lambda: False):
             for key, count in value.items():
                 if key != "session_id":
                     scored[key] = scored.get(key, 0) + count
-        except ContractError as exc:
+        except (ContractError, ValueError, TypeError, KeyError) as exc:
+            # Original forecast, candle and outcome readers may reject malformed
+            # JSON before reaching their semantic ContractError checks. Preserve
+            # that evidence and keep valid unrelated symbols progressing.
             rejected_symbols.add(symbol)
             if len(rejected) < 32:
                 rejected.append({"symbol": symbol, "error_type": type(exc).__name__,
@@ -123,11 +126,26 @@ def scoring_pass(*, root, store, session, config, clock, stopped=lambda: False):
 
 
 def renewal_scoring_pass(*, root, store, renewal, config, clock):
-    result = scoring_pass(root=root, store=store, session=renewal.session, config=config,
-                          clock=clock, stopped=renewal.stopped)
-    if result["status"] in {"STOPPED", "COMPLETED"}:
-        if result["status"] == "COMPLETED":
-            store.event(renewal.session["session_id"], "final_saved_outcomes_scored", result)
-        return {"status": result["status"], "role": "scoring", **result}
+    try:
+        result = scoring_pass(root=root, store=store, session=renewal.session, config=config,
+                              clock=clock, stopped=renewal.stopped)
+        if result["status"] in {"STOPPED", "COMPLETED"}:
+            if result["status"] == "COMPLETED":
+                store.event(renewal.session["session_id"], "final_saved_outcomes_scored", result)
+            return {"status": result["status"], "role": "scoring", **result}
+    except sqlite3.OperationalError as exc:
+        code = getattr(exc, "sqlite_errorcode", None)
+        if type(code) is not int or code & 255 not in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+            raise
+        from .scoring_storage import scoring_failure_evidence
+        # A target mirror, outcome write or completion receipt can encounter
+        # ordinary concurrent storage work too. Checkpoint one bounded retry;
+        # exact immutable reads and idempotent writes revalidate on the next
+        # turn, including any work committed before contention occurred.
+        result = {"status": "WAITING_FOR_STORAGE", "partial_progress_retained": True,
+                  "diagnostics": scoring_failure_evidence(exc), "retry_after_seconds": 3,
+                  "provider_calls": 0, "trading_authority": False}
+    if renewal.stopped():
+        return {"status": "STOPPED", "role": "scoring", "last_scoring": result}
     renewal.checkpoint({"last_scoring": result}, (instant(clock()) + timedelta(seconds=3)).isoformat())
     raise RuntimeError("Renewal checkpoint must end the scoring worker")
