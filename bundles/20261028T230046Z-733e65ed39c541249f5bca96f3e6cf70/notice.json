@@ -1,0 +1,36 @@
+{
+  "author": "Scout",
+  "change_id": "20261028T225329Z-e08c1fbc955b4cf7a24e62d64ad06a6e",
+  "files": [
+    "tools/scout_release.py",
+    "tests/test_scout_release.py",
+    "tools/scout_service_controller.py",
+    "tests/test_scout_console.py",
+    "tests/test_scout_iteration_controller.py",
+    "tests/test_scout_iteration_process.py",
+    "tests/test_intraday_iteration_boundary.py"
+  ],
+  "limitations": [
+    "Source publication and native fixtures do not certify running-process recovery, fills or peer adoption.",
+    "Historical identification of the exact process holding the original failed destination remains unproved; native fixtures establish the repaired reader and writer sharing mechanism."
+  ],
+  "main_sha": "286dd9d3c2bbf76af1fd78835844a0727ed8c93e",
+  "previous_completion_record": "20261028T222507Z-c84c6b8ffaff4fc3bd7864388d2d9241",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/505",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "A new authorized Scout controller activation must load the paired shared-reader and atomic replacement repair. NUL console EOF preserves the original run result. The bounded failure contract, manual stop, original deadline, local recipes, known orders and independent data service remain authoritative.",
+  "scope": "shared",
+  "source_branch": "codex/scout/20261028T225329Z-e08c1fbc955b4cf7a24e62d64ad06a6e",
+  "source_sha": "99be31fe5d5a23ccc09d498fba2356ba30b8547c",
+  "summary": "Scout status replacement preserves complete Windows reader snapshots",
+  "tests": [
+    {
+      "command": "python -B -m pytest (13 reviewed offline modules)",
+      "completed_at_utc": "2026-10-28T22:59:45.842098Z",
+      "exit_code": 0,
+      "output_sha256": "e4f725214e54b0ea2ab69858d81b6922617a41fc70be99835fc553fe4e6b3cd6",
+      "result": "304 passed in 68.80s (0:01:08)",
+      "started_at_utc": "2026-10-28T22:58:34.457278Z"
+    }
+  ]
+}
