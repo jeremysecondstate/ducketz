@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "summary": "Reuse the canonical immutable pandas native-minute duration while retaining dynamic constructor fallback.",
+  "path": "ml/intraday/coverage.py",
+  "before_sha256": "7dce37cea42b3cb9a0adf20442c0921f2225e2338e6fe6b8ae9cb1b8eb747cdb",
+  "before_lf_sha256": "5c6542d7578bf27eda1af44faf33fe318c629c0012c5f677721c70d46d9ad65d",
+  "after_sha256": "4ca527f3eeb39c250c6f8c44c300c51385a752db7e972a9529da4417fb2e369f",
+  "after_lf_sha256": "9047f22e3777589c0862b95fb4e4f49c0a8938208995be6a1b9121ac80191b06",
+  "patch_sha256": "2b73ac2b67de77179c7366224d8534cfc9494aee81adc61fef25396b678db33b",
+  "before_projection_sha256": "1be0737836a706cad5101454712e5b54855f1f0c15a5f237f23fe1d8ad1c1b8a",
+  "after_projection_sha256": "56080219fb1175a6b1b9ce4caeba981b26f6084f47b1b403bc7df3175ff47ea1",
+  "checker_sha256": "7881b996c17e9c600799482b17b938f8f8fb9637a1ad9457164dba740870cdb8",
+  "scope": "shared",
+  "preserved": [
+    "All source-proof checks, native/session timing and exact overflow fallback",
+    "Original probabilities, model recipes, quantities, order identities, independent state and manual controls",
+    "Replaced pandas constructor fallback including preinitialization instrumentation"
+  ],
+  "runtime_implications": "Reviewed exact local source installation and complete generation sealing remain necessary. Uses the already-installed pandas native extension; no new dependency, provider call or trader operation.",
+  "limitations": [
+    "Portable exact source projection uses actual pandas clocks and an explicit native-evidence import stub; it is not complete application integration.",
+    "Complete application regressions and retained-input payload/identity parity are recorded separately by each installation owner.",
+    "A small component allocation saving is supported; sustained live or whole-sizing recovery is not claimed."
+  ]
+}
