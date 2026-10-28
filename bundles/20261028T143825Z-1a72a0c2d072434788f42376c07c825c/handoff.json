@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T14:38:25.660058Z",
+  "id": "20261028T143825Z-1a72a0c2d072434788f42376c07c825c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout Gameplan: resume delivery across reviewed unrelated profile metadata changes"
+}

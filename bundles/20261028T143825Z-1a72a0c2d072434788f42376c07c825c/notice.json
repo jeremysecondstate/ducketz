@@ -1,0 +1,38 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T143159Z-665391d82ded4df5b480d497092c9393",
+  "change_id": "20261028T143159Z-665391d82ded4df5b480d497092c9393",
+  "files": [
+    "tools/nightly_exchange.py",
+    "tests/test_nightly_exchange_profile_metadata_transition.py"
+  ],
+  "limitations": [
+    "Source is published on the owned branch; main lacks the existing nightly adapter dependency base and remains a separate integration review.",
+    "Private profile-transition evidence is host-local and never part of source publication."
+  ],
+  "peer_applicability": "Shared nightly adapter correctness; the narrow metadata-transition route is Scout-only. Preserve local model recipes and private operating bindings.",
+  "remote_verified_sha": "01377cda48f49714e094b1251f289ab5236c50b9",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "One-shot nightly adapter validates an immutable same-date transition for five intraday installation metadata fields; original binding/preparation/Stats remain intact. No model recipe transfer or trader restart.",
+  "scope": "shared",
+  "source_sha": "01377cda48f49714e094b1251f289ab5236c50b9",
+  "summary": "Scout Gameplan: resume delivery across reviewed unrelated profile metadata changes",
+  "tests": [
+    {
+      "command": "pytest tests/test_nightly_exchange_profile_metadata_transition.py",
+      "completed_at": "2026-10-28T14:32:04.111655Z",
+      "exit_code": 0,
+      "output_sha256": "0dd37cde1f23caf437ebe9e54dab8ff73b8f7b42ac1ee1409a5998700cb16fc6",
+      "result": "31 passed; fresh exact-byte queue and isolated candidate checks",
+      "source_sha256": "6c0e00f4f57bfa5fb192191a62d9d2889dc0d3aa6f9879814f70a237297acc31",
+      "started_at": "2026-10-28T14:32:00.405135Z",
+      "test_sha256": "a1f5f47cd82c375cb15de454e278a62b9fb031dc9a2a7fca417711767058afaf"
+    },
+    {
+      "command": "pytest existing exchange fixtures plus profile transition tests",
+      "exit_code": 0,
+      "result": "95 passed in 198.16 seconds against current application dependencies"
+    }
+  ],
+  "url": "https://github.com/jeremysecondstate/ducketz/commit/01377cda48f49714e094b1251f289ab5236c50b9"
+}
