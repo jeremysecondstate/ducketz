@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T21:01:50.686006Z",
+  "id": "20261028T210150Z-31ee526b9a8549928c60f5e069a6f6fd",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Retain authenticated sizing cache proofs on SQLite interruption; tested common source published"
+}

@@ -1,0 +1,53 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T205707Z-fbb05e9987e949299a8a15c7aa6b7301",
+  "change_id": "20261028T205707Z-fbb05e9987e949299a8a15c7aa6b7301",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative. Generic optional scalar sizing-cache repair applicable after each PC reviews its local dependency closure.",
+    "Exact SQLITE_INTERRUPT retains completed authenticated records in the same pinned cache context; unread and rejected records still run original source validation, all other errors keep full fallback.",
+    "Preserve original model recipes, probabilities, targets, source revision/schema/epoch/physical/HMAC validation, independent order/state/UNKNOWN evidence and operating controls."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/sizing_header_cache.py",
+      "sha256": "8888cad1fef4be475e79bbb0b550fb7f7cdac9403e80c6de9c473ef8e3eccc6d"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_partial_sizing_reads.py",
+      "sha256": "f525a483e8e85133ed637c2174fadec41057dbdd750da0022debf1d817b251d4"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_partial_sizing_package.py",
+      "sha256": "326335b627e5a26535fcc2f8eb5faf634c18408b6e96c23c24754a0e487b8481"
+    }
+  ],
+  "limitations": [
+    "Real SQLite cancellation reproduced the code defect offline. The live all-miss incident did not record its cache exception; interruption remains an evidence-backed hypothesis for that occurrence.",
+    "Missing or unread proofs still use full source validation; no guarantee of eliminating full-pipeline latency or closing original uncertain-send incidents.",
+    "No broker/provider/model-production/trader/order/launcher/task operation. Source publication, exact-byte installation, loading and natural affected recovery are separate facts."
+  ],
+  "main_commit": "fd1176a56faa06ccb3052705d1fb5f6f0fa78354",
+  "privacy_review": "Generic source and synthetic offline cache fixtures only; no private inputs, account observations, native bindings, raw data, fitted models, orders, state or secret values.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Review local applicability, test exact dependency closure, and seal complete installed generation. Normal authorized renewal may select it; no new activation, restart, lifetime extension or control change.",
+  "scope": "shared",
+  "source_commit": "e4c614acd8ad34e1e853820ebf4f50cc08dc3988",
+  "summary": "Retain authenticated sizing cache proofs on SQLite interruption; tested common source published",
+  "tests": [
+    {
+      "network_attempts": 0,
+      "passed": 28,
+      "scope": "Exact common author, queue, isolated source and main candidates",
+      "skipped": 0
+    },
+    {
+      "network_attempts": 0,
+      "passed": 174,
+      "scope": "Complete local539-source staged composition with sole runtime module overlay",
+      "skipped": 0
+    }
+  ]
+}
