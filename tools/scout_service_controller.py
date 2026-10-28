@@ -3,7 +3,9 @@
 Only --live starts a new manually authorized logical trading run. The trading
 process remains responsive while a separate model process completes full-scope
 iterations. Planned model replacement keeps the same run, day and deadline;
-terminal role failures are recorded without an automatic crash respawn.
+terminal role failures are recorded without an automatic crash respawn. Each
+full model attempt also requests a separate graceful trading handoff; model
+work never waits for trading to drain.
 """
 from __future__ import annotations
 
@@ -36,10 +38,22 @@ PROTOCOL = "scout-independent-v1"
 STATE_SCHEMA = "scout-independent-logical-run-v1"
 CHECKPOINT_SCHEMA = "scout-independent-model-checkpoint-v1"
 PLANNED_EXIT = 75
+TRADING_ROTATION_VERSION = "scout-trading-rotation-v1"
+TRADING_CHECKPOINT_SCHEMA = "scout-independent-trading-checkpoint-v1"
 
 
 def selected_release(selector):
-    return resolve_selection(selector, protocol=PROTOCOL)
+    selected = resolve_selection(selector, protocol=PROTOCOL)
+    raw = read_bytes(Path(selected["release_root"]) / "manifest.json")
+    if sha256(raw) != selected["manifest_sha256"]:
+        raise ValueError("Scout selected manifest changed during capability validation")
+    selected["trading_rotation_version"] = json.loads(raw).get("trading_rotation_version")
+    return selected
+
+
+def require_trading_rotation(selected):
+    if selected.get("trading_rotation_version") != TRADING_ROTATION_VERSION:
+        raise ValueError("Scout trading release lacks full-iteration rotation capability")
 
 
 def default_console_sink():
@@ -222,6 +236,47 @@ class ServiceLifecycle(WorkerLifecycle):
         return self._latched_reason
 
 
+    def trading_rotation_request(self):
+        """Read this generation's graceful request without revoking its authority."""
+        if self.role != "trading" or self.request.get("trading_rotation_version") is None:
+            return None  # Source remains usable by an already-pinned old controller.
+        if self.request.get("trading_rotation_version") != TRADING_ROTATION_VERSION:
+            raise ValueError("Unknown Scout trading rotation version")
+        if self.stop_reason() is not None:
+            return None
+        try:
+            state = json.loads(read_bytes(self.request["active_path"]))
+            role = state["roles"]["trading"]
+            for key in ("session_id", "controller_pid", "controller_create_time", "deadline"):
+                if state.get(key) != self.request[key]:
+                    raise ValueError("Trading rotation changed logical run")
+            for key in ("generation", "token", "release"):
+                if role.get(key) != self.request[key]:
+                    raise ValueError("Trading rotation changed generation fence")
+            rotation = role.get("rotation_request")
+            if rotation is None:
+                return None
+            for key in ("session_id", "role", "generation", "token", "release"):
+                if rotation.get(key) != self.header()[key]:
+                    raise ValueError("Stale Scout trading rotation request: " + key)
+            if (rotation.get("schema") != TRADING_ROTATION_VERSION
+                    or type(rotation.get("iteration_sequence")) is not int
+                    or rotation["iteration_sequence"] < 1
+                    or type(rotation.get("model_generation")) is not int
+                    or rotation["model_generation"] < 1
+                    or not rotation.get("boundary_id") or not rotation.get("boundary_cycle_id")
+                    or not isinstance(rotation.get("checkpoint_sha256"), str)
+                    or len(rotation["checkpoint_sha256"]) != 64):
+                raise ValueError("Invalid Scout trading rotation request")
+            if self.stop_reason() is not None:
+                return None
+            return rotation
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            self._revoke("controller_failure", stage="trading_rotation_request", error_type=type(exc).__name__,
+                         error=str(exc))
+            raise
+
+
 class ServiceController:
     def __init__(self, *, selector, repository, datastore, wake_at, deadline,
                  clock=utcnow, sleep=time.sleep, worker_factory=ManagedWorker,
@@ -246,7 +301,8 @@ class ServiceController:
             "deadline": instant(deadline).isoformat(), "controller_pid": os.getpid(),
             "controller_create_time": psutil.Process().create_time(), "roles": {},
             "stop_path": str(self.stop_path), "status": "WAITING", "automatic_daily_restart": False,
-            "system_1a_owned": False}
+            "system_1a_owned": False, "trading_rotation_version": TRADING_ROTATION_VERSION,
+            "completed_iterations": [], "trading_completed_iteration": 0}
 
     def save(self, status=None, **extra):
         self.state.update(updated_at=instant(self.clock()).isoformat(), **extra)
@@ -318,6 +374,8 @@ class ServiceController:
             return
         if selected.get("lifecycle_protocol") != PROTOCOL:
             raise ValueError("Independent Scout role requires the independent controller protocol")
+        if role == "trading":
+            require_trading_rotation(selected)
         if self.recipe_hash is None:
             self.recipe_hash = selected["recipe_file_sha256"]
         if selected["recipe_file_sha256"] != self.recipe_hash:
@@ -333,6 +391,8 @@ class ServiceController:
                    "role": role, "active_path": str(self.active_path), "repository": str(self.repository),
                    "datastore": str(self.datastore), "generation_root": str(role_root),
                    "previous_checkpoint": checkpoint, "drain_timeout_seconds": self.drain_timeout}
+        if role == "trading":
+            request["trading_rotation_version"] = TRADING_ROTATION_VERSION
         request_path = role_root / "request.json"
         atomic_json(request_path, request)
         self.state["roles"][role] = role_state
@@ -379,6 +439,60 @@ class ServiceController:
                                          checkpoint_sha256=sha256(raw))
         return checkpoint
 
+
+    def _record_iteration(self, checkpoint):
+        """Durable FIFO: every completed full attempt has one trading handoff."""
+        sequence = len(self.state["completed_iterations"]) + 1
+        model = self.state["roles"]["model"]
+        boundary = {"iteration_sequence": sequence,
+            "boundary_id": "model-" + str(model["generation"]) + ":" + checkpoint["boundary_cycle_id"],
+            "boundary_cycle_id": checkpoint["boundary_cycle_id"], "model_generation": model["generation"],
+            "checkpoint_sha256": model["checkpoint_sha256"], "checkpoint_path": model["checkpoint_path"]}
+        atomic_json(self.root / "completed-iterations" / ("%06d.json" % sequence), boundary)
+        self.state["completed_iterations"].append(boundary)
+        self.save()
+
+    def _request_trading_rotation(self):
+        if self.stop_reason() or "trading" not in self.workers:
+            return
+        role = self.state["roles"]["trading"]
+        runtime = self.runtime["trading"]
+        if (not runtime["ready"] or role.get("status") != "RUNNING"
+                or role.get("rotation_request") is not None):
+            return
+        cursor = self.state["trading_completed_iteration"]
+        pending = self.state["completed_iterations"]
+        if cursor >= len(pending):
+            return
+        boundary = pending[cursor]
+        request = {"schema": TRADING_ROTATION_VERSION, "session_id": self.run_id, "role": "trading",
+                   **{key: role[key] for key in ("generation", "token", "release")},
+                   **{key: boundary[key] for key in ("iteration_sequence", "boundary_id", "boundary_cycle_id",
+                                                     "model_generation", "checkpoint_sha256")}}
+        atomic_json(runtime["root"] / "rotation-request.json", request)
+        role["rotation_request"] = request
+        self.save()
+
+    def _trading_checkpoint(self, root):
+        raw = read_bytes(root / "checkpoint.json")
+        checkpoint = json.loads(raw)
+        self._validate_header("trading", checkpoint)
+        role = self.state["roles"]["trading"]
+        request = role.get("rotation_request")
+        if (checkpoint.get("schema") != TRADING_CHECKPOINT_SCHEMA or not request
+                or checkpoint.get("rotation_request") != request
+                or request["iteration_sequence"] != self.state["trading_completed_iteration"] + 1
+                or checkpoint.get("owned_workers_drained") is not True
+                or checkpoint.get("pending_order_identity_preserved") is not True
+                or checkpoint.get("boundary_kind") != "model_full_symbol_attempt"
+                or checkpoint.get("symbols") != role["release"]["symbols"]):
+            raise ValueError("Incomplete Scout trading iteration handoff")
+        for key in ("started_at", "wake_at", "deadline"):
+            if instant(checkpoint[key]) != instant(self.state[key]):
+                raise ValueError("Trading checkpoint changed original session authority: " + key)
+        role.update(checkpoint_path=str(root / "checkpoint.json"), checkpoint_sha256=sha256(raw))
+        return checkpoint
+
     def _finished(self, role, exit_code):
         worker, runtime = self.workers[role], self.runtime[role]
         # Root process exit alone is not a replacement boundary.
@@ -402,10 +516,19 @@ class ServiceController:
         if role == "model" and exit_code == PLANNED_EXIT and result.get("status") == "PLANNED_RESTART":
             checkpoint = self._checkpoint(role, runtime["root"])
             self.state["roles"][role]["status"] = "BETWEEN_ITERATIONS"
-            self.save()
-            # Same original day/deadline; a stop in this gap wins startup.
+            self._record_iteration(checkpoint)
+            # Model and trading handoffs are independent; a slow broker never
+            # postpones the next model process or controls System 1A.
+            self._request_trading_rotation()
             selected = self.select(self.selector)
             self._start_role("model", selected, checkpoint)
+        elif role == "trading" and exit_code == PLANNED_EXIT and result.get("status") == "PLANNED_RESTART":
+            checkpoint = self._trading_checkpoint(runtime["root"])
+            self.state["trading_completed_iteration"] = checkpoint["rotation_request"]["iteration_sequence"]
+            self.state["roles"][role]["status"] = "BETWEEN_ITERATIONS"
+            self.save()
+            selected = self.select(self.selector)
+            self._start_role("trading", selected, checkpoint)
         else:
             self.state["roles"][role].update(status="FAILED", result=result, automatic_retry=False)
             self.save("DEGRADED")
@@ -472,6 +595,7 @@ class ServiceController:
                             if role in self.workers:
                                 self._close_worker(role, self.drain_timeout)
                                 del self.workers[role]
+                    self._request_trading_rotation()
                     if not self.workers:
                         self.save("FAILED", stop_reason="all_roles_failed", automatic_retry=False)
                         return 1
@@ -516,6 +640,11 @@ def worker_main(request_path):
             return 1 if reason == "controller_failure" else 0
         selected = validate_release(request["release"]["release_root"], request["release"]["manifest_sha256"],
                                     protocol=PROTOCOL)
+        if request.get("trading_rotation_version") is not None:
+            manifest = json.loads(read_bytes(Path(selected["release_root"]) / "manifest.json"))
+            if (request["trading_rotation_version"] != TRADING_ROTATION_VERSION
+                    or manifest.get("trading_rotation_version") != TRADING_ROTATION_VERSION):
+                raise ValueError("Pinned Scout worker lacks trading rotation capability")
         if release_identity(selected) != request["release"]:
             raise ValueError("Independent role loaded release differs from pinned request")
         import_release(selected)

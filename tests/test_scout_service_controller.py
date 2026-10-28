@@ -27,7 +27,8 @@ def selection(root, name="a"):
     return {"release_root": str(root / name), "manifest_sha256": name * 64,
         "source_root": str(root / name / "source"), "recipe_path": str(root / "private-recipe.json"),
         "recipe_file_sha256": "f" * 64, "symbols": ["SYM" + str(i) for i in range(11)],
-        "lifecycle_protocol": services.PROTOCOL}
+        "lifecycle_protocol": services.PROTOCOL,
+        "trading_rotation_version": services.TRADING_ROTATION_VERSION}
 
 
 class FakeWorker:
@@ -40,6 +41,7 @@ class FakeWorker:
         self.create_time = float(self.pid)
         self.job_name = "fake-service-job-" + str(self.pid)
         self.returncode, self.resumed, self.closed, self.ticks = None, False, False, 0
+        self.rotation_ticks = 0
         assert kwargs["start_suspended"] is True
         assert kwargs["env"]["PYTHONPATH"] == ""
         assert kwargs["env"]["PYTHONDONTWRITEBYTECODE"] == "1"
@@ -64,7 +66,33 @@ class FakeWorker:
             return self.returncode
         if self.role == "trading":
             self.harness.recovery_ticks += 1
-            return None
+            rotation = self.harness.owner.state["roles"]["trading"].get("rotation_request")
+            if rotation is None:
+                return None
+            self.rotation_ticks += 1
+            if self.harness.mode == "stop_rotation":
+                self.harness.owner.request_stop()
+                return None
+            if self.rotation_ticks < (15 if self.harness.mode == "trading_slow" else 2):
+                return None
+            checkpoint = {**self.header(), "schema": services.TRADING_CHECKPOINT_SCHEMA,
+                "rotation_request": rotation, "boundary_kind": "model_full_symbol_attempt",
+                "boundary_cycle_id": rotation["boundary_cycle_id"],
+                "owned_workers_drained": True, "pending_order_identity_preserved": True,
+                "symbols": self.request["release"]["symbols"],
+                **{key:self.request[key] for key in ("started_at", "wake_at", "deadline")}}
+            result = {**self.header(), "status": "PLANNED_RESTART"}
+            self.returncode = services.PLANNED_EXIT
+            if self.harness.mode == "trading_invalid":
+                checkpoint["owned_workers_drained"] = False
+            if self.harness.mode == "trading_wrong_sequence":
+                checkpoint["rotation_request"] = {**rotation, "iteration_sequence": 99}
+            if self.harness.mode == "trading_crash":
+                result["status"] = "FAILED"
+                self.returncode = 9
+            atomic_json(self.root / "result.json", result)
+            atomic_json(self.root / "checkpoint.json", checkpoint)
+            return self.returncode
         mode = self.harness.mode
         if mode == "slow":
             return None
@@ -92,7 +120,8 @@ class FakeWorker:
         return self.returncode
 
     def job_empty(self):
-        return self.harness.mode != "orphan" or self.closed
+        return not (self.harness.mode == "orphan" or
+                    self.harness.mode == "trading_orphan" and self.role == "trading") or self.closed
 
     def close(self, timeout=120):
         self.closed = True
@@ -108,7 +137,7 @@ class Harness:
         self.workers, self.recovery_ticks, self.selections = [], 0, 0
         def select(_):
             self.selections += 1
-            return selection(tmp_path, "a" if self.selections < 3 else "b")
+            return selection(tmp_path, "a" if mode == "unchanged" or self.selections < 3 else "b")
         self.owner = services.ServiceController(selector=tmp_path / "independent.json", repository=tmp_path,
             datastore=tmp_path, wake_at=self.clock(), deadline=self.clock() + timedelta(seconds=2),
             clock=self.clock, sleep=self.clock.sleep, monotonic=lambda: self.clock.elapsed,
@@ -119,17 +148,21 @@ class Harness:
         return self.owner.run(lock_factory=lambda *_: nullcontext())
 
 
-def test_model_rotation_keeps_one_trading_process_and_original_run_identity(tmp_path):
+def test_full_iteration_rotates_model_and_trading_with_original_run_identity(tmp_path):
     h = Harness(tmp_path)
     assert h.run() == 0
     traders = [w for w in h.workers if w.role == "trading"]
     models = [w for w in h.workers if w.role == "model"]
-    assert len(traders) == 1 and len(models) > 1
+    assert len(traders) > 2 and len(models) > 2
     assert {w.request["session_id"] for w in h.workers} == {h.owner.run_id}
     assert {w.request["deadline"] for w in h.workers} == {h.owner.state["deadline"]}
     assert {w.request["started_at"] for w in h.workers} == {h.owner.state["started_at"]}
     assert models[1].request["previous_checkpoint"]["boundary_cycle_id"] == "cycle-1"
-    assert traders[0].request["release"] != models[-1].request["release"]
+    assert traders[0].request["release"] != traders[-1].request["release"]
+    assert traders[1].request["previous_checkpoint"]["rotation_request"]["iteration_sequence"] == 1
+    assert [w.request["previous_checkpoint"]["rotation_request"]["iteration_sequence"]
+            for w in traders[1:]] == list(range(1, len(traders)))
+    assert h.owner.state["trading_completed_iteration"] == len(traders) - 1
     assert h.recovery_ticks > 10
     assert h.owner.state["system_1a_owned"] is False
     assert all(w.closed for w in h.workers)
@@ -172,10 +205,11 @@ def test_model_recipe_change_fails_model_only_without_replacing_trader(tmp_path)
             result["recipe_file_sha256"] = "changed"
         return result
     h.owner.select = select
-    assert h.run() == 0
-    assert h.recovery_ticks > 10
-    assert len(h.workers) == 2
+    assert h.run() == 1
+    assert len([w for w in h.workers if w.role == "model"]) == 1
+    assert len([w for w in h.workers if w.role == "trading"]) == 1
     assert "private recipe" in h.owner.state["roles"]["model"]["error"]
+    assert "private recipe" in h.owner.state["roles"]["trading"]["error"]
 
 
 def lifecycle(tmp_path, monkeypatch, role="trading"):
@@ -231,3 +265,88 @@ def test_stop_before_first_worker_never_starts_either_role(tmp_path):
     assert h.run() == 0
     assert h.workers == []
     assert h.owner.state["stop_reason"] == "manual_stop"
+
+
+
+def test_unchanged_release_still_replaces_trading_after_every_full_attempt(tmp_path):
+    h = Harness(tmp_path, "unchanged")
+    assert h.run() == 0
+    traders = [w for w in h.workers if w.role == "trading"]
+    assert len(traders) >= 3
+    assert {w.request["release"]["manifest_sha256"] for w in traders} == {"a" * 64}
+    assert [w.request["generation"] for w in traders] == list(range(1, len(traders) + 1))
+    assert all(w.request["trading_rotation_version"] == services.TRADING_ROTATION_VERSION for w in traders)
+
+
+def test_fifo_does_not_block_model_when_trading_drain_is_slow(tmp_path):
+    h = Harness(tmp_path, "trading_slow")
+    assert h.run() == 0
+    models = [w for w in h.workers if w.role == "model"]
+    traders = [w for w in h.workers if w.role == "trading"]
+    assert len(models) > len(traders) >= 2
+    boundaries = h.owner.state["completed_iterations"]
+    assert [b["iteration_sequence"] for b in boundaries] == list(range(1, len(boundaries) + 1))
+    assert len(boundaries) > h.owner.state["trading_completed_iteration"]
+    assert traders[1].request["previous_checkpoint"]["rotation_request"]["iteration_sequence"] == 1
+    for b in boundaries:
+        path = h.owner.root / "completed-iterations" / ("%06d.json" % b["iteration_sequence"])
+        assert json.loads(path.read_bytes()) == b
+
+
+@pytest.mark.parametrize("mode", ["trading_invalid", "trading_wrong_sequence", "trading_crash", "trading_orphan"])
+def test_terminal_trading_handoff_never_respawns_model_stays_independent(tmp_path, mode):
+    h = Harness(tmp_path, mode)
+    assert h.run() == 0
+    assert len([w for w in h.workers if w.role == "trading"]) == 1
+    assert len([w for w in h.workers if w.role == "model"]) > 2
+    assert h.owner.state["roles"]["trading"]["status"] == "FAILED"
+    assert h.owner.state["roles"]["trading"]["automatic_retry"] is False
+    assert h.owner.state["trading_completed_iteration"] == 0
+
+
+def test_stop_during_rotation_never_replaces_trading(tmp_path):
+    h = Harness(tmp_path, "stop_rotation")
+    assert h.run() == 0
+    assert h.owner.state["stop_reason"] == "manual_stop"
+    assert len([w for w in h.workers if w.role == "trading"]) == 1
+    assert h.owner.state["trading_completed_iteration"] == 0
+
+
+def test_missing_capability_rejected_before_trading_process(tmp_path):
+    h = Harness(tmp_path)
+    h.owner.root.mkdir(parents=True)
+    h.owner.save("STARTING")
+    selected = selection(tmp_path)
+    selected.pop("trading_rotation_version")
+    with pytest.raises(ValueError, match="rotation capability"):
+        h.owner._start_role("trading", selected)
+    assert h.workers == []
+
+
+def test_trading_rotation_request_is_generation_fenced_and_stop_wins(tmp_path, monkeypatch):
+    h, live = lifecycle(tmp_path, monkeypatch)
+    role = h.owner.state["roles"]["trading"]
+    h.owner.runtime["trading"]["ready"] = True
+    role["status"] = "RUNNING"
+    h.owner.state["completed_iterations"] = [{"iteration_sequence": 1, "boundary_id": "model-1:cycle-1",
+        "boundary_cycle_id": "cycle-1", "model_generation": 1, "checkpoint_sha256": "c" * 64}]
+    h.owner._request_trading_rotation()
+    expected = role["rotation_request"]
+    assert live.trading_rotation_request() == expected
+    assert live.stop_reason() is None
+    h.owner.request_stop()
+    assert live.trading_rotation_request() is None
+
+
+def test_stale_trading_rotation_request_permanently_revokes_role(tmp_path, monkeypatch):
+    h, live = lifecycle(tmp_path, monkeypatch)
+    role = h.owner.state["roles"]["trading"]
+    role["rotation_request"] = {"schema": services.TRADING_ROTATION_VERSION,
+        **live.header(), "token": "retired-token"}
+    h.owner.save()
+    with pytest.raises(ValueError, match="Stale Scout"):
+        live.trading_rotation_request()
+    assert live.stop_reason() == "controller_failure"
+    role.pop("rotation_request")
+    h.owner.save()
+    assert live.trading_rotation_request() is None

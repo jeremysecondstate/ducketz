@@ -1,5 +1,37 @@
 # Scout iteration-boundary restarts
 
+## Independent 1B model and trading replacement
+
+Jeremy's October 28 clarification requires both worker roles to reload after
+every full eleven-symbol iteration. The earlier independent controller replaced
+only its model worker and left trading pinned for the entire logical run; that
+does not satisfy the requirement.
+
+The controller records each verified full model-attempt boundary in an ordered
+queue. It issues a request fenced to the current trading generation, then
+replaces the model independently. Trading completes its current eligible effects
+or retains their durable retries, drains, closes its journal, writes a trading
+checkpoint, and exits with code 75. After validating that checkpoint and proving
+the entire old process tree exited, the controller validates and loads a complete
+selected release into the next trading generation. This occurs even when the
+release selection is unchanged. Boundaries arriving during a drain remain queued.
+
+A full attempt may retain genuine symbol failures or data deferrals. Subset
+retries, polling ticks, and order-recovery passes are not full-iteration boundaries.
+Trading checkpoints preserve issued forecast identities, pending work, retry
+floors, and the existing journal while permitting concurrent model appends and
+normal retirement of expired or superseded signals. The same logical session,
+original day/deadline, recipe, stop latch, reservations and known-order recovery
+remain authoritative. Independent 1A data work is not restarted by this lifecycle.
+
+The release manifest pins `trading_rotation_version=scout-trading-rotation-v1`.
+The updated controller rejects releases without that capability. The enclosing
+independent service protocol remains compatible with 1A. Installing this
+controller requires one authorized initial activation; subsequent compatible
+application fixes load through automatic iteration replacement. A terminal
+startup, drain, checkpoint or controller failure remains explicit and cannot
+authorize an unrestricted crash respawner.
+
 Jeremy's October 26, 2026 direct instruction authorizes planned worker
 replacement after every completed Scout eleven-symbol 15-minute iteration
 within one authorized logical run. The existing cured launcher starts that

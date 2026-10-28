@@ -551,6 +551,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
     planned_restart = [False]
     iteration_ready = threading.Event()
     boundary_cycle = [None]
+    trading_rotation = [None]
     def check_lifecycle():
         if lifecycle is not None:
             reason = lifecycle.stop_reason()
@@ -697,6 +698,12 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 validate_resume(store, lifecycle=lifecycle, symbols=symbols, config=config)
                 if should_stop():
                     raise InterruptedError("Logical trading run authority ended before broker startup")
+            if independent_services:
+                from .trading_rotation import enabled, validate_resume as validate_trading_resume
+                if enabled(lifecycle):
+                    validate_trading_resume(store, lifecycle=lifecycle, symbols=symbols, datastore=root)
+                    if should_stop():
+                        raise InterruptedError("Logical trading run authority ended before broker startup")
             startup_stage = "local_configuration"
             load_dotenv(repository / ".env")
             if pc == "Scout":
@@ -879,6 +886,16 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             while not should_stop():
                 try:
                     status("RUNNING")
+                    if independent_services and trading_rotation[0] is None:
+                        from .trading_rotation import enabled, validate_request
+                        if enabled(lifecycle):
+                            requested = lifecycle.trading_rotation_request()
+                            if requested is not None:
+                                trading_rotation[0] = validate_request(requested, lifecycle=lifecycle)
+                                boundary_cycle[0] = requested["boundary_cycle_id"]
+                                iteration_ready.set()
+                                lifecycle.phase("iteration_execution", cycle_id=boundary_cycle[0],
+                                                iteration_sequence=requested["iteration_sequence"])
                     due_forecasts = queue.due(clock())
                     for forecast in due_forecasts:
                         # A prior symbol in this snapshot may have just received a
@@ -1005,12 +1022,20 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                     and check_lifecycle() is None and not manual_stop_requested[0]
                     and automatic_stop_requested_at[0] is None):
                 try:
-                    from .iteration_boundary import capture_checkpoint
-                    checkpoint = capture_checkpoint(store, lifecycle=lifecycle, symbols=symbols,
-                                                    boundary_cycle_id=boundary_cycle[0])
+                    if independent_services:
+                        from .trading_rotation import capture_with_retry
+                        checkpoint = capture_with_retry(store, lifecycle=lifecycle, symbols=symbols,
+                            rotation_request=trading_rotation[0], datastore=root, sleep=sleep)
+                    else:
+                        from .iteration_boundary import capture_checkpoint
+                        checkpoint = capture_checkpoint(store, lifecycle=lifecycle, symbols=symbols,
+                                                        boundary_cycle_id=boundary_cycle[0])
+                    if check_lifecycle() is not None:
+                        raise InterruptedError("Trading authority ended before checkpoint publication")
                     lifecycle.checkpoint(checkpoint)
                 except BaseException as exc:
-                    worker_errors.append({"worker": "checkpoint", "error_type": type(exc).__name__, "message": str(exc)})
+                    if not (independent_services and isinstance(exc, InterruptedError) and check_lifecycle() is not None):
+                        worker_errors.append({"worker": "checkpoint", "error_type": type(exc).__name__, "message": str(exc)})
             final_state = ("FAILED" if worker_errors or stop_reason() == "controller_failure" else
                            "PLANNED_RESTART" if planned_restart[0] and stop_reason() == "planned_iteration_restart"
                            else "STOPPED")
