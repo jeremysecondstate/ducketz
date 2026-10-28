@@ -65,19 +65,26 @@ immutable object and small execution evidence in the database. The final send
 path validates the execution projection's identity without rebuilding the
 training matrix. Complete sizing and source evidence remain available for
 offline inspection.
-The execution indicator projection is bounded to 65,536 serialized characters.
+The execution indicator projection is bounded to 65,536 serialized bytes.
 Its features, configuration and provenance retain the original full indicator
 evidence ID; complete indicator candles and repeated session history remain in
 their independently hashed object. The trading forecast has a separate bounded
-serialization gate and retains the same model probabilities, fixed target,
+serialization gate applied after direction and immutable identity stamping,
+and retains the same model probabilities, fixed target,
 cutoff, direction and execution facts. Complete feature maps, recipe/schema
 metadata and individual model diagnostics remain in a hashed scientific-output
-object, available through explicit offline/display access.
+object, available through explicit offline/display access. The final persisted
+forecast, including every envelope, path, witness and identity field, must fit
+65,536 UTF-8 bytes; an oversized record cannot commit a forecast row.
 
 The immutable execution record binds both the projection and full scientific
 output. Cheap file witnesses detect changed or missing retained input, indicator
 and scientific-output objects at execution gates after the original full
 verification; the broker path does not reread or reserialize those matrices.
+New witnesses use Windows native ChangeTime alongside physical file identity.
+Windows creation time and a restored modification time are insufficient.
+Older five-field witnesses remain readable through full content-hash validation;
+they do not inherit the newer witness's fast path.
 Measure forecast payloads and indicator projections separately from the retained
 scientific evidence and preparation cost.
 
@@ -87,6 +94,8 @@ symbol. Missing inputs produce durable deferrals; failures retain their actual
 failure status. Neither a single publication nor a polling/recovery tick is a
 full iteration. Planned model replacement follows a returned full-scope attempt
 and a checkpoint validated against the retained scientific store.
+Subset retries stay in the existing model generation and never supply a
+replacement checkpoint. The next full configured scope is a distinct boundary.
 
 ## Preparation reuse and resource bounds
 
@@ -95,6 +104,12 @@ An acquisition deferral releases that symbol's slot so other ready inputs can
 advance. The model service also uses bounded symbol concurrency. Process
 priority and scheduling are resource controls; they do not replace any saved
 estimator, preprocessing or calibration parameter.
+Cold history loading has bounded symbol concurrency and records each symbol's
+start, completion, failure and elapsed time. Acquisition is pinned to the data
+day selected before initialization, including when cold work crosses midnight.
+After the original preparation deadline, recovery skips training-history and
+context initialization while retaining final native acquisition and validated
+saved-outcome scoring. Completion labels alone never replace evidence checks.
 
 `ContextCache.build_row` reuses a historical context vector only after that
 exact derivation has passed its original source and cache checks. The process
@@ -172,6 +187,14 @@ separate saved task/binding retains the established data authority and does not
 include a trading activation flag. The controller bootstrap's `--live` starts
 the authorized 1B run, `--check` performs offline release/recipe/calendar checks,
 and `--stop` writes the existing run's durable stop latch.
+
+Every local manual trading wrapper must delegate to that same verified
+controller bootstrap, including `Start-15m-Trader.cmd`. The install helper's
+`manual_launcher_source` generates a wrapper whose no-argument action is the
+existing manual start. Explicit `--check` and `--stop` pass through without an
+implicit `--live`; unsupported legacy recipe overrides fail at argument parsing.
+The scheduled task's existing cured wrapper, logging, principal and settings
+remain separate preserved bindings.
 
 The controller resolves the independent selector before each planned model
 replacement. That successor validates its exact manifest before application

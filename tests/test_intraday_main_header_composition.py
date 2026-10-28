@@ -64,7 +64,8 @@ def sized(intents, f):
 
 def test_cold_validates_originals_and_warm_uses_no_optional_cache(tmp_path, monkeypatch):
     store = ShadowStore(tmp_path / "source.sqlite3")
-    originals = [put(store, "first"), put(store, "second", offset=15)]
+    # Raw predecessor rows have no optional producer-seeded cache proof.
+    originals = [put(store, "first", raw=True), put(store, "second", offset=15, raw=True)]
     reads = spy(store, monkeypatch)
     initial = headers(store)
     assert reads == [f["forecast_id"] for f in originals]
@@ -77,9 +78,9 @@ def test_cold_validates_originals_and_warm_uses_no_optional_cache(tmp_path, monk
 
 def test_mixed_reads_only_missing_signature_and_new_instance_reuses_proof(tmp_path, monkeypatch):
     store = ShadowStore(tmp_path / "source.sqlite3")
-    first = put(store, "first")
+    first = put(store, "first", raw=True)
     headers(store)
-    second = put(store, "second", offset=15)
+    second = put(store, "second", offset=15, raw=True)
     reads = spy(store, monkeypatch)
     disk = durable_spy(monkeypatch)
     assert [x["forecast_id"] for x in headers(store)] == [first["forecast_id"], second["forecast_id"]]

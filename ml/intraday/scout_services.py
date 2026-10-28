@@ -5,7 +5,7 @@ The separate data entrypoint has no broker, order or trading activation path.
 """
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from dataclasses import asdict, replace
 from datetime import timedelta
 from pathlib import Path
@@ -16,10 +16,13 @@ import os
 import threading
 import time
 
-from .prediction import ContractError, STEP, digest, encoded, instant
+from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant
 from .store import utcnow
 from .service_handoff import ReadySpool, ServiceStore, full_snapshot
 from .live_session import ExecutionQueue
+from .final_scoring import score_saved_session_outcomes
+
+_METRIC_LOCK = threading.Lock()
 
 
 class ServiceExecutionQueue(ExecutionQueue):
@@ -53,7 +56,7 @@ class ServiceExecutionQueue(ExecutionQueue):
 def metric(root, role, phase, **values):
     path = Path(root) / (role + "-metrics.jsonl")
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as stream:
+    with _METRIC_LOCK, path.open("a", encoding="utf-8") as stream:
         stream.write(encoded({"recorded_at": utcnow(), "role": role, "phase": phase, **values}) + "\n")
 
 
@@ -160,6 +163,20 @@ def run_model_service(*, repository, datastore, release, lifecycle, clock=utcnow
     runner = ShadowRunner(store=store, pc=pc, symbols=symbols, config=config, stopped=stopped,
                           clock=clock, **runtime)
     completed = []
+    def retry_ready(symbol, error, reference):
+        if error.get("reason") != "system_1a_snapshot_pending":
+            return True
+        import sqlite3
+        try:
+            return spool.ready(symbol, reference, now=clock()) is not None
+        except ContractError:
+            # Let the ordinary symbol path record the corrupt input as a
+            # durable failure. Readiness inspection cannot skip validation.
+            return True
+        except sqlite3.OperationalError as exc:
+            if "locked" not in str(exc).lower() and "busy" not in str(exc).lower():
+                raise
+            return False
     def on_iteration(result):
         completed.append(result)
         complete.set()
@@ -178,9 +195,10 @@ def run_model_service(*, repository, datastore, release, lifecycle, clock=utcnow
             # remain evidence; only missing due inputs for the newest quarter
             # can become a current training opportunity.
             retry_symbols = [symbol for symbol, error in saved.get("failures", {}).items()
-                             if error.get("retryable") and instant(error["retry_at"]) <= instant(clock())]
+                             if error.get("retryable") and instant(error["retry_at"]) <= instant(clock())
+                             and retry_ready(symbol, error, reference)]
             if saved.get("status") == "completed" or not retry_symbols:
-                pause(.2)
+                pause(1)
                 continue
         began = time.perf_counter()
         result = runner.run_cycle(PreparedHistories(spool, store, reference, clock=clock),
@@ -189,7 +207,13 @@ def run_model_service(*, repository, datastore, release, lifecycle, clock=utcnow
             acquisition={"kind": "independent_verified_ready_snapshot"})
         metric(service_root, "model", "model_work", seconds=time.perf_counter()-began,
                cycle_id=result["cycle_id"], reference_at=reference.isoformat())
-        on_iteration(result)
+        if retry_symbols is None:
+            on_iteration(result)
+        else:
+            # A subset retry may update durable evidence, but is never another
+            # full-scope attempt or an authority to replace this worker.
+            metric(service_root, "model", "subset_retry", cycle_id=result["cycle_id"],
+                   symbols=retry_symbols, status=result["status"])
     if lifecycle.stop_reason() is not None:
         return {"status": "STOPPED", "stop_reason": lifecycle.stop_reason()}
     if len(completed) != 1:
@@ -216,6 +240,7 @@ def run_trading_service(*, repository, datastore, release, lifecycle):
 def run_data_service(*, repository, datastore, release, clock=utcnow, sleep=time.sleep,
                      stopped=lambda: False):
     """One separately authorized data day; never observes the trader stop latch."""
+    started = instant(clock())
     from datafetching.runtime_lock import exclusive_runtime_lock
     from dotenv import load_dotenv
     from .data import AcquisitionJournal, load_local_history
@@ -229,8 +254,12 @@ def run_data_service(*, repository, datastore, release, clock=utcnow, sleep=time
     root = Path(datastore) / "intraday/services"
     spool = ReadySpool(root, pc=pc, symbols=symbols, recipe_hash=recipe_hash,
                        recipe_identity=recipe_identity, clock=clock)
-    wake = manual_wake_at(clock())
+    wake = manual_wake_at(started)
     deadline = automatic_stop_deadline(wake)
+    data_day = wake.astimezone(PACIFIC).date()
+    start_reference = max(wake, latest_completed_reference(started,
+        publication_offset_seconds=config.publication_offset_seconds))
+    after_close = started >= deadline
     session = "scout-data-" + wake.date().isoformat() + "-" + recipe_hash[:16]
     halt = threading.Event()
     # 1A owns the latched data day, including the final native window after
@@ -248,12 +277,32 @@ def run_data_service(*, repository, datastore, release, clock=utcnow, sleep=time
     evidence = ServiceStore(Path(datastore) / "intraday/shadow.sqlite3", object_root=root)
     workers, errors = [], []
     with exclusive_runtime_lock(Path(datastore) / "locks/scout-data-service.lock", process_name="scout-data-service"):
+        recovery_spooled = []
+        def record(kind, payload):
+            import sqlite3
+            try:
+                spool.record(kind, payload)
+            except sqlite3.OperationalError as exc:
+                if "locked" not in str(exc).lower() and "busy" not in str(exc).lower():
+                    raise
+                # The same busy database cannot durably record its own retry.
+                # Keep an independent fsynced atomic record, without waiting
+                # for a consumer or hiding the original work/error identity.
+                value = {"schema":"scout-data-recovery-v1", "kind":kind, "payload":payload,
+                         "recorded_at":instant(clock()).isoformat(), "database_error":str(exc)}
+                name = digest(value) + ".json"
+                atomic_json(root / "recovery" / name, value)
+                recovery_spooled.append(name)
+                del recovery_spooled[:-32]
+        progress = {"stage": "initializing", "history_complete": [], "history_failed": [], "history_pending": list(symbols)}
         def status(state):
             atomic_json(root / "data-status.json", {"schema": "scout-data-service-v1", "status": state,
                 "pc": pc, "pid": os.getpid(), "source_session": session, "symbols": list(symbols),
                 "wake_at": wake.isoformat(), "deadline": deadline.isoformat(), "recipe_hash": recipe_hash,
                 "release": {k:release[k] for k in ("release_root", "manifest_sha256")},
-                "heartbeat_at": instant(clock()).isoformat(), "errors": errors})
+                "heartbeat_at": instant(clock()).isoformat(), "errors": errors,
+                "startup_progress": progress, "data_day": str(data_day), "after_close_recovery": after_close,
+                "recovery_spooled": list(recovery_spooled)})
         status("STARTING")
         while instant(clock()) < wake and not stop():
             pause(1)
@@ -263,26 +312,59 @@ def run_data_service(*, repository, datastore, release, clock=utcnow, sleep=time
         load_dotenv(Path(repository) / ".env")
         histories = {}
         native = native_interval_symbols_for_runtime(runtime)
-        for symbol in symbols:
+        def load_history(symbol):
+            begun = time.perf_counter()
             try:
+                if stop():
+                    raise InterruptedError("Data service stopped before history initialization")
                 if symbol in native:
                     from .native_interval import load_native_interval_history
-                    histories[symbol] = load_native_interval_history(datastore, symbol,
+                    return load_native_interval_history(datastore, symbol,
                         source_dataset=config.source_dataset, pc=pc,
                         recovery_contract=getattr(runtime["dataset_builder"], "historical_recovery_contract", None))
-                else:
-                    histories[symbol] = load_local_history(datastore, symbol, source_dataset=config.source_dataset)
-            except Exception as exc:
-                spool.record("history_unavailable", {"symbol": symbol, "error_type": type(exc).__name__})
+                return load_local_history(datastore, symbol, source_dataset=config.source_dataset)
+            finally:
+                metric(root, "data", "cold_history", symbol=symbol, seconds=time.perf_counter()-begun)
+        progress["stage"] = "history_loading" if not after_close else "saved_day_recovery"
+        status("STARTING")
+        if not after_close:
+            # Keep every original history validator and population. Bound the
+            # independent file reads without serializing the entire scope.
+            with ThreadPoolExecutor(max_workers=2, thread_name_prefix="scout-1a-history") as pool:
+                incoming = {pool.submit(load_history, symbol): symbol for symbol in symbols}
+                while incoming:
+                    finished, _ = wait(incoming, timeout=1, return_when=FIRST_COMPLETED)
+                    for future in finished:
+                        symbol = incoming.pop(future)
+                        try:
+                            histories[symbol] = future.result()
+                            progress["history_complete"].append(symbol)
+                        except Exception as exc:
+                            progress["history_failed"].append(symbol)
+                            record("history_unavailable", {"symbol": symbol, "error_type": type(exc).__name__})
+                        progress["history_pending"].remove(symbol)
+                    progress["history_active"] = [symbol for future, symbol in incoming.items() if future.running()]
+                    status("STARTING")
+        else:
+            # No models or causal preparation remain eligible after this day's
+            # deadline. The feed still validates saved originals and resumes
+            # exact missing native windows; a completion label skips nothing.
+            progress["history_pending"] = []
+        if stop():
+            status("STOPPED")
+            return {"status": "STOPPED", "source_session": session}
+        progress["stage"] = "native_feed_initializing"
+        status("STARTING")
         provider = prepare_minute_provider(runtime, datastore=datastore, pc=pc,
             symbols=symbols, source_dataset=config.source_dataset, clock=clock)
         journal = AcquisitionJournal(Path(datastore) / "intraday/acquisition.sqlite3")
         feed = QuarterHourMinuteFeed(provider=provider, store=evidence, journal=journal,
             histories=histories, pc=pc, symbols=symbols, session_id=session, clock=clock,
             publication_offset_seconds=config.publication_offset_seconds, native_interval_symbols=native,
+            start_reference=start_reference,
             reference_fill_policy=getattr(runtime["dataset_builder"], "reference_fill_policy", None))
-        collector = prepare_market_collection(runtime, datastore=datastore, pc=pc, symbols=symbols,
-                                              clock=clock, stopped=stop, pause=pause)
+        collector = (None if after_close else prepare_market_collection(runtime, datastore=datastore, pc=pc, symbols=symbols,
+                                              clock=clock, stopped=stop, pause=pause))
         def background(name, action):
             def work():
                 attempts = 0
@@ -301,7 +383,7 @@ def run_data_service(*, repository, datastore, release, clock=utcnow, sleep=time
                         errors.append(detail)
                         del errors[:-32]
                         try:
-                            spool.record("data_worker_retry", detail)
+                            record("data_worker_retry", detail)
                         except Exception:
                             pass
                     try:
@@ -314,15 +396,27 @@ def run_data_service(*, repository, datastore, release, clock=utcnow, sleep=time
         background("acquisition", lambda: feed.run(stopped=stop, pause=pause))
         if collector is not None:
             background("context", lambda: collector.run(stopped=stop, pause=pause,
-                on_retry=lambda detail: spool.record("context_retry", detail)))
-        background("scoring", lambda: scoring_loop(evidence, histories=histories, provider=provider,
-            journal=journal, session_id=session, stopped=stop, clock=clock, pause=pause, pc=pc,
-            history_source=feed.scoring_history_source))
+                on_retry=lambda detail: record("context_retry", detail)))
+        if not after_close:
+            background("scoring", lambda: scoring_loop(evidence, histories=histories, provider=provider,
+                journal=journal, session_id=session, stopped=stop, clock=clock, pause=pause, pc=pc,
+                history_source=feed.scoring_history_source))
         runner = ShadowRunner(store=store, pc=pc, symbols=symbols, config=config, clock=clock,
                               stopped=stop, **runtime)
-        pending, completed, retry = {}, set(), {}
+        pending, completed, retry, retry_attempts = {}, set(), {}, {}
+        progress["stage"] = "active"
         cursor = 0
         reference = None
+        def defer(symbol, ref, exc):
+            attempts = retry_attempts.get(symbol, 0) + 1 if ref == reference else 1
+            delay = max(float(getattr(exc, "retry_after_seconds", 0)), min(60, 3 * 2 ** min(attempts-1, 5)))
+            due = instant(clock()) + timedelta(seconds=delay)
+            if ref == reference:
+                retry_attempts[symbol] = attempts
+                retry[symbol] = due
+            record("preparation_deferred", {"symbol": symbol, "reference_at": ref.isoformat(),
+                "error_type": type(exc).__name__, "reason": getattr(exc, "reason", None),
+                "attempt": attempts, "retry_after_seconds": delay, "retry_at": due.isoformat()})
         try:
             with ThreadPoolExecutor(max_workers=2, thread_name_prefix="scout-1a-prepare") as pool:
                 while not stop():
@@ -331,6 +425,7 @@ def run_data_service(*, repository, datastore, release, clock=utcnow, sleep=time
                         reference = newest
                         completed.clear()
                         retry.clear()
+                        retry_attempts.clear()
                     for symbol, (ref, future, queued) in list(pending.items()):
                         if not future.done():
                             continue
@@ -347,10 +442,9 @@ def run_data_service(*, repository, datastore, release, clock=utcnow, sleep=time
                             if ref == reference:
                                 completed.add(symbol)
                         except Exception as exc:
-                            retry[symbol] = instant(clock()) + timedelta(seconds=3)
-                            spool.record("preparation_deferred", {"symbol": symbol, "reference_at": ref.isoformat(),
-                                "error_type": type(exc).__name__, "reason": getattr(exc, "reason", None)})
-                    if eligible_reference(reference) and instant(clock()) < reference + 3 * STEP:
+                            defer(symbol, ref, exc)
+                    if (not after_close and reference.astimezone(PACIFIC).date() == data_day
+                            and eligible_reference(reference) and instant(clock()) < reference + 3 * STEP):
                         # At most two in-flight preparations; scan the complete
                         # scope every turn. Missing acquisition frees its slot.
                         fair_scope = symbols[cursor:] + symbols[:cursor]
@@ -359,8 +453,14 @@ def run_data_service(*, repository, datastore, release, clock=utcnow, sleep=time
                                 break
                             if symbol in pending or symbol in completed or retry.get(symbol, instant(clock())) > instant(clock()):
                                 continue
-                            if spool.ready(symbol, reference, now=clock()):
-                                completed.add(symbol)
+                            try:
+                                if spool.ready(symbol, reference, now=clock()):
+                                    completed.add(symbol)
+                                    continue
+                            except Exception as exc:
+                                # A busy handoff is a durable symbol deferral,
+                                # never a reason to stop independent acquisition.
+                                defer(symbol, reference, exc)
                                 continue
                             identity = digest({"pc": pc, "symbol": symbol, "reference": reference.isoformat(),
                                                "recipe_hash": recipe_hash, "source_session": session})
@@ -384,8 +484,6 @@ def run_data_service(*, repository, datastore, release, clock=utcnow, sleep=time
             if getattr(feed, "closed", False) and not stopped():
                 # The final native candle may arrive after trading's deadline.
                 # Score retained targets without starting acquisition or models.
-                from .live_session import score_saved_session_outcomes
-                from .prediction import PACIFIC
                 with evidence.connect() as db:
                     cycles = [json.loads(raw) for (raw,) in db.execute("SELECT payload FROM cycles")]
                 sessions = {cycle["experiment"] for cycle in cycles
@@ -395,10 +493,17 @@ def run_data_service(*, repository, datastore, release, clock=utcnow, sleep=time
                     try:
                         result = score_saved_session_outcomes(evidence, session_id=trading_session,
                             actor=pc, symbols=symbols, as_of=clock(), stopped=stopped)
-                        spool.record("final_saved_outcomes", result)
+                        record("final_saved_outcomes", result)
                     except Exception as exc:
-                        spool.record("final_scoring_deferred", {"session_id": trading_session,
+                        errors.append({"worker": "final_scoring", "error_type": type(exc).__name__,
+                                       "session_id": trading_session})
+                        record("final_scoring_deferred", {"session_id": trading_session,
                             "error_type": type(exc).__name__, "original_targets_retained": True})
+            record("data_day_outcome", {"source_session": session, "data_day": str(data_day),
+                "native_feed_closed": bool(getattr(feed, "closed", False)),
+                "owned_workers_drained": not any(worker.is_alive() for worker in workers),
+                "pending_preparations": [{"symbol": symbol, "reference_at": ref.isoformat()}
+                    for symbol, (ref, _, _) in pending.items()], "errors": list(errors)})
             status("FAILED" if errors else "STOPPED")
         return {"status": "FAILED" if errors else "STOPPED", "source_session": session}
 
