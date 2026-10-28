@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T05:01:22.566976Z",
+  "id": "20261028T050122Z-15e05203729245a98beb5f92de5b9332",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout: manual provider readiness delegation installed and regression guarded"
+}

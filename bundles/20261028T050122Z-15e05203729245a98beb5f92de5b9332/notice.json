@@ -1,0 +1,111 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T045624Z-4c1c68449bdc45519847e9d9621ba2c6",
+  "change_id": "20261028T045624Z-4c1c68449bdc45519847e9d9621ba2c6",
+  "details": [
+    "Shared main already recognizes the complete manual provider delegation. Four new controls cover real delegation, empty helper, disconnected caller and the original direct-call structural layout.",
+    "Scout selectively adopted that existing complete alternative and generic variant selection into its older diagnostic layout. All original report semantics, manual controls, unowned installed source and the exact private recipe were retained.",
+    "All79 local readiness tests pass with no deselection, resolving the six prior inherited diagnostic failures.",
+    "Original adopted package identity retained: 20261026T141653Z-5371234b142f433bab2dcc21faea649e, source8dec4ec23f5693017457931c5d5ef06560ee145b. Prior calibrator repair remains installed."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_readiness.py"
+    }
+  ],
+  "limitations": [
+    "AST controls prove structural source wiring, not live session execution or provider availability.",
+    "No provider/broker calls, production training, trader/task activation or loaded runtime observation."
+  ],
+  "main_commit": "671fe653b161957601f89851b27a9ca3a7f334e9",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/481",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Shared regression coverage integrated through separately authorized main publication. Scout selected a compatible immutable diagnostic release. Each PC retains its local layout and model recipe; await normal safe loading with no requested trader restart.",
+  "scope": "shared",
+  "source_commit": "f0b5facfe40642e2f03380e3056ea7d71cc30b44",
+  "summary": "Scout: manual provider readiness delegation installed and regression guarded",
+  "tests": {
+    "local_complete": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_intraday_readiness.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/manual-readiness-pytest"
+        ],
+        "completed_at_utc": "2026-10-28T04:57:50.285114Z",
+        "exit_code": 0,
+        "output_sha256": "2a9dad24f290ddd1670bd4435401699de3125ec97c4ee6559b602f213e8d6dc3",
+        "result": "........................................................................ [ 91%]\r\n.......                                                                  [100%]\r\n79 passed in 14.23s",
+        "started_at_utc": "2026-10-28T04:57:34.743011Z"
+      }
+    ],
+    "main": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_intraday_readiness.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/manual-readiness-pytest"
+        ],
+        "completed_at_utc": "2026-10-28T05:00:08.716069Z",
+        "exit_code": 0,
+        "output_sha256": "51e01ccb6fea462835220434d997c39008c042071a19a766f096b1e8ad042c3f",
+        "result": "......................................................................   [100%]\r\n70 passed in 8.26s",
+        "started_at_utc": "2026-10-28T04:59:59.434296Z"
+      }
+    ],
+    "publication": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_intraday_readiness.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/manual-readiness-pytest"
+        ],
+        "completed_at_utc": "2026-10-28T04:58:37.139832Z",
+        "exit_code": 0,
+        "output_sha256": "bc6780734b05fd11223163808abb670c2bb92b1f12bd49333932adbdfda328f9",
+        "result": "......................................................................   [100%]\r\n70 passed in 8.99s",
+        "started_at_utc": "2026-10-28T04:58:27.000909Z"
+      }
+    ],
+    "queued": [
+      {
+        "command": [
+          "python",
+          "-B",
+          "-m",
+          "pytest",
+          "tests/test_intraday_readiness.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=scratch/manual-readiness-pytest"
+        ],
+        "completed_at_utc": "2026-10-28T04:56:35.858246Z",
+        "exit_code": 0,
+        "output_sha256": "8b461169a6529290b37e1ac43d6a67b60a8fd093ea78457dde73287b4b5b3e64",
+        "result": "......................................................................   [100%]\r\n70 passed in 9.79s",
+        "started_at_utc": "2026-10-28T04:56:24.837573Z"
+      }
+    ]
+  }
+}
