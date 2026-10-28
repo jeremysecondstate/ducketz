@@ -1,0 +1,54 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T022132Z-602d7f441ec54312af799ec0c717a495",
+  "change_id": "20261028T022132Z-602d7f441ec54312af799ec0c717a495",
+  "commit_sha": "918851a1ed6a81e931d288539bcb75107d46ee66",
+  "depends_on": "https://github.com/jeremysecondstate/ducketz/pull/476",
+  "files": [
+    "app/ui/scout_stats_peer.py",
+    "app/ui/scout_stats_history.py",
+    "app/ui/scout_horizon_stats_widgets.py",
+    "tests/test_scout_stats_history.py",
+    "tests/test_scout_horizon_stats_ui.py",
+    "tests/test_scout_stats_history_integration.py",
+    "app/ui/gameplan_stats.py",
+    "ml/gameplan_stats_handoff.py",
+    "app/ui/gameplan_stats_data.py",
+    "tests/test_scout_history_direction_metadata.py"
+  ],
+  "limitations": [
+    "Private exports, financial rows, operating data, databases and fitted models are excluded from shared source and public evidence.",
+    "Main integration remains pending because current main does not descend from the reviewed source base; draft PR includes previously reviewed Stats dependencies.",
+    "Peer installation remains unverified. No broker/provider access, training or trader operation was performed for source verification."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/477",
+  "remote_sha": "918851a1ed6a81e931d288539bcb75107d46ee66",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Read-only historical display support; each PC retains original publications, saved science, operating state and manual controls. Local display installation is recorded separately.",
+  "scope": "shared",
+  "summary": "Atlas published verified saved Scout historical Stats display support",
+  "supersedes": [
+    "20261028T021820Z-f02e49095bde4215bfa5fb6e9a46826d"
+  ],
+  "tests": {
+    "completed_at_utc": "2026-10-28T02:28:43.766884Z",
+    "fingerprint_count": 83,
+    "focused_replay_output_sha256": "29f294a1b00b1195829f762911c802c62fd7f9c3aad9c0066221875097b562c5",
+    "fresh_candidate": "293 passed, one legacy Tk initialization skip; that exact case passed separately in a fresh process with unchanged fingerprints",
+    "output_sha256": [
+      "040e514367e144f73a7e0d8a364e4379cebe4dfab660caa619e0785d1d8e8257",
+      "0578d13ec1075c7a5a48776fdfc613847167127570367125ff91f74c558e37c6",
+      "889c60dc6d915ce10f7b454ef53a0bcbdea7b71b5d91c52738258323462c27e1",
+      "ae8c5bfe34f732b6517a8933d9c998ff3346e3f83e0da9a3052026486722e661",
+      "47f75cf135b2a50d7dddef1129208587ae28a694450204b7ef3f63c64b388afe",
+      "fe7f7856abd3eaf13901ac54542f6947cf7de04e7dc9322fa99f036719226554",
+      "8e7549e74b7f0fe124d572971f0d3e42c274ee74cb5a8565f5c544d2daf35ae6",
+      "4251edd5079e1ba6f7320801c8c7f6ac150b1551aa1e618ca6fad63bad92907e",
+      "1d9a82ebdccc938ebbdb229b1e73d7c1d1319819b7865ddaeb23d65d45dd26bc",
+      "37fb4fbecb3e813dde2345be983b80597eec3e84899052253ccf74e3d8d4ee3e",
+      "01c343525b49436ae0aa1158277e17bf15cf0ed4989ebfccfcf8888f320949db"
+    ],
+    "source_queue": "294 offline test executions passed, no skips",
+    "started_at_utc": "2026-10-28T02:27:26.699339Z"
+  }
+}
