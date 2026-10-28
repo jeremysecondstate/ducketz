@@ -1,0 +1,26 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T113826Z-f06b21c213044cfdaac341f3eb6adeef",
+  "change_id": "scout-model-failure-persistence:20261028T113826Z-f06b21c213044cfdaac341f3eb6adeef",
+  "completion_record": "20261028T113826Z-f06b21c213044cfdaac341f3eb6adeef",
+  "files": [
+    "ml/intraday/scout_services.py",
+    "tests/test_scout_model_failure_persistence.py"
+  ],
+  "limitations": [
+    "No production provider/broker/model calls or trader control actions.",
+    "Both observed roles failed terminally before installation; verify next normal authorized initial launch and affected behavior.",
+    "Underlying lock holder and unrelated model SQLite paths are not declared repaired."
+  ],
+  "main_sha": "10751d56115c9894d8b891c2ec9865c23ee5b202",
+  "repository": "jeremysecondstate/ducketz",
+  "review_url": "https://github.com/jeremysecondstate/ducketz/pull/492",
+  "runtime_implications": "Scout installation preserves all unowned predecessor files and exact private recipe. No controller/bootstrap/task/launcher changes, model-cycle replay, crash respawn or scientific tuning.",
+  "scope": "Shared Scout-service correctness only; each PC retains its model recipe, symbols and operating controls.",
+  "source_sha": "d40f38ddaa2ef4b63384c536c2c3fc418171804a",
+  "summary": "Scout model failure evidence survives transient SQLite contention without replaying model work",
+  "tests": {
+    "installed_scout": "36 passed, zero skips on exact composed immutable installation",
+    "source_courier_main": "36 passed, zero skips on each final rebased source/courier/main suite; overlapping checks"
+  }
+}
