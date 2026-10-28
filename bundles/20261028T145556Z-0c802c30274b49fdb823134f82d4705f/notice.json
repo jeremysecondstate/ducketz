@@ -1,0 +1,87 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T144540Z-516304e1792448f78ed92b02e82573b3",
+  "change_id": "20261028T144540Z-516304e1792448f78ed92b02e82573b3",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative; shared ready-handoff correctness repair applicable to both PCs after local source review.",
+    "The producer and consumer could serialize the same publication offset as integer or float and produce different JSON hashes. Accept only the exact equal integral int/float counterpart within the existing offset domain.",
+    "Preserve frozen configurations and original hashes, immutable records and snapshots, all other scientific fields, target clocks, expiry, local recipes, probabilities, feature order, data-population rules, independent execution state and trader controls."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/split_handoff.py",
+      "sha256": "070dbbfa97fa9a6cf872dbb43a57377a60c2ea80d3bf7546decae474afd03362"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/split_model.py",
+      "sha256": "22eb970912c3a75e9b19aeff664408e3403077f0c00a9eb645814df59c58911f"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_ready_configuration_identity.py",
+      "sha256": "6d8e262875c351804487ca4ce2aae3646bb3828fd2d18ca68774e2ffea55b203"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_ready_offset_package.py",
+      "sha256": "df342c7d77715c48c78c961fab538c5b09d79b76dcb0b0c937a893d36e6e5d49"
+    }
+  ],
+  "limitations": [
+    "Each public author, queue, isolated source and fresh main check passed 32 cases with four explicit skips because the public base lacks the separately reviewed full model adapters.",
+    "Full local application integration passed 188 cases with one intentional deselection of an existing process-spawning lifetime fixture under this checker that denies all subprocess operations; zero network attempts.",
+    "This source-only handoff does not establish complete local installation, actual runtime loading or naturally exercised recovery. These engineering stages are recorded separately.",
+    "No provider, broker, production fitting, trader activation, task invocation or order operation was induced for verification."
+  ],
+  "main_commit": "18e77166f12d6035dd7561a22bd027027905c4a3",
+  "privacy_review": "Generic shared source, synthetic fixtures and sanitized publication/validation facts only. No private native bindings, identifiers, account state, observations, raw data, fitted models or task memory.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Adopt only reviewed applicable source and seal a complete generation through tools/trader_installation.py. Existing admitted sessions may naturally load at supported planned renewal. This handoff adds no operating activation, post-stop restart, lifetime extension, peer-acceptance requirement or nightly prerequisite.",
+  "scope": "shared",
+  "source_commit": "4f422f25b48e5100db0c6a0120f9044a46fddd73",
+  "summary": "Atlas ready handoffs accept identical numeric offset encodings",
+  "tests": [
+    {
+      "check": "tests/check_intraday_ready_offset_package.py",
+      "limitation": "Explicit unavailable full-model adapter cases",
+      "network_attempts": 0,
+      "passed": 32,
+      "scope": "public author",
+      "skipped": 4
+    },
+    {
+      "check": "tests/check_intraday_ready_offset_package.py",
+      "limitation": "Explicit unavailable full-model adapter cases",
+      "network_attempts": 0,
+      "passed": 32,
+      "scope": "immutable queue",
+      "skipped": 4
+    },
+    {
+      "check": "tests/check_intraday_ready_offset_package.py",
+      "limitation": "Explicit unavailable full-model adapter cases",
+      "network_attempts": 0,
+      "passed": 32,
+      "scope": "isolated source candidate",
+      "skipped": 4
+    },
+    {
+      "check": "tests/check_intraday_ready_offset_package.py",
+      "limitation": "Explicit unavailable full-model adapter cases",
+      "network_attempts": 0,
+      "passed": 32,
+      "scope": "fresh main candidate",
+      "skipped": 4
+    },
+    {
+      "check": "tests/check_intraday_ready_offset_package.py --integration",
+      "deselected": 1,
+      "limitation": "Existing process-spawning lifetime fixture intentionally deselected because this focused checker denies subprocess operations",
+      "network_attempts": 0,
+      "passed": 188,
+      "scope": "full local application integration"
+    }
+  ]
+}

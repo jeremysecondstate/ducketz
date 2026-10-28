@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T14:55:56.528850Z",
+  "id": "20261028T145556Z-0c802c30274b49fdb823134f82d4705f",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas ready handoffs accept identical numeric offset encodings"
+}
