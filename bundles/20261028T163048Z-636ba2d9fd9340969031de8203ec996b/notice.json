@@ -1,0 +1,25 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T162407Z-545a3d46a24b42e1887c48351033b1f0",
+  "change_id": "scout-console:20261028T162407Z-545a3d46a24b42e1887c48351033b1f0",
+  "completion_record": "20261028T162407Z-545a3d46a24b42e1887c48351033b1f0",
+  "files": [
+    "tests/test_scout_console.py",
+    "tools/scout_service_controller.py"
+  ],
+  "limitations": [
+    "Console display is bounded best-effort; original generation logs remain complete.",
+    "Actual console buffer confirms local visible model/trading messages after one directly human-authorized restart; this does not close unrelated SQLite incidents."
+  ],
+  "main_sha": "103f9f28c4bd32b7d36f2cae27a7d25d93c1779a",
+  "repository": "jeremysecondstate/ducketz",
+  "review_url": "https://github.com/jeremysecondstate/ducketz/pull/496",
+  "runtime_implications": "New immutable compatible controller bootstrap and authorized initial launch required. Writes to attached Windows console when inherited stdout is redirected, with stdout fallback; no native task edits or changes to worker authority/model replacement/order controls.",
+  "scope": "Shared independent Scout console display correctness. Every PC retains symbols, model recipe, fitted artifacts and operating authority.",
+  "source_sha": "639749fab9f37a2423db716977291c7694b8cd05",
+  "summary": "Scout trader terminal displays retained worker messages and lifecycle status",
+  "tests": {
+    "composed_and_installed": "88 passed, zero skipped on final composed and exact installed Scout release; overlapping suites",
+    "source_courier_main": "88 passed, zero skipped on sealed source, courier and main candidates; overlapping suites"
+  }
+}
