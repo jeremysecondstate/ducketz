@@ -1,0 +1,25 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T164808Z-b1d6d23aa5e2410c9e4db5b4d4ed4926",
+  "change_id": "scout-failure-progress:20261028T164808Z-b1d6d23aa5e2410c9e4db5b4d4ed4926",
+  "completion_record": "20261028T164808Z-b1d6d23aa5e2410c9e4db5b4d4ed4926",
+  "files": [
+    "ml/intraday/scout_services.py",
+    "tests/test_scout_failure_progress.py"
+  ],
+  "limitations": [
+    "Native between-commit regression and authority checks use offline fixtures; no production APIs or trader controls.",
+    "Underlying live SQLite lock holder remains unproved. Runtime affected-operation confirmation remains separate from installation."
+  ],
+  "main_sha": "234a7e5388ee56f4f507a09b36842366f53dd823",
+  "repository": "jeremysecondstate/ducketz",
+  "review_url": "https://github.com/jeremysecondstate/ducketz/pull/498",
+  "runtime_implications": "Compatible independent-v1 model source update through next safe automatic planned replacement. Failure-bearing cycle progress events retry only their exact frozen event transaction; committed cycle row is not replayed. No task, launcher, bootstrap or protocol changes.",
+  "scope": "Shared independent Scout model-service correctness. Each PC preserves its symbols, model recipe, fitted artifacts and operating authority.",
+  "source_sha": "342f96ffda6dc9af8f03e0b6827008fe8c81f1c3",
+  "summary": "Scout failure progress events preserve original timestamps during SQLite retry",
+  "tests": {
+    "composed_and_installed": "47 passed, zero skipped in each composed and exact installed Scout release; overlapping suites",
+    "source_courier_main": "47 passed, zero skipped in each final source/publication candidate; overlapping suites"
+  }
+}
