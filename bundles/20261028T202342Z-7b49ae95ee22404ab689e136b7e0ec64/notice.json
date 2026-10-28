@@ -1,0 +1,51 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T202135Z-e4fcd91fb52f4dedba807885ab529a31",
+  "change_id": "20261028T202135Z-e4fcd91fb52f4dedba807885ab529a31",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative; shared optional forecast-cache repair applicable without changing local model recipes or execution architecture.",
+    "A SQLITE_INTERRUPT during scalar cache iteration retains only entries already fully authenticated against exact source identity, revision, schema and context; other errors retain full fallback.",
+    "Preserve original probabilities, targets, models, independent state, UNKNOWN order evidence, manual controls and all original validation."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/forecast_header_cache.py",
+      "sha256": "9aaa830763b06decd75c6f9b4ef6648f6624525f4e650106555e58309dbcbcd9"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_partial_header_reads.py",
+      "sha256": "43db7e8c6f9fc7beff963431bbb61d264f0931418dec2f7193cd621f6edfa53f"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_partial_header_package.py",
+      "sha256": "4e96e6eac20dfc3ec0bd391bb15482d5511b28b1adf986ff5c60661975fe9210"
+    }
+  ],
+  "limitations": [
+    "Actual historical cache miss trigger remains unknown; partial-interruption defect is reproduced offline. Four separate warm-cache tests fail identically on exact baseline; retained for investigation.",
+    "No provider, broker, production model, order, task or process operation. Source, installation, loading and natural exercise are separate."
+  ],
+  "main_commit": "ac982b29e48386dc50279a60b996d45495f62da2",
+  "privacy_review": "Generic source and synthetic offline fixtures only; no account state, native bindings, observations, private inputs or fitted models.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Complete locally reviewed generation seal required. Normal authorized renewal selects the new module; this change creates no activation, restart, lifetime extension or new trading authority.",
+  "scope": "shared",
+  "source_commit": "234a7a720f2f8f6e18afb998383b6672cd74631e",
+  "summary": "Retain authenticated forecast proofs on interrupted cache reads",
+  "tests": [
+    {
+      "check": "tests/check_intraday_partial_header_package.py",
+      "network_attempts": 0,
+      "passed": 23,
+      "scope": "Common author, queue, source and main candidates"
+    },
+    {
+      "network_attempts": 0,
+      "passed": 141,
+      "scope": "Complete Atlas locally composed source, six relevant suites"
+    }
+  ]
+}

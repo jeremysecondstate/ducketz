@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T20:23:42.269461Z",
+  "id": "20261028T202342Z-7b49ae95ee22404ab689e136b7e0ec64",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Retain authenticated forecast proofs on interrupted cache reads"
+}
