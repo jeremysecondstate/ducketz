@@ -222,7 +222,7 @@ class _ModelFailurePersistenceStopped(Exception):
 
 
 class _ModelServiceStore(ServiceStore):
-    """Retry exact model admission/failure writes; never replay model work."""
+    """Retry exact model evidence writes; never replay model work."""
     def __init__(self, *args, persistence_stop_reason, persistence_pause,
                  persistence_diagnostic_binding=None, **kwargs):
         self._persistence_stop_reason = persistence_stop_reason
@@ -285,16 +285,18 @@ class _ModelServiceStore(ServiceStore):
 
     def event(self, cycle_id, kind, payload, *, symbol=None, recorded_at=None):
         failure_progress = kind == "cycle_progress" and "failures" in payload
-        if kind not in ("symbol_failure", "cycle_started") and not failure_progress:
+        if kind not in ("symbol_failure", "cycle_started", "cycle_attempt_measured") and not failure_progress:
             return super().event(cycle_id, kind, payload, symbol=symbol, recorded_at=recorded_at)
         # Freeze the original payload and row clock before the first attempt.
         frozen = json.loads(encoded(payload))
         recorded = instant(recorded_at or utcnow()).isoformat()
         # Admission and failure updates commit their row before this separate
         # event write. Retry the event here without replaying the committed row
-        # operation or changing the original event clock.
+        # operation or changing the original event clock. Post-work attempt
+        # evidence likewise retains completed computation and publications.
         operation = {"symbol_failure": "symbol_failure_event",
                      "cycle_started": "model_cycle_started_event",
+                     "cycle_attempt_measured": "model_cycle_attempt_event",
                      "cycle_progress": "model_failure_progress_event"}[kind]
         pending = {"operation":operation, "cycle_id":cycle_id, "symbol":symbol,
                    "kind":kind, "recorded_at":recorded, "payload":frozen}
