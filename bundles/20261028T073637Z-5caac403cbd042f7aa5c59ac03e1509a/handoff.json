@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T07:36:37.492912Z",
+  "id": "20261028T073637Z-5caac403cbd042f7aa5c59ac03e1509a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout independent service lifecycle and immutable evidence repairs integrated and locally installed"
+}

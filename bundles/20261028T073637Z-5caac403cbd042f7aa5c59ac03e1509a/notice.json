@@ -1,0 +1,39 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T073153Z-8dbd9cf098534dbbb83319b18bacc547",
+  "change_id": "scout-independent-audit:20261028T073153Z-8dbd9cf098534dbbb83319b18bacc547",
+  "completion_record": "20261028T073153Z-8dbd9cf098534dbbb83319b18bacc547",
+  "files": [
+    "docs/development/scout-independent-services.md",
+    "ml/intraday/immutable_file_witness.py",
+    "ml/intraday/market_collection_index.py",
+    "ml/intraday/scout_services.py",
+    "ml/intraday/service_handoff.py",
+    "ml/intraday/store.py",
+    "tests/test_intraday_market_collection_index.py",
+    "tests/test_intraday_receipt_cache_integrity.py",
+    "tests/test_scout_handoff_integrity.py",
+    "tests/test_scout_manual_controller_binding.py",
+    "tests/test_scout_service_lifecycle_repairs.py",
+    "tests/test_scout_service_schema_adoption.py",
+    "tools/scout_service_install.py",
+    "tests/test_intraday_main_header_composition.py"
+  ],
+  "limitations": [
+    "No production provider/broker calls, model fitting or trader action for verification.",
+    "Selected Scout installation awaits normal process activation; no new live latency or trading claim.",
+    "New receipt references receive full validation before derived context reuse."
+  ],
+  "main_sha": "7ef471a9fbb66020b1ae94fc81ff22e2e39e3d54",
+  "original_completion_record": "20261028T072748Z-5d36569133a34c669236af89588e891a",
+  "repository": "jeremysecondstate/ducketz",
+  "review_url": "https://github.com/jeremysecondstate/ducketz/pull/489",
+  "runtime_implications": "Scout installed independent-audit-v2. Compatible model/data changes load at normal boundaries; trading remains pinned until the next normal authorized initial launch.",
+  "scope": "shared correctness; each PC retains its own recipes, symbols and operating bindings",
+  "source_sha": "5dd283d2302cbadd52036a026ab4bf836e0d347e",
+  "summary": "Scout independent service lifecycle and immutable evidence repairs integrated and locally installed",
+  "tests": {
+    "scout_composition": "454 passed; temporary stores, fake brokers and contained fixture processes",
+    "source_and_main": "556 passed, 4 Atlas-only capability skips; network-disabled exact candidates"
+  }
+}
