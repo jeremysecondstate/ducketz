@@ -1,0 +1,38 @@
+{
+  "author": "Scout",
+  "change_id": "20261028T222507Z-c84c6b8ffaff4fc3bd7864388d2d9241",
+  "files": [
+    "tools/scout_service_controller.py",
+    "ml/intraday/live_session.py",
+    "tools/scout_service_install.py",
+    "tests/test_scout_service_controller.py",
+    "tests/test_scout_trading_rotation.py",
+    "docs/development/scout-iteration-restarts.md",
+    "ml/intraday/trading_rotation.py",
+    "tests/test_scout_service_install.py",
+    "tests/test_scout_console.py",
+    "tests/test_scout_service_process.py"
+  ],
+  "limitations": [
+    "Source publication and main integration do not establish peer installation or actual loaded trading recovery.",
+    "A subsequent Windows controller status-publication failure remains a separate open runtime incident; live automatic trading rotation is not claimed."
+  ],
+  "main_sha": "8a8ffb8e1a2caa40361ffbbb3ca75178a56bc129",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/504",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "A new authorized Scout controller activation is required for initial adoption. Later full model attempts queue independent, fenced trading handoffs while preserving original run authority, local recipes, known orders, pending work and manual stop. Independent data work and other traders are unaffected.",
+  "scope": "shared",
+  "source_branch": "codex/scout/20261028T222507Z-c84c6b8ffaff4fc3bd7864388d2d9241",
+  "source_sha": "2af25d9a19aae03fd02add5388d139829f1d8a99",
+  "summary": "Scout model and trading workers now share full-iteration reload coverage",
+  "tests": [
+    {
+      "command": "python -B -m pytest (23 reviewed offline modules)",
+      "completed_at_utc": "2026-10-28T22:34:57.431993Z",
+      "exit_code": 0,
+      "output_sha256": "bb4db5d09a3886a620cdd4bfe9bc66b2d386743badf73b1802211e15dea583ae",
+      "result": "449 passed in 86.15s (0:01:26)",
+      "started_at_utc": "2026-10-28T22:33:29.566691Z"
+    }
+  ]
+}
