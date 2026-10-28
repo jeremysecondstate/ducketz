@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T16:33:50.502511Z",
+  "id": "20261028T163350Z-9e51ca1b8bad4a09a9477a177f4d776c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas provider retries admit new identities after retained journal saturation"
+}

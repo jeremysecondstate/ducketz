@@ -1,0 +1,76 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T162945Z-54a2f2a2d2ac47ac95f2048033540ff8",
+  "change_id": "20261028T162945Z-54a2f2a2d2ac47ac95f2048033540ff8",
+  "details": [
+    "Actor Atlas; task ATLAS Trader Representative; shared provider retry storage correctness applicable to either PC after local consumer review.",
+    "At the existing legacy map capacity, new explicitly owned request identities use bounded atomic hashed per-key storage. Existing completed/rejected jobs and original legacy bytes remain intact; corrupt, oversized and conflicting identities fail explicitly.",
+    "Original callbacks/counters, due ordering, request identities/deadlines, causal data, scientific recipes, independent lifecycles, trader controls and manual stops remain unchanged."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/provider_recovery.py",
+      "sha256": "8094d354c2e60201a6647a02854d91d1426413151ad27053cf1b59e1346877df"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_retry_journal_capacity.py",
+      "sha256": "52fba48658bccfca766cb25b3dfd4ead77c8a550e2d53f69db4a697774d4420c"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_isolated_intraday_retry_journal_capacity.py",
+      "sha256": "a96a887054c3133891ca932fa883aaa0f46068df00484376572ddf0c0070775e"
+    }
+  ],
+  "limitations": [
+    "Five separate private consumer checks preserve the full legacy map while exercising synthetic gap recovery, original raw response callback evidence, pending/empty/manual-stop handling and same-key retry/callback behavior.",
+    "Private actual journals, native bindings, account state, original data, models and task memory remain local. Source publication does not establish current runtime loading or affected exercise.",
+    "Source publication, complete exact-byte local installation, actual loaded manifests and natural affected exercise remain separate facts. No provider, broker, model production, order, trader or task action is induced."
+  ],
+  "main_commit": "fb1a5daff1f128b8ca8cd1d542691976af97b222",
+  "privacy_review": "Generic shared correctness source, synthetic fixtures and sanitized validation/publication facts only. No private native/account/data/model/journal/ledger/credential exports.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Compose this reviewed source with the latest complete selected generation and seal through tools/trader_installation.py. The existing data process loads at its next normal authorized launch. Publication and installation do not restart a process, clear stops or replay expired opportunities.",
+  "scope": "shared",
+  "source_commit": "126d9a14dbe8ac7a3d747bfba6330debf16c39cd",
+  "summary": "Atlas provider retries admit new identities after retained journal saturation",
+  "tests": [
+    {
+      "check": "tests/check_isolated_intraday_retry_journal_capacity.py",
+      "network_or_process_attempts": 0,
+      "passed": 53,
+      "scope": "public author",
+      "skipped": 0
+    },
+    {
+      "check": "tests/check_isolated_intraday_retry_journal_capacity.py",
+      "network_or_process_attempts": 0,
+      "passed": 53,
+      "scope": "immutable queue",
+      "skipped": 0
+    },
+    {
+      "check": "tests/check_isolated_intraday_retry_journal_capacity.py",
+      "network_or_process_attempts": 0,
+      "passed": 53,
+      "scope": "isolated source",
+      "skipped": 0
+    },
+    {
+      "check": "tests/check_isolated_intraday_retry_journal_capacity.py",
+      "network_or_process_attempts": 0,
+      "passed": 53,
+      "scope": "fresh main candidate",
+      "skipped": 0
+    },
+    {
+      "check": "tests/check_isolated_intraday_retry_journal_capacity.py",
+      "network_or_process_attempts": 0,
+      "passed": 53,
+      "scope": "complete local selected-parent composition",
+      "skipped": 0
+    }
+  ]
+}
