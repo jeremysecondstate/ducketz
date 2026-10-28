@@ -15,6 +15,7 @@ import json
 import os
 import threading
 import time
+import uuid
 
 from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant
 from .store import utcnow
@@ -25,21 +26,63 @@ from .final_scoring import score_saved_session_outcomes
 _METRIC_LOCK = threading.Lock()
 
 
+def _write_retry_identity(pending, error):
+    """Bounded correlation only; never duplicate private pending payloads."""
+    return {"schema": "scout-native-write-retry-v1", "operation_id": uuid.uuid4().hex,
+            "operation": pending["operation"], "pending_sha256": digest(pending),
+            "pid": os.getpid(), "busy_count": 1,
+            "sqlite_errorcode": getattr(error, "sqlite_errorcode", None),
+            "sqlite_errorname": getattr(error, "sqlite_errorname", None)}
+
+
 class ServiceExecutionQueue(ExecutionQueue):
     """Bounded pending forecast work; order recovery remains journal-owned."""
     def __init__(self, *args, **kwargs):
         self._broker_retry_floor = None
         self._pending_broker_wait = None
+        self._broker_write_retry = None
         super().__init__(*args, **kwargs)
+
+    def _broker_retry_receipt(self, phase, episode, **values):
+        try:
+            # The existing trading sink adds its actual generation/loaded release.
+            self.event_sink({"event": "broker_wait_persistence_" + phase,
+                             "logical_run_id": self.session_id, "role": "trading",
+                             **episode, **values})
+        except Exception:
+            pass  # Diagnostic I/O must not retry an already committed write.
 
     def _persist_broker_wait(self):
         due = self._pending_broker_wait
         if due is None:
             return
-        with self.store.connect() as db:
-            db.execute("INSERT INTO intraday_live_retry VALUES('broker',?) ON CONFLICT(scope) "
-                       "DO UPDATE SET next_attempt_at=max(next_attempt_at,excluded.next_attempt_at)", (due,))
+        episode = self._broker_write_retry
+        if episode is not None and episode["next_attempt_at"] != due:
+            self._broker_write_retry = None
+            self._broker_retry_receipt("superseded", episode, replacement_next_attempt_at=due)
+            episode = None
+        try:
+            with self.store.connect() as db:
+                db.execute("INSERT INTO intraday_live_retry VALUES('broker',?) ON CONFLICT(scope) "
+                           "DO UPDATE SET next_attempt_at=max(next_attempt_at,excluded.next_attempt_at)", (due,))
+        except Exception as exc:
+            if _execution_store_busy(exc):
+                try:
+                    if episode is None:
+                        episode = {**_write_retry_identity({"operation": "broker_retry_floor",
+                            "scope": "broker", "next_attempt_at": due}, exc), "next_attempt_at": due}
+                        self._broker_write_retry = episode
+                        self._broker_retry_receipt("started", episode)
+                    else:
+                        episode["busy_count"] += 1
+                except Exception:
+                    pass  # Retain the original persistence exception and floor.
+            raise
+        # Clear pending state before diagnostics: sink failure cannot replay SQL.
         self._pending_broker_wait = None
+        self._broker_write_retry = None
+        if episode is not None:
+            self._broker_retry_receipt("recovered", episode)
 
     def broker_wait(self, *, now, seconds):
         # Retain the original absolute provider floor even if its write fails.
@@ -180,18 +223,38 @@ class _ModelFailurePersistenceStopped(Exception):
 
 class _ModelServiceStore(ServiceStore):
     """Retry only model failure evidence; never replay model/science work."""
-    def __init__(self, *args, persistence_stop_reason, persistence_pause, **kwargs):
+    def __init__(self, *args, persistence_stop_reason, persistence_pause,
+                 persistence_diagnostic_binding=None, **kwargs):
         self._persistence_stop_reason = persistence_stop_reason
         self._persistence_pause = persistence_pause
+        self._persistence_diagnostic_binding = dict(persistence_diagnostic_binding or {})
         super().__init__(*args, **kwargs)
 
+    def _failure_retry_receipt(self, phase, episode, pending):
+        try:
+            metric(self.object_root, "model", "failure_persistence_" + phase,
+                   **self._persistence_diagnostic_binding, **episode,
+                   cycle_id=pending["cycle_id"], symbol=pending.get("symbol"),
+                   original_recorded_at=pending.get("recorded_at"))
+        except Exception:
+            pass  # Diagnostic I/O must not replay or mask the original write.
+
     def _failure_write(self, action, pending):
+        episode = None
         while True:
             try:
-                return action()
+                result = action()
             except Exception as exc:
                 if not _execution_store_busy(exc):
                     raise
+                try:
+                    if episode is None:
+                        episode = _write_retry_identity(pending, exc)
+                        self._failure_retry_receipt("started", episode, pending)
+                    else:
+                        episode["busy_count"] += 1
+                except Exception:
+                    pass  # Diagnostics cannot change native busy retry behavior.
                 reason = self._persistence_stop_reason()
                 if reason is None:
                     self._persistence_pause(.2)
@@ -204,6 +267,11 @@ class _ModelServiceStore(ServiceStore):
                            stop_reason=reason, pending_write=pending,
                            diagnostics=_symbol_exception_diagnostics(exc))
                     raise _ModelFailurePersistenceStopped(reason) from exc
+            else:
+                # The action, including its transaction exit, already succeeded.
+                if episode is not None:
+                    self._failure_retry_receipt("recovered", episode, pending)
+                return result
 
     def event(self, cycle_id, kind, payload, *, symbol=None, recorded_at=None):
         if kind != "symbol_failure":
@@ -231,7 +299,10 @@ def run_model_service(*, repository, datastore, release, lifecycle, clock=utcnow
     pc, symbols, config, runtime, recipe_hash, recipe_identity = _configuration(repository, datastore, release, workers=2)
     service_root = Path(datastore) / "intraday/services"
     store = _ModelServiceStore(Path(datastore) / "intraday/shadow.sqlite3", object_root=service_root,
-        persistence_stop_reason=lifecycle.stop_reason, persistence_pause=sleep)
+        persistence_stop_reason=lifecycle.stop_reason, persistence_pause=sleep,
+        persistence_diagnostic_binding={"logical_run_id": lifecycle.session_id,
+            "generation": getattr(lifecycle, "generation", None),
+            "manifest_sha256": getattr(lifecycle, "release", release).get("manifest_sha256")})
     store.run_binding = {"logical_run_id": lifecycle.session_id,
                          "original_execution_deadline": lifecycle.deadline}
     spool = ReadySpool(service_root, pc=pc, symbols=symbols, recipe_hash=recipe_hash,
