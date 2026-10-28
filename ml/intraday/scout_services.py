@@ -19,7 +19,7 @@ import time
 from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant
 from .store import utcnow
 from .service_handoff import ReadySpool, ServiceStore, full_snapshot
-from .live_session import ExecutionQueue
+from .live_session import ExecutionQueue, _execution_store_busy
 from .final_scoring import score_saved_session_outcomes
 
 _METRIC_LOCK = threading.Lock()
@@ -171,13 +171,67 @@ def _model_checkpoint(store, lifecycle, result, symbols):
             "inspection": inspection}
 
 
+class _ModelFailurePersistenceStopped(Exception):
+    """Authority ended while an exact model failure write remained pending."""
+    def __init__(self, reason):
+        self.reason = reason
+        super().__init__("Model failure persistence stopped: " + reason)
+
+
+class _ModelServiceStore(ServiceStore):
+    """Retry only model failure evidence; never replay model/science work."""
+    def __init__(self, *args, persistence_stop_reason, persistence_pause, **kwargs):
+        self._persistence_stop_reason = persistence_stop_reason
+        self._persistence_pause = persistence_pause
+        super().__init__(*args, **kwargs)
+
+    def _failure_write(self, action, pending):
+        while True:
+            try:
+                return action()
+            except Exception as exc:
+                if not _execution_store_busy(exc):
+                    raise
+                reason = self._persistence_stop_reason()
+                if reason is None:
+                    self._persistence_pause(.2)
+                    reason = self._persistence_stop_reason()
+                if reason is not None:
+                    from .runtime import _symbol_exception_diagnostics
+                    metric(self.object_root, "model", "failure_persistence_stopped",
+                           logical_run_id=(self.run_binding or {}).get("logical_run_id"),
+                           cycle_id=pending["cycle_id"], symbol=pending.get("symbol"),
+                           stop_reason=reason, pending_write=pending,
+                           diagnostics=_symbol_exception_diagnostics(exc))
+                    raise _ModelFailurePersistenceStopped(reason) from exc
+
+    def event(self, cycle_id, kind, payload, *, symbol=None, recorded_at=None):
+        if kind != "symbol_failure":
+            return super().event(cycle_id, kind, payload, symbol=symbol, recorded_at=recorded_at)
+        # Freeze the original payload and row clock before the first attempt.
+        frozen = json.loads(encoded(payload))
+        recorded = instant(recorded_at or utcnow()).isoformat()
+        pending = {"operation":"symbol_failure_event", "cycle_id":cycle_id, "symbol":symbol,
+                   "kind":kind, "recorded_at":recorded, "payload":frozen}
+        return self._failure_write(lambda: super(_ModelServiceStore, self).event(
+            cycle_id, kind, frozen, symbol=symbol, recorded_at=recorded), pending)
+
+    def update_cycle(self, cycle_id, changes):
+        if "failures" not in changes:
+            return super().update_cycle(cycle_id, changes)
+        frozen = json.loads(encoded(changes))
+        return self._failure_write(lambda: super(_ModelServiceStore, self).update_cycle(cycle_id, frozen),
+            {"operation":"model_failure_cycle_update", "cycle_id":cycle_id, "changes":frozen})
+
+
 def run_model_service(*, repository, datastore, release, lifecycle, clock=utcnow, sleep=time.sleep):
     from .runtime import ShadowRunner
     from .live_session import ExecutionQueue, latest_completed_reference, eligible_reference, _session_cycles
     from .iteration_boundary import inspect_cycle
     pc, symbols, config, runtime, recipe_hash, recipe_identity = _configuration(repository, datastore, release, workers=2)
     service_root = Path(datastore) / "intraday/services"
-    store = ServiceStore(Path(datastore) / "intraday/shadow.sqlite3", object_root=service_root)
+    store = _ModelServiceStore(Path(datastore) / "intraday/shadow.sqlite3", object_root=service_root,
+        persistence_stop_reason=lifecycle.stop_reason, persistence_pause=sleep)
     store.run_binding = {"logical_run_id": lifecycle.session_id,
                          "original_execution_deadline": lifecycle.deadline}
     spool = ReadySpool(service_root, pc=pc, symbols=symbols, recipe_hash=recipe_hash,
@@ -235,10 +289,16 @@ def run_model_service(*, repository, datastore, release, lifecycle, clock=utcnow
                 pause(1)
                 continue
         began = time.perf_counter()
-        result = runner.run_cycle(PreparedHistories(spool, store, reference, clock=clock),
-            reference_at=reference, mode="live", experiment=lifecycle.session_id,
-            on_published=queue.enqueue, retry_symbols=retry_symbols,
-            acquisition={"kind": "independent_verified_ready_snapshot"})
+        try:
+            result = runner.run_cycle(PreparedHistories(spool, store, reference, clock=clock),
+                reference_at=reference, mode="live", experiment=lifecycle.session_id,
+                on_published=queue.enqueue, retry_symbols=retry_symbols,
+                acquisition={"kind": "independent_verified_ready_snapshot"})
+        except _ModelFailurePersistenceStopped as exc:
+            # run_cycle drained its owned pool. No full-scope completion or
+            # checkpoint is claimed; the metric retains the original pending write.
+            return {"status":"STOPPED", "stop_reason":exc.reason,
+                    "failure_persistence_pending":True}
         metric(service_root, "model", "model_work", seconds=time.perf_counter()-began,
                cycle_id=result["cycle_id"], reference_at=reference.isoformat())
         if retry_symbols is None:
