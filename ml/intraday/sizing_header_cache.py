@@ -153,6 +153,7 @@ class DurableSizingHeaders:
     def load_many(self, identity, signatures):
         """Read one inventory's authenticated headers with one cache snapshot."""
         db = None
+        found = {}
         started = time.monotonic()
         if self._remaining <= 0:
             return {}
@@ -176,7 +177,6 @@ class DurableSizingHeaders:
                 "CASE WHEN typeof(record_mac)='blob' AND length(record_mac)=32 THEN record_mac ELSE NULL END "
                 "FROM sizing_header_cache_rows WHERE cache_key IN (SELECT value FROM json_each(?))",
                 (_encoded(tuple(expected)),))
-            found = {}
             for key, raw, mac in rows:
                 if time.monotonic() - started >= self._remaining:
                     break
@@ -194,6 +194,13 @@ class DurableSizingHeaders:
                 if projection is not None:
                     found[signature] = projection
             return found
+        except sqlite3.OperationalError as error:
+            # An interrupted optional read cannot invalidate earlier records
+            # already authenticated against this exact pinned cache context.
+            # Unread or rejected records still use the full source validator.
+            if getattr(error, "sqlite_errorcode", None) == sqlite3.SQLITE_INTERRUPT:
+                return found
+            return {}
         except (sqlite3.Error, OSError, ValueError, TypeError, AttributeError):
             return {}
         finally:
