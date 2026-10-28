@@ -396,19 +396,26 @@ def _missing_boundary_text(row: Mapping, prefix: str, *, detailed: bool = False)
 
 def render_actuals_review(forecasts: pd.DataFrame, prices: pd.DataFrame, report: Mapping) -> str:
     contract = probability_target_contract(forecasts) if not forecasts.empty else probability_target_contract(report)
+    # Presentation follows the saved recipe; absent historical metadata stays absent.
+    recipe_fields = {"gameplan_recipe_version", "execution_quantity_basis"}
+    direction_only = (not forecasts.empty and recipe_fields.issubset(forecasts.columns)
+                      and forecasts["gameplan_recipe_version"].eq("direction-live-quote-v1").fillna(False).all()
+                      and forecasts["execution_quantity_basis"].eq("live_broker_capacity").fillna(False).all())
     plan_name = "Yung Gameplan (YG)" if contract == RAW_DIRECTION_TARGET else "OG Gameplan"
     lines = [f"# {plan_name} results · {report['action_date']}", "",
              ("**Preview — final results await the completed-session data fetch.** All times are Pacific."
               if report.get("preview") else
               "Completed-session review for model feedback. All times are Pacific."
               if report.get("review_mode") == "completed-session-before-training" else
-              f"Tomorrow's Gameplan for **{report['successor_action_date']}** is prepared. All times are Pacific."), "",
-             "The saved price estimates below are compared with actual market prices at the same clock. "
-             "The ranges were planning estimates; the observations are market prices, not broker fills or trading P/L.", ""]
+              f"Tomorrow's Gameplan for **{report['successor_action_date']}** is prepared. All times are Pacific."), ""]
+    if not direction_only:
+        lines += ["The saved price estimates below are compared with actual market prices at the same clock. "
+                  "The ranges were planning estimates; the observations are market prices, not broker fills or trading P/L.", ""]
     if report.get("source_gameplan_run"):
         lines += [f"Original forecast: [{report['action_date']} Gameplan]({report['source_gameplan_path']}/forecasts.parquet).", ""]
     if report.get("source_trade_plan_path"):
-        lines += [f"[Original Gameplan with prices and quantities]({report['source_trade_plan_path']}/Gameplan.md).", ""]
+        plan_label = "Original Gameplan" if direction_only else "Original Gameplan with prices and quantities"
+        lines += [f"[{plan_label}]({report['source_trade_plan_path']}/Gameplan.md).", ""]
     if forecasts.empty:
         return "\n".join(lines + ["No saved independent-stock Gameplan was available for this completed session.", ""])
     totals = report["forecasts"]
@@ -423,17 +430,28 @@ def render_actuals_review(forecasts: pd.DataFrame, prices: pd.DataFrame, report:
     summary_rows = []
     for symbol, frame in forecasts.groupby("symbol", sort=True):
         calls = frame.loc[frame.direction_correct.notna() & frame.model_status.eq("PROMOTED")]
-        clocks = prices.loc[prices.symbol.eq(symbol) & prices.comparison_status.eq("COMPARED")]
-        summary_rows.append((symbol, f"{int(calls.direction_correct.sum())} / {len(calls)}" if len(calls) else "—",
-                             _percent(calls.direction_correct.astype(float).mean() if len(calls) else None),
-                             _percent(clocks.price_error_fraction.abs().mean() if len(clocks) else None),
-                             f"{int(clocks.in_planned_range.sum())} / {len(clocks)}" if len(clocks) else "—"))
-    lines += _table(["Stock", "Correct / scored approved calls", "Direction accuracy", "Mean absolute price error", "Prices within range"], summary_rows)
+        summary = (symbol, f"{int(calls.direction_correct.sum())} / {len(calls)}" if len(calls) else "—",
+                   _percent(calls.direction_correct.astype(float).mean() if len(calls) else None))
+        if not direction_only:
+            clocks = prices.loc[prices.symbol.eq(symbol) & prices.comparison_status.eq("COMPARED")]
+            summary += (_percent(clocks.price_error_fraction.abs().mean() if len(clocks) else None),
+                        f"{int(clocks.in_planned_range.sum())} / {len(clocks)}" if len(clocks) else "—")
+        summary_rows.append(summary)
+    summary_headers = ["Stock", "Correct / scored approved calls", "Direction accuracy"]
+    if not direction_only:
+        summary_headers += ["Mean absolute price error", "Prices within range"]
+    lines += _table(summary_headers, summary_rows)
     for symbol, frame in forecasts.groupby("symbol", sort=True):
-        lines += [f"## {symbol}", "", "### Planned prices vs actual prices", ""]
+        lines += [f"## {symbol}", ""]
         price_rows = []
         missing_rows = []
         for row in prices.loc[prices.symbol.eq(symbol)].to_dict("records"):
+            if row["comparison_status"] == "MATURE_AWAITING_DATA":
+                detail = _missing_boundary_text(row, "actual", detailed=True)
+                if detail:
+                    missing_rows.append((f"Price {row['clock_local']}", detail))
+            if direction_only:
+                continue
             difference = _number(row["price_error"])
             observed = row["actual_observed_at"]
             observed = pd.Timestamp(observed).tz_convert(TIMEZONE).strftime("%H:%M") if pd.notna(observed) else "—"
@@ -441,14 +459,13 @@ def render_actuals_review(forecasts: pd.DataFrame, prices: pd.DataFrame, report:
                       "MATURE_AWAITING_DATA": "Waiting for data", "PENDING_MATURITY": "Pending"}[row["comparison_status"]]
             if row["comparison_status"] == "MATURE_AWAITING_DATA":
                 status = _missing_boundary_text(row, "actual") or status
-                detail = _missing_boundary_text(row, "actual", detailed=True)
-                if detail:
-                    missing_rows.append((f"Price {row['clock_local']}", detail))
             price_rows.append((row["clock_local"], f"{_money(row['planned_price_low'])}–{_money(row['planned_price_high'])}" if _number(row["planned_price_mid"]) else "—",
                                _money(row["planned_price_mid"]), _money(row["actual_price"]), observed,
                                f"{'+' if difference >= 0 else '−'}{_money(abs(difference))}" if difference is not None else "—",
                                _percent(row["price_error_fraction"], signed=True), status))
-        lines += _table(["Time", "Saved price range", "Saved midpoint", "Actual price", "Observed at", "Actual − midpoint", "Difference %", "Range result"], price_rows)
+        if not direction_only:
+            lines += ["### Planned prices vs actual prices", ""]
+            lines += _table(["Time", "Saved price range", "Saved midpoint", "Actual price", "Observed at", "Actual − midpoint", "Difference %", "Range result"], price_rows)
         lines += ["### Forecast outcomes", ""]
         outcome_rows = []
         for row in frame.to_dict("records"):
