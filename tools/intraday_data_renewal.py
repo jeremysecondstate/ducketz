@@ -14,6 +14,7 @@ from pathlib import Path
 import signal
 import subprocess
 import time
+from types import TracebackType
 import uuid
 
 PROTOCOL = "intraday-data-renewal-v1"
@@ -24,15 +25,83 @@ class PlannedRenewal(BaseException):
 
 
 def atomic_json(path, value):
-    path=Path(path); path.parent.mkdir(parents=True, exist_ok=True)
+    path=Path(path)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    except BaseException as exc:
+        _atomic_failure_stage(exc,'create_parent');raise
     temporary=path.with_name('.'+path.name+'.'+uuid.uuid4().hex+'.partial')
+    stage='temporary_open'
     try:
         with temporary.open('x',encoding='utf-8',newline='\n') as stream:
-            json.dump(value,stream,sort_keys=True,allow_nan=False);stream.write('\n')
-            stream.flush();os.fsync(stream.fileno())
+            stage='serialize'
+            json.dump(value,stream,sort_keys=True,allow_nan=False)
+            stage='newline_write';stream.write('\n')
+            stage='flush';stream.flush()
+            stage='fsync';os.fsync(stream.fileno())
+            stage='close'
+        stage='replace'
         os.replace(temporary,path)
+    except BaseException as exc:
+        _atomic_failure_stage(exc,stage);raise
     finally:
-        temporary.unlink(missing_ok=True)
+        try:
+            temporary.unlink(missing_ok=True)
+        except BaseException as exc:
+            _atomic_failure_stage(exc,'cleanup');raise
+
+
+def _atomic_failure_stage(exc,stage):
+    # Keep the original exception and normal cleanup/exception chaining. Only
+    # fixed operation labels are added, never destinations or serialized data.
+    try:exc._intraday_data_atomic_stage=stage
+    except BaseException:pass
+
+
+def _diagnostic_name(value,limit=80):
+    return ''.join(c if c.isascii() and (c.isalnum() or c in '_.-<>') else '_' for c in value[:limit])
+
+
+def _exception_attribute(exc,key):
+    try:return getattr(exc,key,None)
+    except BaseException:return None
+
+
+def failure_diagnostics(exc,operation):
+    """Bounded structural evidence; never format exception text or locals."""
+    result={'schema_version':'intraday-data-failure-v1','error_type':_diagnostic_name(type(exc).__name__),
+            'operation':_diagnostic_name(operation['operation']),'exceptions':[]}
+    for key in ('role','turn','controller_generation','worker_source_generation'):
+        if isinstance(operation.get(key),str):result[key]=_diagnostic_name(operation[key],64)
+    if type(operation.get('generation')) is int:result['generation']=operation['generation']
+    seen=set();relation='raised'
+    while exc is not None and len(result['exceptions'])<4:
+        if id(exc) in seen:
+            result['chain_truncated']='cycle';break
+        seen.add(id(exc))
+        value={'relation':relation,'error_type':_diagnostic_name(type(exc).__name__),'frames':[]}
+        for key in ('errno','winerror'):
+            number=_exception_attribute(exc,key)
+            if type(number) is int:value[key]=number
+        stage=_exception_attribute(exc,'_intraday_data_atomic_stage')
+        if isinstance(stage,str) and stage in {'create_parent','temporary_open','serialize','newline_write','flush','fsync','close','replace','cleanup'}:
+            value['atomic_stage']=stage
+        tb=_exception_attribute(exc,'__traceback__');frames=[];frame_count=0
+        while isinstance(tb,TracebackType):
+            code=tb.tb_frame.f_code
+            frames.append({'source':_diagnostic_name(code.co_filename.replace('\\','/').rsplit('/',1)[-1]),
+                           'function':_diagnostic_name(code.co_name),'line':tb.tb_lineno})
+            if len(frames)>6:frames.pop(0)
+            frame_count+=1;tb=tb.tb_next
+        value['frames']=frames
+        if frame_count>6:value['frames_omitted']=frame_count-6
+        result['exceptions'].append(value)
+        cause=_exception_attribute(exc,'__cause__');context=_exception_attribute(exc,'__context__')
+        if isinstance(cause,BaseException):exc=cause;relation='cause'
+        elif _exception_attribute(exc,'__suppress_context__') is not True and isinstance(context,BaseException):exc=context;relation='context'
+        else:exc=None
+    if exc is not None and 'chain_truncated' not in result:result['chain_truncated']='limit'
+    return result
 
 
 _JOB = None
@@ -267,6 +336,17 @@ def run_protocol(*, directory, envelope, command, poll_seconds=.05, phase=lambda
     children={};reason=None;failure=None;relay_target=None;relay_child=None;relayed_terminal=False
     previous={}
     loaded_generations={} if continuation is None else dict(continuation.get('loaded_generations',{}))
+    operation={'operation':'controller_loop'}
+    def doing(name,role=None,turn=None):
+        operation.clear();operation['operation']=name
+        if controller_generation is not None:operation['controller_generation']=controller_generation
+        if role is not None:
+            operation['role']=role
+            if role in turns:operation['generation']=turns[role]
+        if turn is not None:
+            operation['turn']=turn
+            loaded=loaded_generations.get(role,{})
+            if loaded.get('turn')==turn:operation['worker_source_generation']=loaded['generation']
     status_path=Path(envelope['datastore'])/'intraday/system-1a/status.json'
     last_status=0.0
     def _record_status(status):
@@ -303,6 +383,7 @@ def run_protocol(*, directory, envelope, command, poll_seconds=.05, phase=lambda
             'loaded_source_generation':controller_generation,'loaded_source_scope':'controller_only',
             'worker_loaded_generations':loaded_generations,'renewal_token':envelope['token'],
             'trading_authority':False,'manual_trader_stop_dependency':False,'consumer_acknowledgement_required':False,
+            'failure':failure,
             'latest_pass':{'status':'INDEPENDENT_RENEWABLE_LANES','in_flight_roles':list(children),
                 'completed_passes':passes,'completed_roles':sorted(done)}}
         atomic_json(status_path,value);last_status=time.monotonic()
@@ -323,50 +404,71 @@ def run_protocol(*, directory, envelope, command, poll_seconds=.05, phase=lambda
         previous[sig]=signal.signal(sig,signalled)
     try:
         while reason is None:
+            doing('owner_check')
             if birth(envelope["owner_pid"]) != envelope["owner_birth"]:
                 stop("FAILED"); break
+            doing('stop_check')
             if (directory/'stop.json').exists():
                 stop('MANUAL_STOP');break
             if (relay_selector is not None and relay_target is None and roles!=['initialize']
                     and any(role not in done and role not in children for role in roles)):
+                doing('controller_selection')
                 candidate=relay_selector()
                 if candidate['identity']!=controller_identity:
+                    doing('controller_draining_callback')
                     relay_target=candidate;phase('controller_draining','controller')
             for role in roles:
                 if role in done or role in children or relay_target is not None:continue
                 index=turns.get(role,0)+1;turns[role]=index;turn=uuid.uuid4().hex
                 request=directory/(role+'-'+str(index)+'-'+turn+'.json');response=request.with_suffix('.response.json')
+                doing('worker_request_publish',role,turn)
                 atomic_json(request,{'envelope':str(session_path),'token':envelope['token'],'role':role,
                     'generation':index,'turn':turn,'response':str(response),**states.get(role,{})})
+                doing('worker_command_select',role,turn)
                 argv=command(role,request)
+                doing('stop_check',role,turn)
                 if (directory/'stop.json').exists():stop('MANUAL_STOP');break
+                doing('worker_spawn',role,turn)
                 child=subprocess.Popen(argv,close_fds=True)
+                doing('worker_started_callback',role,turn)
                 children[role]=(child,response,turn);phase('started',role)
             if reason is not None:break
             for role,(child,response,turn) in list(children.items()):
+                doing('worker_poll',role,turn)
                 code=child.poll()
                 if code is None:continue
+                doing('worker_exit_callback',role,turn)
                 del children[role];phase('exited',role)
+                doing('stop_check',role,turn)
                 if (directory/'stop.json').exists():stop('MANUAL_STOP');break
-                value=json.loads(response.read_bytes())
+                doing('worker_receipt_read',role,turn)
+                raw=response.read_bytes()
+                doing('worker_receipt_decode',role,turn)
+                value=json.loads(raw)
+                doing('worker_receipt_validate',role,turn)
                 if (value.get('protocol'),value.get('token'),value.get('turn'),value.get('role'),value.get('worker_pid'))!=(PROTOCOL,envelope['token'],turn,role,child.pid):
                     raise ValueError('Data handoff receipt identity mismatch')
                 if code==PLANNED_EXIT and value['disposition']=='PLANNED_RENEWAL' and role!='initialize':
+                    doing('worker_handoff_callback',role,turn)
                     states[role]={'state':value['state'],'next_poll_at':value['next_poll_at']};phase('handoff',role)
                 elif code==0 and value['disposition']=='COMPLETED':
                     if role=='initialize':
                         result=value['result'];envelope['session']=result['session'];roles=result['roles']
                         if not roles or len(set(roles))!=len(roles) or 'initialize' in roles:raise ValueError('Invalid data lane ownership')
+                        doing('initialized_session_publish',role,turn)
                         atomic_json(session_path,envelope)
                     else:done.add(role)
                 else:raise RuntimeError('Unacknowledged data worker exit '+str(code))
+                doing('active_checkpoint_publish',role,turn)
                 atomic_json(active_path,{**active,'session':envelope['session'],'heartbeat_at':datetime.now(timezone.utc).isoformat(),
                     'generations':turns,'completed_roles':sorted(done)})
+            doing('status_record')
             if time.monotonic()-last_status>=1:record_status('RUNNING')
             if all(role in done for role in roles):reason='COMPLETED';break
             if relay_target is not None and not children:
                 # A full current pass has exited in every admitted lane. The old
                 # controller retains kernel/lock ownership and becomes an anchor.
+                doing('controller_selection')
                 relay_target=relay_selector()
                 if relay_target['identity']==controller_identity:
                     relay_target=None;continue
@@ -374,16 +476,29 @@ def run_protocol(*, directory, envelope, command, poll_seconds=.05, phase=lambda
                 payload={'protocol':PROTOCOL,'token':envelope['token'],'envelope':str(session_path),
                     'handoff_id':uuid.uuid4().hex,'parent_pid':os.getpid(),'parent_birth':birth(os.getpid()),
                     'target_identity':relay_target['identity'],'roles':roles,'states':states,'turns':turns,'done':sorted(done),'loaded_generations':loaded_generations}
-                atomic_json(handoff,payload);phase('controller_handoff','controller')
+                doing('controller_handoff_publish')
+                atomic_json(handoff,payload)
+                doing('controller_handoff_callback')
+                phase('controller_handoff','controller')
+                doing('stop_check')
                 if (directory/'stop.json').exists():stop('MANUAL_STOP');break
+                doing('controller_spawn')
                 relay_child=subprocess.Popen([*relay_target['command'],'--continue',str(handoff)],close_fds=True)
                 relay_birth=birth(relay_child.pid)
                 while relay_child.poll() is None and reason is None:
+                    doing('relay_stop_check')
                     if (directory/'stop.json').exists():stop('MANUAL_STOP');break
                     time.sleep(poll_seconds)
                 if reason is not None:break
-                value=json.loads(handoff.with_suffix('.result.json').read_bytes())
-                claim=json.loads(handoff.with_suffix('.claim.json').read_bytes())
+                doing('controller_result_read')
+                raw=handoff.with_suffix('.result.json').read_bytes()
+                doing('controller_result_decode')
+                value=json.loads(raw)
+                doing('controller_claim_read')
+                raw=handoff.with_suffix('.claim.json').read_bytes()
+                doing('controller_claim_decode')
+                claim=json.loads(raw)
+                doing('controller_result_validate')
                 if (value.get('protocol'),value.get('token'),value.get('handoff_id'),value.get('controller_pid'),claim.get('pid'))!=(PROTOCOL,envelope['token'],payload['handoff_id'],relay_child.pid,relay_child.pid):
                     raise ValueError('Data controller terminal identity mismatch')
                 if (value.get('disposition') not in {'COMPLETED','MANUAL_STOP','FAILED'}
@@ -401,10 +516,12 @@ def run_protocol(*, directory, envelope, command, poll_seconds=.05, phase=lambda
                 if relay_child.returncode!=expected:raise ValueError('Data controller terminal exit mismatch')
                 reason=value['disposition'];turns=value['generations'];done=set(value['completed_roles']);failure=value['failure']
                 relayed_terminal=True
+                doing('controller_relay_complete_callback')
                 phase('controller_relay_complete','controller');break
+            doing('poll_pause')
             time.sleep(poll_seconds)
     except BaseException as exc:
-        failure={'error_type':type(exc).__name__};stop('FAILED')
+        failure=failure_diagnostics(exc,operation);stop('FAILED')
     finally:
         owned=[child for child,_,_ in children.values()]
         if relay_child is not None:owned.append(relay_child)
