@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T16:41:31.212114Z",
+  "id": "20261028T164131Z-42ddc419e9d64a96b4b3ea9157ee8f0a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas scoring recovery-proof patch packet published"
+}

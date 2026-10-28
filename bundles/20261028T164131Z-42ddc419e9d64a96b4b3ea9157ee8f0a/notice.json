@@ -1,0 +1,51 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T163822Z-8dc9987338674c41b9f7cf01a62f2c3c",
+  "change_id": "20261028T163822Z-8dc9987338674c41b9f7cf01a62f2c3c",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative; shared source patch packet applicable after each PC reviews its actual local observation adapters.",
+    "Distribute three exact runtime source changes as patch data. Reconstruct exact preimages and test inert dispatch; public runtime modules remain unchanged because complete local adapters are separate.",
+    "Reuse one successful full recovery-candle proof only when both original predicates dispatch to the same pure validator. Preserve local recipes, probabilities, targets, original evidence and outcomes, policy, independent state and controls."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-scoring-observation.patch",
+      "sha256": "9f6566318a57d3a01f540884c9e122647ea5ca3764ac4b25488d31108c8ad508"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-scoring-observation.json",
+      "sha256": "78616e24f7c05c61274f8e9408505bfda5a2eabd217a45b32031b8a00c4388b3"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scoring_observation.py",
+      "sha256": "9023b56bf52512f8c36409140bd8ac95b038b4cc5327dfc44e51fb89a39b9125"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_scoring_observation_packet.py",
+      "sha256": "b6d445b33f6af965ea96ce45d8fc5628898a9c691f5f59c19416461a4b9f45b0"
+    }
+  ],
+  "limitations": [
+    "Portable packet checks establish exact three-file source reconstruction and inert helper dispatch only. The forty-five real recovery/scorer cases are explicitly not run in the public packet; complete local fixture integration is separate.",
+    "The public source packet does not claim complete runtime adapter dependency closure or install its hunks. Source publication does not prove runtime loading, live latency improvement or original incident recovery. No provider, broker, production fitting/scoring, order or trader operation."
+  ],
+  "main_commit": "7671e2334fbace828f181f69849d48a350f4ea8d",
+  "privacy_review": "Only generic source and synthetic fixtures plus sanitized publication facts; no native bindings, account state, observations, raw data or fitted models.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "A recipient reviews local semantic applicability and exact preimages, applies only owned hunks, runs complete local offline integration and seals a complete generation through tools/trader_installation.py. Publication leaves public runtime modules unchanged and grants no trading activation.",
+  "scope": "shared",
+  "source_commit": "52f01ee348efbdf47443701b5177033f62c6469b",
+  "summary": "Atlas scoring recovery-proof patch packet published",
+  "tests": [
+    {
+      "check": "tests/check_intraday_scoring_observation_packet.py",
+      "integration_limit": "Forty-five real recovery/scorer cases are explicitly not run; complete local source integration and runtime adoption remain separate.",
+      "network_attempts": 0,
+      "scope": "Portable exact source queue and isolated candidates"
+    }
+  ]
+}
