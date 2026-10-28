@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T00:40:20.469374Z",
+  "id": "20261028T004020Z-f39f3e78c0c14544926c04ebb9d92147",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas source-proof minute duration reuse published and sealed"
+}

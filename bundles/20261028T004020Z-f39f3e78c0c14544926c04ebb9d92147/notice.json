@@ -1,0 +1,76 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261028T003512Z-da3e622825c445cda2f0c8ed2dcac21a",
+  "change_id": "20261028T003512Z-da3e622825c445cda2f0c8ed2dcac21a",
+  "details": [
+    "Actor Atlas; task ATLAS 15m Trader Representative; shared source-proof component allocation repair applicable to both PCs after local exact applicability review.",
+    "Reuse canonical immutable pandas one-minute duration only while the public constructor retains canonical identity; preserve original dynamic replacement-constructor calls, native/session proof validation and overflow fallback.",
+    "Preserve scientific forecasts, original probabilities/targets, local model policy, quantities, timing, independent state, order identities and manual controls."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-native-minute-cache.json",
+      "sha256": "bea25f14c7b4a87b6c7dfb3e66e60ebde8d0215fc8f7310b18b3d327f3102a7c"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-native-minute-cache.patch",
+      "sha256": "2b73ac2b67de77179c7366224d8534cfc9494aee81adc61fef25396b678db33b"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_native_minute_cache.py",
+      "sha256": "7881b996c17e9c600799482b17b938f8f8fb9637a1ad9457164dba740870cdb8"
+    }
+  ],
+  "limitations": [
+    "Portable standalone checker uses actual pandas and an explicit native-evidence import stub; complete-source regressions and retained-input parity are separately recorded.",
+    "Final exact candidate preserves 24340-candle sizing canonical payload and identity; eight alternating1024-row component pairs measured3.771percent median saving. Small component only; no whole-operation or sustained live recovery claim.",
+    "Public package is an exact-preimage delta for existing local source compositions. No private account/data/model/native binding or session/task identity is included.",
+    "The existing manual session completed before this repair installation; new source loading and natural affected exercise remain unproved until a future normal manual start."
+  ],
+  "local_installation": "Complete531-source generation aaa81f48b5dd10e4496ae952f2b6dd026363051918a0a7ae7096d1037ed1d846 sealed after exact-parent/source fences inside actual installer lock. Only coverage changes;530otherparentmembers and runtime retained. Selected source and all33392runtimefiles verified. Original manually started session completed before installation, so new generation loading and affected natural exercise are UNPROVED.",
+  "main_commit": "cf7bb6360879bfc2896a948350f1ebcfd1cc01a9",
+  "performance": "Exact final candidate across1024retained proof rows and13invalid boundaries preserved results. Eight alternating component pairs measured median0.1198418to0.1153224seconds,3.771percent faster8of8pairs. Component only; no full operation or live recovery claim. A24340-candle saved replay retained exact canonical sizing payload and identity.",
+  "privacy_review": "Only generic shared source patch/hash metadata/synthetic checker and sanitized validation/install facts. No native bindings or task/session identities, credentials, account state, raw inputs, fitted models, operating records or local paths exported.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/474",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Apply only reviewed exact coverage source hunks and seal the complete generation with tools/trader_installation.py. Source publication, main integration, local installation, loading and naturally exercised recovery are separate facts. No initial unattended start, post-stop restart, lifetime extension, trader/provider/broker/order operation is performed.",
+  "scope": "shared",
+  "source_commit": "e1c94d20d038ded14b7b323ced70f670faf10ce1",
+  "summary": "Atlas source-proof minute duration reuse published and sealed",
+  "tests": [
+    {
+      "finished_at": "2026-10-28T00:34:12.646758+00:00",
+      "network_attempts": 0,
+      "passed": 149,
+      "scope": "Complete latest531-source staged composition",
+      "started_at": "2026-10-28T00:34:07.585865+00:00"
+    },
+    {
+      "finished_at": "2026-10-28T00:39:03.684744+00:00",
+      "network_attempts": 0,
+      "passed": 149,
+      "scope": "Actual selected sealed531-source composition",
+      "started_at": "2026-10-28T00:38:58.697257+00:00"
+    },
+    {
+      "network_attempts": 0,
+      "passed": 27,
+      "scope": "Independent actual-module checks"
+    },
+    {
+      "network_attempts": 0,
+      "passed_each": 56,
+      "scope": "Portable queue/source/main checks"
+    },
+    {
+      "finished_at": "2026-10-28T00:39:31.339338+00:00",
+      "runtime_files": 33392,
+      "scope": "Selected complete source and sealed runtime byte validation",
+      "source_files": 531,
+      "started_at": "2026-10-28T00:39:17.553698+00:00"
+    }
+  ]
+}
