@@ -510,7 +510,7 @@ def _market_context_failure_diagnostics(collector, error):
 
 
 def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcnow, sleep=time.sleep,
-               scout_admission="broker-local", model_recipe=None, lifecycle=None):
+               scout_admission="broker-local", model_recipe=None, lifecycle=None, independent_services=False):
     from .data import AcquisitionJournal, load_local_history
     from .exact_status import retry_delay
     from app.services.schwab import SchwabSession
@@ -575,7 +575,13 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         return (check_lifecycle() or ("worker_failure" if worker_errors else "manual_stop" if manual_stop_requested[0]
                 else "automatic_17_00_pacific" if automatic_stop_requested_at[0] is not None
                 else "planned_iteration_restart" if planned_restart[0] else "manual_stop"))
-    store = ShadowStore(root / "intraday/shadow.sqlite3")
+    if independent_services:
+        if lifecycle is None or getattr(lifecycle, "role", None) != "trading":
+            raise ContractError("Independent trading requires its new-launch role fence")
+        from .service_handoff import ServiceStore
+        store = ServiceStore(root / "intraday/shadow.sqlite3", object_root=root / "intraday/services")
+    else:
+        store = ShadowStore(root / "intraday/shadow.sqlite3")
     status_path = root / "intraday/manual-session.json"
     session_root = root / "intraday/sessions" / session_id.replace(":", "-")
     session_status = session_root / "status.json"
@@ -592,7 +598,11 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             with log_path.open("a",encoding="utf-8") as log:
                 log.write(encoded(event) + "\n")
         print(json.dumps(event),flush=True)
-    queue = ExecutionQueue(store,session_id,pc=pc,event_sink=emit)
+    if independent_services:
+        from .scout_services import ServiceExecutionQueue
+        queue = ServiceExecutionQueue(store,session_id,pc=pc,event_sink=emit)
+    else:
+        queue = ExecutionQueue(store,session_id,pc=pc,event_sink=emit)
     def status(state, **extra):
         value = dict(schema_version=VERSION if pc == "Atlas" else SCOUT_VERSION,session_id=session_id,pc=pc,
                      pid=os.getpid(),process_create_time=process_create_time,started_at=started.isoformat(),
@@ -671,7 +681,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             config, model_runtime = prepare_manual_models(config, datastore=root, pc=pc, symbols=symbols,
                 **({"recipe_path": model_recipe} if model_recipe is not None else {}))
             native_interval_symbols = native_interval_symbols_for_runtime(model_runtime)
-            if lifecycle is not None:
+            if lifecycle is not None and not independent_services:
                 from .iteration_boundary import validate_resume
                 validate_resume(store, lifecycle=lifecycle, symbols=symbols, config=config)
                 if should_stop():
@@ -707,41 +717,48 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 evidence_paths.update({"executor_" + key:value for key,value in executor_paths.items()})
                 emit({"event":"authority_ready",**startup})
             startup_in_progress[0] = False
-            startup_stage = "historical_inputs"
-            histories = {}
-            for symbol in symbols:
+            if independent_services:
+                # All acquisition, context construction, scoring and model work
+                # belong to separate service processes. No trading startup wait
+                # depends on their data readiness.
+                histories, provider, journal = {}, None, None
+                minute_feed, market_collector, runner = None, None, None
+            else:
+                startup_stage = "historical_inputs"
+                histories = {}
+                for symbol in symbols:
+                    if should_stop():
+                        raise InterruptedError("Scout manual session reached its 5pm Pacific stop")
+                    try:
+                        if symbol in native_interval_symbols:
+                            from .native_interval import load_native_interval_history
+                            histories[symbol] = load_native_interval_history(root,symbol,source_dataset=config.source_dataset,
+                                pc=pc, recovery_contract=getattr(model_runtime.get("dataset_builder"), "historical_recovery_contract", None))
+                        else:
+                            histories[symbol] = load_local_history(root,symbol,source_dataset=config.source_dataset)
+                    except Exception as exc:
+                        store.event(session_id,"history_unavailable",{"error_type":type(exc).__name__,"message":str(exc)},symbol=symbol)
                 if should_stop():
                     raise InterruptedError("Scout manual session reached its 5pm Pacific stop")
-                try:
-                    if symbol in native_interval_symbols:
-                        from .native_interval import load_native_interval_history
-                        histories[symbol] = load_native_interval_history(root,symbol,source_dataset=config.source_dataset,
-                            pc=pc, recovery_contract=getattr(model_runtime.get("dataset_builder"), "historical_recovery_contract", None))
-                    else:
-                        histories[symbol] = load_local_history(root,symbol,source_dataset=config.source_dataset)
-                except Exception as exc:
-                    store.event(session_id,"history_unavailable",{"error_type":type(exc).__name__,"message":str(exc)},symbol=symbol)
-            if should_stop():
-                raise InterruptedError("Scout manual session reached its 5pm Pacific stop")
-            from .minute_feed import QuarterHourMinuteFeed
-            startup_stage = "minute_provider"
-            provider = prepare_minute_provider(model_runtime, datastore=root, pc=pc,
-                symbols=symbols, source_dataset=config.source_dataset, clock=clock)
-            startup_stage = "market_collection"
-            market_collector = prepare_market_collection(model_runtime, datastore=root,
-                pc=pc, symbols=symbols, clock=clock,
-                **({"stopped": should_stop, "pause": pause} if pc == "Scout" else {}))
-            startup_stage = "minute_feed"
-            journal = AcquisitionJournal(root / "intraday/acquisition.sqlite3")
-            minute_feed = QuarterHourMinuteFeed(provider=provider,store=store,journal=journal,histories=histories,
-                pc=pc,symbols=symbols,session_id=session_id,clock=clock,
-                publication_offset_seconds=config.publication_offset_seconds,
-                native_interval_symbols=native_interval_symbols,
-                reference_fill_policy=getattr(model_runtime.get("dataset_builder"), "reference_fill_policy", None),
-                on_closed=lambda result: emit({"event":"minute_data_day_complete",**result}))
-            startup_stage = "forecast_runner"
-            runner = ShadowRunner(store=store,pc=pc,symbols=symbols,config=config,clock=clock,
-                                  stopped=should_stop,**model_runtime)
+                from .minute_feed import QuarterHourMinuteFeed
+                startup_stage = "minute_provider"
+                provider = prepare_minute_provider(model_runtime, datastore=root, pc=pc,
+                    symbols=symbols, source_dataset=config.source_dataset, clock=clock)
+                startup_stage = "market_collection"
+                market_collector = prepare_market_collection(model_runtime, datastore=root,
+                    pc=pc, symbols=symbols, clock=clock,
+                    **({"stopped": should_stop, "pause": pause} if pc == "Scout" else {}))
+                startup_stage = "minute_feed"
+                journal = AcquisitionJournal(root / "intraday/acquisition.sqlite3")
+                minute_feed = QuarterHourMinuteFeed(provider=provider,store=store,journal=journal,histories=histories,
+                    pc=pc,symbols=symbols,session_id=session_id,clock=clock,
+                    publication_offset_seconds=config.publication_offset_seconds,
+                    native_interval_symbols=native_interval_symbols,
+                    reference_fill_policy=getattr(model_runtime.get("dataset_builder"), "reference_fill_policy", None),
+                    on_closed=lambda result: emit({"event":"minute_data_day_complete",**result}))
+                startup_stage = "forecast_runner"
+                runner = ShadowRunner(store=store,pc=pc,symbols=symbols,config=config,clock=clock,
+                                      stopped=should_stop,**model_runtime)
             if pc == "Atlas":
                 startup_stage = "local_executor"
                 executor = IntradayAccountExecutor(datastore=root,store=store,broker=SchwabSession(),local_symbols=symbols,
@@ -836,11 +853,12 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 stopped.set()
         context_worker = (threading.Thread(target=context_work,name="intraday-manual-market-context",daemon=True)
                           if market_collector is not None else None)
-        worker.start()
-        scorer.start()
-        data_worker.start()
-        if context_worker is not None:
-            context_worker.start()
+        if not independent_services:
+            worker.start()
+            scorer.start()
+            data_worker.start()
+            if context_worker is not None:
+                context_worker.start()
         print(f"{pc} 15m manual session running. New predictions can submit real orders. Ctrl-C stops this worker; resting orders retain their broker identities.",flush=True)
         if automatic_stop_at is not None:
             print("Automatic graceful stop: 5:00pm America/Los_Angeles; active work drains and resting orders retain their identities.",flush=True)
@@ -849,13 +867,32 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         try:
             while not should_stop():
                 status("RUNNING")
-                for forecast in queue.due(clock()):
+                try:
+                    due_forecasts = queue.due(clock())
+                except Exception as exc:
+                    import sqlite3
+                    if (independent_services and isinstance(exc, sqlite3.OperationalError)
+                            and any(word in str(exc).lower() for word in ("locked", "busy"))):
+                        emit({"event":"execution_queue_busy", "retry_after_seconds":.2})
+                        sleep(.2)
+                        continue  # Recheck manual authority before another read.
+                    raise
+                for forecast in due_forecasts:
                     # A prior symbol in this snapshot may have just received a
                     # longer provider wait. No later symbol bypasses that wait.
                     if should_stop() or not queue.broker_due(clock()):
                         break
                     try:
+                        service_step_started = time.perf_counter()
                         result = executor.step(forecast)
+                        if independent_services:
+                            from .scout_services import metric
+                            metric(root / "intraday/services", "trading", "forecast_to_order_disposition",
+                                   forecast_id=forecast["forecast_id"], symbol=forecast["symbol"],
+                                   forecast_age_seconds=max(0, (instant(clock())-instant(forecast["issued_at"])).total_seconds()),
+                                   execution_step_seconds=time.perf_counter()-service_step_started,
+                                   disposition=result.get("disposition"),
+                                   deadline_miss=instant(clock()) >= instant(forecast["target_close"]))
                         store.event(session_id,"execution_step",result,symbol=forecast["symbol"])
                         emit({"event":"execution_disposition","symbol":forecast["symbol"],
                             "forecast_id":forecast["forecast_id"],

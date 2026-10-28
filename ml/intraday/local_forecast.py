@@ -260,7 +260,11 @@ def _saved_forecast_once(path, forecast, *, session_id, session_started,
             "WHERE i.cycle_id=? AND i.symbol=?", (forecast["cycle_id"], forecast["symbol"])).fetchone()
         if snapshot is None or snapshot[0] != forecast["snapshot_hash"]:
             raise ContractError("Exact frozen forecast snapshot is missing")
-        _validate_saved_snapshot(*snapshot)
+        if forecast.get("execution_input_hash"):
+            from .service_handoff import execution_envelope
+            execution_envelope(*snapshot, forecast)
+        else:
+            _validate_saved_snapshot(*snapshot)
 
         # julianday compares offsets correctly and limits returned payloads to
         # this or later references, rather than loading historical forecast books.

@@ -27,13 +27,13 @@ def test_bounded_groups_samples_overflow_and_existing_phase_slots(monkeypatch):
         for index in range(48):
             with diagnostics.recovery_phase("journal_connect", format(index, "032x")):
                 pass
-        for name in ("group_" + letter for letter in "abcdefghijklmnop"):
+        for name in ("group_" + letter for letter in "abcdefghijklmnopqrst"):
             with diagnostics.recovery_phase(name):
                 pass
         for _ in range(32):
             with diagnostics.dataset_phase("preserved"):
                 pass
-    assert len(groups(profile)) == 16
+    assert len(groups(profile)) == 20
     assert profile["recovery_subphases"]["overflow_count"] == 1
     assert len(profile["phases"]) == 32
     row = groups(profile)["journal_connect"]

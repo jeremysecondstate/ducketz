@@ -20,9 +20,9 @@ _recovery_journal = ContextVar("intraday_recovery_diagnostic_journal", default=N
 _MAX_PHASES = 32
 _MAX_CACHES = 4
 _MAX_OBSERVER_ERRORS = 8
-_MAX_RECOVERY_GROUPS = 16
+_MAX_RECOVERY_GROUPS = 20
 _MAX_RECOVERY_SAMPLES = 3
-_CACHE_COUNTERS = ("hits", "misses", "invalid_entries", "read_skips", "write_skips")
+_CACHE_COUNTERS = ("hits", "misses", "invalid_entries", "read_skips", "write_skips", "row_reuse_hits")
 
 
 def _error_type(error):
@@ -239,7 +239,7 @@ def record_context_cache(cache):
         counters = {"enabled": cache is not None}
         if cache is not None:
             for name in _CACHE_COUNTERS:
-                value = getattr(cache, name)
+                value = getattr(cache, name, 0) if name == "row_reuse_hits" else getattr(cache, name)
                 if type(value) is not int or value < 0:
                     raise ValueError("Invalid context cache diagnostic counter")
                 counters[name] = value

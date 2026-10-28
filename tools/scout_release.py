@@ -100,20 +100,21 @@ def validate_release(release_root, manifest_sha256, *, protocol=PROTOCOL):
             "lifecycle_protocol": protocol}
 
 
-def resolve_selection(selector):
+def resolve_selection(selector, *, protocol=PROTOCOL):
     selector = Path(selector)
     original = read_bytes(selector)
     selected = json.loads(original)
     if selected.get("schema") != SELECTOR_SCHEMA:
         raise ValueError("Invalid Scout release selector schema")
-    result = validate_release(selected["release_root"], selected["manifest_sha256"])
+    result = validate_release(selected["release_root"], selected["manifest_sha256"], protocol=protocol)
     if read_bytes(selector) != original:
         raise ValueError("Scout release selection changed during validation; no fallback")
     result["selection_sha256"] = sha256(original)
     return result
 
 
-def select_release(selector, release_root, manifest_sha256, *, expected_selection_sha256=None):
+def select_release(selector, release_root, manifest_sha256, *, expected_selection_sha256=None,
+                   protocol=PROTOCOL):
     """Installer commit point, called only after complete review and offline tests.
 
     Compare the predecessor under the installer's exclusive ownership; a caller
@@ -124,11 +125,11 @@ def select_release(selector, release_root, manifest_sha256, *, expected_selectio
     from filelock import FileLock
     selector.parent.mkdir(parents=True, exist_ok=True)
     with FileLock(str(selector) + ".install.lock", timeout=0):
-        validated = validate_release(release_root, manifest_sha256)
+        validated = validate_release(release_root, manifest_sha256, protocol=protocol)
         previous = read_bytes(selector) if selector.exists() else None
         if (sha256(previous) if previous is not None else None) != expected_selection_sha256:
             raise ValueError("Scout selector changed since installer review")
         atomic_json(selector, {"schema": SELECTOR_SCHEMA, "release_root": validated["release_root"],
                               "manifest_sha256": manifest_sha256,
                               "previous": json.loads(previous) if previous is not None else None})
-        return resolve_selection(selector)
+        return resolve_selection(selector, protocol=protocol)
