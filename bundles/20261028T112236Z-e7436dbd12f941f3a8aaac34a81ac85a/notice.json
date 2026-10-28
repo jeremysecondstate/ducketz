@@ -1,0 +1,27 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T111906Z-869532527beb4857a406044446684672",
+  "change_id": "scout-execution-store-busy:20261028T111906Z-869532527beb4857a406044446684672",
+  "completion_record": "20261028T111906Z-869532527beb4857a406044446684672",
+  "files": [
+    "ml/intraday/live_session.py",
+    "ml/intraday/scout_services.py",
+    "tests/test_intraday_execution_store_busy.py"
+  ],
+  "limitations": [
+    "No production provider/broker/model calls or trader control actions by repair.",
+    "Observed trading role failed terminally before installation; new initial activation remains human/existing-task controlled.",
+    "Unchanged data-service fixture stall is preserved under superseded source record; its broader cause is not declared fixed."
+  ],
+  "main_sha": "505b1c375ae4e524f978fae9a8086d1d8e622fe2",
+  "repository": "jeremysecondstate/ducketz",
+  "review_url": "https://github.com/jeremysecondstate/ducketz/pull/490",
+  "runtime_implications": "Selected Scout execution-busy release preserves all 551 unowned predecessor files and exact private recipe. No controller/bootstrap/task changes; installation does not respawn failed trading.",
+  "scope": "Shared correctness in independent Scout execution; every PC retains its own model recipe, symbols and operating controls.",
+  "source_sha": "b6cfb60a6f733ea1e742cb53eaf7bf85a697205f",
+  "summary": "Scout independent trading preserves broker retry deadlines through SQLite contention",
+  "tests": {
+    "installed_scout": "106 passed, zero skips on the exact composed immutable release",
+    "source_courier_main": "107 passed, zero skips in each final three-module packet replay; overlapping checks"
+  }
+}
