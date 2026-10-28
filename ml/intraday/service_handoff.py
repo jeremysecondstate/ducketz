@@ -289,6 +289,11 @@ class ServiceStore(ShadowStore):
         self.connection_timeout = .25
         metric_root = self.object_root
         class MeasuredConnection(sqlite3.Connection):
+            def __init__(connection, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                connection._database_metrics = []
+                connection._database_metrics_dropped = 0
+
             def execute(connection, sql, *args, **kwargs):
                 statement = sql.strip().upper()
                 admission = statement.startswith("BEGIN IMMEDIATE")
@@ -302,14 +307,39 @@ class ServiceStore(ShadowStore):
                     raise
                 finally:
                     if measured:
-                        # This measures transaction-admission wall time and
-                        # busy outcomes, separately from dataset/model work.
+                        # Keep only bounded scalars while SQLite may own the
+                        # writer. Telemetry locks and file I/O happen after close.
                         try:
-                            from .scout_services import metric
-                            metric(metric_root, "database", "writer_admission" if admission else "write_statement",
-                                   seconds=time.perf_counter()-begun, busy=busy)
+                            sample = ("writer_admission" if admission else "write_statement",
+                                      time.perf_counter()-begun, busy)
+                            if len(connection._database_metrics) < 128:
+                                connection._database_metrics.append(sample)
+                            else:
+                                connection._database_metrics_dropped += 1
                         except Exception:
                             pass  # Diagnostics never replace a durable effect.
+
+            def close(connection):
+                result = super().close()  # A failed close cannot prove lock release.
+                pending = connection._database_metrics
+                dropped = connection._database_metrics_dropped
+                connection._database_metrics = []
+                connection._database_metrics_dropped = 0
+                try:
+                    from .scout_services import metric
+                except Exception:
+                    return result
+                for phase, seconds, busy in pending:
+                    try:
+                        metric(metric_root, "database", phase, seconds=seconds, busy=busy)
+                    except Exception:
+                        pass  # Diagnostic I/O cannot mask the committed/rolled-back effect.
+                if dropped:
+                    try:
+                        metric(metric_root, "database", "measurement_overflow", dropped_count=dropped)
+                    except Exception:
+                        pass
+                return result
         self.connection_factory = MeasuredConnection
         super().__init__(path)
 
