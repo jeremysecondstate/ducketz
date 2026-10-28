@@ -1,0 +1,27 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261028T172626Z-6e30f3afc4f34b4bb0dae25fc0bfaa2a",
+  "change_id": "scout-stop-diagnostic:20261028T172626Z-6e30f3afc4f34b4bb0dae25fc0bfaa2a",
+  "completion_record": "20261028T172626Z-6e30f3afc4f34b4bb0dae25fc0bfaa2a",
+  "files": [
+    "ml/intraday/scout_services.py",
+    "tests/test_scout_model_failure_persistence.py"
+  ],
+  "limitations": [
+    "Offline native SQLite contention and diagnostic-failure fixtures; no production calls or trader controls.",
+    "A failed diagnostic write cannot prove the pending payload durable; original stop classification and native cause are retained.",
+    "Actual loading and affected runtime behavior remain separate; underlying lock holder and existing admission/progress retry observations remain open."
+  ],
+  "main_sha": "ae7870e082a2d244a71b9e1f036e7fc02e04d16a",
+  "repository": "jeremysecondstate/ducketz",
+  "review_url": "https://github.com/jeremysecondstate/ducketz/pull/500",
+  "runtime_implications": "Compatible independent model-service repair through the next safe automatic model replacement. Preserve original manual authority, deadline, no-retry stop behavior, existing task, launcher, bootstrap and all unowned release files.",
+  "scope": "Shared Scout model-service correctness. Each PC retains symbols, private model recipe, fitted artifacts and operating bindings.",
+  "source_sha": "38eea05ba0e7e6c32065bc8b532079cabf8a0798",
+  "summary": "Scout model persistence retains stopped result when optional diagnostics fail",
+  "tests": {
+    "composed_installed": "57 passed, zero skipped in each composed and exact installed release; overlapping suites",
+    "regression": "Ten new cases failed on original source and pass on repaired source; focused persistence suite18passed zero skipped",
+    "source_queue_courier_main": "57 passed, zero skipped in each final tested candidate; overlapping suites"
+  }
+}

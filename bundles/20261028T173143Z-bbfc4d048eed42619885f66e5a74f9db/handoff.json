@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-28T17:31:43.906330Z",
+  "id": "20261028T173143Z-bbfc4d048eed42619885f66e5a74f9db",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout model persistence retains stopped result when optional diagnostics fail"
+}
