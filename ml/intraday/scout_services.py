@@ -215,14 +215,14 @@ def _model_checkpoint(store, lifecycle, result, symbols):
 
 
 class _ModelFailurePersistenceStopped(Exception):
-    """Authority ended while an exact model failure write remained pending."""
+    """Authority ended while an exact model write remained pending."""
     def __init__(self, reason):
         self.reason = reason
         super().__init__("Model failure persistence stopped: " + reason)
 
 
 class _ModelServiceStore(ServiceStore):
-    """Retry only model failure evidence; never replay model/science work."""
+    """Retry exact model admission/failure writes; never replay model work."""
     def __init__(self, *args, persistence_stop_reason, persistence_pause,
                  persistence_diagnostic_binding=None, **kwargs):
         self._persistence_stop_reason = persistence_stop_reason
@@ -273,13 +273,23 @@ class _ModelServiceStore(ServiceStore):
                     self._failure_retry_receipt("recovered", episode, pending)
                 return result
 
+    def begin_cycle(self, cycle_id, payload):
+        # Admission precedes all symbol work. Retain this attempt's original
+        # reference, configuration and row clock through native contention.
+        frozen = json.loads(encoded(payload))
+        return self._failure_write(lambda: super(_ModelServiceStore, self).begin_cycle(cycle_id, frozen),
+            {"operation":"model_cycle_begin", "cycle_id":cycle_id, "payload":frozen})
+
     def event(self, cycle_id, kind, payload, *, symbol=None, recorded_at=None):
-        if kind != "symbol_failure":
+        if kind not in ("symbol_failure", "cycle_started"):
             return super().event(cycle_id, kind, payload, symbol=symbol, recorded_at=recorded_at)
         # Freeze the original payload and row clock before the first attempt.
         frozen = json.loads(encoded(payload))
         recorded = instant(recorded_at or utcnow()).isoformat()
-        pending = {"operation":"symbol_failure_event", "cycle_id":cycle_id, "symbol":symbol,
+        # begin_cycle commits its row before this separate start-event write.
+        # Retry the event here so an existing row cannot bypass its evidence.
+        operation = "symbol_failure_event" if kind == "symbol_failure" else "model_cycle_started_event"
+        pending = {"operation":operation, "cycle_id":cycle_id, "symbol":symbol,
                    "kind":kind, "recorded_at":recorded, "payload":frozen}
         return self._failure_write(lambda: super(_ModelServiceStore, self).event(
             cycle_id, kind, frozen, symbol=symbol, recorded_at=recorded), pending)
