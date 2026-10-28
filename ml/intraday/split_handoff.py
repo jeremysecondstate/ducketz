@@ -40,6 +40,25 @@ def _now():
     return datetime.now(timezone.utc)
 
 
+def ready_scientific_configuration_hashes(configuration):
+    """Match legacy integer/float offset encodings without changing science.
+
+    The launchers can freeze 30 while argparse produces 30.0. JSON hashes
+    distinguish those equal offsets. Keep the original hash and allow only
+    its exact integral int/float counterpart inside the existing offset range.
+    No frozen configuration, immutable object or global digest is rewritten.
+    """
+    science = {key: value for key, value in configuration.items()
+               if key not in {"symbol_workers", "selected_models_by_symbol"}}
+    identities = [digest(science)]
+    offset = science.get("publication_offset_seconds")
+    if (type(offset) in (int, float) and 0 <= offset < 900
+            and float(offset).is_integer()):
+        identities.extend(digest({**science, "publication_offset_seconds": value})
+                          for value in (int(offset), float(offset)))
+    return tuple(dict.fromkeys(identities))
+
+
 class ReadySnapshots:
     def __init__(self, directory, *, actor, symbols, clock=_now):
         self.root = Path(directory).resolve()
@@ -256,8 +275,12 @@ class ReadySnapshots:
             _hash(value[key])
         return value | {"record_sha256": identity}
 
-    def ready(self, now, *, configuration_hash, session_started_at=None, scientific_configuration_hash=None):
+    def ready(self, now, *, configuration_hash, session_started_at=None,
+              scientific_configuration_hash=None, scientific_configuration_hashes=()):
         current = instant(now)
+        scientific_identities = {_hash(identity) for identity in scientific_configuration_hashes}
+        if scientific_configuration_hash is not None:
+            scientific_identities.add(scientific_configuration_hash)
         self.rejected = []
         # All filtering identities are verified against immutable record bytes.
         with self.connect() as db:
@@ -270,8 +293,7 @@ class ReadySnapshots:
                 if (value["symbol"], value["reference_at"], value["configuration_hash"]) != (symbol, reference, configuration):
                     raise ContractError("Ready index differs from immutable record")
                 if ((value["configuration_hash"] == configuration_hash
-                        or scientific_configuration_hash is not None
-                        and value["scientific_configuration_hash"] == scientific_configuration_hash)
+                        or value["scientific_configuration_hash"] in scientific_identities)
                         and instant(value["ready_at"]) <= current < instant(value["target_close"])):
                     result.append(value)
             except (OSError, ValueError, KeyError, TypeError) as exc:
