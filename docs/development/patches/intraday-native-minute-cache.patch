@@ -1,0 +1,28 @@
+--- a/ml/intraday/coverage.py
++++ b/ml/intraday/coverage.py
+@@ -14,6 +14,7 @@
+ 
+ import numpy as np
+ import pandas as pd
++from pandas._libs.tslibs.timedeltas import Timedelta as _NATIVE_STEP_CONSTRUCTOR
+ 
+ from .prediction import ContractError, STEP, instant
+ 
+@@ -24,6 +25,8 @@
+ # native observation in each source proof.
+ _NATIVE_MINUTE = pd.offsets.Minute(1)
+ _SOURCE_QUARTER = pd.offsets.Minute(15)
++# Reuse only the canonical immutable pandas minute duration in source proofs.
++_NATIVE_STEP_CACHED = _NATIVE_STEP_CONSTRUCTOR(minutes=1)
+ 
+ 
+ def check_population_contract(value):
+@@ -139,7 +142,7 @@
+             return False
+         from .data import _require_native_observations
+         _require_native_observations([candle, *evidence["observations"]])
+-        native_step = pd.Timedelta(minutes=1)
++        native_step = _NATIVE_STEP_CACHED if pd.Timedelta is _NATIVE_STEP_CONSTRUCTOR else pd.Timedelta(minutes=1)
+         times = [_utc(row["opened_at"]) for row in evidence["observations"]]
+         if len(times) != observed or len(set(times)) != len(times) or times != sorted(times):
+             return False
