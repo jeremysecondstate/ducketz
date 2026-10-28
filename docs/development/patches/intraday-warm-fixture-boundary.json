@@ -1,0 +1,44 @@
+{
+  "schema_version": "warm-recovery-fixture-boundary-v1",
+  "actor": "Atlas",
+  "task": "ATLAS 15m Trader Representative",
+  "scope": "shared tests; exact local fixture correction",
+  "production_operations": [],
+  "local_fixture": {
+    "path": "tests/test_intraday_warm_header_cache.py",
+    "before_sha256": "5819d81f48fe9c676592c64494c55731b11bae427e773278455a74dccb04ed35",
+    "after_sha256": "fe54ecce9d446fa271935147f67699604a95f222c09078ccfdbfe6e1e70f2fee",
+    "patch": "docs/development/patches/intraday-warm-fixture-boundary.patch",
+    "patch_sha256": "495a9ffd4a0351adb6f69362da5d7f97013d8620734a84429dda050af984f084",
+    "applicability": "Apply only to the exact reviewed local beforeimage, or review and test the equivalent fixture change on a different local version. The common base lacks this full legacy fixture; do not create an incomplete local-only copy there."
+  },
+  "portable_regression": {
+    "path": "tests/test_intraday_distinct_recovery_boundaries.py",
+    "sha256": "7bdd2f1625d56b1c1ad9af66bc8bc8ae73c0ab96940ea568365e35e3f4d37327",
+    "cases": 8,
+    "coverage": [
+      "Four original forecast payload/actor/trigger/missing corruptions committed between read and writer",
+      "New-event writer recheck rejects every committed corruption without appending",
+      "Exact existing observation returns from coherent read snapshot without a writer, then next lookup rejects committed corruption",
+      "Original UNKNOWN native identity and evidence retained; no partial projection writes"
+    ]
+  },
+  "checker": {
+    "path": "tests/check_intraday_warm_fixture_package.py",
+    "sha256": "284814ecb5173dba58c9498ab32fa5a38b6fd295101e57df89630badb7c6d93f",
+    "expected_passes": 31,
+    "cases": "8 portable recovery-boundary cases plus 23 existing partial-header cases",
+    "isolation": "Candidate-only application/fixture imports; network and external subprocess calls denied; no skips accepted"
+  },
+  "preserved": [
+    "Production source and installation generation",
+    "Original science, probabilities, targets and policies",
+    "Independent trader state, orders, UNKNOWN fences and manual controls",
+    "Existing source validation, snapshot coherence and final writer proof"
+  ],
+  "runtime_implications": "Test-only changes do not require a new installed runtime generation and do not establish live recovery. No trader operation, start/restart or lifetime change.",
+  "limitations": [
+    "Exact candidate tests must pass after adoption and on each immutable publication candidate.",
+    "Local complete fixture and common subclass are validated separately; no previous test result covers later edited bytes."
+  ]
+}
