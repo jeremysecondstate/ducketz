@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T03:51:53.159834Z",
+  "id": "20261029T035153Z-462db91f6a9c426b9a92616981236ca8",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout completed and locally installed the shared rolling 24-hour price panel in main Gameplan Stats"
+}

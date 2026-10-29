@@ -1,0 +1,74 @@
+{
+  "atlas_applicability": "Shared source applies to Atlas with its own production watchlist and existing authenticated connections. Preserve Atlas symbols, model recipes and operating bindings.",
+  "author": "Scout",
+  "branch": "codex/scout/20261029T034757Z-468179dd70514d34a057f0ac5c46f047",
+  "change_id": "20261029T034757Z-468179dd70514d34a057f0ac5c46f047",
+  "data_policy": "Fresh native Schwab extended-hours minute history and fresh FMP splits; completed closes at frozen UTC T and T minus24 elapsed hours. Calendar closure carries actual timestamps; over10 missing expected trading minutes is stale. Full equal-weight average requires every member.",
+  "files": [
+    "app/services/rolling_price_change.py",
+    "app/ui/rolling_price_widgets.py",
+    "app/ui/gameplan_stats.py",
+    "app/ui/gameplan_execution_widgets.py",
+    "tests/test_rolling_price_change.py",
+    "tests/test_rolling_price_widgets.py",
+    "tests/test_rolling_price_stats.py",
+    "tests/test_gameplan_stats_ui.py",
+    "tests/test_scout_stats_integration.py",
+    "tests/test_scout_stats_history_integration.py",
+    "tests/visual_rolling_price_fixture.py",
+    "tests/visual_rolling_stats_fixture.py",
+    "docs/gameplan-stats-tab-design-ui/ROLLING_PRICE_CHANGE.md"
+  ],
+  "installation": "Scout GUI source locally installed; exact reviewed owned bytes match published source.",
+  "limitations": [
+    "Live provider availability and loaded desktop GUI not observed. Offline fixtures use mocked market data.",
+    "Draft PR is published; no main integration or peer installation is claimed. Prior independent exchange completion and receipts remain intact."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/508",
+  "remote_sha": "6d9b22d410389902d7baa485df2e2731a14ed422",
+  "repository": "jeremysecondstate/ducketz",
+  "results": [
+    "Sealed source suite179 passed; separate legacy UI replay30 passed and1 transient Tcl setup skip.",
+    "Isolated candidate178 passed and1 transient Tcl setup skip; separate complete legacy UI replay31 passed.",
+    "Installed application57 passed including all3 existing Stats-only launch checks.",
+    "Native offline normal1860x1010, medium1180x900 and narrow900x900 Stats visuals inspected; all members and average fit."
+  ],
+  "runtime_implications": "Loads at next normal GUI launch. No training, trading, schedules, model recipes or worker restart changed.",
+  "scope": "shared",
+  "source_sha": "6d9b22d410389902d7baa485df2e2731a14ed422",
+  "summary": "Scout completed and locally installed the shared rolling 24-hour price panel in main Gameplan Stats",
+  "tests": [
+    {
+      "check": 1,
+      "completed_at_utc": "2026-10-29T03:48:22.062750Z",
+      "exit_code": 0,
+      "kind": "sealed-source",
+      "output_sha256": "ee44f8d659fe3d6f7fc9970da646520f9745f197678b10006b6bb605dd5ce292",
+      "started_at_utc": "2026-10-29T03:47:57.480444Z"
+    },
+    {
+      "check": 2,
+      "completed_at_utc": "2026-10-29T03:48:35.742940Z",
+      "exit_code": 0,
+      "kind": "sealed-source",
+      "output_sha256": "4dff9b42e894d02bcbca84b3d44f224b5c2bb385a7185b7062cddfd9ab111978",
+      "started_at_utc": "2026-10-29T03:48:22.201577Z"
+    },
+    {
+      "check": 1,
+      "completed_at_utc": "2026-10-29T03:49:50.958700Z",
+      "exit_code": 0,
+      "kind": "isolated-candidate",
+      "output_sha256": "1c678faba6069452d1538e2ce0918b31da34c390ad60aea579880d37f5f0637d",
+      "started_at_utc": "2026-10-29T03:49:27.087822Z"
+    },
+    {
+      "check": 2,
+      "completed_at_utc": "2026-10-29T03:50:04.539112Z",
+      "exit_code": 0,
+      "kind": "isolated-candidate",
+      "output_sha256": "a834820b11dd33fe1940bdc76eb45600243fe7e5044723c2d2585da39092e39b",
+      "started_at_utc": "2026-10-29T03:49:51.097637Z"
+    }
+  ]
+}
