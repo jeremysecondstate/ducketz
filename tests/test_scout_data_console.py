@@ -348,6 +348,7 @@ def test_waiting_message_changes_at_session_start_without_claiming_service_start
     {"startup_progress": {"stage": "native_feed_initializing"}},
     {"status": {}}, {"startup_progress": {"stage": []}},
     {"wake_at": "invalid"}, {"wake_at": "2026-10-29T04:00:00"},
+    {"wake_at": "0001-01-01T00:00:00+00:00"},
     {"deadline": "2026-10-28T23:00:00+00:00"},
 ])
 def test_terminal_failed_stale_or_invalid_evidence_is_not_displayed_as_waiting(tmp_path, patch):

@@ -189,7 +189,7 @@ def session_start_message(saved, now):
             if deadline.tzinfo is None or now >= deadline:
                 return None
         local = wake.astimezone(ZoneInfo("America/Los_Angeles"))
-    except (KeyError, TypeError, ValueError, AttributeError):
+    except (KeyError, TypeError, ValueError, AttributeError, OverflowError):
         return None
     hour = local.hour % 12 or 12
     meridiem = "a.m." if local.hour < 12 else "p.m."
