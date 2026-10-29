@@ -1,0 +1,27 @@
+{
+  "actor_task": "Atlas 15-minute trader representative",
+  "author": "Atlas",
+  "change_id": "20261029T212601Z-34262d2c7ad2414487504558500fd66b",
+  "files": [
+    "ml/intraday/sizing_header_cache.py",
+    "tests/test_intraday_sizing_read_deadline.py",
+    "tests/check_intraday_sizing_outcomes_package.py"
+  ],
+  "limitations": [
+    "Draft PR529 remains unmerged; peer installation and applicability are separate",
+    "True whole-operation budget exhaustion still falls back to full original validation",
+    "Local natural activity and historical incident evidence remain private; no whole-trader recovery claim"
+  ],
+  "peer_applicability": "Shared cache correctness; retain each PCs own scientific and operating bindings",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/529",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas sealed the reviewed helper against its complete selected source generation. Normal renewal remains limited to an already authorized session. Preserve local scientific selections, independent state, UNKNOWN fences and manual controls; no peer native configuration changes.",
+  "scope": "shared",
+  "source_commit": "ad6ec272c62fe403506f07433287f2407a064285",
+  "summary": "Use existing whole-operation budget for authenticated sizing header reads; preserve strict writer deadline",
+  "tests": [
+    "62 portable synthetic regressions pass in queued and fresh isolated candidates with zero external actions",
+    "81 complete installed-composition offline checks pass, including immutable sizing proof and fallback guards",
+    "Four deterministic cases cover causal deadline contrast, total read budget, writer deadline, and connection failure cleanup"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T21:36:37.053047Z",
+  "id": "20261029T213637Z-449b52e66fff4f59bfe04a4ddf3d8b6c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Use existing whole-operation budget for authenticated sizing header reads; preserve strict writer deadline"
+}
