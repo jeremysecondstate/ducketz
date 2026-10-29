@@ -1,0 +1,132 @@
+{
+  "schema": "intraday-preparation-snapshot-references-v1",
+  "scope": "Shared prospective opt-in1A storage only; original scientific payloads and Atlas/Scout model selections remain unchanged",
+  "patch_path": "docs/development/patches/intraday-preparation-snapshot-references.patch",
+  "patch_sha256": "3ac52ebeb4f1d5b9de376469a3b96b11a3892f657291459a78d17e76c02dae7d",
+  "targets": {
+    "ml/intraday/store.py": {
+      "operation": "modify",
+      "before_sha256": "ce3b760f807ececa2f31c507bffaf16da961f0f53fbace1688ac9fcae38b96c9",
+      "after_sha256": "be8d6f8bdc04d94c2029f31fad2a65adc173c9b54fbd143a693fde54cc1c56f2",
+      "before_bytes": 50203,
+      "after_bytes": 52391,
+      "hunks": [
+        {
+          "old_start": 83,
+          "old_count": 8,
+          "new_start": 83,
+          "new_count": 14,
+          "old_sha256": "bc447064ffa3ae37b246543a53fac44fe58cda98344fc78a0892ae7f6e398f8f",
+          "new_sha256": "d1e24c491c59bc409b23f2a56f35b9a38e79af550fc0d11864be983badfc4e28"
+        },
+        {
+          "old_start": 165,
+          "old_count": 6,
+          "new_start": 171,
+          "new_count": 23,
+          "old_sha256": "01fc83909e71d46a3a4ed0537083487bcd53c92e356c35f931078e3e134b8a67",
+          "new_sha256": "f91b7b9fbc36f0953926bd7a36e4ab79247cdc346532f7f9cd3268525c058e48"
+        },
+        {
+          "old_start": 234,
+          "old_count": 6,
+          "new_start": 257,
+          "new_count": 20,
+          "old_sha256": "1f0c967b22f69fc3fc90227b81a9e07fda0ea7644a8bda9f6b700b4acf494681",
+          "new_sha256": "d96db6721b54aed159c1952f646f4e0344ab89b5f6da7305b767b030194d93f2"
+        },
+        {
+          "old_start": 241,
+          "old_count": 23,
+          "new_start": 278,
+          "new_count": 23,
+          "old_sha256": "b33757c473ba6616a5d2f40663e62b569a88d691b1e3fc11ac65b47e79c80baf",
+          "new_sha256": "b598d7d9aaea95a04bd626b212547032579fcb2cb1e0885a17b5bcd98b8de3fa"
+        }
+      ]
+    },
+    "ml/intraday/data_renewal.py": {
+      "operation": "modify",
+      "before_sha256": "f086ac7bfc8e271d1528814896200b22d86705f538f3bd77e33901f98b0d2cb0",
+      "after_sha256": "16f3c5eb0d3f689607dbf78653516e079ff7eab75ff78be64c5edc5faa428268",
+      "before_bytes": 22086,
+      "after_bytes": 22218,
+      "hunks": [
+        {
+          "old_start": 219,
+          "old_count": 7,
+          "new_start": 219,
+          "new_count": 7,
+          "old_sha256": "b225c7823f0ebb57b59a10ea3067d7e24454e4dab08c25dcde84c5890042c41e",
+          "new_sha256": "69d6eb254e629a438aded037f93d20c506198a0838dc36ed87254537bf14e3e0"
+        },
+        {
+          "old_start": 234,
+          "old_count": 7,
+          "new_start": 234,
+          "new_count": 8,
+          "old_sha256": "f459433083368a6650ffd08168fb44b2cff91969bff65e41fe0be467c1e4a774",
+          "new_sha256": "f4b173073f898ffc1be589b5d5b9675508b35fb2289cc9fb634ff38820e3aa35"
+        }
+      ]
+    },
+    "ml/intraday/split_service.py": {
+      "operation": "modify",
+      "before_sha256": "aece178a537951ed68fb1a35d0a9f4e45f5ec2adbf32495b39a27e8370bcfa08",
+      "after_sha256": "ad074d14892546295186553ea2c4d0d8f5aebc426fe5a9bdc2c71f5bfda3fd93",
+      "before_bytes": 30662,
+      "after_bytes": 30808,
+      "hunks": [
+        {
+          "old_start": 273,
+          "old_count": 7,
+          "new_start": 273,
+          "new_count": 7,
+          "old_sha256": "ff5ff4fb4892743a67310d26b2bf09eee8a7d04252344c59f21c8c19be595782",
+          "new_sha256": "227f3e6de91d29b8b28cb4645df8e2eb4b805d43f33281bf0bee4b808cc8d97a"
+        },
+        {
+          "old_start": 306,
+          "old_count": 7,
+          "new_start": 306,
+          "new_count": 8,
+          "old_sha256": "427cdbc6c9f4d8e9131578b92309f27d3a778b91319208061926a7d283acdffc",
+          "new_sha256": "f536b95345a5bdd9f2bfa977726702ff31589f39afa924b55202fbf93b9058c1"
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "ml/intraday/snapshot_objects.py": {
+      "operation": "add",
+      "sha256": "5db2cf864f8fa01a5ef41cefe3b1ee54533d1c0279c2bae8eff81ae9732364fe",
+      "bytes": 3046
+    },
+    "tests/test_intraday_snapshot_objects.py": {
+      "operation": "add",
+      "sha256": "04275cf967e8008131a76569a358cd0469c25d865c452a997e5a2f7a1850a0ab",
+      "bytes": 6954
+    },
+    "tests/test_intraday_preparation_snapshot_references.py": {
+      "operation": "add",
+      "sha256": "e287296a86b7f59e95b775ab315b1c848b6a6a9a211f2f2a0dc9391dbb0ed88a",
+      "bytes": 8135
+    }
+  },
+  "dependency_inventory_intent": "The isolated checker records all actually imported candidate Python files and rejects imports from the editable operating checkout. Hashes here bind the helper and both fixture files; full composed adapters are separately tested only where installed.",
+  "behavior": "Explicit snapshot_directory opts1A preparation stores into one shared immutable full canonical JSON object under ready/snapshots. Database rows retain original snapshot ID plus exact descriptor identity and byte length. The unchanged ReadySnapshots publisher reuses the same original file. Default1B and existing inline rows preserve original behavior; semantic originals are accepted before interpreting the reserved descriptor key.",
+  "retained_consumers": [
+    "ShadowStore.inputs resolves exact original payload and digest for opt-in1A retry/handoff.",
+    "ReadySnapshots.load retains full canonical bytes/matrix/source/recipe/causal-clock validation.",
+    "Default1B model/execution stores, direct SQL readiness/UI consumers and frozen scientific policies remain inline and unchanged.",
+    "All four1A preparation constructors in data_renewal._prepare and legacy split_service opt in the common and per-symbol preparation stores; collection and plain1B stores remain unchanged."
+  ],
+  "limitations": [
+    "Prospective only: no historical row/object migration, deletion, compaction, compression, active-database replacement or raw-data mutation.",
+    "This removes exact1A database/handoff duplicate copies; full per-cycle objects still repeat historical inputs across cycles.",
+    "Object is atomically complete before its small database reference; a failed DB commit may leave an unadvertised complete object for exact retry.",
+    "An opt-in1A DB reference requires its explicit trusted snapshot_directory. Missing/corrupt objects fail from original evidence; no substitute reconstruction.",
+    "Publicmain without the composed opt-in adapter checks package projections/helper fixtures and explicitly skips1A integration. Such skips do not prove1A loading or operation.",
+    "Reviewed source publication, sealed installation, loaded generation and naturally observed future storage growth are separate facts. No live trader/provider operation is a test."
+  ]
+}
