@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T07:26:24.333555Z",
+  "id": "20261029T072624Z-6e0cb28609e54aa78091b2f762434a9a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout installed and integrated responsive saved-history display and source-specific provenance."
+}

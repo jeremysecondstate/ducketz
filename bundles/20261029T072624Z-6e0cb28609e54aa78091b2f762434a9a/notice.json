@@ -1,0 +1,86 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261029T071945Z-e4f3c1364be6466b9abe42966d6cc098",
+  "change_id": "source:20261029T071945Z-e4f3c1364be6466b9abe42966d6cc098",
+  "completion_record": "20261029T071945Z-e4f3c1364be6466b9abe42966d6cc098",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "app/ui/intraday.py"
+    },
+    {
+      "operation": "modify",
+      "path": "app/ui/intraday_data.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_ui.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_metric_cohorts.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_research_view.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_symbol_coverage.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_responsiveness.py"
+    }
+  ],
+  "limitations": [
+    "The sealed source check passed 250 tests; isolated, main and installed checks each passed 249 with one Tk initialization skip.",
+    "Source availability does not establish peer installation or code loaded in an existing desktop process."
+  ],
+  "local_stage": "installed",
+  "main_sha": "1c52792a48bd7b97ddaa5e42c20a54bf8cfa95d6",
+  "main_stage": "main_integrated",
+  "peer_stage": "available_unverified",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/514",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed Scout display installed for normal desktop loading; no application restart, trader deployment, provider or broker calls or production training.",
+  "runtime_stage": "not_deployed",
+  "scope": "Shared read-only display applies independently to Atlas and Scout. Each PC retains its symbols, saved model recipes, settings and operating bindings.",
+  "source_sha": "77f191cec3ec2e7b972af5ce534ca292d8d475a7",
+  "source_stage": "pushed",
+  "summary": "Scout installed and integrated responsive saved-history display and source-specific provenance.",
+  "tests": {
+    "installed": {
+      "completed_at_utc": "2026-10-29T07:25:54.080322Z",
+      "exit_code": 0,
+      "output_sha256": "b04aac3c18afe5dc2864e2eb9ee2482b9a019d7d3ec71f9b9d79cee961d6545d",
+      "result": "249 passed, 1 skipped in 7.10s",
+      "started_at_utc": "2026-10-29T07:25:45.478039Z"
+    },
+    "isolated": {
+      "completed_at_utc": "2026-10-29T07:21:39.513711Z",
+      "exit_code": 0,
+      "output_sha256": "d7d728944b9206313df1d7f2965b4885a031506e414f6262afc4e06f5ef7d39d",
+      "result": "249 passed, 1 skipped in 7.34s",
+      "started_at_utc": "2026-10-29T07:21:30.618568Z"
+    },
+    "main": {
+      "completed_at_utc": "2026-10-29T07:24:06.455018Z",
+      "exit_code": 0,
+      "output_sha256": "c5f90aea9de4b416bf1a54257b748268602772a947eb412d1530f0e99238718c",
+      "result": "249 passed, 1 skipped in 7.55s",
+      "started_at_utc": "2026-10-29T07:23:57.268027Z"
+    },
+    "sealed": {
+      "completed_at_utc": "2026-10-29T07:19:54.213807Z",
+      "exit_code": 0,
+      "output_sha256": "102a4ea973e18782c8deb89ce855b4e1c1e2583fe5604f9a4f741df1eef7c193",
+      "result": "250 passed in 7.32s",
+      "started_at_utc": "2026-10-29T07:19:45.453022Z"
+    }
+  },
+  "upstream_completion_records": [
+    "20261029T040458Z-5beb37232c774e31af497e6f8db21f72",
+    "20261029T034830Z-4cd2eed10e114c3fbb945cf04725cb77"
+  ]
+}
