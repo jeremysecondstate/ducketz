@@ -1,0 +1,33 @@
+{
+  "actor_task": "Atlas atlas-trader-representative",
+  "author": "Atlas",
+  "change_id": "20261029T205105Z-af4057cb332f4048af12cc4aa44a84f0",
+  "files": [
+    "ml/intraday/snapshot_objects.py",
+    "tests/test_intraday_snapshot_chunks.py",
+    "tests/check_isolated_intraday_snapshot_chunks.py",
+    "tests/test_intraday_snapshot_chunk_package.py",
+    "docs/development/patches/intraday-snapshot-chunks.patch",
+    "docs/development/patches/intraday-snapshot-chunks.json"
+  ],
+  "limitations": [
+    "Prospective capability only; default raw writers retained and no operating constructor enables chunking",
+    "Exact local adapter preimages include prior preparation-reference composition; review applicability before applying packet",
+    "Historical raw objects, active databases and first claims retained; no migration, cleanup or fitted-export recreation",
+    "Complete unadvertised chunks may remain after interrupted publication; no automatic cleanup",
+    "Old loaded readers cannot decode manifest-only objects; this change does not activate their production",
+    "No live operations used to validate infrastructure; loaded runtime and naturally observed storage outcomes not claimed"
+  ],
+  "peer_applicability": "Shared storage correctness; exact preimage and local policy review required; no scientific tuning transferred",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/527",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Complete reviewed local source/dependencies sealed separately; existing safe sequential renewal may load decoder support. No session activation, restart, order or chunk writer activation. Preserve each PC local scientific selections and independent1A/1B authority. Peer/publication status does not gate1A.",
+  "scope": "shared",
+  "source_commit": "5c384d80e53ab2806254eced36ce51bd837d012e",
+  "summary": "Lossless immutable snapshot chunk codec preserves original bytes; writer remains explicitly opt-in and disabled by default",
+  "tests": [
+    "Complete local551source composition167offlinechecks passed",
+    "Focused final suite55passed; suites overlap",
+    "Main-based candidate48passed7explicit absent-adapter skips; zero network/process fixture attempts; installedcandidateverification completed2026-10-29T20:53:15Z"
+  ]
+}

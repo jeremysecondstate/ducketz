@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T20:54:09.713299Z",
+  "id": "20261029T205409Z-0886479a9e0146baa196c0999d8b9658",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Lossless immutable snapshot chunk codec preserves original bytes; writer remains explicitly opt-in and disabled by default"
+}
