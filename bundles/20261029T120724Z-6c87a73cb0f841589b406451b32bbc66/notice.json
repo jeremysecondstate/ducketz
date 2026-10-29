@@ -1,0 +1,28 @@
+{
+  "author": "Scout",
+  "change_id": "source:20261029T120026Z-9d2d11ef8f724480b760aecf4f98f137",
+  "files": [
+    "ml/intraday/minute_feed.py",
+    "ml/intraday/scout_services.py",
+    "tests/test_scout_minute_event_persistence.py"
+  ],
+  "limitations": [
+    "Original record20261029T115353Z-40505d9457d1417b8735487bf337533f and source95a998d remain preserved; main integration completed through fresh reviewed rebased record",
+    "Two changed shared broker-diagnostic dependencies were reviewed and freshly tested; no peer source or tuning was installed locally",
+    "Both1Broles loaded the complete successor normally; affected independent1A behavior awaits its next normal authorized activation"
+  ],
+  "main_sha": "62bf92266708f1365b466bf777bebfa3b72ecd98",
+  "original_source_record": "20261029T115353Z-40505d9457d1417b8735487bf337533f",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/520",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No process controls or replay. Preserve saved private recipe, qualification, provider journal originals and trading controls. Compatible1B replacements preserve original logical session/deadline; independent1A loads through normal activation.",
+  "scope": "shared",
+  "source_record": "20261029T120026Z-9d2d11ef8f724480b760aecf4f98f137",
+  "source_sha": "29fe6ce9b968cdb6fe90852ccf576675665e4418",
+  "summary": "Scout minute feed preserves journaled responses through event contention",
+  "tests": [
+    "133 passed;0 skipped/excluded on exact rebased source, isolated courier and main integration",
+    "132 passed;0 skipped in exact installed local release",
+    "Original-source functional baseline:8nativeBUSY failures;3newbindingAPI failures classified separately"
+  ]
+}

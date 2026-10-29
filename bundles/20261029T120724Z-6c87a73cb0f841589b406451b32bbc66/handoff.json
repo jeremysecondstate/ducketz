@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T12:07:24.240605Z",
+  "id": "20261029T120724Z-6c87a73cb0f841589b406451b32bbc66",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout minute feed preserves journaled responses through event contention"
+}
