@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T20:15:39.473750Z",
+  "id": "20261029T201539Z-d927e3686ad24618b47909c554b4384d",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas1A preparation reuses exact immutable ready snapshot bytes instead of retaining a second SQLite copy"
+}

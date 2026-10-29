@@ -1,0 +1,32 @@
+{
+  "actor_task": "Atlas atlas-trader-representative",
+  "author": "Atlas",
+  "change_id": "20261029T201156Z-26d3660984dd441da6ad280b8b9bed76",
+  "files": [
+    "ml/intraday/snapshot_objects.py",
+    "tests/test_intraday_snapshot_objects.py",
+    "tests/test_intraday_preparation_snapshot_references.py",
+    "tests/test_intraday_preparation_snapshot_package.py",
+    "tests/check_isolated_intraday_preparation_snapshot_references.py",
+    "docs/development/patches/intraday-preparation-snapshot-references.patch",
+    "docs/development/patches/intraday-preparation-snapshot-references.json"
+  ],
+  "limitations": [
+    "Prospective1A storage repair only; old databases, raw originals and historical evidence retained",
+    "Repeated per-cycle history and1B inline copies remain separate work",
+    "Old adapter code cannot hydrate new references; explicit trusted object root and existing sequential worker renewal required",
+    "No live operation was invoked for verification; actual loading/storage growth remain separate observations"
+  ],
+  "peer_applicability": "Generic opt-in storage correctness only, exact preimage review required; no local science tuning transferred",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/525",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed complete source/dependencies sealed locally; no start,restart,task,admission,provider,fit,order or manualcontrol operation. Preserve each PC exact local models and independent1A/1B operation. Peer status/publication does not gate production.",
+  "scope": "shared",
+  "source_commit": "13d2e9c9b000f34df2f11e7ac59cd84c3484f6e1",
+  "summary": "Atlas1A preparation reuses exact immutable ready snapshot bytes instead of retaining a second SQLite copy",
+  "tests": [
+    "Exact complete551source composition:127offline checks passed",
+    "Final53package checks passed after metadata wording correction",
+    "Mainbased managedcandidate35passed7explicit localcomposition skips; no network/process fixture attempts"
+  ]
+}
