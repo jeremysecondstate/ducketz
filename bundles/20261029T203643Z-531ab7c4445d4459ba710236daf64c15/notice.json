@@ -1,0 +1,36 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261029T203401Z-5023f452eac7466cb026c2ad91408ea8",
+  "change_id": "20261029T203401Z-5023f452eac7466cb026c2ad91408ea8",
+  "files": [
+    "AGENTS.md",
+    "docs/development/15m-only-nightly-policy.md"
+  ],
+  "limitations": [
+    "Documentation-only source change; private native definitions, task memory and local runbooks were not exported.",
+    "No provider, broker, model production, trader invocation or runtime deployment used for verification."
+  ],
+  "local_adoption": "Atlas native readback matched all 14 existing equity prompt mirrors: 12 active and 2 paused. Gameplan launcher and direct nightly dispatcher are disabled. Follow-up runbooks now match; schedules, scientific policy and manual controls preserved.",
+  "main_sha": "8a505b311498555835ec02b4e3f23d52c75af5f9",
+  "peer_applicability": "Portable instructions supersede obsolete Gameplan production, synthesis and continuation duties. Each PC retains its own symbols, models and native bindings. Peer adoption is not asserted and does not gate independent 15-minute work.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No application code or runtime generation update. Existing 15-minute data, models, saved-results review and preparation continue through their existing owners; no new trading admission.",
+  "scope": "shared",
+  "source_sha": "281c9e085d6a7b84bce7befd1139b9a40f41cfaa",
+  "summary": "Atlas completed the 15-minute-only nightly authority alignment after Gameplan retirement.",
+  "tests": [
+    {
+      "check": "Offline Markdown hygiene and exact candidate/dependency review",
+      "fresh_main_checks": 1,
+      "result": "PASS",
+      "source_checks": [
+        {
+          "completed_at_utc": "2026-10-29T20:34:02.107900Z",
+          "exit_code": 0,
+          "output_sha256": "c31cd5c1cadc1d7cc7460c753545c932eb384b6fb168b49cfd5b0d125fc07b7b",
+          "started_at_utc": "2026-10-29T20:34:01.495652Z"
+        }
+      ]
+    }
+  ]
+}

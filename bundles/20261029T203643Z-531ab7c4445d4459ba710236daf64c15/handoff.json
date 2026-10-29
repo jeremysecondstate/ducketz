@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T20:36:43.089876Z",
+  "id": "20261029T203643Z-531ab7c4445d4459ba710236daf64c15",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas completed the 15-minute-only nightly authority alignment after Gameplan retirement."
+}
