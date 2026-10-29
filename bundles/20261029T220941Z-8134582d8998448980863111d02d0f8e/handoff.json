@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T22:09:41.963320Z",
+  "id": "20261029T220941Z-8134582d8998448980863111d02d0f8e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas shared 15-minute response and snapshot storage, canonical retained daytime history reuse, and bounded maintenance helpers."
+}

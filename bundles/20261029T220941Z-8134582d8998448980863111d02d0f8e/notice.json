@@ -1,0 +1,56 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261029T220201Z-711e4b1a07dc4d8e8bf8f51ce340bae9",
+  "change_id": "20261029T220201Z-711e4b1a07dc4d8e8bf8f51ce340bae9",
+  "files": [
+    "docs/development/patches/intraday-shared-storage.patch",
+    "docs/development/patches/intraday-shared-storage.json",
+    "ml/intraday/acquisition_objects.py",
+    "ml/intraday/canonical_acquisition.py",
+    "tests/test_intraday_acquisition_objects.py",
+    "tests/test_intraday_canonical_acquisition.py",
+    "tests/test_intraday_market_response_objects.py",
+    "ml/intraday/snapshot_references.py",
+    "tests/test_intraday_model_snapshot_references.py",
+    "tests/test_intraday_snapshot_reference_readers.py",
+    "tests/test_intraday_reference_provenance_objects.py",
+    "tools/atlas_datastore_manager.py",
+    "tests/test_atlas_datastore_manager.py",
+    "tests/check_isolated_intraday_shared_storage.py",
+    "tools/intraday_storage_migration.py",
+    "tests/test_intraday_storage_migration.py",
+    "tools/intraday_snapshot_compaction.py",
+    "tests/test_intraday_snapshot_compaction.py",
+    "tests/test_intraday_shared_storage_package.py",
+    "docs/development/intraday-shared-storage.md",
+    "tests/intraday_shared_storage_support.py"
+  ],
+  "limitations": [
+    "Draft PR #530 depends on the snapshot codec sources in #527 and #528. Main integration prepare rejected origin/main because it does not descend from the reviewed source base. No main push or merge performed.",
+    "The public package does not contain the entire locally composed runtime; six integration modules intentionally skip only for the known absent public adapters. Exact composed runtime checks executed those modules.",
+    "Historical DATASTORE cleanup remains pending current consumer/quiescence evidence. No filesystem savings or zero-duplicate result claimed.",
+    "Native task definitions, memory, data, models and private operating evidence remain local."
+  ],
+  "local_adoption": "Atlas sealed reader support, observed every configured acquisition-journal reader role adopt it naturally, then sealed the writer-default change. Existing identities, receipt clocks, scientific selections and manual controls remain preserved.",
+  "peer_applicability": "Portable correctness and maintenance helpers plus exact adapter patch. Each PC must review its own adapter preimages and actual compatible-reader adoption before enabling reference writes. Peer installation and runtime adoption are not asserted.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "New references preserve original bytes and clocks; canonical nighttime continuation reuses retained daytime observations. Reader-first rollout is required. Maintenance requires supported consumers and explicit quiescence, preserves recovery journals and never compacts live databases. No broker/provider calls, trading admission or forced process restarts used for verification.",
+  "scope": "shared",
+  "source_sha": "38d371a720f64f438967a82d5e3e68a5e5a8364f",
+  "summary": "Atlas shared 15-minute response and snapshot storage, canonical retained daytime history reuse, and bounded maintenance helpers.",
+  "tests": [
+    {
+      "check": "Exact composed runtime offline regression",
+      "evidence": "691 passed; 2 expected Windows symlink-privilege skips; 4 explicit process-fixture deselections; 2 subtests passed; all six adapter integration modules executed; zero prohibited attempts.",
+      "result": "PASS"
+    },
+    {
+      "check": "Isolated public candidate",
+      "completed_at_utc": "2026-10-29T22:03:56.573312Z",
+      "evidence": "71 passed; 8 documented skips (six absent-adapter modules plus two Windows privilege skips); 2 subtests passed; zero prohibited network/process attempts.",
+      "output_sha256": "b9af4fbee43931de96f3078ac2dcdb3a069a20e1cd6a4d411daae5c4c49e1b08",
+      "result": "PASS",
+      "started_at_utc": "2026-10-29T22:03:32.008798Z"
+    }
+  ]
+}
