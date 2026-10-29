@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T07:54:24.375938Z",
+  "id": "20261029T075424Z-6b55e0d64a5c46d499c9200aa30cdb11",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout: show the selected 4am session wait in both independent launchers"
+}

@@ -1,0 +1,57 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261029T074817Z-318b8d4c0a984161bae94566126874b9",
+  "change_id": "20261029T074817Z-318b8d4c0a984161bae94566126874b9",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tools/scout_data_console.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tools/scout_service_controller.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_scout_data_console.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_scout_service_controller.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_scout_console.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_scout_session_wait.py"
+    }
+  ],
+  "limitations": [
+    "Draft PR; main integration and peer installation remain separate.",
+    "Offline checks and native timed non-trading launch probes only; no broker, provider or order execution."
+  ],
+  "local_verification": "Three native timed probes completed successfully; both launchers report the selected Pacific session wait. Production task definitions preserved.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/516",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout installed new immutable console and controller display releases. Both existing wait gates remain unchanged; the next normal initial trading launch loads the controller. Reviewed peer adoption only.",
+  "scope": "shared",
+  "source_sha": "7335db83ea6ff3c0b76c3810b5c7bedb4e34b47c",
+  "summary": "Scout: show the selected 4am session wait in both independent launchers",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-29T07:51:04.527284Z",
+      "output_sha256": "32c3b391699e3cf01a008a78c150d076a214b0087afa7c36bfd2c4fc70fbde53",
+      "result": "91 passed",
+      "started_at_utc": "2026-10-29T07:50:54.119380Z"
+    }
+  ],
+  "verified_remote_sha": "7335db83ea6ff3c0b76c3810b5c7bedb4e34b47c"
+}
