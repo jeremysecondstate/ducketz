@@ -1,0 +1,31 @@
+--- a/ml/intraday/store.py
++++ b/ml/intraday/store.py
+@@ -772,25 +772,25 @@
+         if value.get("synthetic") and not value.get("evidence_json"):
+             raise ContractError("Synthetic constituents require confirmed no-trade provenance")
+         if value.get("no_trade") and (not value.get("synthetic") or not (op == hi == lo == cl) or number(value["volume"]) != 0):
+             raise ContractError("Whole no-trade candle must carry a flat prior close and zero volume")
+         key = digest(value)
+         with self.connect() as db:
+             db.execute("INSERT OR IGNORE INTO candles VALUES(?,?,?,?,?)", (key, value["symbol"], value["opened_at"], value["available_at"], encoded(value)))
+         return key
+ 
+     def observed_candles(self, symbol=None):
+         """Restore actual observations/revisions after restart, never infer receipt."""
+-        with self.connect() as db:
+-            rows=db.execute("SELECT id,payload FROM candles"+(" WHERE symbol=?" if symbol else "")+" ORDER BY available_at,rowid",
+-                            (symbol,) if symbol else ()).fetchall()
++        from .candle_reads import ordered_candle_rows
++        with self.connect() as db:
++            rows = ordered_candle_rows(db, symbol)
+         result=[]
+         for key,raw in rows:
+             value=json.loads(raw)
+             if digest(value)!=key:
+                 raise ContractError("Persisted candle evidence hash changed")
+             if value.get("availability_kind")=="actual":
+                 result.append(value)
+         return result
+ 
+     def observe(self, forecast, *, as_of, candle=None, unavailable_reason=None, skip_newer=False):
+         """Append corrected outcomes; repeated identical evidence is idempotent.
