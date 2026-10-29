@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T06:16:48.949600Z",
+  "id": "20261029T061648Z-78007ff5013a430a8e0a631f73fa650a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout reverted its extra local test-only adoption under direct human scope correction"
+}

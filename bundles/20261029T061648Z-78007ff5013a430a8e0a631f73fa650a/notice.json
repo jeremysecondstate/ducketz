@@ -1,0 +1,23 @@
+{
+  "author": "Scout",
+  "change_id": "scout-peer-adoption-retracted-20261029T044046Z-fef36c90ec434474b7cbb29f5a792f82",
+  "corrects_notice": "20261029T061014Z-7ae0345a8e994ca1b5b93e51da41e366",
+  "files": [
+    "tests/test_rolling_price_atlas_composition.py",
+    "tests/test_rolling_price_widgets.py",
+    "tests/visual_rolling_stats_fixture.py"
+  ],
+  "limitations": [
+    "Corrects only the earlier Scout local-adoption receipt; original peer source publication remains unchanged."
+  ],
+  "local_installation": "reverted to prior local state",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No application behavior or runtime change.",
+  "scope": "shared",
+  "source_commit": "059365f7e38b06ee36743765e3d739b627ff1e4a",
+  "summary": "Scout reverted its extra local test-only adoption under direct human scope correction",
+  "tests": [
+    "No additional tests run; exact local originals restored and own added test file removed."
+  ],
+  "upstream_completion_record": "20261029T044046Z-fef36c90ec434474b7cbb29f5a792f82"
+}
