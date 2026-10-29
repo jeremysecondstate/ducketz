@@ -1,0 +1,93 @@
+{
+  "schema": "intraday-snapshot-chunk-activation-v1",
+  "patch_path": "docs/development/patches/intraday-snapshot-chunk-activation.patch",
+  "patch_sha256": "e48e2d23d94396c5ba9df2efb4775c639d2cff3e0b84e736dced758a27ea8b3e",
+  "targets": {
+    "ml/intraday/data_renewal.py": {
+      "operation": "modify",
+      "before_sha256": "16f3c5eb0d3f689607dbf78653516e079ff7eab75ff78be64c5edc5faa428268",
+      "after_sha256": "598f07b4e2f9d7790684c7e474d57a1f7f1e6754b9aac50d2213a1f3ac5d78ac",
+      "before_bytes": 22218,
+      "after_bytes": 22361,
+      "hunks": [
+        {
+          "old_start": 210,
+          "old_count": 7,
+          "new_start": 210,
+          "new_count": 8,
+          "old_sha256": "36d54bbad17674c66d6a684c9519f433004ec289981d62877d82488887aa1454",
+          "new_sha256": "ca698d304f90ad1b3d8b8a91d6b2b1a516313bbf33a5c871af339c2b6fcb6d0e"
+        },
+        {
+          "old_start": 219,
+          "old_count": 7,
+          "new_start": 220,
+          "new_count": 8,
+          "old_sha256": "69d6eb254e629a438aded037f93d20c506198a0838dc36ed87254537bf14e3e0",
+          "new_sha256": "2e706d96538d904b0a5964d3d06c14dc5c54c90978f2caba05639d8fa0e0a706"
+        },
+        {
+          "old_start": 235,
+          "old_count": 7,
+          "new_start": 237,
+          "new_count": 7,
+          "old_sha256": "e448ef571893435cf9e08e2921d0c0892ff0da929a0e76f27735708723949443",
+          "new_sha256": "284ff62ecf084d5814121ff0916b91047ee083d9458d05325f5c68fa6685dc11"
+        }
+      ]
+    },
+    "ml/intraday/split_service.py": {
+      "operation": "modify",
+      "before_sha256": "ad074d14892546295186553ea2c4d0d8f5aebc426fe5a9bdc2c71f5bfda3fd93",
+      "after_sha256": "729d0f1a6c391130f932deaaaacd52b47ce5f94b40b766615e9683a355cd9758",
+      "before_bytes": 30808,
+      "after_bytes": 30941,
+      "hunks": [
+        {
+          "old_start": 273,
+          "old_count": 13,
+          "new_start": 273,
+          "new_count": 15,
+          "old_sha256": "95ff2c16770dea147dfd53eda0ba88a175246967badaabae66b83787407b9cae",
+          "new_sha256": "42140358a7855a190679ee50148f72845536888f6bb55c6bfa8cf86d71fb5e72"
+        },
+        {
+          "old_start": 307,
+          "old_count": 7,
+          "new_start": 309,
+          "new_count": 7,
+          "old_sha256": "a594a7df4b7d8b119a9afb5038fbcf36f126905574bf7f0d1a128b87608db47e",
+          "new_sha256": "cf1c1c2dee9622df74f19c8b3c4ac5d533c301fdd141b8693305674516f0f043"
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "ml/intraday/snapshot_objects.py": {
+      "sha256": "4da1ebbac0daaf2c434155dc7fa38a23b95f765ed3f02d0b0d3d60f38a97ede7",
+      "bytes": 9760,
+      "working_byte_variants": [
+        {
+          "sha256": "17bc7b92bb4116b8979a8fa3eb2e1e4a01439020078e375e573e8d36315e7563",
+          "bytes": 9958
+        }
+      ]
+    },
+    "tests/test_intraday_snapshot_chunk_activation.py": {
+      "sha256": "311e9f23b9e9704cdd4de7a3e23d2021920bde0f03cfb655ae77cade59e09ba4",
+      "bytes": 9059
+    }
+  },
+  "scope": "Shared prospective1A storage only; no scientific or manualcontrol changes",
+  "behavior": "Enable existing lossless chunk writer at both1A handoffs and all common/per-symbol preparation stores. Canonical snapshot SHA/length and original scientific contents remain exact. Preserve oldraw andinline firstbindings; no historical migration.",
+  "predecessor": "Requires reviewed snapshot-reference adapters and PR527 losslesschunk decoder. Local sourcepreimages are exact; do not blindly replay over different owner bytes.",
+  "consumer_review": "Atlas reused existing1B owner recorded11forecast+scoring loaded/completed decoder receipts, exactb275source/request/receipt identities. Execution uses owninline state. This is one-time format source-review evidence, not a new operatinggate.",
+  "limitations": [
+    "Public main lacks locally composed1A adapters; portable tests validate codec integration and strictpatchprojections, localDataService tests skip explicitly when unavailable.",
+    "A peer reviews its own current readers before installing the prospectiveformat sourcechange; sourcepublication does not alter nativebindings.",
+    "Do not reset an operational task or waitforpeeracceptance; existing independent1A continues.",
+    "No historicaldeletion, activeDB compaction, rawrewrite, legacyexport recreation or measuredphysicalreclamation.",
+    "Unowned checkout data/gap_recovery/split_model edits are preserved; complete installed composition retains their reviewedparent versions.",
+    "Publication, sealedinstallation, actual runtime loading and naturallyobserved chunkcreation are separate facts."
+  ]
+}

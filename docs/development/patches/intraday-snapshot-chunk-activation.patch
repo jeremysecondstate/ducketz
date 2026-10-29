@@ -1,0 +1,60 @@
+--- a/ml/intraday/data_renewal.py
++++ b/ml/intraday/data_renewal.py
+@@ -210,7 +210,8 @@
+     reference = latest_completed_reference(clock(), publication_offset_seconds=config.publication_offset_seconds)
+     if not eligible_reference(reference):
+         _checkpoint(renewal, renewal.state, close, clock, 3)
+-    handoff = ReadySnapshots(base / "ready", actor=session["actor"], symbols=session["symbols"], clock=clock)
++    handoff = ReadySnapshots(base / "ready", actor=session["actor"], symbols=session["symbols"], clock=clock,
++                             chunked_snapshots=True)
+     config_hash = digest(asdict(config))
+     experiment = "system-1a:" + session["actor"].lower() + ":" + reference.astimezone(PACIFIC).date().isoformat()
+     cycle_id = digest(dict(pc=session["actor"], reference_at=reference.isoformat(),
+@@ -219,7 +220,8 @@
+     symbol = next_symbol(assigned, renewal.state.get("last_symbol"), ready)
+     if symbol is None:
+         _checkpoint(renewal, renewal.state, close, clock, 3)
+-    common = ShadowRunner(store=ShadowStore(base / "preparation.sqlite3", snapshot_directory=base / "ready/snapshots"), pc=session["actor"],
++    common = ShadowRunner(store=ShadowStore(base / "preparation.sqlite3", snapshot_directory=base / "ready/snapshots",
++                                          chunked_snapshots=True), pc=session["actor"],
+         symbols=session["symbols"], config=config, clock=clock, datastore=root, stopped=renewal.stopped,
+         selected_config_path=root / "intraday/model-supervision/active.json")
+     # Only the short policy-envelope creation is serialized. Provider work and
+@@ -235,7 +237,7 @@
+             with common.store.connect() as db:
+                 old = db.execute("SELECT payload FROM cycles WHERE id=?", (cycle_id,)).fetchone()
+     runner = ShadowRunner(store=ShadowStore(base / ("preparation-" + symbol + ".sqlite3"),
+-                                          snapshot_directory=base / "ready/snapshots"),
++                                          snapshot_directory=base / "ready/snapshots", chunked_snapshots=True),
+         pc=session["actor"], symbols=session["symbols"], config=config, clock=clock, datastore=root,
+         stopped=renewal.stopped, selected_config_path=root / "intraday/model-supervision/active.json")
+     runner.store.begin_cycle(cycle_id, json.loads(old[0]))
+--- a/ml/intraday/split_service.py
++++ b/ml/intraday/split_service.py
+@@ -273,13 +273,15 @@
+         load_dotenv(repository / ".env", override=False)
+         configure_local_repository(repository)
+         os.environ["DUCKETS_PRODUCTION_WATCHLIST"] = str(watchlist)
+-        store = ShadowStore(base / "preparation.sqlite3", snapshot_directory=base / "ready/snapshots")
++        store = ShadowStore(base / "preparation.sqlite3", snapshot_directory=base / "ready/snapshots",
++                            chunked_snapshots=True)
+         collection_store = ShadowStore(base / "collection.sqlite3")
+         with collection_store.connect() as db:
+             db.execute("CREATE TABLE IF NOT EXISTS system_1a_collection_days("
+                 "identity TEXT PRIMARY KEY,close_at TEXT NOT NULL,configuration TEXT NOT NULL,symbols TEXT NOT NULL,"
+                 "status TEXT NOT NULL,last_attempt_at TEXT NOT NULL)")
+-        handoff = ReadySnapshots(base / "ready", actor=actor, symbols=symbols, clock=clock)
++        handoff = ReadySnapshots(base / "ready", actor=actor, symbols=symbols, clock=clock,
++                                 chunked_snapshots=True)
+         provider = DatabentoMarketDataProvider()
+         if provider.dataset != config.source_dataset:
+             raise ContractError("Data provider differs from Atlas source binding")
+@@ -307,7 +309,7 @@
+             return incoming
+         def service_for_symbol(symbol):
+             lane_runner = ShadowRunner(store=ShadowStore(base / ("preparation-" + symbol + ".sqlite3"),
+-                                                        snapshot_directory=base / "ready/snapshots"),
++                                                        snapshot_directory=base / "ready/snapshots", chunked_snapshots=True),
+                 pc=actor, symbols=symbols, config=config, clock=clock, datastore=root,
+                 stopped=shutdown.is_set, selected_config_path=root / "intraday/model-supervision/active.json")
+             return DataService(runner=lane_runner, handoff=handoff, incoming=incoming_for_lane(),

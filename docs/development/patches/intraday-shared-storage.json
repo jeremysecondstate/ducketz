@@ -1,0 +1,586 @@
+{
+  "schema": "intraday-shared-storage-v1",
+  "producer": "Atlas",
+  "scope": "Shared 15-minute acquisition, canonical history and snapshot storage; source adapters preserve original science and independent trader state.",
+  "patch_path": "docs/development/patches/intraday-shared-storage.patch",
+  "patch_sha256": "ff51f97d6940e2b0330f5378cab05cd03c9ce4b46330b3644f5e266c98ff6e77",
+  "public_base_commit": "41a743ce3cd56a28269e54f3da9cd6844ce2125e",
+  "adapter_policy": "Exact reviewed LF-normalized hunks plus exact original local raw byte identities; no fuzzy application. Public source may lack an adapter entirely. Public-base-only validation does not install or test that integration.",
+  "rollout_phase": "Phase2 source: new journal attempts use shared response references by default; explicit False preserves legacy write staging. Market dated paths remain hardlink aliases to one shared object.",
+  "targets": {
+    "app/ui/intraday_data.py": {
+      "operation": "modify",
+      "before_sha256": "63483366801dd2c000df4523dce1164f5271835a563748ab202dfe1059101446",
+      "after_sha256": "c8dd5a6b823af8ed82f2f04957e13def13aa5fc5f3528ab821cce663e9cdadd9",
+      "before_bytes": 49941,
+      "after_bytes": 51334,
+      "before_raw_sha256": "63483366801dd2c000df4523dce1164f5271835a563748ab202dfe1059101446",
+      "after_raw_sha256": "c8dd5a6b823af8ed82f2f04957e13def13aa5fc5f3528ab821cce663e9cdadd9",
+      "before_raw_bytes": 49941,
+      "after_raw_bytes": 51334,
+      "before_newlines": "LF",
+      "after_newlines": "LF",
+      "public_base_sha256": "d604583101853b2a9a0672f6f6bdc9710d1400d05dbc4f48e34b5cd716d6ee2f",
+      "hunks": [
+        {
+          "old_start": 253,
+          "new_start": 253,
+          "old_count": 9,
+          "new_count": 9,
+          "old_sha256": "b73f205a811b520f51cf6918dbded51128d0c70cafa9df3483f0c5e88d79bb03",
+          "new_sha256": "1adb459e55eb8873cf560dec942061e874b040dbb7c563bf2c5ba07cd6b5c32c"
+        },
+        {
+          "old_start": 277,
+          "new_start": 277,
+          "old_count": 7,
+          "new_count": 11,
+          "old_sha256": "f12e64be53013af0b920d7ec44cdfd059e045d4313365aedfa62d09ea430e5dd",
+          "new_sha256": "25f7e4ae27278e38b3c38486d5a0bf1ae7cf9a677775afa75d05b3065ddfc1dc"
+        },
+        {
+          "old_start": 286,
+          "new_start": 290,
+          "old_count": 9,
+          "new_count": 23,
+          "old_sha256": "b231c411764be9338c8b30cdb6b51920514a0b1a4e3bacff891fee75c111dd78",
+          "new_sha256": "e52039be2927b0e18f5aaf09555ae41cdc51acb2f44775b5ca4103940373d649"
+        }
+      ]
+    },
+    "datafetching/intraday_fmp_observations.py": {
+      "operation": "modify",
+      "before_sha256": "e6d3b19cb5aa74163babd3b30e059e9a2061a4e7458f98716717a0a44f7cd99d",
+      "after_sha256": "d65db06d28d07cfa2259fe6c062eb14afbe09b8c2f3b53fd2b25b6c487fe1179",
+      "before_bytes": 6916,
+      "after_bytes": 7077,
+      "before_raw_sha256": "e6d3b19cb5aa74163babd3b30e059e9a2061a4e7458f98716717a0a44f7cd99d",
+      "after_raw_sha256": "d65db06d28d07cfa2259fe6c062eb14afbe09b8c2f3b53fd2b25b6c487fe1179",
+      "before_raw_bytes": 6916,
+      "after_raw_bytes": 7077,
+      "before_newlines": "LF",
+      "after_newlines": "LF",
+      "public_base_sha256": null,
+      "hunks": [
+        {
+          "old_start": 32,
+          "new_start": 32,
+          "old_count": 7,
+          "new_count": 10,
+          "old_sha256": "769c83ca9d99393dc1a00b70c928759732743efa6920a7befd1f06dd0e6b7d8d",
+          "new_sha256": "cb8aaaf40df5a495e0affdd35ff6fdc8c5f8fab6d35facf3d5daf6793515dc20"
+        }
+      ]
+    },
+    "ml/intraday/data.py": {
+      "operation": "modify",
+      "before_sha256": "db76cb5b82ce6f7fcbfea3563bfc61f1b0c15d91773c476451d999f1ae77e96d",
+      "after_sha256": "861ac8eb1c3bc0bb3dd9f35629114ac872e24768482882c7f54944072ee0d461",
+      "before_bytes": 103458,
+      "after_bytes": 105000,
+      "before_raw_sha256": "7bf155050d80405b07fd6b6e6475cdd8cb352db888e3bea7e401b160f249e06f",
+      "after_raw_sha256": "10d5149d91d7ecb80a0c4df3d188c90ba133b1006f7789773c742f7893e794d6",
+      "before_raw_bytes": 105103,
+      "after_raw_bytes": 106665,
+      "before_newlines": "CRLF",
+      "after_newlines": "CRLF",
+      "public_base_sha256": "978b421840923c058682598ae6515ac0e8838eae2e156a78e1d454aadcf5ed93",
+      "hunks": [
+        {
+          "old_start": 22,
+          "new_start": 22,
+          "old_count": 6,
+          "new_count": 7,
+          "old_sha256": "351a05641bf70ca75806d7bde5a5be82597b1e65fcf3a3d553c37e5878b23f43",
+          "new_sha256": "c4d69ada31dddff3ede9f3433c60bb9ad79fc2dad4c36a6a2f221fc5f51714e3"
+        },
+        {
+          "old_start": 193,
+          "new_start": 194,
+          "old_count": 8,
+          "new_count": 11,
+          "old_sha256": "8546b7daf1bd98ece4967047b27b444d0e347e395d8e616f296f1594d5ff97e1",
+          "new_sha256": "138acbcb35b1ff9fc0588299a1344eec9a51bac30a31347ef6a339e60b719dbd"
+        },
+        {
+          "old_start": 205,
+          "new_start": 209,
+          "old_count": 7,
+          "new_count": 7,
+          "old_sha256": "7e03dae5d33c3a6d2f6176e452017c490a327cadf8e1eef866b937b300393994",
+          "new_sha256": "82798cc51aed7691d7efca3d9d390c2cbaba1415f68142352f502858ab3584cc"
+        },
+        {
+          "old_start": 219,
+          "new_start": 223,
+          "old_count": 6,
+          "new_count": 7,
+          "old_sha256": "d39be9eedf7f27b99408fbe5c3576d21615995f5d6d6b68f4c88f14f728f625c",
+          "new_sha256": "27a7e0fc92a407c199b9da52a23e2dfff4fdd94cee85cca852c2faca77e9b7ca"
+        },
+        {
+          "old_start": 228,
+          "new_start": 233,
+          "old_count": 15,
+          "new_count": 17,
+          "old_sha256": "6b62bb2cb355660f5d106e9b0dbab357963c7c17119139cefcd5ca9027c40dc3",
+          "new_sha256": "65fbbefc879c5f74f8065b30c8fa0306c8a5d52721f5be7f7ab44447cd7f7208"
+        },
+        {
+          "old_start": 258,
+          "new_start": 265,
+          "old_count": 7,
+          "new_count": 7,
+          "old_sha256": "681982e71b5f3a607bdabaa9027dc021264ba9eebb8dd1c27e219d4a1287d0f7",
+          "new_sha256": "06d421434999f86fb29ccc7929c456b542b7ff923c074905d97a4bb6fd43dabe"
+        },
+        {
+          "old_start": 1347,
+          "new_start": 1354,
+          "old_count": 6,
+          "new_count": 7,
+          "old_sha256": "45923cdad7168d0bbf6e4f524bac6f9fbccf60dcfbbd527e9a6c30f18dc9b531",
+          "new_sha256": "75c76a1bade2d62ffd8f40d36f8d097132ba0cff3a2f00c7851b44cf27a37af0"
+        },
+        {
+          "old_start": 1411,
+          "new_start": 1419,
+          "old_count": 6,
+          "new_count": 9,
+          "old_sha256": "6f6ec6ca3f438113b64b6851bc5ea9b64cd0768cec9d7df5f582ac3984c06b8e",
+          "new_sha256": "2ead29eb0ca77cd053d787dd3d5a31ed4ac17f52298164e4757c6bee2ab09e28"
+        },
+        {
+          "old_start": 1430,
+          "new_start": 1441,
+          "old_count": 9,
+          "new_count": 18,
+          "old_sha256": "d3edcf353c4ee7c15530456105dfb6e8faca04fb49b382eecd882a534e09ef19",
+          "new_sha256": "525a5dce985a3e8cc27b4b1d837e199a9fe273d5982dc594a813de8f6c3957b6"
+        }
+      ]
+    },
+    "ml/intraday/gap_recovery.py": {
+      "operation": "modify",
+      "before_sha256": "2c2e64a7208b451407eb825440d05179786dca5773d2f6b1abc4c394ab74ac6e",
+      "after_sha256": "1bba6e46a242e5e7dd6c913eae5dccec9a54833d479a354396142ba8256f24a9",
+      "before_bytes": 16523,
+      "after_bytes": 16619,
+      "before_raw_sha256": "2c2e64a7208b451407eb825440d05179786dca5773d2f6b1abc4c394ab74ac6e",
+      "after_raw_sha256": "1bba6e46a242e5e7dd6c913eae5dccec9a54833d479a354396142ba8256f24a9",
+      "before_raw_bytes": 16523,
+      "after_raw_bytes": 16619,
+      "before_newlines": "LF",
+      "after_newlines": "LF",
+      "public_base_sha256": null,
+      "hunks": [
+        {
+          "old_start": 231,
+          "new_start": 231,
+          "old_count": 7,
+          "new_count": 8,
+          "old_sha256": "9e905f2252221a8d78cbbcb31711d5f45a7ed4682ae06dc5cd910f56dc0af938",
+          "new_sha256": "15a002e50cb93e23b0d6d725a34b1d02f0f3cfbc3ddbc9cba502a2d580405b1f"
+        }
+      ]
+    },
+    "ml/intraday/market_inputs.py": {
+      "operation": "modify",
+      "before_sha256": "2b29e31c41a5433686a3d525256b58b136e898dda6e711a6bbe462ac9d4b8837",
+      "after_sha256": "8f79bad76dec4a37cb87251495f46a05be44ee345eef486ff55b6fc6c2ed5049",
+      "before_bytes": 82509,
+      "after_bytes": 83423,
+      "before_raw_sha256": "335c5f5069cc99935c8c1086edb80fa951ed792051891784589fd1296b4f0a74",
+      "after_raw_sha256": "7832ea93563deb704eb8206116c880cd741d41dfb5be5c435d7c35bc293ffbe8",
+      "before_raw_bytes": 83891,
+      "after_raw_bytes": 84822,
+      "before_newlines": "CRLF",
+      "after_newlines": "CRLF",
+      "public_base_sha256": null,
+      "hunks": [
+        {
+          "old_start": 188,
+          "new_start": 188,
+          "old_count": 13,
+          "new_count": 31,
+          "old_sha256": "3e7f56d8f70c373d23c74dc0e20d289c36d5e3f986414f71260fc10fed434626",
+          "new_sha256": "8cd562b587fa031105dfe8c9bbd0ac8cc93e216d50476fb18bbfdee5d092ba69"
+        },
+        {
+          "old_start": 317,
+          "new_start": 335,
+          "old_count": 9,
+          "new_count": 9,
+          "old_sha256": "c92080e5dc4d145eb0fc6d101c3aacff379abca19d754de81f8531aecbc2c612",
+          "new_sha256": "89e3337dcdb1a1bf1a76fe86910d72fbbfe62881ce0d763a5c919a995e404deb"
+        },
+        {
+          "old_start": 535,
+          "new_start": 553,
+          "old_count": 9,
+          "new_count": 8,
+          "old_sha256": "cdccebdc9cf79cd64c7a0f88e79b1eb8b484fcc1d783c05947b8e8ca888a0614",
+          "new_sha256": "bf444bf60a59f1978c89ed5397810d57a11b715cd547d0dc3e9a8e9a46c21947"
+        }
+      ]
+    },
+    "ml/intraday/readiness.py": {
+      "operation": "modify",
+      "before_sha256": "757e8553f963831cfb4fe9f06d8a950cc46ca78789ed6dde2c8d33d38c1ca40c",
+      "after_sha256": "9cdc433007fdb7a2dee0043e8958594d1a06bc8f86caeb2bab64714f86e3b87e",
+      "before_bytes": 34946,
+      "after_bytes": 35371,
+      "before_raw_sha256": "757e8553f963831cfb4fe9f06d8a950cc46ca78789ed6dde2c8d33d38c1ca40c",
+      "after_raw_sha256": "9cdc433007fdb7a2dee0043e8958594d1a06bc8f86caeb2bab64714f86e3b87e",
+      "before_raw_bytes": 34946,
+      "after_raw_bytes": 35371,
+      "before_newlines": "LF",
+      "after_newlines": "LF",
+      "public_base_sha256": "4f63ad655f350feb303185108289701095b0ef5da64ccbf3019e38c525f830e1",
+      "hunks": [
+        {
+          "old_start": 31,
+          "new_start": 31,
+          "old_count": 6,
+          "new_count": 8,
+          "old_sha256": "1936373d0d015943ab78850ef9eff8b1d7fb2364e0333c1730b98751d5cba9ba",
+          "new_sha256": "df32da6aa64abd0be409fa90a2232b3de908b69fcdc9ea59ddf9ac13f6dbd13d"
+        },
+        {
+          "old_start": 293,
+          "new_start": 295,
+          "old_count": 7,
+          "new_count": 7,
+          "old_sha256": "0dfe8c32e79f365ee3f2dd22b1e30499fe1be2411bb5f9d7dc8e60a055f7671b",
+          "new_sha256": "49ccc4911e1d789f1ccfff80b0a51e70d93a6b772fb8d3fb8a19a3b31dd21397"
+        },
+        {
+          "old_start": 303,
+          "new_start": 305,
+          "old_count": 9,
+          "new_count": 13,
+          "old_sha256": "f3021b146a264a7e68c2f4660492dacbb9d7b4420f8319daaa317f7bbed3ff34",
+          "new_sha256": "df1bbf6a02d2192e6780332ba058518bd2940a42b469644ed872fa17eab05dcc"
+        },
+        {
+          "old_start": 389,
+          "new_start": 395,
+          "old_count": 7,
+          "new_count": 8,
+          "old_sha256": "28b6d076a53ed1105aba9ad23366fdba7865fbbfe0a79c869db22d129959a51f",
+          "new_sha256": "45b9b570ac0787a2b7538683c1bd1fba3aa0ad763610d298a99f39dc3981e3ff"
+        }
+      ]
+    },
+    "ml/intraday/split_model.py": {
+      "operation": "modify",
+      "before_sha256": "22eb970912c3a75e9b19aeff664408e3403077f0c00a9eb645814df59c58911f",
+      "after_sha256": "a4d20c26c640a86bde6637edc85496ebeb1a6426f1500e699029f09c1084b3bc",
+      "before_bytes": 17196,
+      "after_bytes": 17483,
+      "before_raw_sha256": "22eb970912c3a75e9b19aeff664408e3403077f0c00a9eb645814df59c58911f",
+      "after_raw_sha256": "a4d20c26c640a86bde6637edc85496ebeb1a6426f1500e699029f09c1084b3bc",
+      "before_raw_bytes": 17196,
+      "after_raw_bytes": 17483,
+      "before_newlines": "LF",
+      "after_newlines": "LF",
+      "public_base_sha256": "22eb970912c3a75e9b19aeff664408e3403077f0c00a9eb645814df59c58911f",
+      "hunks": [
+        {
+          "old_start": 63,
+          "new_start": 63,
+          "old_count": 7,
+          "new_count": 10,
+          "old_sha256": "6e0114b83e3dfd751e972f01c6567ab91ca9f27939f3da4d62169242a533f96a",
+          "new_sha256": "98a3322e5ff9bb109a82509e4055653216bef366b13c200a2d14b983364ce09d"
+        },
+        {
+          "old_start": 165,
+          "new_start": 168,
+          "old_count": 7,
+          "new_count": 7,
+          "old_sha256": "5972ec400a6dcb97d536906eeae5dc26988db2043a19e6bd104e6685567ce44e",
+          "new_sha256": "f9588c4b352078e05012da56d05816181457c8853e628fc402b075511ba35d3d"
+        },
+        {
+          "old_start": 250,
+          "new_start": 253,
+          "old_count": 7,
+          "new_count": 8,
+          "old_sha256": "7dd007f8958cb388df674a61fee27a10fa512eee83e661f98a7367c738dd48ed",
+          "new_sha256": "e6a7abba851f77f79fb50cbeb029e014bded478f92bb747832ffc116f198eaca"
+        }
+      ]
+    },
+    "ml/intraday/store.py": {
+      "operation": "modify",
+      "before_sha256": "72634a524305b67edf694345bfc1ab4d8d1a4129240e158c95d0289c4ddac860",
+      "after_sha256": "8d46131da6ba9ae4b7ef6b6511b7858a1e5cff9394c64ae8c4a39e81e6b15871",
+      "before_bytes": 52586,
+      "after_bytes": 52556,
+      "before_raw_sha256": "72634a524305b67edf694345bfc1ab4d8d1a4129240e158c95d0289c4ddac860",
+      "after_raw_sha256": "8d46131da6ba9ae4b7ef6b6511b7858a1e5cff9394c64ae8c4a39e81e6b15871",
+      "before_raw_bytes": 52586,
+      "after_raw_bytes": 52556,
+      "before_newlines": "LF",
+      "after_newlines": "LF",
+      "public_base_sha256": "c7bc839d59412ca974ad291a74914805973008e425274c71ca0cf62e49a436cf",
+      "hunks": [
+        {
+          "old_start": 85,
+          "new_start": 85,
+          "old_count": 8,
+          "new_count": 8,
+          "old_sha256": "a87d1802a776ec6e6aebb38dddf0e8e2444011cea60f461e1bcea4080d3941d9",
+          "new_sha256": "502f29ad05ad86da04241d5dc607c82f6c1337590d77e83a21e5e3fa5910ac06"
+        },
+        {
+          "old_start": 171,
+          "new_start": 171,
+          "old_count": 22,
+          "new_count": 26,
+          "old_sha256": "9255dc29e3727aa0af277f4738740b0bc6b8f989b897da82a206c848d44658a5",
+          "new_sha256": "99bb123e24a1f41353f462adc326a414f7a0abc348e9cdc94b05fe034c856336"
+        }
+      ]
+    },
+    "ml/intraday/supervision_data.py": {
+      "operation": "modify",
+      "before_sha256": "62eead92f63fb075653eb71b081dbb73ff9b5fe4cf35797fe42b3b3fae19f5fc",
+      "after_sha256": "a94c743ed5a78317e6301304a3a31da5a296e117cc0619b93345157db092ceef",
+      "before_bytes": 13253,
+      "after_bytes": 13886,
+      "before_raw_sha256": "f3bc259e3c2e3849b270c8904a66350adae8c9d9759d4df2388f8fb4abdd09b4",
+      "after_raw_sha256": "6891cab41bcc7048192b629ec9dd97c910356f616756d0971f85549da2b254e8",
+      "before_raw_bytes": 13477,
+      "after_raw_bytes": 14120,
+      "before_newlines": "CRLF",
+      "after_newlines": "CRLF",
+      "public_base_sha256": "62eead92f63fb075653eb71b081dbb73ff9b5fe4cf35797fe42b3b3fae19f5fc",
+      "hunks": [
+        {
+          "old_start": 7,
+          "new_start": 7,
+          "old_count": 6,
+          "new_count": 7,
+          "old_sha256": "d10289246f52fe9f4fa1bd59c63d55514788c9ef7518ad6ec6c5fb54f3dce7e7",
+          "new_sha256": "11798f7d0040945da3cee92f93367bb47bcabe280226c3b71f997fd28c5edd51"
+        },
+        {
+          "old_start": 27,
+          "new_start": 28,
+          "old_count": 6,
+          "new_count": 8,
+          "old_sha256": "0de2613f3ca8a843b9b09d2f045b69b380228a481d0b9706eacfa7fca71d3fb0",
+          "new_sha256": "af0f2bd348a123251d4f56adc49fbbd4a841e0ae58d291c156275e4540047e33"
+        },
+        {
+          "old_start": 41,
+          "new_start": 44,
+          "old_count": 29,
+          "new_count": 36,
+          "old_sha256": "5efa6f70415c5ffa694119b2408c7a0c5b5723ca952d6b0fc2312a23efc3c1b4",
+          "new_sha256": "329f31e13a50dc14431275fb24d9e3cff6d58092ad568e0af5db36e4acaa52b9"
+        }
+      ]
+    },
+    "ml/intraday/supervisor.py": {
+      "operation": "modify",
+      "before_sha256": "1a174ae1fe39a2ccf726991740d509becf45c989683c3ace0e830617991a3284",
+      "after_sha256": "39652bfa38c03cd3633f92f05a7b70e1831cfaee5c0098d45a0a6393054bb924",
+      "before_bytes": 36301,
+      "after_bytes": 36599,
+      "before_raw_sha256": "80c756d91e6285b2d8ee7582c5ee69019e1b734b8f20cee50791647800ecc539",
+      "after_raw_sha256": "361a2e85158c5c268cb2cdaa5ec6e7734d698500cba165f8983c05e5fba25425",
+      "before_raw_bytes": 36920,
+      "after_raw_bytes": 37222,
+      "before_newlines": "CRLF",
+      "after_newlines": "CRLF",
+      "public_base_sha256": null,
+      "hunks": [
+        {
+          "old_start": 139,
+          "new_start": 139,
+          "old_count": 6,
+          "new_count": 7,
+          "old_sha256": "3addf688abc9d23126c9e07a01ef36768b9bb1d5c06c14cd8cccb34b45a565c5",
+          "new_sha256": "a568011ccfefc2538d449e81d811323b34d57ab32108e0e1c6fd483ae3cb16ac"
+        },
+        {
+          "old_start": 155,
+          "new_start": 156,
+          "old_count": 11,
+          "new_count": 13,
+          "old_sha256": "86a329f8337c2ac5f5374e1c31d883c374524d27679fb7b13a5955ac97495c5a",
+          "new_sha256": "07791b2231c8f255c117d527d68feebc5b03fd01de43b2e032dfc15d2a236c61"
+        },
+        {
+          "old_start": 177,
+          "new_start": 180,
+          "old_count": 6,
+          "new_count": 7,
+          "old_sha256": "7db7802edbd5be86a77d368edc53af88c2240be897c52de638c9b6a245fffdf1",
+          "new_sha256": "c04f074180f2ed4e1834df028b8a0743ab0c44eb4f3f8ba76ba29e4122bd8d35"
+        }
+      ]
+    },
+    "tests/test_intraday_unpublished_recovery.py": {
+      "operation": "modify",
+      "before_sha256": "f3e8ce6b0ef87208501e381f6bba078dae58e50dc26d0a7d379b6a639a049c65",
+      "after_sha256": "072bec0d059701021e48f7ec4e47dad846a53994385728c6c10c192bf1734eca",
+      "before_bytes": 6677,
+      "after_bytes": 6794,
+      "before_raw_sha256": "f3e8ce6b0ef87208501e381f6bba078dae58e50dc26d0a7d379b6a639a049c65",
+      "after_raw_sha256": "072bec0d059701021e48f7ec4e47dad846a53994385728c6c10c192bf1734eca",
+      "before_raw_bytes": 6677,
+      "after_raw_bytes": 6794,
+      "before_newlines": "LF",
+      "after_newlines": "LF",
+      "public_base_sha256": null,
+      "hunks": [
+        {
+          "old_start": 109,
+          "new_start": 109,
+          "old_count": 7,
+          "new_count": 9,
+          "old_sha256": "ce9d7a3f64c3b83230b3e4cbf60491d792e92cfb2b8912cdaaba078e95f45a23",
+          "new_sha256": "498e366e4558e5def74e537cdfbcb5809535e331f1857e7b20ef4dfacad78206"
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "ml/intraday/acquisition_objects.py": {
+      "sha256": "fe2f23ae1328d43f9a4b05d4e698805917dd7a52314e1a1e1b0588f386bc5821",
+      "bytes": 7222,
+      "reviewed_raw_sha256": "fe2f23ae1328d43f9a4b05d4e698805917dd7a52314e1a1e1b0588f386bc5821",
+      "reviewed_raw_bytes": 7222
+    },
+    "ml/intraday/canonical_acquisition.py": {
+      "sha256": "6dbbf7eb64315c4d0af8bc7db32c50a64b0e45d99867c5441c5e8d736a9d6d81",
+      "bytes": 18308,
+      "reviewed_raw_sha256": "6dbbf7eb64315c4d0af8bc7db32c50a64b0e45d99867c5441c5e8d736a9d6d81",
+      "reviewed_raw_bytes": 18308
+    },
+    "tests/test_intraday_acquisition_objects.py": {
+      "sha256": "346b72e2ceff7efd2b8f8648dda44c134c6321b3a7dd1e52e0e680936973a15f",
+      "bytes": 8249,
+      "reviewed_raw_sha256": "346b72e2ceff7efd2b8f8648dda44c134c6321b3a7dd1e52e0e680936973a15f",
+      "reviewed_raw_bytes": 8249
+    },
+    "tests/test_intraday_canonical_acquisition.py": {
+      "sha256": "fedc52692d5c830581d7df463d8670ef2f6fad48f4b9798695cab823704042e1",
+      "bytes": 14357,
+      "reviewed_raw_sha256": "fedc52692d5c830581d7df463d8670ef2f6fad48f4b9798695cab823704042e1",
+      "reviewed_raw_bytes": 14357
+    },
+    "tests/test_intraday_market_response_objects.py": {
+      "sha256": "1092f0dac0cb1ad0ae1e65b0d24bc12a440f41379989f72cfdac8fb7c66fd586",
+      "bytes": 3924,
+      "reviewed_raw_sha256": "1092f0dac0cb1ad0ae1e65b0d24bc12a440f41379989f72cfdac8fb7c66fd586",
+      "reviewed_raw_bytes": 3924
+    },
+    "ml/intraday/snapshot_references.py": {
+      "sha256": "a828093775b817e95058a863257bf0f7cdb4203d4c9bc3f4fe0dac2f27a233cb",
+      "bytes": 2133,
+      "reviewed_raw_sha256": "a828093775b817e95058a863257bf0f7cdb4203d4c9bc3f4fe0dac2f27a233cb",
+      "reviewed_raw_bytes": 2133
+    },
+    "tests/test_intraday_model_snapshot_references.py": {
+      "sha256": "c3013b0253f0aaee36289aeb2ae037e8f4c1ce046d76405fa7ce8847fd8d146b",
+      "bytes": 8254,
+      "reviewed_raw_sha256": "c3013b0253f0aaee36289aeb2ae037e8f4c1ce046d76405fa7ce8847fd8d146b",
+      "reviewed_raw_bytes": 8254
+    },
+    "tests/test_intraday_snapshot_reference_readers.py": {
+      "sha256": "3e773cb94fb4c817c697e459e975c40f9168b844b9c66831f0877ca9ba92e6dc",
+      "bytes": 6881,
+      "reviewed_raw_sha256": "3e773cb94fb4c817c697e459e975c40f9168b844b9c66831f0877ca9ba92e6dc",
+      "reviewed_raw_bytes": 6881
+    },
+    "tests/test_intraday_reference_provenance_objects.py": {
+      "sha256": "3bb2cfcaba49bc3533ae44fb98a5b1dd55b4f34a7009d25bdd3f483a878a0dea",
+      "bytes": 4737,
+      "reviewed_raw_sha256": "3bb2cfcaba49bc3533ae44fb98a5b1dd55b4f34a7009d25bdd3f483a878a0dea",
+      "reviewed_raw_bytes": 4737
+    },
+    "tools/atlas_datastore_manager.py": {
+      "sha256": "ee85d1dee061b4672359bf2a36c6deb44bc54a7692ea4e88c65c15a4aa43c95f",
+      "bytes": 24472,
+      "reviewed_raw_sha256": "ee85d1dee061b4672359bf2a36c6deb44bc54a7692ea4e88c65c15a4aa43c95f",
+      "reviewed_raw_bytes": 24472
+    },
+    "tests/test_atlas_datastore_manager.py": {
+      "sha256": "8ba9bc8a52c3f6191de6d67da9f47ffeafe83b276571618ead09abf142a56c20",
+      "bytes": 11253,
+      "reviewed_raw_sha256": "8ba9bc8a52c3f6191de6d67da9f47ffeafe83b276571618ead09abf142a56c20",
+      "reviewed_raw_bytes": 11253
+    },
+    "tests/check_isolated_intraday_shared_storage.py": {
+      "sha256": "78ae262168655d3ed46935580fa4606f75550868121fadeac2a944729762991a",
+      "bytes": 5321,
+      "reviewed_raw_sha256": "78ae262168655d3ed46935580fa4606f75550868121fadeac2a944729762991a",
+      "reviewed_raw_bytes": 5321
+    },
+    "tools/intraday_storage_migration.py": {
+      "sha256": "134a54d421a8ae0e6a24c2a66763fd5643a94d0fa3f66cd8448b192656e826fe",
+      "bytes": 19566,
+      "reviewed_raw_sha256": "134a54d421a8ae0e6a24c2a66763fd5643a94d0fa3f66cd8448b192656e826fe",
+      "reviewed_raw_bytes": 19566
+    },
+    "tests/test_intraday_storage_migration.py": {
+      "sha256": "b07a83d4b21faecc99df7b5a968623b2771689ec546aa4095acf77b0764fac33",
+      "bytes": 16042,
+      "reviewed_raw_sha256": "b07a83d4b21faecc99df7b5a968623b2771689ec546aa4095acf77b0764fac33",
+      "reviewed_raw_bytes": 16042
+    },
+    "tools/intraday_snapshot_compaction.py": {
+      "sha256": "db34327a5cdef91c3cc023e6d61d6ffdba315dbcac7b39290b24343e10ce4c82",
+      "bytes": 21122,
+      "reviewed_raw_sha256": "db34327a5cdef91c3cc023e6d61d6ffdba315dbcac7b39290b24343e10ce4c82",
+      "reviewed_raw_bytes": 21122
+    },
+    "tests/test_intraday_snapshot_compaction.py": {
+      "sha256": "d56d3c9b60bd908603501caf93ca89056119d77faad67c0d91cf39e817383599",
+      "bytes": 14767,
+      "reviewed_raw_sha256": "d56d3c9b60bd908603501caf93ca89056119d77faad67c0d91cf39e817383599",
+      "reviewed_raw_bytes": 14767
+    },
+    "ml/intraday/snapshot_objects.py": {
+      "sha256": "4da1ebbac0daaf2c434155dc7fa38a23b95f765ed3f02d0b0d3d60f38a97ede7",
+      "bytes": 9760,
+      "reviewed_raw_sha256": "4da1ebbac0daaf2c434155dc7fa38a23b95f765ed3f02d0b0d3d60f38a97ede7",
+      "reviewed_raw_bytes": 9760
+    },
+    "tests/test_intraday_shared_storage_package.py": {
+      "sha256": "22106abd89fef8b20d4e37767079772acb84f0f90eb14f8e09845f0fd5bd6caf",
+      "bytes": 7550,
+      "reviewed_raw_sha256": "22106abd89fef8b20d4e37767079772acb84f0f90eb14f8e09845f0fd5bd6caf",
+      "reviewed_raw_bytes": 7550
+    },
+    "tests/intraday_shared_storage_support.py": {
+      "sha256": "6fdef9ba23747a3598159745542335eff010ceba0ef22bac45b80115dd848d43",
+      "bytes": 1260,
+      "reviewed_raw_sha256": "6fdef9ba23747a3598159745542335eff010ceba0ef22bac45b80115dd848d43",
+      "reviewed_raw_bytes": 1260
+    }
+  },
+  "validation_scope": [
+    "Local composed adapter tests exercise the complete local implementation.",
+    "Portable public-base checks verify the packet and available isolated helper/manager behavior; absent public adapters remain integration-not-installed.",
+    "A completed local installed generation is a separate runtime fact from source publication, public-main integration and peer installation."
+  ],
+  "runtime_boundaries": [
+    "No provider, broker, trader or training operation is required to validate this package.",
+    "No changes to producers, model recipes, probabilities, targets, symbols, source selection, order identities or manual trader controls.",
+    "Original response bytes, native provider keys, receipt clocks, saved publications and revision ancestry are preserved.",
+    "Nightly entry reuses retained EQUS minute responses before existing overlap continuation; older unindexed history retains explicit historical availability assumptions.",
+    "Snapshot reference reads share the existing immutable source store; migration and physical reclamation run only through reviewed tools and their configured safety boundaries."
+  ],
+  "rollout_requirements": [
+    "On each host, first install dual readers with reference_writes=False and observe that all current journal readers have naturally adopted them before enabling reference writes.",
+    "Atlas current configured reader adoption was verified separately before this prospective default change. That local evidence does not establish peer reader adoption.",
+    "Existing inline journal rows, original receipts and historical payload paths are retained. This code change does not itself migrate, restart or deploy anything."
+  ],
+  "dependency_byte_policy": "Dependency sha256/bytes identify the exact LF projection. Reviewed raw hashes/bytes retain the original local byte identity; only exact LF/CRLF checkout transformations are accepted."
+}
