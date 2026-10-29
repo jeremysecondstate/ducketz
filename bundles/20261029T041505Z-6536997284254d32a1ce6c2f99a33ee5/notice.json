@@ -1,0 +1,66 @@
+{
+  "atlas_applicability": "Shared source repair; Atlas uses its own production watchlist, credentials and operating/model bindings.",
+  "author": "Scout",
+  "branch": "codex/scout/20261029T041056Z-ca83981707894ed6bf6401be096fc606",
+  "change_id": "20261029T041056Z-ca83981707894ed6bf6401be096fc606",
+  "files": [
+    "app/services/rolling_price_change.py",
+    "app/ui/rolling_price_widgets.py",
+    "app/ui/gameplan_stats.py",
+    "tests/test_rolling_price_change.py",
+    "tests/test_rolling_price_widgets.py",
+    "tests/test_rolling_price_stats.py",
+    "docs/gameplan-stats-tab-design-ui/ROLLING_PRICE_CHANGE.md"
+  ],
+  "installation": "Scout application source installed and product preview observed loaded. Already-open desktop GUI awaits next normal launch.",
+  "limitations": [
+    "No main integration or peer installation is claimed. Provider observations and private operating evidence are not published."
+  ],
+  "policy": "Each click requests fresh Schwab minute history and FMP split evidence; no saved-Stats reload. Fresh successful replies retain actual sparse extended-hours trades; missing regular-session evidence remains stale. UTC cutoffs and actual timestamps remain unchanged.",
+  "previous_completion": "20261029T034757Z-468179dd70514d34a057f0ac5c46f047",
+  "previous_pr_disposition": "Closed unmerged as superseded by the complete updated draft; immutable source and completion retained.",
+  "previous_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/508",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/511",
+  "remote_sha": "21c3b78b1984b2533afb50460da3337af7eca3eb",
+  "repository": "jeremysecondstate/ducketz",
+  "results": [
+    "Sealed and fresh isolated suites each191 passed plus31 legacy Stats UI checks passed.",
+    "Installed source59 passed; six UI checks passed in a separate process after transient Tcl setup failure in the aggregate.",
+    "Authorized local read-only product check invoked the installed panel button and returned11/11 members with zero saved-Stats requests. Actual observations remain local.",
+    "Native430 and280 pixel layouts and the actual refreshed panel were visually inspected."
+  ],
+  "runtime_implications": "Normal GUI launch loads the new panel control. No trading, training, schedules or worker restart.",
+  "scope": "shared",
+  "source_sha": "21c3b78b1984b2533afb50460da3337af7eca3eb",
+  "summary": "Scout installed direct price-panel Refresh and corrected false stale results for sparse extended-hours trades",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-29T04:11:22.910347Z",
+      "exit_code": 0,
+      "kind": "sealed",
+      "output_sha256": "c8583b572d90c52f88ed14e09ddfb81d23fdf1b95863fc2c2ad83c1c175b8db7",
+      "started_at_utc": "2026-10-29T04:10:56.938856Z"
+    },
+    {
+      "completed_at_utc": "2026-10-29T04:11:37.171230Z",
+      "exit_code": 0,
+      "kind": "sealed",
+      "output_sha256": "baebfb7a9d0e7bd50f05c380006f16953996f1d2cdea0226718335240073d922",
+      "started_at_utc": "2026-10-29T04:11:23.047509Z"
+    },
+    {
+      "completed_at_utc": "2026-10-29T04:12:48.069391Z",
+      "exit_code": 0,
+      "kind": "isolated",
+      "output_sha256": "f6d9dc57891f7ce1fc2ec9f02d85c9538edd7acd7ab9740253abbcf7762af876",
+      "started_at_utc": "2026-10-29T04:12:20.324911Z"
+    },
+    {
+      "completed_at_utc": "2026-10-29T04:13:04.420714Z",
+      "exit_code": 0,
+      "kind": "isolated",
+      "output_sha256": "69f40e2d083d0a2a96289d9f8bbcfaca973575713c63f5fda3c98ca61e2178af",
+      "started_at_utc": "2026-10-29T04:12:48.245730Z"
+    }
+  ]
+}

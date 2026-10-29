@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T04:15:05.193533Z",
+  "id": "20261029T041505Z-6536997284254d32a1ce6c2f99a33ee5",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout installed direct price-panel Refresh and corrected false stale results for sparse extended-hours trades"
+}
