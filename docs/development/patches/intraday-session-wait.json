@@ -1,0 +1,42 @@
+{
+  "adoption": "Review and apply only the invocation replacements to each installed launcher. Preserve local host behavior, bindings, controls, schedules and already running lifetimes.",
+  "authority": "Direct October 29, 2026 human direction for the two 15-minute initial launchers to wait until 04:00 Pacific while current data collection continues.",
+  "data_batch_tail": {
+    "line_bytes_including_lf": 116,
+    "reason": "Preserve the tail position an existing cmd.exe may resume after its current data process returns.",
+    "tail_offset": 373,
+    "trailing_spaces": 39
+  },
+  "direct_files": {
+    "docs/development/intraday-session-start.md": "495db7f91904a47cafb4f98dcce29d24db37032cf2d0dc0ffd8448109553a64e",
+    "tests/check_intraday_session_wait_package.py": "408b54591e2456297fe84f62a47b8cbcc872458ee93a2a6886f2b4ebe5546174",
+    "tests/test_intraday_session_wait.py": "37802a0f76b7653cae4194927d0bbdaf1de65e3175cbc777fbab6e1bc085d638",
+    "tools/intraday_session_wait.py": "55d31a91adf717042668268c0e0e628dd1bcb3b55cf9680aa8bb0d8645c7608b"
+  },
+  "files": [
+    {
+      "after_sha256": "25aa8873e77284f48345f35163421eaceaaa9bad166f139acc759ff0624ab208",
+      "before_sha256": "de019e6246a4c22086df2aaea3704e0f581d201f7b089235efbbcdb7237ebc23",
+      "operation": "modify",
+      "owned_change": "Replace only the existing host invocation with the early-session wait wrapper; preserve all remaining launcher bytes.",
+      "path": "Start-15m-Data.cmd"
+    },
+    {
+      "after_sha256": "9bc9c424fdc58e1983d9850a99bc0a7d9d0790af8c54926d8e47cbf3a1b6dc02",
+      "before_sha256": "bd662537268ed9d70df9c5c933fc5c9df547b768d1e68d23249792432c931aa3",
+      "operation": "modify",
+      "owned_change": "Replace only the existing host invocation with the early-session wait wrapper; preserve all remaining launcher bytes.",
+      "path": "Start-15m-Trader.cmd"
+    }
+  ],
+  "limitations": [
+    "Offline package checks use fake clocks and disposable synthetic hosts, not live traders or providers.",
+    "Windows scheduler tests and local installation generation receipts are separate private evidence."
+  ],
+  "ownership": "Only invocation replacements and the new wrapper/checks/document are owned. Complete preexisting launcher context is carried solely to verify exact reconstruction; it is not an instruction to overwrite a different local composition.",
+  "patch": "docs/development/patches/intraday-session-wait.patch",
+  "patch_sha256": "bf2aa4f730a09f8da30d01096190e19c20e7502dc0cb05228f47e96b43914c41",
+  "runtime_implications": "New initial launches before 04:00 Pacific wait visibly while their original terminal/task remains alive; at or after 04:00 they enter the original host. Ending that terminal/task cancels a pending launch, including Python redirector descendants. No waiting is imposed on existing running or renewing workers.",
+  "schema": "intraday-session-wait-adapters-v1",
+  "scope": "shared"
+}
