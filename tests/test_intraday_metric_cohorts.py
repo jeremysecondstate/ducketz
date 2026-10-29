@@ -195,6 +195,9 @@ def test_render_applies_selected_cohort_before_window_to_every_diagnostic(monkey
         _metric_values=intraday.IntradayTab._metric_values,
         _render_consensus=lambda: None, _render_operations=lambda: None,
     )
+    view._closed = False
+    view._auto_enabled = False
+    view._selection = lambda: intraday.IntradayTab._selection(view)
     for scope, cumulative_n, selected_n, accuracy, prevalence in (
         (DEFAULT_METRIC_SCOPE, 22, 20, "100.0%", "100.0%"),
         ("All saved outcomes", 26, 20, "80.0%", "80.0%"),
