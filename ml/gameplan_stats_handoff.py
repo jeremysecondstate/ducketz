@@ -138,9 +138,11 @@ def _validate_package(payload: dict) -> pd.DataFrame:
 def export_stats_package(root: Path, *, producer: str, symbols: Sequence[str], destination: Path,
                          action_date: str | None = None, review_run: Path | None = None) -> Path:
     """Export prediction outcomes only; never prices, quantities or account state."""
-    review = load_gameplan_stats(root, action_date)
-    if review_run is not None and review.run_directory != Path(review_run).resolve():
-        raise ValueError("Selected Stats publication changed before export")
+    # An explicit completed run is the binding. A later local/combined display
+    # publication must not replace it or prevent retrying its immutable export.
+    selected = Path(review_run).resolve() if review_run is not None else None
+    review = load_gameplan_stats(root, action_date, run_directory=selected,
+        expected_receipt_sha256=file_checksum(selected / "receipt.json") if selected is not None else None)
     run = review.run_directory
     source_hashes = {name: file_checksum(run / name) for name in ("receipt.json", "manifest.json", "forecast-results.parquet", "report.json")}
     if source_hashes["receipt.json"] != review.receipt_sha256:

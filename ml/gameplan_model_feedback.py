@@ -65,8 +65,15 @@ def _write(path: Path, value: Mapping) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def _stats(root: Path, review_run: Path | None = None, *, frozen_binding: Mapping | None = None):
-    if frozen_binding is None:
+def _stats(root: Path, review_run: Path | None = None, *, frozen_binding: Mapping | None = None,
+           expected_receipt_sha256: str | None = None):
+    if frozen_binding is None and review_run is not None:
+        run = Path(review_run).resolve()
+        digest = file_checksum(run / "receipt.json") if expected_receipt_sha256 is None else expected_receipt_sha256
+        review = load_gameplan_stats(root, run_directory=run, expected_receipt_sha256=digest)
+    elif frozen_binding is None:
+        if expected_receipt_sha256 is not None:
+            raise ValueError("An expected Stats receipt requires an explicit saved run")
         review = load_gameplan_stats(root)
     else:
         relative = Path(frozen_binding["run_path"])
@@ -75,7 +82,7 @@ def _stats(root: Path, review_run: Path | None = None, *, frozen_binding: Mappin
         review = load_gameplan_stats(root, frozen_binding["session"],
             run_directory=root / relative, expected_receipt_sha256=frozen_binding["receipt_sha256"])
     if review_run is not None and Path(review_run).resolve() != review.run_directory.resolve():
-        raise ValueError("Model feedback requires the exact newest completed Gameplan Stats run")
+        raise ValueError("Model feedback requires the exact saved Gameplan Stats run")
     run = review.run_directory
     report = json.loads((run / "report.json").read_text(encoding="utf-8"))
     baseline = report.get("coverage_status") == "NO_SAVED_INDEPENDENT_GAMEPLAN"
@@ -198,9 +205,10 @@ def _diagnostic_groups(review) -> dict:
 
 
 def prepare_feedback(root: Path, *, review_run: Path | None = None,
-                     output: Path | None = None, now=None, probability_target: str | None = None) -> Path:
+                     output: Path | None = None, now=None, probability_target: str | None = None,
+                     expected_receipt_sha256: str | None = None) -> Path:
     root = Path(root).resolve()
-    review, binding = _stats(root, review_run)
+    review, binding = _stats(root, review_run, expected_receipt_sha256=expected_receipt_sha256)
     created = utc_timestamp(now)
     if created < pd.Timestamp(review.reviewed_at) or created < pd.Timestamp(review.outcomes_through):
         raise ValueError("Model review cannot consume future Stats")
@@ -226,6 +234,8 @@ def prepare_feedback(root: Path, *, review_run: Path | None = None,
         "selection_policy": "existing_chronological_selection_log_loss_defaults_win_ties",
         "assessment_used_for_candidate_selection": False,
         "orders_placed": 0, "broker_orders_enabled": False}
+    if review_run is not None:
+        diagnostics["stats_selection"] = "FROZEN_SAVED_PASS"
     run = Path(output).resolve() if output else create_timestamp_directory(root / "ml/gameplan-model-feedback-runs", timestamp=created)
     _write(run / "diagnostics.json", diagnostics)
     _write(run / "review-schema.json", feedback_review_schema())
@@ -254,7 +264,8 @@ def save_feedback_review(root: Path, feedback_run: Path, proposal: Mapping, *, n
 def _verify_diagnostics(root: Path, diagnostics: Mapping, *, require_latest_stats: bool = True) -> None:
     if type(require_latest_stats) is not bool:
         raise TypeError("Stats freshness mode must be an explicit boolean")
-    review, actual = _stats(root, frozen_binding=None if require_latest_stats else diagnostics["stats"])
+    latest = require_latest_stats and diagnostics.get("stats_selection") != "FROZEN_SAVED_PASS"
+    review, actual = _stats(root, frozen_binding=None if latest else diagnostics["stats"])
     if (diagnostics.get("schema_version") != VERSION or diagnostics.get("stats") != actual
             or diagnostics.get("training_code") != _code_binding()):
         raise ValueError("Model review Stats or training implementation changed; review fresh evidence")
@@ -276,10 +287,10 @@ def _intended_target(stats: Mapping, requested: str | None) -> str:
 
 def load_feedback_review(root: Path, path: Path, *, as_of=None, probability_target=None,
                          require_latest_stats: bool = True) -> dict:
-    """Verify review evidence; training always retains the default latest check.
+    """Verify review evidence against its selected completed Stats.
 
-    Completed-run readiness can explicitly verify the original frozen Stats
-    after a combined publication replaces the display selection.
+    Explicit saved-pass reviews retain their frozen receipt across later display
+    publications. Unpinned reviews retain the default latest-selection check.
     """
     path = Path(path).resolve()
     if path.stat().st_size > 131072:
