@@ -76,7 +76,7 @@ def test_heartbeat_keeps_chat_continuity_exact_and_inherited_model():
 
 def test_suffix_replacement_is_idempotent_and_preserves_trailing_whitespace():
     saved = native()
-    task = purpose("overnight_gameplan")
+    task = purpose("source_courier")
     first = tasks.build_update(saved, task, **BINDING)
     second = tasks.build_update(after_update(saved, first), task, **BINDING)
     assert first == second
@@ -99,7 +99,7 @@ def test_paused_purposes_stay_paused(key):
 
 
 @pytest.mark.parametrize("key", ["stock_daytime_supervision", "hyperliquid_paper_improvement",
-                                 "hyperliquid_operations_watch", "overnight_gameplan"])
+                                 "hyperliquid_operations_watch"])
 def test_scout_owner_restricted_counterparts_cannot_gain_operator_authority(key):
     binding = dict(BINDING, machine="pc-new")
     task = purpose(key)
@@ -108,6 +108,33 @@ def test_scout_owner_restricted_counterparts_cannot_gain_operator_authority(key)
     assert "must not modify application source" in update["prompt"]
     with pytest.raises(ValueError, match="role ceiling"):
         tasks.build_update(native(), task, role="operator", **binding)
+
+
+@pytest.mark.parametrize("key", ["overnight_gameplan", "weekly_gameplan_review"])
+@pytest.mark.parametrize("machine", ["pc-original", "pc-new"])
+def test_retired_gameplan_purposes_only_adopt_paused_archives(key, machine):
+    binding = dict(BINDING, machine=machine)
+    task = purpose(key)
+    saved = native(status="PAUSED")
+    original = copy.deepcopy(saved)
+    update = tasks.build_update(saved, task, **binding)
+    assert saved == original
+    assert update["status"] == "PAUSED"
+    assert "role disabled" in update["prompt"]
+    assert "Do not perform its legacy work or reactivate it" in update["prompt"]
+    assert "Immediately queue" not in update["prompt"]
+    assert tasks.verify_adoption(saved, after_update(saved, update), update)["verified"]
+    with pytest.raises(ValueError, match="PAUSED"):
+        tasks.build_update(native(), task, **binding)
+
+
+@pytest.mark.parametrize("key", ["overnight_gameplan", "weekly_gameplan_review"])
+@pytest.mark.parametrize("machine", ["pc-original", "pc-new"])
+@pytest.mark.parametrize("role", ["observer", "operator", "publisher"])
+def test_retired_gameplan_purposes_reject_operating_role_override(key, machine, role):
+    with pytest.raises(ValueError, match="role ceiling"):
+        tasks.build_update(native(status="PAUSED"), purpose(key), role=role,
+                           **dict(BINDING, machine=machine))
 
 
 def test_expired_one_time_definition_is_not_reactivated_or_recreated():
@@ -128,7 +155,7 @@ def test_expired_one_time_definition_is_not_reactivated_or_recreated():
 ])
 def test_post_update_verification_detects_scope_context_or_schedule_drift(field, value):
     before = native()
-    update = tasks.build_update(before, purpose("overnight_gameplan"), **BINDING)
+    update = tasks.build_update(before, purpose("source_courier"), **BINDING)
     after = after_update(before, update)
     after[field] = value
     with pytest.raises(ValueError, match="Native fields changed"):
@@ -137,7 +164,7 @@ def test_post_update_verification_detects_scope_context_or_schedule_drift(field,
 
 def test_prompt_verification_detects_truncation():
     before = native()
-    update = tasks.build_update(before, purpose("overnight_gameplan"), **BINDING)
+    update = tasks.build_update(before, purpose("source_courier"), **BINDING)
     after = after_update(before, update)
     after["prompt"] = after["prompt"][:100]
     with pytest.raises(ValueError, match="reviewed update"):
@@ -149,21 +176,21 @@ def test_malformed_suffix_is_preserved_for_review(fragment):
     saved = native()
     saved["prompt"] += fragment
     with pytest.raises(ValueError, match="[Ss]hared-contract"):
-        tasks.build_update(saved, purpose("overnight_gameplan"), **BINDING)
+        tasks.build_update(saved, purpose("source_courier"), **BINDING)
 
 
 def test_unknown_native_fields_fail_instead_of_silently_dropping_them():
     saved = native()
     saved["future_context_rules"] = "must preserve"
     with pytest.raises(ValueError, match="Unmapped native fields"):
-        tasks.build_update(saved, purpose("overnight_gameplan"), **BINDING)
+        tasks.build_update(saved, purpose("source_courier"), **BINDING)
 
 
 @pytest.mark.parametrize("release", ["relative/releases/version", "C:/local/.codex/worktrees/test",
                                    "C:/Temp/release", "C:/local/../release"])
 def test_release_binding_rejects_ephemeral_or_unresolved_paths(release):
     with pytest.raises(ValueError):
-        tasks.build_update(native(), purpose("overnight_gameplan"),
+        tasks.build_update(native(), purpose("source_courier"),
                            **dict(BINDING, release_root=release))
 
 

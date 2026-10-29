@@ -7,6 +7,16 @@ uses its own installed coordination profile, watchlist, authenticated data
 connection, prediction store and operating bindings. Atlas and Scout remain
 independent. A local task registration is not evidence of registration on a peer.
 
+Jeremy's October 29 direction retires the Gameplan Trader, Gameplan Stats,
+Gameplan model review, synthesis and delivery. This supervisor remains the
+15-minute model owner under [current nightly operations](nightly-operations.md).
+Its scoped refresh, saved 15-minute session review and model decisions have no
+Gameplan or peer-delivery dependency. Historical Gameplan recovery instructions
+do not apply, and intentionally removed Gameplan outputs must not be recreated.
+Data-only catch-up retains its own role; Scout's System 1A service retains its
+configured live acquisition, causal preparation, snapshots and recovery. Neither
+role takes over this supervisor's model assessment or installation.
+
 Follow the [independent model ownership contract](intraday-model-ownership.md).
 Shared source adoption never authorizes copying a peer's model tuning or
 replacing this PC's private recipe. Frozen model contracts preserve effective
@@ -126,7 +136,10 @@ historical field meanings and bytes. Supervised selection assesses supervised
 candidates and its incumbent; it does not statistically qualify a separate
 manual recipe that overrides policy adoption.
 The workflow does not start/restart a trader, clear a manual stop, submit orders,
-or change account authority. Jeremy retains the manual trader start.
+or change account authority. Jeremy retains initial activation and stop authority,
+including the existing configured Windows-task activation. Scout's authorized
+iteration replacements remain within that existing logical run under
+[the iteration lifecycle](scout-iteration-restarts.md).
 
 The screenshot's 100% readings are individual forecast probabilities. They are
 not measured accuracy and do not establish overfitting by themselves. The target
