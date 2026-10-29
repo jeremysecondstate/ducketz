@@ -1,0 +1,502 @@
+--- a/app/ui/intraday_data.py
++++ b/app/ui/intraday_data.py
+@@ -253,9 +253,9 @@
+ 
+     New forecasts carry their own immutable summary. Older local forecasts can
+     use their linked immutable snapshot. SQL extracts only the reference candle's
+-    small metadata fields; training matrices and candle/evidence arrays never
+-    leave SQLite. This is invoked lazily for the selected consensus forecast,
+-    rather than joining every historical snapshot on each display refresh.
++    small metadata fields; training matrices and candle/evidence arrays are never
++    decoded into Python objects. Referenced originals are hash-checked before the
++    same SQL projection. This runs lazily for the selected consensus forecast.
+     """
+     if "reference_provenance" in forecast:
+         return _validated_reference_provenance(forecast["reference_provenance"], forecast, basis="saved_forecast")
+@@ -277,7 +277,11 @@
+         projections.append(f"json_extract(s.payload, {arguments})")
+     # Both snapshot layouts end at the fixed reference. A different final
+     # candle is rejected below; no neighboring candle is substituted.
+-    query = ("SELECT s.id, " + ", ".join(projections)
++    reference = ("CASE WHEN json_extract(s.payload, '$.snapshot_storage')="
++                 "'intraday-input-reference-v1' AND length(s.payload)<=512"
++                 " AND json_type(s.payload, '$.candles') IS NULL"
++                 " AND json_type(s.payload, '$.inference.snapshot.candles') IS NULL THEN s.payload END")
++    query = ("SELECT s.id, " + reference + ", " + ", ".join(projections)
+              + " FROM symbol_inputs i JOIN snapshots s ON s.id=i.snapshot_id"
+                " WHERE i.cycle_id=? AND i.symbol=? AND json_valid(s.payload) LIMIT 2")
+     try:
+@@ -286,9 +290,23 @@
+             rows = connection.execute(query, (forecast.get("cycle_id"), forecast.get("symbol"))).fetchall()
+         if len(rows) != 1:
+             return unknown
+-        snapshot_id, *metadata = rows[0]
++        snapshot_id, reference, *metadata = rows[0]
+         if forecast.get("snapshot_hash") is not None and forecast["snapshot_hash"] != snapshot_id:
+             return _unknown_reference_provenance("saved input snapshot identity differs from the forecast")
++        if reference is not None:
++            from ml.intraday.snapshot_objects import SnapshotObjects
++            from ml.intraday.snapshot_references import canonical_snapshot_directory, read_reference_bytes
++            directory = canonical_snapshot_directory(path)
++            if directory is None:
++                return _unknown_reference_provenance("saved input snapshot reference is unbound")
++            raw = read_reference_bytes(snapshot_id, json.loads(reference),
++                snapshot_objects=SnapshotObjects(directory))
++            # SQLite projects this one verified original without materializing
++            # the surrounding scientific arrays as Python lists/dictionaries.
++            with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=1)) as connection:
++                connection.execute("PRAGMA query_only=ON")
++                metadata = connection.execute("SELECT " + ", ".join(projections)
++                    + " FROM (SELECT CAST(? AS TEXT) AS payload) s", (raw,)).fetchone()
+         for raw in metadata:
+             values = json.loads(raw)
+             if not isinstance(values, list) or len(values) != len(fields) or all(value is None for value in values):
+--- a/datafetching/intraday_fmp_observations.py
++++ b/datafetching/intraday_fmp_observations.py
+@@ -32,7 +32,10 @@
+     if not isinstance(relative, str) or not re.fullmatch(r"[a-f0-9]{64}", str(digest)):
+         raise ValueError("Invalid saved intraday price object identity")
+     path = (root / relative).resolve()
+-    if not path.is_relative_to((root / kind).resolve()) or path.name != digest + ".json":
++    if kind == "raw":
++        from ml.intraday.acquisition_objects import resolve_market_payload
++        path = resolve_market_payload(root, relative, digest)
++    elif not path.is_relative_to((root / kind).resolve()) or path.name != digest + ".json":
+         raise ValueError("Saved intraday price object escapes its immutable store")
+     if path.stat().st_size > maximum:
+         raise ValueError("Saved intraday price object exceeds its bounded contract")
+--- a/ml/intraday/data.py
++++ b/ml/intraday/data.py
+@@ -22,6 +22,7 @@
+ import pandas as pd
+ 
+ from .prediction import ContractError, STEP, TARGET_VERSION, UnresolvedPolicy, instant
++from .acquisition_objects import ResponseObjects, object_root, journal_payload_bytes, read_journal_record
+ 
+ MINUTE = timedelta(minutes=1)
+ FEATURE_VERSION = "intraday-observed-causal-features-v1"
+@@ -193,8 +194,11 @@
+ 
+ class AcquisitionJournal:
+     """Append-only exact attempts and durable retry state on the local PC."""
+-    def __init__(self, path):
++    def __init__(self, path, *, reference_writes=True):
+         self.path = Path(path)
++        # Compact new attempts after the dual-reader rollout. Explicit False
++        # retains legacy writes when staging reader adoption on another host.
++        self.reference_writes = bool(reference_writes)
+         self.path.parent.mkdir(parents=True, exist_ok=True)
+         with closing(sqlite3.connect(self.path)) as db, db:
+             db.execute("CREATE TABLE IF NOT EXISTS attempts(id TEXT PRIMARY KEY, slot TEXT, payload TEXT)")
+@@ -205,7 +209,7 @@
+             if not existed:
+                 # Existing durable attempts predate provider-wide retry state.
+                 for (raw,) in db.execute("SELECT payload FROM attempts").fetchall():
+-                    self._provider_wait(db, IntervalResponse(**json.loads(raw)).validate())
++                    self._provider_wait(db, IntervalResponse(**read_journal_record(self.path, raw)).validate())
+ 
+     @staticmethod
+     def slot(symbol, source_id, interval_open, interval_close):
+@@ -219,6 +223,7 @@
+         if record["failure_diagnostics"] is None:
+             record.pop("failure_diagnostics")
+         payload = _json(record)
++        response_ref = ResponseObjects(object_root(self.path)).preserve(payload) if self.reference_writes else None
+         slot = self.slot(response.symbol, response.source_id, response.interval_open, response.interval_close)
+         # Sidecar identity retains the actual loaded acquisition implementation;
+         # old journal rows are never upgraded into invented historical evidence.
+@@ -228,15 +233,17 @@
+             object_root=self.path.parent / "acquisition-source-objects")
+         receipt = preserve_bytes(self.path.parent / "acquisition-receipts", _json({
+             "attempt_id": response.attempt_id, "response_sha256": hashlib.sha256(payload.encode()).hexdigest(),
+-            "response": record, "producer_runtime": runtime,
++            **({"response_ref": response_ref} if response_ref is not None else {"response": record}),
++            "producer_runtime": runtime,
+             "native_response_scope": "SDK-returned native DataFrame before minute projection; not raw HTTP/DBN wire bytes"
+         }).encode(), suffix=".json")
+         with closing(sqlite3.connect(self.path)) as db, db:
+             db.execute("BEGIN IMMEDIATE")
+             existing = db.execute("SELECT payload FROM attempts WHERE id=?", (response.attempt_id,)).fetchone()
+-            if existing and existing[0] != payload:
++            if existing and journal_payload_bytes(self.path, existing[0]) != payload.encode("utf-8"):
+                 raise ContractError("Attempt identity is immutable")
+-            db.execute("INSERT OR IGNORE INTO attempts VALUES(?,?,?)", (response.attempt_id, slot, payload))
++            db.execute("INSERT OR IGNORE INTO attempts VALUES(?,?,?)",
++                (response.attempt_id, slot, _json(response_ref) if response_ref is not None else payload))
+             self._provider_wait(db, response)
+             db.execute("INSERT OR IGNORE INTO attempt_provenance VALUES(?,?,?)",
+                 (response.attempt_id, receipt["sha256"], receipt["path"]))
+@@ -258,7 +265,7 @@
+         slot = self.slot(symbol, source_id, interval_open, interval_close)
+         with closing(sqlite3.connect(self.path)) as db, db:
+             rows = db.execute("SELECT payload FROM attempts WHERE slot=? ORDER BY rowid", (slot,)).fetchall()
+-        return tuple(IntervalResponse(**json.loads(row[0])) for row in rows)
++        return tuple(IntervalResponse(**read_journal_record(self.path, row[0])) for row in rows)
+ 
+ 
+ def resolve_interval(responses: Sequence[IntervalResponse], *, session: SessionBounds,
+@@ -1347,6 +1354,7 @@
+     if not paths:
+         raise ContractError(f"No existing canonical EQUS minute history for {symbol}")
+     frames, files, source_coverage, native_objects = [], [], [], []
++    actual_receipt_rows = 0
+     for path in paths:
+         raw_path = path.parent.parent / "raw" / (path.stem + "_raw.parquet")
+         if not raw_path.is_file():
+@@ -1411,6 +1419,9 @@
+         frame = frame.assign(symbol=symbol.upper(), availability_kind="assumed_historical_close",
+                              source_id="databento:EQUS.MINI:ohlcv-1m", source_dataset=source_dataset,
+                              session_id="unassigned", synthetic=False, no_trade=False, evidence_json="{}")
++        from .canonical_acquisition import overlay_receipts
++        frame, matched_receipts = overlay_receipts(root, symbol, frame)
++        actual_receipt_rows += matched_receipts
+         frames.append(frame)
+     minutes = pd.concat(frames, ignore_index=True)
+     # Duplicate equal observations are benign; contradictory historical revisions
+@@ -1430,9 +1441,18 @@
+         frame, aggregation = aggregate_source_minutes(minutes, sessions=sessions, source_coverage=source_coverage)
+     else:
+         frame, aggregation = aggregate_minutes(minutes, sessions=sessions)
++    actual_receipt_rows = int(minutes.availability_kind.eq("actual").sum())
++    receipt_refs = {}
++    for evidence in minutes.loc[minutes.availability_kind.eq("actual"), "evidence_json"]:
++        reference = json.loads(evidence)["canonical_receipt"]
++        receipt_refs[reference["object_sha256"]] = reference
+     manifest = {"symbol": symbol.upper(), "source_dataset": source_dataset, "source_schema": "ohlcv-1m",
+-        "availability_kind": "assumed_historical_close", "availability_offset_seconds": availability_offset_seconds,
+-        "availability_limitation": "Historical publication/receipt timestamps not recorded; no point-in-time claim",
++        "availability_kind": ("actual" if actual_receipt_rows == len(minutes) else
++                              "mixed_actual_and_assumed" if actual_receipt_rows else "assumed_historical_close"),
++        "actual_receipt_minute_rows": actual_receipt_rows,
++        "canonical_receipt_refs": list(receipt_refs.values()),
++        "availability_offset_seconds": availability_offset_seconds,
++        "availability_limitation": "Exact indexed values retain actual receipt clocks; older unindexed history has assumed close availability and no point-in-time claim",
+         "price_basis": "unadjusted_market_scale", "source_policy": "single_verified_dataset_no_fill_no_fallback",
+         "minute_rows": len(minutes), "first_minute_open": minutes.opened_at.min().isoformat(),
+         "last_minute_open": minutes.opened_at.max().isoformat(), "candle_rows": len(frame),
+--- a/ml/intraday/gap_recovery.py
++++ b/ml/intraday/gap_recovery.py
+@@ -231,7 +231,8 @@
+                     slot = json.dumps([symbol, attempt["source_id"], op.isoformat(), (op+timedelta(minutes=15)).isoformat()], separators=(",", ":"))
+                     row = db.execute("SELECT payload FROM attempts WHERE slot=? ORDER BY rowid DESC LIMIT 1", (slot,)).fetchone()
+                     if row:
+-                        item = json.loads(row[0])
++                        from .acquisition_objects import read_journal_record
++                        item = read_journal_record(database, row[0])
+                         if item.get("status") == "success" and _time(item["request_ended_at"]) <= _time(self.clock()):
+                             surrounding.append(item)
+         received = max(_time(r["request_ended_at"]) for r in [attempt, *surrounding])
+--- a/ml/intraday/market_inputs.py
++++ b/ml/intraday/market_inputs.py
+@@ -188,13 +188,31 @@
+ 
+     def persist_raw(self, payload: Any, received_at: Any) -> dict:
+         """Durably retain the response before a feature extractor can fail."""
++        from .acquisition_objects import market_response_root
+         received = _utc(received_at)
+         raw = _bytes(payload)
+         identity = hashlib.sha256(raw).hexdigest()
+-        target = self.root / "raw" / received.strftime("%Y/%m/%d") / (identity + ".json")
++        target = market_response_root(self.root) / (identity + ".json")
++        # Existing loaded readers accept dated raw paths. Keep those names as
++        # hardlink aliases to the one global object during reader rollout.
++        legacy = self.root / "raw" / received.strftime("%Y/%m/%d") / (identity + ".json")
+         with self._lock:
++            if not target.exists() and legacy.is_file():
++                if legacy.read_bytes() != raw:
++                    raise RuntimeError("Immutable market input object differs")
++                target.parent.mkdir(parents=True, exist_ok=True)
++                try:
++                    os.link(legacy, target)
++                except FileExistsError:
++                    pass
+             _write_immutable(target, raw)
+-        return {"sha256": identity, "path": str(target.relative_to(self.root)), "bytes": len(raw)}
++            legacy.parent.mkdir(parents=True, exist_ok=True)
++            try:
++                os.link(target, legacy)
++            except FileExistsError:
++                if legacy.read_bytes() != raw:
++                    raise RuntimeError("Immutable market input object differs")
++        return {"sha256": identity, "path": legacy.relative_to(self.root).as_posix(), "bytes": len(raw)}
+ 
+     def append(self, *, symbol: str, source: str, started_at: Any, received_at: Any,
+                payload: Any, features: Mapping[str, Any], status: str = "ok",
+@@ -317,9 +335,9 @@
+                 or re.fullmatch(r"[a-f0-9]{64}", ref["sha256"]) is None
+                 or type(ref["bytes"]) is not int or ref["bytes"] < 0):
+             raise ValueError("Invalid retained market payload reference")
+-        payload = (self.root / ref["path"]).resolve()
+-        if (not payload.is_relative_to(self.root / "raw") or payload.name != ref["sha256"] + ".json"
+-                or payload.stat().st_size != ref["bytes"]):
++        from .acquisition_objects import resolve_market_payload
++        payload = resolve_market_payload(self.root, ref["path"], ref["sha256"])
++        if payload.stat().st_size != ref["bytes"]:
+             raise ValueError("Invalid retained market payload path or size")
+         digest = hashlib.sha256()
+         with payload.open("rb") as handle:
+@@ -535,9 +553,8 @@
+         raise ValueError("Market input envelope hash mismatch")
+     envelope = json.loads(raw)
+     ref = envelope["payload_ref"]
+-    payload_path = (root/ref["path"]).resolve()
+-    if not payload_path.is_relative_to(root):
+-        raise ValueError("Market payload path escapes root")
++    from .acquisition_objects import resolve_market_payload
++    payload_path = resolve_market_payload(root, ref["path"], ref["sha256"])
+     data = payload_path.read_bytes()
+     if len(data)!=ref["bytes"] or hashlib.sha256(data).hexdigest()!=ref["sha256"]:
+         raise ValueError("Market payload hash mismatch")
+--- a/ml/intraday/readiness.py
++++ b/ml/intraday/readiness.py
+@@ -31,6 +31,8 @@
+ SOURCE_IDS = {name: f"databento:{name}:ohlcv-1m" for name in ("EQUS.MINI", "XNAS.ITCH")}
+ PUBLIC_SOURCES = (
+     "ml/intraday/readiness.py", "ml/intraday/runtime.py", "ml/intraday/store.py",
++    "ml/intraday/snapshot_objects.py",
++    "ml/intraday/snapshot_references.py",
+     "ml/intraday/execution_policy.py", "ml/intraday/technical_sizing.py",
+     "ml/account_gameplan/authority.py", "ml/intraday/local_execution.py",
+     "ml/stock_trader/horizon_ledger.py", "ml/stock_trader/horizon_broker.py",
+@@ -293,7 +295,7 @@
+     return number(stored, positive=True) == number(serialized[0]["open"], positive=True)
+ 
+ 
+-def _bound_snapshot(db, forecast, row):
++def _bound_snapshot(db, forecast, row, *, snapshot_directory=None):
+     """Verify stored input bindings and clocks, not provider or fit availability."""
+     original = json.loads(row[-1])
+     key = original.get("snapshot_hash")
+@@ -303,9 +305,13 @@
+                        "WHERE i.cycle_id=? AND i.symbol=?", (row[3], row[2])).fetchall()
+     if len(saved) != 1 or saved[0][0] != key:
+         raise ValueError("Snapshot binding differs from the forecast")
+-    snapshot = json.loads(saved[0][1])
+-    if not isinstance(snapshot, dict) or digest(snapshot) != key:
+-        raise ValueError("Snapshot evidence changed")
++    from .snapshot_objects import SnapshotObjects
++    from .snapshot_references import read_input_value
++    reader = SnapshotObjects(snapshot_directory) if snapshot_directory is not None else None
++    try:
++        snapshot = read_input_value(key, saved[0][1], snapshot_objects=reader)
++    except OSError as exc:
++        raise ValueError("Snapshot original is unavailable") from exc
+     cutoff = instant(forecast["training_cutoff"])
+     reference = instant(forecast["reference_at"])
+     inference = snapshot["inference"]
+@@ -389,7 +395,8 @@
+                     latest[key] = (value, row)
+             for value, row in latest.values():
+                 try:
+-                    value["bound_data"] = _bound_snapshot(db, value, row)
++                    value["bound_data"] = _bound_snapshot(db, value, row,
++                        snapshot_directory=datastore / "intraday/system-1a/ready/snapshots")
+                 except SnapshotCodecUnavailable:
+                     value["bound_data"] = {"status": "unavailable_serialization_verification", "findings": ["BOUND_SNAPSHOT_SERIALIZATION_VERIFIER_UNAVAILABLE"]}
+                 except (ValueError, TypeError, KeyError, AttributeError):
+--- a/ml/intraday/split_model.py
++++ b/ml/intraday/split_model.py
+@@ -63,7 +63,10 @@
+     if (not assigned_symbols or len(set(assigned_symbols)) != len(assigned_symbols)
+             or not set(assigned_symbols) <= set(symbols)):
+         raise ContractError("Model lane changed the original local symbol ownership")
+-    science_store = science_store or ShadowStore(store.path.parent / "system-1b/models.sqlite3")
++    # Reuse the producer's immutable original instead of copying its full
++    # training matrix and candle history into the model database.
++    science_store = science_store or ShadowStore(store.path.parent / "system-1b/models.sqlite3",
++        snapshot_directory=handoff.root / "snapshots")
+     admission_began, admission_cpu_began = time.perf_counter(), time.process_time()
+     configuration = asdict(config)
+     ready_error = None
+@@ -165,7 +168,7 @@
+         if stopped():
+             return
+         # Only small metadata and compact forecast bytes cross into execution's
+-        # DB. Full frozen matrices and fitted diagnostics stay in a separate DB.
++        # DB. Model work keeps its own DB and references the shared frozen inputs.
+         with science_store.connect() as db:
+             import json
+             source = json.loads(db.execute("SELECT payload FROM cycles WHERE id=?",
+@@ -250,7 +253,8 @@
+                 handoff = ReadySnapshots(Path(root) / "intraday/system-1a/ready",
+                     actor=session["actor"], symbols=tuple(session["symbols"]))
+             if science_store is None:
+-                science_store = ShadowStore(Path(root) / ("intraday/system-1b/models-" + str(lane_index) + ".sqlite3"))
++                science_store = ShadowStore(Path(root) / ("intraday/system-1b/models-" + str(lane_index) + ".sqlite3"),
++                    snapshot_directory=Path(root) / "intraday/system-1a/ready/snapshots")
+         except sqlite3.OperationalError as exc:
+             contention = _storage_contention(exc)
+             if contention is None:
+--- a/ml/intraday/store.py
++++ b/ml/intraday/store.py
+@@ -85,8 +85,8 @@
+ class ShadowStore:
+     def __init__(self, path, *, snapshot_directory=None, chunked_snapshots=False):
+         self.path = Path(path)
+-        # Only independent 1A preparation opts in. Forecast/execution stores
+-        # retain their original inline representation and readers.
++        # Reference writes require an explicit object directory. Historical
++        # references in known intraday layouts are readable without opting in.
+         self.snapshot_objects = None
+         if snapshot_directory is not None:
+             from .snapshot_objects import SnapshotObjects
+@@ -171,22 +171,26 @@
+             raise ContractError("Persisted snapshot evidence hash changed")
+         return value
+ 
++    @staticmethod
++    def _canonical_snapshot_directory(path):
++        """Read binding for established intraday layouts; never enables writes."""
++        from .snapshot_references import canonical_snapshot_directory
++        return canonical_snapshot_directory(path)
++
++    @staticmethod
++    def read_input_value(key, raw, *, snapshot_objects=None):
++        """Decode original evidence without opening or initializing a database."""
++        from .snapshot_references import read_input_value
++        return read_input_value(key, raw, snapshot_objects=snapshot_objects)
++
+     def _input_value(self, key, raw):
+-        value = json.loads(raw)
+-        # Legacy inline snapshots may contain any scientific dictionary keys.
+-        # Their original semantic identity takes precedence over the codec tag.
+-        if isinstance(value, dict) and digest(value) == key:
+-            return value
+-        if isinstance(value, dict) and "snapshot_storage" in value:
+-            if (set(value) != {"snapshot_storage", "sha256", "bytes"}
+-                    or value["snapshot_storage"] != "intraday-input-reference-v1"
+-                    or value["sha256"] != key
+-                    or type(value["bytes"]) is not int or value["bytes"] < 0
+-                    or self.snapshot_objects is None):
+-                raise ContractError("Persisted snapshot reference is invalid or unbound")
+-            raw = self.snapshot_objects.read(key, expected_bytes=value["bytes"])
+-            return self._snapshot_value(key, raw)
+-        raise ContractError("Persisted snapshot evidence hash changed")
++        reader = self.snapshot_objects
++        if reader is None:
++            directory = self._canonical_snapshot_directory(self.path)
++            if directory is not None:
++                from .snapshot_objects import SnapshotObjects
++                reader = SnapshotObjects(directory)
++        return self.read_input_value(key, raw, snapshot_objects=reader)
+ 
+     @staticmethod
+     def _forecast_value(row):
+--- a/ml/intraday/supervision_data.py
++++ b/ml/intraday/supervision_data.py
+@@ -7,6 +7,7 @@
+ from __future__ import annotations
+ 
+ from dataclasses import asdict, replace
++from datetime import datetime, timezone
+ from pathlib import Path
+ 
+ import pandas as pd
+@@ -27,6 +28,8 @@
+     from app.services.databento_market_data import DatabentoMarketDataProvider
+     from datafetching.databento_fetch import _fetch_native_results_many, _persist_native_results
+     from datafetching.parquet_store import ParquetStore
++    from datafetching.loop_a_cycle import datastore_cycle_lock
++    from .canonical_acquisition import reuse_before_refresh, record_native_refresh
+ 
+     cutoff = utc(as_of)
+     symbols = tuple(str(s).strip().upper() for s in symbols)
+@@ -41,29 +44,36 @@
+             or specs[0].schema != "ohlcv-1m" or specs[0].frequency != "1m"):
+         raise ContractError("Supervision refresh requires exactly EQUS.MINI OHLCV minutes")
+     store = ParquetStore(Path(datastore))
+-    fetched = _fetch_native_results_many(provider, symbols, "continuation", store)
+     results, requests = {}, []
+-    for symbol in symbols:
+-        native = fetched[symbol]
+-        if (len(native) != 1 or native[0][0].schema != "ohlcv-1m"
+-                or native[0][0].frequency != "1m"):
+-            raise ContractError("Refresh escaped the exact minute-only source scope")
+-        result = _persist_native_results(symbol, store, provider=provider,
+-            profile="continuation", observed_at=cutoff.to_pydatetime(), native_results=native,
+-            batch_watchlist_symbol_count=len(symbols), run_derived=False)
+-        results[symbol] = asdict(result)
+-        spec, bars, raw, available, error = native[0]
+-        requests.append({"symbol": symbol, "source_schema": spec.schema,
+-            "provider_available_start": utc(available.start).isoformat() if available else None,
+-            "provider_available_end": utc(available.end).isoformat() if available else None,
+-            "returned_native_rows": len(bars),
+-            "status": "failed" if error is not None else "fetched",
+-            "error_type": type(error).__name__ if error is not None else None})
++    with datastore_cycle_lock(store.root_dir):
++        reused = reuse_before_refresh(store, symbols)
++        started = datetime.now(timezone.utc)
++        fetched = _fetch_native_results_many(provider, symbols, "continuation", store)
++        received = datetime.now(timezone.utc)
++        for symbol in symbols:
++            native = fetched[symbol]
++            if (len(native) != 1 or native[0][0].schema != "ohlcv-1m"
++                    or native[0][0].frequency != "1m"):
++                raise ContractError("Refresh escaped the exact minute-only source scope")
++            record_native_refresh(store.root_dir, symbol, native, started_at=started, received_at=received)
++            result = _persist_native_results(symbol, store, provider=provider,
++                profile="continuation", observed_at=received, native_results=native,
++                batch_watchlist_symbol_count=len(symbols), run_derived=False)
++            results[symbol] = asdict(result)
++            spec, bars, raw, available, error = native[0]
++            requests.append({"symbol": symbol, "source_schema": spec.schema,
++                "provider_available_start": utc(available.start).isoformat() if available else None,
++                "provider_available_end": utc(available.end).isoformat() if available else None,
++                "returned_native_rows": len(bars),
++                "status": "failed" if error is not None else "fetched",
++                "error_type": type(error).__name__ if error is not None else None})
+     return {"schema_version": "intraday-supervision-refresh-v1",
+         "status": "partial" if any(r["error_files"] for r in results.values()) else "complete",
+         "as_of": cutoff.isoformat(), "source_dataset": "EQUS.MINI",
+         "source_schema": "ohlcv-1m", "symbols": list(symbols), "results": results,
+         "requests": requests, "continuation_overlap_minutes": 60,
++        "retained_intraday_reuse": reused,
++        "received_at": utc(received).isoformat(),
+         "freshness_requires_history_audit": True}
+ 
+ 
+--- a/ml/intraday/supervisor.py
++++ b/ml/intraday/supervisor.py
+@@ -139,6 +139,7 @@
+                                              _persist_native_results)
+     from datafetching.loop_a_cycle import datastore_cycle_lock
+     from datafetching.parquet_store import ParquetStore
++    from .canonical_acquisition import reuse_before_refresh, record_native_refresh
+ 
+     _load_repository_environment()
+     provider = DatabentoMarketDataProvider(native_schemas=("ohlcv-1m",))
+@@ -155,11 +156,13 @@
+     # This existing datastore mutex protects actual file upserts against other
+     # writers. It neither reads nor alters any trader or nightly stop state.
+     with datastore_cycle_lock(store.root_dir):
++        reused = reuse_before_refresh(store, symbols)
+         native = _fetch_native_results_many(provider, tuple(symbols), "continuation", store)
+         observed = utc(clock())
+         for symbol in symbols:
+             rows = native.get(symbol, [])
+             try:
++                record_native_refresh(store.root_dir, symbol, rows, started_at=started, received_at=observed)
+                 persisted = _persist_native_results(symbol, store, provider=provider,
+                     profile="continuation", observed_at=observed.to_pydatetime(),
+                     native_results=rows, batch_watchlist_symbol_count=len(symbols), run_derived=False)
+@@ -177,6 +180,7 @@
+                 "data_files": persisted.data_files, "error_files": persisted.error_files,
+                 "failure_types": failures, "failures": [_failure(row[4]) for row in rows if row[4] is not None],
+                 "continuation_policy": "existing_minute_overlap_idempotent_upsert",
++                "retained_intraday_reuse": reused,
+                 "returned_minute_rows": sum(len(row[1]) for row in successful)}
+     return evidence
+ 
+--- a/tests/test_intraday_unpublished_recovery.py
++++ b/tests/test_intraday_unpublished_recovery.py
+@@ -109,7 +109,9 @@
+     assert not evidence["assessment"]["derived_allowed"]
+     assert all(item["provider"] != "databento" for item in evidence["assessment"]["evidence"])
+     with sqlite3.connect(collector.journal.path) as db:
+-        primary = json.loads(db.execute("SELECT payload FROM attempts").fetchone()[0])
++        from ml.intraday.acquisition_objects import read_journal_record
++        primary = read_journal_record(collector.journal.path,
++            db.execute("SELECT payload FROM attempts").fetchone()[0])
+     assert primary["status"] == "unavailable_coverage"
+     assert primary["coverage_close"] == PUBLISHED_END.isoformat() and not primary["rows"]
+     assert list((tmp_path/"intraday/gap-recovery/responses").glob("*.json"))
