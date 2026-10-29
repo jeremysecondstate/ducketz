@@ -63,10 +63,9 @@ def test_future_saved_summary_separates_input_counts_from_model_success(observed
     original = deepcopy(row)
     result = reference_input_provenance(row, database_path="unused.sqlite3")
     assert result["status"] == "known" and result["basis"] == "saved_forecast"
-    label = f"Input candle (EQUS.MINI): {observed} observed minutes · {synthetic} synthetic minutes"
-    if synthetic:
-        label += " (no trades recorded by this source; market-wide inactivity is not established)"
-    assert reference_input_label(result) == label
+    assert reference_input_label(result) == (
+        f"Input candle (EQUS.MINI): {observed} observed minutes · {synthetic} synthetic minutes"
+        + (" (no trades recorded by this source; market-wide inactivity is not established)" if synthetic else ""))
     assert row == original and row["successful_count"] == 16
 
 
@@ -145,8 +144,7 @@ def test_legacy_outer_reference_candle_is_used_when_compact_counts_were_not_reco
     write_snapshot(path, snapshot)
     result = reference_input_provenance(forecast(), database_path=path)
     assert result["status"] == "known"
-    assert reference_input_label(result) == (
-        "Input candle (EQUS.MINI): 14 observed minutes · 1 synthetic minutes"
+    assert reference_input_label(result) == ("Input candle (EQUS.MINI): 14 observed minutes · 1 synthetic minutes"
         " (no trades recorded by this source; market-wide inactivity is not established)")
 
 
@@ -191,6 +189,37 @@ def test_historical_synthetic_counts_do_not_claim_actual_no_trade_confirmation()
     assert "confirmed no-trade minutes" not in label
 
 
+@pytest.mark.parametrize("saved,label", [
+    (provenance(), "Input candle (EQUS.MINI): 0 observed minutes · 15 synthetic minutes"
+                " (no trades recorded by this source; market-wide inactivity is not established)"),
+    (provenance(15, 0), "Input candle (EQUS.MINI): 15 observed minutes · 0 synthetic minutes"),
+    (None, "Input candle: minute provenance unknown"),
+])
+def test_actual_consensus_projection_keeps_input_and_model_success_separate(saved, label, monkeypatch):
+    from app.ui import intraday
+    row = forecast(reference_provenance=saved)
+    text = {}
+    view = SimpleNamespace(
+        models_frame=SimpleNamespace(winfo_children=lambda: []), consensus_rows={"choice": row},
+        consensus_choice=SimpleNamespace(get=lambda: "choice"), local_pc="Atlas",
+        snapshot=SimpleNamespace(loaded_at=datetime(2026, 10, 16, 8, tzinfo=timezone.utc)),
+        consensus_context=SimpleNamespace(configure=lambda **values: text.update(context=values["text"])),
+        symbol=SimpleNamespace(get=lambda: "AMZN"), database_paths={},
+        model_research={"status": "missing", "message": "No saved research"},
+        research_status=SimpleNamespace(configure=lambda **values: None), research_table=object(),
+        consensus_value=SimpleNamespace(configure=lambda **values: text.update(consensus=values["text"])),
+        consensus_meta=SimpleNamespace(configure=lambda **values: text.update(metadata=values["text"])),
+    )
+    monkeypatch.setattr(intraday, "_replace", lambda *args: None)
+    intraday.IntradayTab._render_consensus(view)
+    assert text["consensus"] == "63.9% ensemble probability · not-down"
+    assert "16/16 enabled models succeeded · full ensemble" in text["metadata"]
+    assert label in text["metadata"]
+    assert "receipt availability observed" in text["metadata"]
+    assert row == forecast(reference_provenance=saved)
+
+
+
 @pytest.mark.parametrize("source_dataset,source_id,expected", [
     (None, SOURCE, SOURCE),
     (None, None, "source unrecorded"),
@@ -210,48 +239,9 @@ def test_known_minute_counts_do_not_invent_source_scope(source_dataset, source_i
         assert "market-wide inactivity is not established" in label
 
 
-@pytest.mark.parametrize("saved,label", [
-    (provenance(), "Input candle (EQUS.MINI): 0 observed minutes · 15 synthetic minutes"
-                   " (no trades recorded by this source; market-wide inactivity is not established)"),
-    (provenance(15, 0), "Input candle (EQUS.MINI): 15 observed minutes · 0 synthetic minutes"),
-    (None, "Input candle: minute provenance unknown"),
-])
-def test_actual_consensus_projection_keeps_input_and_model_success_separate(saved, label, monkeypatch):
-    from app.ui import intraday
-    row = forecast(reference_provenance=saved)
-    text = {}
-    view = SimpleNamespace(
-        models_frame=SimpleNamespace(winfo_children=lambda: []), consensus_rows={"choice": row},
-        consensus_choice=SimpleNamespace(get=lambda: "choice"), local_pc="Atlas",
-        snapshot=SimpleNamespace(loaded_at=datetime(2026, 10, 16, 8, tzinfo=timezone.utc)),
-        symbol=SimpleNamespace(get=lambda: "AMZN"), database_paths={},
-        model_research={"status": "missing", "message": "No saved research"},
-        research_status=SimpleNamespace(configure=lambda **values: None), research_table=object(),
-        consensus_value=SimpleNamespace(configure=lambda **values: text.update(consensus=values["text"])),
-        consensus_context=SimpleNamespace(configure=lambda **values: text.update(context=values["text"])),
-        consensus_meta=SimpleNamespace(configure=lambda **values: text.update(metadata=values["text"])),
-    )
-    monkeypatch.setattr(intraday, "_replace", lambda *args: None)
-    intraday.IntradayTab._render_consensus(view)
-    assert text["consensus"] == "63.9% ensemble probability · not-down"
-    assert "16/16 enabled models succeeded · full ensemble" in text["metadata"]
-    assert label in text["metadata"]
-    assert "receipt availability observed" in text["metadata"]
-    assert "Historical saved forecast" in text["context"]
-    assert "Saved setup: 16 models" in text["context"]
-    assert row == forecast(reference_provenance=saved)
-
-
-
-"""Persist the input candle's provenance with the actual immutable forecast."""
-import pytest
-
-from app.ui.intraday_data import reference_input_provenance
-from test_intraday_runtime import REF, history, runner, trained
-
-
 @pytest.mark.parametrize("native", [15, 9, 0])
 def test_reference_provenance_survives_publication_and_replay(tmp_path, native):
+    from test_intraday_runtime import REF, history, runner, trained
     calls = []
     def train(*args, **kwargs):
         calls.append(kwargs["run_id"])

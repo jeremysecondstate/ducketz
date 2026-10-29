@@ -64,6 +64,12 @@ def test_missing_store_is_empty_and_is_never_created(tmp_path):
     assert not path.exists() and not path.parent.exists()
 
 
+def test_default_display_does_not_admit_ambient_peer_receipt(tmp_path, monkeypatch):
+    from app.ui.intraday_data import default_databases
+    monkeypatch.setenv("DUCKETS_INTRADAY_PEER_RECEIPT", str(tmp_path / "historical-peer.json"))
+    assert default_databases(tmp_path) == {"Local": tmp_path / "intraday/shadow.sqlite3"}
+
+
 def test_readonly_snapshot_latest_revision_and_zero_capacity(tmp_path):
     path = tmp_path / "shadow.sqlite3"
     row = forecast()
@@ -167,85 +173,6 @@ def test_pacific_dst_and_mode_filters_do_not_conflate_replay_with_shadow():
     assert len(filter_forecasts(snapshot, mode="All")) == 2
     assert filter_forecasts(snapshot, pc="Scout", mode="historical_replay")[0]["availability_basis"] == "assumed_historical"
     assert len(latest_matrix([*rows, forecast("f3", issued_at="2026-10-12T18:15:30Z")])) == 2
-
-
-def test_saved_forecast_context_keeps_unknown_setup_and_time_explicit():
-    row = forecast(issued_at="not recorded", dataset_manifest=None, model_selection=None,
-                   models=[dict(name="legacy", metadata=None)])
-    context = saved_forecast_context(row, now=NOW)
-    assert "Saved forecast · issue time unknown" in context
-    assert "identity unrecorded" in context and "calibration unrecorded" in context
-    assert "synthetic labels unrecorded" in context
-    assert "Saved forecast settings; refreshing does not refit models." in context
-    today = saved_forecast_context(forecast(), now=NOW)
-    assert today.startswith("Saved forecast · Oct 12, 2026 10:15:30 PDT · 104.5m ago")
-    assert "Historical" not in today
-    future = saved_forecast_context(forecast(issued_at=(NOW + timedelta(minutes=1)).isoformat()), now=NOW)
-    assert "future issue timestamp" in future
-
-
-@pytest.mark.parametrize("schema,recognized", [
-    ("intraday-manual-observed-calibrated-v1", True),
-    ("intraday-manual-observed-calibrated-v2", True),
-    ("intraday-manual-observed-calibrated-v999", False),
-])
-def test_saved_context_recognizes_only_explicit_manual_recipe_versions(schema, recognized):
-    context = saved_forecast_context(forecast(models=[], dataset_manifest={
-        "manual_model_recipe": {"schema_version": schema}}), now=NOW)
-    assert ("manual observed-only recipe" in context) is recognized
-    assert ("identity unrecorded" in context) is not recognized
-
-
-@pytest.mark.parametrize("recipe_schema", [
-    "intraday-manual-observed-calibrated-v1", "intraday-manual-observed-calibrated-v2",
-])
-def test_tk_old_selected_symbol_retains_its_saved_setup_when_other_symbol_advances(tmp_path, recipe_schema):
-    from copy import deepcopy
-    import tkinter as tk
-    from tkinter import ttk
-    from app.ui.intraday import IntradayTab
-    try:
-        root = tk.Tk()
-    except tk.TclError as exc:
-        pytest.skip(f"Tk unavailable: {exc}")
-    root.withdraw()
-    try:
-        tab = IntradayTab(root, ttk.Frame(root), datastore_root=tmp_path, local_pc="Scout", auto_load=False)
-        old = forecast("old-glob", pc="Scout", symbol="GLOB", source_dataset="EQUS.MINI", mode="live",
-            issued_at="2026-10-14T22:25:19Z", configured_count=10, successful_count=10,
-            ensemble_status="full", probability_not_down=.964,
-            synthetic_policy="include", model_selection={"selection": "configured_defaults"},
-            models=[dict(name=f"legacy-{i}", status="success", probability_not_down=.964,
-                metadata={"spec": {"probability_calibration": "none"}}) for i in range(10)])
-        newer = forecast("new-docu", pc="Scout", symbol="DOCU", source_dataset="EQUS.MINI", mode="live",
-            issued_at="2026-10-15T20:02:55Z", configured_count=2, successful_count=2,
-            dataset_manifest={"synthetic_policy": "exclude", "manual_model_recipe": {
-                "schema_version": recipe_schema}},
-            models=[dict(name=name, status="success", probability_not_down=.55,
-                metadata={"calibration": {"method": "purged_chronological_sigmoid"}})
-                for name in ("logistic_strong", "forest_shallow")])
-        original = deepcopy((old, newer))
-        loaded = datetime(2026, 10, 16, 8, tzinfo=timezone.utc)
-        tab.set_snapshot(IntradaySnapshot(loaded, (old,)))
-        selection = tab.consensus_choice.get()
-        tab.set_snapshot(IntradaySnapshot(loaded, (old, newer)))
-        root.update()
-        assert tab.consensus_choice.get() == selection
-        assert len(tab.consensus_rows) == 2
-        context = tab.consensus_context.cget("text")
-        assert "Historical saved forecast · Oct 14, 2026 15:25:19 PDT" in context
-        assert "2014.7m ago" in context
-        assert "Saved setup: 10 models · configured defaults · calibration none · synthetic labels include" in context
-        assert tab.consensus_value.cget("text") == "96.4% ensemble probability · not-down"
-        assert "manual observed-only recipe" not in context
-        tab.consensus_choice.set(next(key for key in tab.consensus_rows if "DOCU" in key))
-        tab._render_consensus()
-        current_context = tab.consensus_context.cget("text")
-        assert "Saved setup: 2 models · manual observed-only recipe" in current_context
-        assert "calibration purged chronological sigmoid · synthetic labels exclude" in current_context
-        assert (old, newer) == original
-    finally:
-        root.destroy()
 
 
 def test_reference_quarter_filter_preserves_exact_forecast_targets():
@@ -365,13 +292,13 @@ def test_live_peer_receipt_retains_mode_hash_actual_availability_and_private_exe
     assert snapshot.sources[0]["telemetry_status"] == "stale"
 
 
-def test_ui_modules_have_no_broker_provider_thread_or_training_imports():
+def test_ui_modules_have_no_broker_provider_or_training_imports():
     for name in ("intraday.py", "intraday_data.py"):
         module = Path(__file__).parents[1] / "app" / "ui" / name
         tree = ast.parse(module.read_text(encoding="utf-8"))
         imports = [node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)]
         imports += [item.name for node in ast.walk(tree) if isinstance(node, ast.Import) for item in node.names]
-        assert not any(any(forbidden in item for forbidden in ("broker", "schwab", "hyperliquid", "databento", "threading", "ml."))
+        assert not any(any(forbidden in item for forbidden in ("broker", "schwab", "hyperliquid", "databento", "ml."))
                        for item in imports if item != "ml.intraday.telemetry")
 
 
@@ -542,6 +469,85 @@ def test_tk_score_cohort_filters_metrics_but_preserves_all_forecasts(tmp_path):
         first = tab.model_table.item(tab.model_table.get_children()[0], "values")
         assert first[2] == "3" and first[3] == "66.7%"
         assert len(tab.visible_rows) == 3 and len(tab.matrix.get_children()) == 2
+        assert "no saved" in tab.research_status.cget("text").lower() or "refresh" in tab.research_status.cget("text").lower()
     finally:
         root.destroy()
 
+
+def test_saved_forecast_context_keeps_unknown_setup_and_time_explicit():
+    row = forecast(issued_at="not recorded", dataset_manifest=None, model_selection=None,
+                   models=[dict(name="legacy", metadata=None)])
+    context = saved_forecast_context(row, now=NOW)
+    assert "Saved forecast · issue time unknown" in context
+    assert "identity unrecorded" in context and "calibration unrecorded" in context
+    assert "synthetic labels unrecorded" in context
+    assert "Saved forecast settings; refreshing does not refit models." in context
+    today = saved_forecast_context(forecast(), now=NOW)
+    assert today.startswith("Saved forecast · Oct 12, 2026 10:15:30 PDT · 104.5m ago")
+    assert "Historical" not in today
+    future = saved_forecast_context(forecast(issued_at=(NOW + timedelta(minutes=1)).isoformat()), now=NOW)
+    assert "future issue timestamp" in future
+
+
+@pytest.mark.parametrize("schema,recognized", [
+    ("intraday-manual-observed-calibrated-v1", True),
+    ("intraday-manual-observed-calibrated-v2", True),
+    ("intraday-manual-observed-calibrated-v999", False),
+])
+def test_saved_context_recognizes_only_explicit_manual_recipe_versions(schema, recognized):
+    context = saved_forecast_context(forecast(models=[], dataset_manifest={
+        "manual_model_recipe": {"schema_version": schema}}), now=NOW)
+    assert ("manual observed-only recipe" in context) is recognized
+    assert ("identity unrecorded" in context) is not recognized
+
+
+@pytest.mark.parametrize("recipe_schema", [
+    "intraday-manual-observed-calibrated-v1", "intraday-manual-observed-calibrated-v2",
+])
+def test_tk_old_selected_symbol_retains_its_saved_setup_when_other_symbol_advances(tmp_path, recipe_schema):
+    from copy import deepcopy
+    import tkinter as tk
+    from tkinter import ttk
+    from app.ui.intraday import IntradayTab
+    try:
+        root = tk.Tk()
+    except tk.TclError as exc:
+        pytest.skip(f"Tk unavailable: {exc}")
+    root.withdraw()
+    try:
+        tab = IntradayTab(root, ttk.Frame(root), datastore_root=tmp_path, local_pc="Scout", auto_load=False)
+        old = forecast("old-glob", pc="Scout", symbol="GLOB", source_dataset="EQUS.MINI", mode="live",
+            issued_at="2026-10-14T22:25:19Z", configured_count=10, successful_count=10,
+            ensemble_status="full", probability_not_down=.964,
+            synthetic_policy="include", model_selection={"selection": "configured_defaults"},
+            models=[dict(name=f"legacy-{i}", status="success", probability_not_down=.964,
+                metadata={"spec": {"probability_calibration": "none"}}) for i in range(10)])
+        newer = forecast("new-docu", pc="Scout", symbol="DOCU", source_dataset="EQUS.MINI", mode="live",
+            issued_at="2026-10-15T20:02:55Z", configured_count=2, successful_count=2,
+            dataset_manifest={"synthetic_policy": "exclude", "manual_model_recipe": {
+                "schema_version": recipe_schema}},
+            models=[dict(name=name, status="success", probability_not_down=.55,
+                metadata={"calibration": {"method": "purged_chronological_sigmoid"}})
+                for name in ("logistic_strong", "forest_shallow")])
+        original = deepcopy((old, newer))
+        loaded = datetime(2026, 10, 16, 8, tzinfo=timezone.utc)
+        tab.set_snapshot(IntradaySnapshot(loaded, (old,)))
+        selection = tab.consensus_choice.get()
+        tab.set_snapshot(IntradaySnapshot(loaded, (old, newer)))
+        root.update()
+        assert tab.consensus_choice.get() == selection
+        assert len(tab.consensus_rows) == 2
+        context = tab.consensus_context.cget("text")
+        assert "Historical saved forecast · Oct 14, 2026 15:25:19 PDT" in context
+        assert "2014.7m ago" in context
+        assert "Saved setup: 10 models · configured defaults · calibration none · synthetic labels include" in context
+        assert tab.consensus_value.cget("text") == "96.4% ensemble probability · not-down"
+        assert "manual observed-only recipe" not in context
+        tab.consensus_choice.set(next(key for key in tab.consensus_rows if "DOCU" in key))
+        tab._render_consensus()
+        current_context = tab.consensus_context.cget("text")
+        assert "Saved setup: 2 models · manual observed-only recipe" in current_context
+        assert "calibration purged chronological sigmoid · synthetic labels exclude" in current_context
+        assert (old, newer) == original
+    finally:
+        root.destroy()

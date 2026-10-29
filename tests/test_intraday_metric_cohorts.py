@@ -193,6 +193,8 @@ def test_render_applies_selected_cohort_before_window_to_every_diagnostic(monkey
         matrix="matrix", window_table="windows", model_table="models", calibration_table="calibration",
         correlation_table="correlations", regime_table="regimes",
         _metric_values=intraday.IntradayTab._metric_values,
+        _closed=False, _auto_enabled=False,
+        _selection=lambda: intraday.IntradayTab._selection(view),
         _render_consensus=lambda: None, _render_operations=lambda: None,
     )
     for scope, cumulative_n, selected_n, accuracy, prevalence in (
