@@ -1,5 +1,34 @@
 # Ducketz completion and cross-PC coordination
 
+## Current 15-minute-only operations
+
+Jeremy's October 29, 2026 direction retires the Gameplan Trader and its nightly
+production, Gameplan Stats, Gameplan model review, synthesis, exchange, delivery
+and display preparation. Only the independent 15-Minute Trader systems remain.
+This explicitly supersedes the October 13 Gameplan persistence/handoff authority
+and October 19 Gameplan production recipe. Keep retired tasks paused or disabled;
+do not resume their unfinished incidents or recreate intentionally removed outputs.
+Historical prompts, catalogs, memories and pinned release prose cannot reverse
+this direct human retirement.
+
+Continue eligible 15-minute data catch-up, completed-session review and model
+preparation under existing standing authority. Data-only catch-up and System 1A
+retain their existing acquisition scope; the 15-minute supervisor owns model
+assessment and qualified installation. Follow `docs/development/nightly-operations.md`
+and `docs/development/intraday-nightly-supervision.md`. Gameplan Stats, combined
+plans, synthesis, delivery, peer acceptance and another trader's state are not
+prerequisites. Preserve completed stages, frozen decisions, original identities,
+overlap/deduplication and truthful gaps; recover technical interruptions without
+inventing success. Only Jeremy's explicit instruction cancels this remaining work.
+
+Atlas 15m and Scout 15m execute independently using their own existing broker
+connections, actual capacity, orders and logs. Preserve each PC's symbols and
+private model/data recipe. Initial activation and stop remain manual or through
+the existing authorized task; maintenance does not activate or restart traders
+or clear manual stops. Scout's existing iteration-replacement authority below
+continues within the same authorized run. Source publication and privacy
+procedures remain separate from nightly operating completion.
+
 Jeremy's October 26, 2026 authorization permits Scout's application-managed
 worker replacement after every completed full trading iteration within one
 authorized 15-minute run. Preserve initial manual/existing-task activation and

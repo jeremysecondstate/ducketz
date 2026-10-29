@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "contract_version": "cross-pc-v2",
-  "catalog_version": "2026-10-01.1",
+  "catalog_version": "2026-10-29.1",
   "observed_on": "2026-10-01",
   "evidence": {
     "pc-original": "read-only native TOML audit of twelve definitions",
@@ -105,7 +105,7 @@
     },
     {
       "key": "overnight_gameplan",
-      "purpose": "Prepare and verify the full next-session stock-only Gameplan using the local universe and existing owner/lease/deadline contracts.",
+      "purpose": "Retired Gameplan purpose; retain its paused historical definition and records without legacy execution or recovery.",
       "prompt_version": "cross-pc-v2",
       "cadence": {
         "semantic": "Daily at 21:05; native XNYS no-op rules; target 03:30 and hard next-session 04:00 deadline.",
@@ -118,35 +118,33 @@
         "notification": "failed_runs_only"
       },
       "permissions": [
-        "existing authorized local pipeline and focused tested non-trading repairs only",
-        "preserve immutable publications and source-bound policy",
-        "no trader start or orders"
+        "preserve paused archive and retained historical records",
+        "no legacy production, evaluation, recovery, reactivation or recreation"
       ],
       "required_tools": [
-        "repository_python",
-        "native_overnight_runtime",
         "local_operating_contracts"
       ],
-      "owner": "local authorized pipeline owner; peer operating authority unverified",
+      "owner": "retired Gameplan purpose; no active operator",
       "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
       "supported_roles": {
         "pc-original": {
-          "default": "operator",
+          "default": "disabled",
           "allowed": [
-            "operator"
+            "disabled"
           ],
           "observed_state": "ACTIVE_native_audit_2026-10-01",
-          "adoption": "reuse_existing"
+          "adoption": "preserve_paused_retired_archive"
         },
         "pc-new": {
-          "default": "observer",
+          "default": "disabled",
           "allowed": [
-            "observer"
+            "disabled"
           ],
           "observed_state": "missing_user_relay_2026-10-01",
-          "adoption": "reconcile_locally_before_any_creation"
+          "adoption": "preserve_paused_retired_archive"
         }
-      }
+      },
+      "retired_on": "2026-10-29"
     },
     {
       "key": "loops_operations_watch",
@@ -196,7 +194,7 @@
     },
     {
       "key": "weekly_gameplan_review",
-      "purpose": "Evaluate saved matured forecasts against their own frozen universe and report honest coverage and scores.",
+      "purpose": "Retired Gameplan purpose; retain its paused historical definition and records without legacy execution or recovery.",
       "prompt_version": "cross-pc-v2",
       "cadence": {
         "semantic": "Saturday at 09:00.",
@@ -209,35 +207,33 @@
         "notification": "preserve_saved_preference"
       },
       "permissions": [
-        "run existing local evaluation command and write its evaluation output",
-        "read immutable saved Gameplans",
-        "no source repair, broker calls, training, ledger refresh or risk proposals"
+        "preserve paused archive and retained historical records",
+        "no legacy production, evaluation, recovery, reactivation or recreation"
       ],
       "required_tools": [
-        "repository_python",
-        "native_gameplan_evaluation",
         "local_operating_contracts"
       ],
-      "owner": "local evaluation task",
+      "owner": "retired Gameplan purpose; no active operator",
       "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
       "supported_roles": {
         "pc-original": {
-          "default": "observer",
+          "default": "disabled",
           "allowed": [
-            "observer"
+            "disabled"
           ],
           "observed_state": "ACTIVE_native_audit_2026-10-01",
-          "adoption": "reuse_existing"
+          "adoption": "preserve_paused_retired_archive"
         },
         "pc-new": {
-          "default": "observer",
+          "default": "disabled",
           "allowed": [
-            "observer"
+            "disabled"
           ],
           "observed_state": "missing_user_relay_2026-10-01",
-          "adoption": "reconcile_locally_before_any_creation"
+          "adoption": "preserve_paused_retired_archive"
         }
-      }
+      },
+      "retired_on": "2026-10-29"
     },
     {
       "key": "weekly_opportunity_research",
@@ -683,5 +679,6 @@
         }
       }
     }
-  ]
+  ],
+  "current_scope": "Jeremy retired the Gameplan Trader and its production, Stats, synthesis and delivery on 2026-10-29. The overnight_gameplan and weekly_gameplan_review purposes are paused archives on both PCs; their saved cadence, preferences and observed states are historical metadata, not operating authority. Other purpose dispositions are unchanged."
 }
