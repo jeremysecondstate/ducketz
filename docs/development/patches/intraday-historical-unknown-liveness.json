@@ -1,0 +1,41 @@
+{
+  "schema": "intraday-historical-unknown-liveness-patch-v1",
+  "actor": "Atlas",
+  "scope": "shared generic execution liveness; each PC reviews its own source composition",
+  "patch": "docs/development/patches/intraday-historical-unknown-liveness.patch",
+  "patch_sha256": "901762e40b748abba6ae1142028b94978aa09b50fb5e974bac088fa71cd93f89",
+  "members": [
+    {
+      "path": "ml/intraday/account_execution.py",
+      "operation": "modify",
+      "before_sha256": "f5f08a18822780b584c0b1fd44d059b6be15f3ad2502322c80fc9f9641cb1460",
+      "after_sha256": "91967ffa2be15e408b5f1314f17bee922c8f02ebbe3fafc5ed7ce6df32b97acc",
+      "before_newline_encoding": "CRLF",
+      "final_newline_encoding": "CRLF"
+    },
+    {
+      "path": "tests/test_intraday_historical_unknown_liveness.py",
+      "operation": "add",
+      "before_sha256": null,
+      "after_sha256": "0d06ec2cf243f26977f76beb8c7591ec462f9ab4dc9f8aa8ffef01c4f487c602",
+      "before_newline_encoding": "LF",
+      "final_newline_encoding": "LF"
+    }
+  ],
+  "semantics": [
+    "An unfilled ID-less RESERVED or UNKNOWN attempt with a target ending on a prior Pacific date does not force fresh forecasts in a later manual session into its cancellation path.",
+    "Retain both original records and full cash/share commitments. Existing independent fresh-capacity and submission checks still govern new intentions.",
+    "Known broker IDs, recorded fills, current/future target dates and missing or invalid target times retain normal reconciliation. No unknown acceptance or non-submission is inferred.",
+    "No automatic restart, session extension, manual-stop change, strategy/model change or private data mutation."
+  ],
+  "application": "Verify each exact raw preimage first. Normalize matching private copies to LF, apply this LF patch, restore each final_newline_encoding, and verify after_sha256 before installation. Different compositions require a new reviewed adaptation; never replace a complete consumer. The added integration fixture depends on the existing adapted test_intraday_account_execution environment.",
+  "checks": {
+    "portable": "python -B tests/check_intraday_historical_unknown_package.py",
+    "full_integration": "Run tests/test_intraday_historical_unknown_liveness.py with the adapted executor and existing account-execution, uncertain-commitment, interrupted-submission and cancellation fixtures; record actual results separately."
+  },
+  "limitations": [
+    "The common base may lack the adapted executor and fixture dependency tree. The portable checker proves patch integrity and predicate behavior; it does not claim full executor integration on an absent application.",
+    "This change does not resolve an uncertain historical broker submission. Definitive original order evidence remains required.",
+    "Publication, reviewed application installation, sealed runtime selection, loaded code and live behavior are separate facts."
+  ]
+}
