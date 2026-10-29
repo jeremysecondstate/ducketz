@@ -171,3 +171,76 @@ def test_unreadable_refresh_keeps_previous_saved_view(tmp_path, monkeypatch):
         assert "unreadable" in tab.status.get()
     finally:
         root.destroy()
+
+
+
+def test_one_issue_jsonb_reader_matches_legacy_sqlite_with_wal_and_exact_saved_values(tmp_path, monkeypatch):
+    import math
+    from app.ui import intraday_data
+    path = tmp_path / "active-history.sqlite3"
+    below_half = math.nextafter(.5, 0)
+    exact_setting = math.nextafter(.25, 0)
+    giant = {"unused_science": "MUST_NOT_DESERIALIZE_FITTED_SCIENCE" * 50000}
+    spec = dict(name="native", family="logistic", parameters={"C": exact_setting},
+                probability_calibration="none", calibration_fraction=exact_setting)
+    original = forecast("older", mode="live", probability_not_down=below_half,
+        reference_provenance=None, training_seconds=math.nextafter(1.0, 0),
+        model_selection={"selection": "saved_policy", "models": [spec], **giant},
+        dataset_manifest={"synthetic_policy": "exclude", **giant},
+        models=[dict(name="native", status="success", probability_not_down=below_half,
+                     metadata={"spec": spec, "calibration": {"fraction": exact_setting},
+                               "effective_parameters": {"oversized": "x" * 70000}, **giant})])
+    newer = forecast("newer", mode=None, issued_at="2026-10-12T18:15:30Z",
+        probability_not_down=math.nextafter(.5, 1), reference_provenance=None)
+    write_store(path, [newer, original], [(original["forecast_id"], original["outcome"])])
+    native_connect = sqlite3.connect
+    statements, deny_jsonb = [], False
+    class CheckedConnection(sqlite3.Connection):
+        def execute(self, sql, parameters=()):
+            statements.append((sql, tuple(parameters)))
+            if deny_jsonb and "jsonb(" in sql:
+                raise sqlite3.OperationalError("no such function: jsonb")
+            return super().execute(sql, parameters)
+    def checked_connect(*args, **kwargs):
+        kwargs["factory"] = CheckedConnection
+        return native_connect(*args, **kwargs)
+    native_loads = json.loads
+    def checked_loads(raw, *args, **kwargs):
+        assert "MUST_NOT_DESERIALIZE_FITTED_SCIENCE" not in raw
+        return native_loads(raw, *args, **kwargs)
+    # Keep a committed new forecast in a live WAL while both readers run.
+    with native_connect(path) as writer:
+        assert writer.execute("PRAGMA journal_mode=WAL").fetchone()[0] == "wal"
+        writer.execute("UPDATE forecasts SET issued_at=issued_at WHERE id=?", ("newer",))
+        writer.commit()
+        # Force a real changed record into the WAL rather than depending on
+        # whether SQLite elides a no-op update.
+        writer.execute("UPDATE forecasts SET reference_at=? WHERE id=?", ("2026-10-12T17:15:00Z", "newer"))
+        writer.commit()
+        wal = path.with_name(path.name + "-wal")
+        assert wal.exists() and wal.stat().st_size > 0
+        before = {file: hashlib.sha256(file.read_bytes()).hexdigest() for file in (path, wal)}
+        monkeypatch.setattr(intraday_data.sqlite3, "connect", checked_connect)
+        monkeypatch.setattr(intraday_data.json, "loads", checked_loads)
+        fast = load_intraday_snapshot({"Local": path}, now=NOW)
+        assert not fast.warnings and len(fast.forecasts) == 2
+        bounded_queries = [(sql, values) for sql, values in statements if "AS MATERIALIZED" in sql]
+        if sqlite3.sqlite_version_info >= (3, 45, 0):
+            assert len(bounded_queries) == 2
+            assert [values for sql, values in bounded_queries] == [("older",), ("newer",)]
+            assert all("WHERE id=?" in sql and "m.value" not in sql for sql, values in bounded_queries)
+            assert "PRAGMA temp_store=MEMORY" in [sql for sql, values in statements]
+        statements.clear()
+        deny_jsonb = True
+        legacy = load_intraday_snapshot({"Local": path}, now=NOW)
+        assert not legacy.warnings
+        assert not any("AS MATERIALIZED" in sql for sql, values in statements)
+        assert fast == legacy
+        saved = fast.forecasts[0]
+        assert saved["probability_not_down"] == below_half < .5
+        assert saved["models"][0]["metadata"]["spec"] == spec
+        assert saved["models"][0]["metadata"]["calibration"]["fraction"] == exact_setting
+        assert saved["models"][0]["metadata"]["effective_parameters"]["display_status"] == "unavailable"
+        assert fast.forecasts[1]["mode"] is None and fast.forecasts[1]["reference_provenance"] is None
+        assert forecast_metrics((saved,))["accuracy"] == 0
+        assert before == {file: hashlib.sha256(file.read_bytes()).hexdigest() for file in (path, wal)}

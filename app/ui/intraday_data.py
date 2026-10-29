@@ -70,14 +70,16 @@ DISPLAY_CYCLE_FIELDS = (
 )
 
 
-def _json_projection(column, fields):
+def _json_projection(column, fields, *, path_expression=None):
     keys = ",".join("'" + field + "'" for field in fields)
     # json_each retains presence, unlike a multi-path json_extract array that
     # conflates missing fields with explicitly saved JSON null. Read each raw
     # JSON value with -> instead of reserializing SQLite REAL: its decimal
     # rounding can move a saved probability across the classification boundary.
-    return ("(SELECT json_group_object(j.key, json(" + column + " -> j.key)) "
-            "FROM json_each(" + column + ") AS j WHERE j.key IN (" + keys + "))")
+    path = "j.key" if path_expression is None else "(" + path_expression + " || '.' || j.key)"
+    arguments = column if path_expression is None else column + "," + path_expression
+    return ("(SELECT json_group_object(j.key, json(" + column + " -> " + path + ")) "
+            "FROM json_each(" + arguments + ") AS j WHERE j.key IN (" + keys + "))")
 
 
 # Keep exact saved specifications/settings without pulling their surrounding
@@ -90,13 +92,14 @@ DISPLAY_MODEL_SELECTION_FIELDS = ("selection", "selection_id", "active_policy_sh
 MAX_SAVED_SETTING_CHARS = 64 * 1024
 
 
-def _settings_projection(column, *, fields=DISPLAY_MODEL_METADATA_FIELDS, path="$.metadata"):
+def _settings_projection(column, *, fields=DISPLAY_MODEL_METADATA_FIELDS, path="$.metadata", path_expression=None):
     keys = ",".join("'" + field + "'" for field in fields)
+    selected_path = path_expression if path_expression is not None else "'" + path + "'"
     return ("(SELECT json_group_object(j.key, CASE "
             "WHEN length(CAST(j.value AS TEXT)) > " + str(MAX_SAVED_SETTING_CHARS)
             + " THEN json('{\"display_status\":\"unavailable\",\"reason\":\"saved setting exceeds display limit; original retained in source database\"}') "
-            "ELSE json(" + column + " -> '" + path + "' -> j.key) END) "
-            "FROM json_each(" + column + ",'" + path + "') AS j WHERE j.key IN (" + keys + "))")
+            "ELSE json(" + column + " -> (" + selected_path + " || '.' || j.key)) END) "
+            "FROM json_each(" + column + "," + selected_path + ") AS j WHERE j.key IN (" + keys + "))")
 
 
 def _display_payload(raw, fields):
@@ -106,10 +109,40 @@ def _display_payload(raw, fields):
     return values
 
 
-def _display_forecasts(connection):
+def _has_jsonb(connection):
+    try:
+        connection.execute("SELECT jsonb('{}')").fetchone()
+        return True
+    except sqlite3.OperationalError as exc:
+        if "no such function" not in str(exc).lower():
+            raise
+        return False
+
+
+def _forecast_display_rows(connection, query, *, use_jsonb):
+    # Older SQLite versions keep the original text reader. The feature probe
+    # changes only this connection and never creates an operating dependency.
+    if not use_jsonb:
+        yield from connection.execute(query)
+        return
+    # Parse one exact saved issue once. Materializing all history would retain
+    # its full scientific payloads in memory; the identity inventory contains
+    # only small keys, and the CTE reads each payload by its existing index.
+    bounded_query = ("WITH display_source AS MATERIALIZED (SELECT id,pc,symbol,cycle_id,reference_at,issued_at,"
+                     "jsonb(payload) AS payload FROM forecasts WHERE id=?) "
+                     + query.replace("FROM forecasts AS f ORDER BY f.issued_at,f.id", "FROM display_source AS f"))
+    for identity in connection.execute("SELECT id FROM forecasts ORDER BY issued_at,id"):
+        yield from connection.execute(bounded_query, (identity[0],))
+
+
+def _display_forecasts(connection, *, use_jsonb=None):
+    use_jsonb = _has_jsonb(connection) if use_jsonb is None else use_jsonb
     scalars = _json_projection("f.payload", DISPLAY_FORECAST_FIELDS)
-    models = _json_projection("m.value", DISPLAY_MODEL_FIELDS)
-    settings = _settings_projection("m.value")
+    # Address each model inside the parsed issue by key. Referencing m.value
+    # would serialize and reparse its potentially huge scientific metadata.
+    model_path = "'$.models[' || m.key || ']'"
+    models = _json_projection("f.payload", DISPLAY_MODEL_FIELDS, path_expression=model_path)
+    settings = _settings_projection("f.payload", path_expression="'$.models[' || m.key || '].metadata'")
     selection = _settings_projection("f.payload", fields=DISPLAY_MODEL_SELECTION_FIELDS, path="$.model_selection")
     # Read historical setup from this forecast, never today's recipe. These
     # scalar paths exclude full dataset manifests and selection/science trees.
@@ -121,7 +154,7 @@ def _display_forecasts(connection):
              "(SELECT json_group_array(json(" + models + ")) FROM json_each(f.payload,'$.models') AS m) AS models,"
              "(SELECT json_group_array(json(" + settings + ")) FROM json_each(f.payload,'$.models') AS m) AS settings "
              "FROM forecasts AS f ORDER BY f.issued_at,f.id")
-    for row in connection.execute(query):
+    for row in _forecast_display_rows(connection, query, use_jsonb=use_jsonb):
         if row["payload_type"] != "object":
             raise ValueError("Saved payload must be a JSON object")
         value = _display_payload(row["display"], DISPLAY_FORECAST_FIELDS)
@@ -426,6 +459,11 @@ def load_intraday_snapshot(database_paths: Mapping[str, Path] | None = None, *,
             with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=1)) as connection:
                 connection.row_factory = sqlite3.Row
                 connection.execute("PRAGMA query_only=ON")
+                # The one-issue JSONB CTE is transient connection-local work;
+                # keep it in memory instead of spilling scientific bytes.
+                use_jsonb = _has_jsonb(connection)
+                if use_jsonb:
+                    connection.execute("PRAGMA temp_store=MEMORY")
                 connection.set_progress_handler(lambda: int(stopped()), 1000)
                 connection.execute("BEGIN")
                 tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -456,9 +494,9 @@ def load_intraday_snapshot(database_paths: Mapping[str, Path] | None = None, *,
                         if value.get("forecast_id"):
                             persistence[str(value["forecast_id"])] = value
                 saved = []
-                for row, value in _display_forecasts(connection):
+                for row, value in _display_forecasts(connection, use_jsonb=use_jsonb):
                     if stopped():
-                        break
+                        raise sqlite3.OperationalError("interrupted")
                     for key in ("pc", "symbol", "cycle_id", "reference_at", "issued_at"):
                         value[key] = row[key]
                     value["forecast_id"] = str(row["id"])
