@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T04:46:36.537652Z",
+  "id": "20261029T044636Z-3a47345bd97e40cebdeae095c6c33132",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas adopts the shared rolling 24-hour price panel and publishes portable local-profile layout checks"
+}

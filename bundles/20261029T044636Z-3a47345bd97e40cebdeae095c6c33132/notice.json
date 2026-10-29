@@ -1,0 +1,116 @@
+{
+  "adopted_sources": [
+    {
+      "commit": "21c3b78b1984b2533afb50460da3337af7eca3eb",
+      "completion_record": "20261029T041056Z-ca83981707894ed6bf6401be096fc606",
+      "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/511"
+    },
+    {
+      "commit": "6d9b22d410389902d7baa485df2e2731a14ed422",
+      "completion_record": "20261029T034757Z-468179dd70514d34a057f0ac5c46f047",
+      "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/508",
+      "superseded_by": 511
+    }
+  ],
+  "author": "Atlas",
+  "bindings": "Each PC keeps its own authoritative production watchlist, authenticated read-only market-data connection, model recipes and manual trader controls. The Atlas watchlist/profile binding matches eleven members; no private credential value or account state is included.",
+  "change_id": "20261029T044046Z-fef36c90ec434474b7cbb29f5a792f82",
+  "files": [
+    "app/ui/gameplan_stats.py",
+    "app/ui/gameplan_execution_widgets.py",
+    "app/services/rolling_price_change.py",
+    "app/ui/rolling_price_widgets.py",
+    "docs/gameplan-stats-tab-design-ui/ROLLING_PRICE_CHANGE.md",
+    "tests/test_rolling_price_change.py",
+    "tests/test_rolling_price_stats.py",
+    "tests/test_rolling_price_widgets.py",
+    "tests/test_atlas_stats_integration.py",
+    "tests/test_gameplan_stats_ui.py",
+    "tests/test_rolling_price_atlas_composition.py",
+    "tests/test_scout_stats_history_integration.py",
+    "tests/test_scout_stats_integration.py",
+    "tests/test_scout_stats_peer_integration.py",
+    "tests/visual_rolling_stats_fixture.py"
+  ],
+  "installation": {
+    "completed_at_utc": "2026-10-29T04:45:55.886399+00:00",
+    "generation": "15e881a416cc0dc82eafcedb47e89a1e9c874532d18a0a6c5cbeaa6a00566914",
+    "loaded_desktop_ui_observed": false,
+    "local_symbol_count": 11,
+    "normal_desktop_launcher_binding_verified": true,
+    "preserved_parent_paths": true,
+    "reviewed_runtime_paths": [
+      "app/ui/gameplan_stats.py",
+      "app/ui/gameplan_execution_widgets.py",
+      "app/services/rolling_price_change.py",
+      "app/ui/rolling_price_widgets.py"
+    ],
+    "runtime_id": "14a239f36a42c55ba084d2c4699764b92086a33ea4172c38e26d46ba68e3d224",
+    "source_files": 546,
+    "source_inventory_verified": true,
+    "status": "locally_installed_and_verified"
+  },
+  "limitations": [
+    "Offline provider-mocked verification; existing local provider bindings were inspected without a live request, so current server authentication and availability are unverified.",
+    "Combined Tk suites showed transient interpreter setup failures/skips; preserved original outcomes and independently reran every skipped applicable case passing.",
+    "Scout source and the stacked Atlas test PR remain separate from common-main integration."
+  ],
+  "loaded_runtime": "The synthetic product preview loaded the installed source; the normal desktop application has not been observed loading it and awaits its next normal launch.",
+  "newly_published_files": [
+    "tests/test_rolling_price_widgets.py",
+    "tests/visual_rolling_stats_fixture.py",
+    "tests/test_rolling_price_atlas_composition.py"
+  ],
+  "ownership": "Scout retains the shared calculation/widget implementation; Atlas adopts it fieldwise into its existing Stats composition and owns local verification and installation.",
+  "price_policy": "One UTC T per refresh; latest completed positive-volume native Schwab extended-hours minute closes at or before T and T minus 24 elapsed hours, with fresh FMP split comparability. XNAS closures retain actual timestamps; more than ten missing regular-session minutes is stale. Full equal-weight average requires all local members and uses unrounded changes.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The panel refreshes independently of saved prediction/order readers and filters. Normal desktop loading, local source installation and source publication are distinct. No trader process, trading control or schedule was operated for verification.",
+  "scope": "shared",
+  "source_main_integrated": false,
+  "summary": "Atlas adopts the shared rolling 24-hour price panel and publishes portable local-profile layout checks",
+  "task": "rolling-price-peer-adoption",
+  "test_source": {
+    "branch": "codex/atlas/20261029T044046Z-fef36c90ec434474b7cbb29f5a792f82",
+    "completion_record": "20261029T044046Z-fef36c90ec434474b7cbb29f5a792f82",
+    "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/512",
+    "remote_sha": "059365f7e38b06ee36743765e3d739b627ff1e4a",
+    "source_commit": "059365f7e38b06ee36743765e3d739b627ff1e4a"
+  },
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-29T04:42:05.151666Z",
+      "fingerprinted_files": 1117,
+      "import_violations": 0,
+      "kind": "sealed_test_source",
+      "network": "denied",
+      "passed": 193,
+      "skipped": 0,
+      "started_at_utc": "2026-10-29T04:40:48.192476Z"
+    },
+    {
+      "import_violations": 0,
+      "kind": "isolated_source_candidate",
+      "network": "denied",
+      "passed": 187,
+      "skip_reason": "Transient Tcl initialization in combined history group; exact six cases replayed separately and all passed.",
+      "skipped": 6,
+      "standalone_replay_passed": 6
+    },
+    {
+      "coverage": "Arithmetic/cutoffs/DST/closures/staleness/averaging/both PC profiles; independent refresh concurrency; Stats and stats-only launch regressions.",
+      "import_violations": 0,
+      "imported_source_files": 89,
+      "initial_skipped_case_replay_passed": 2,
+      "initial_tk_skips": 2,
+      "kind": "staged_installed_composition",
+      "network": "denied",
+      "unique_passed": 203
+    },
+    {
+      "kind": "native_mocked_visual_review",
+      "narrow_size": "800x900",
+      "normal_size": "1860x1000",
+      "result": "All eleven tiles and full average accessible below Order details; positive/negative/zero, stale partial coverage with unavailable full average, closed/as-of states and panel Refresh reviewed."
+    }
+  ]
+}
