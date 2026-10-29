@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T13:08:34.141771Z",
+  "id": "20261029T130834Z-42a95ccd5b454af080b13188ad0f0125",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas candle reads sort narrow keys and retain original snapshot validation"
+}

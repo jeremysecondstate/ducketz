@@ -1,0 +1,26 @@
+{
+  "author": "Atlas",
+  "change_id": "20261029T130358Z-46298d044ead4506af11e8bbc5426fa7",
+  "files": [
+    "ml/intraday/candle_reads.py",
+    "tests/test_intraday_candle_key_reads.py",
+    "tests/check_intraday_candle_key_reads.py",
+    "docs/development/patches/candle-key-reads.patch"
+  ],
+  "limitations": [
+    "Offline synthetic SQLite and exact method-hunk checks. Complete installed-consumer regressions recorded separately.",
+    "Natural SQLITE_FULL in scoring is established; low disk and full-payload sorter are observed, but the exact failing temp file is not retained. This repair reduces sorter data and does not add storage capacity.",
+    "Failed trader session stays ended. New installed generation requires next normal authorized admission; no live recovery claim."
+  ],
+  "main_commit": "8068fdd39d2d41b0ad3432502a8c2810c7f755fc",
+  "peer_applicability": "Either PC using original candle storage; review the integration hunk against local composed store. Preserve own science,bindings,observations and independent trader controls.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Apply reviewed store hunk and seal complete local source/dependencies. No launchers, tasks, process starts/restarts, stop-clear, providers, brokers or model operation.",
+  "scope": "shared",
+  "source_commit": "13569e921bc6cf30bc65752daaf21da5723f5eb2",
+  "summary": "Atlas candle reads sort narrow keys and retain original snapshot validation",
+  "tests": [
+    "208 complete installed-consumer offline regressions passed with0skips and0external/private attempts.",
+    "21 confined portable SQLite and exact integration-hunk checks passed at authored,queued,isolated andmain stages."
+  ]
+}
