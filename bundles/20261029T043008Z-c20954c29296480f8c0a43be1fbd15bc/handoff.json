@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T04:30:08.660738Z",
+  "id": "20261029T043008Z-c20954c29296480f8c0a43be1fbd15bc",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas sealed completed saved-results UI and Stats source in one verified generation"
+}

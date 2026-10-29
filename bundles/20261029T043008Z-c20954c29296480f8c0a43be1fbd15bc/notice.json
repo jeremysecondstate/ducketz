@@ -1,0 +1,76 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261029T040458Z-5beb37232c774e31af497e6f8db21f72",
+  "change_id": "atlas-local-installation-b72821e7f7409759440ca973e53e6a22239d058962e0226d509cfed5a300e635",
+  "checks_summary": "519 distinct offline tests passed, including fresh-process replay of one Tcl initialization skip; zero bound-import violations.",
+  "files": [
+    "app/ui/gameplan_stats.py",
+    "app/ui/intraday.py",
+    "app/ui/intraday_data.py",
+    "app/ui/intraday_models.py",
+    "app/ui/scout_horizon_stats_widgets.py",
+    "app/ui/scout_stats_data.py",
+    "app/ui/scout_stats_history.py",
+    "app/ui/scout_stats_peer.py",
+    "app/ui/scout_stats_widgets.py"
+  ],
+  "installation_completed_at_utc": "2026-10-29T04:29:22.954210Z",
+  "installed_fingerprints": {
+    "app/ui/gameplan_stats.py": "9f6647d419c0b8ea48ac89daecb00c96e721f487db09bdd49135696f92ea1c32",
+    "app/ui/intraday.py": "9d39d55301ad43bb0296c545ff2a82143bf9b886884b5672f50cb7fcb94ecd37",
+    "app/ui/intraday_data.py": "63483366801dd2c000df4523dce1164f5271835a563748ab202dfe1059101446",
+    "app/ui/intraday_models.py": "b9d6478acb7fd21303eaf919377a8980a9bcff60ddf774baa0d8e0fceffb4ec8",
+    "app/ui/scout_horizon_stats_widgets.py": "562dad7e8bf82ebd5eb66cbf396b0b738d6cbdc72a7a2ea0e1d3f243b4c73b12",
+    "app/ui/scout_stats_data.py": "c1d8bded3a509d4eea075917589ff275c66ec715266dae976a4146372e9acb48",
+    "app/ui/scout_stats_history.py": "ec39f0580accc954beb4e1034d0ff3a7b6e56b68ba943fdc9c1554f8e0a0eb52",
+    "app/ui/scout_stats_peer.py": "dcc9af0d5271a19d00d7882196970cd32f9831da6b4343e0a15671646986de84",
+    "app/ui/scout_stats_widgets.py": "6824f3ec0ea3e9324673a0efab573b3f25e99261c59aff46f2ebae91251e8a7f"
+  },
+  "installed_generation": "b72821e7f7409759440ca973e53e6a22239d058962e0226d509cfed5a300e635",
+  "limitations": [
+    "Exact locally composed Stats bytes are distinct from older public patch bytes; local installed hashes retained.",
+    "Three source PRs remain draft/unmerged at metadata readback; no main integration by this run.",
+    "Loaded GUI/trader code and natural recovery not exercised; ordinary GUI activates on next normal launch."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/510",
+  "remote_sha": "b810c0fe42e5c1f5405dbbd56ce159cf3d7998e2",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Complete reviewed generation selected only after full source/runtime verification. Runtime dependency identity unchanged. No process, trader, task, provider, broker, training, stop or order operation. Private originals, independent science and execution state preserved.",
+  "scope": "shared",
+  "source_commits": [
+    "b810c0fe42e5c1f5405dbbd56ce159cf3d7998e2",
+    "da93d368d083f89a8a3097738055fbb8cb76e843",
+    "918851a1ed6a81e931d288539bcb75107d46ee66"
+  ],
+  "source_completion_records": [
+    "20261029T034830Z-4cd2eed10e114c3fbb945cf04725cb77",
+    "20261029T040458Z-5beb37232c774e31af497e6f8db21f72",
+    "20261028T014534Z-652715a720a9421a944e35f81f4b2694",
+    "20261028T022132Z-602d7f441ec54312af799ec0c717a495"
+  ],
+  "source_sha": "b810c0fe42e5c1f5405dbbd56ce159cf3d7998e2",
+  "summary": "Atlas sealed completed saved-results UI and Stats source in one verified generation",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-29T04:25:30.125672Z",
+      "exit_code": 0,
+      "output_sha256": "9637c714d7b898cc995813248c3b4f1db6d70425a75d5ac0b09b997eed58a770",
+      "stage": "ui",
+      "started_at_utc": "2026-10-29T04:25:16.414248Z"
+    },
+    {
+      "completed_at_utc": "2026-10-29T04:26:25.942309Z",
+      "exit_code": 0,
+      "output_sha256": "98d0d46938f7aad44cf194c75bc4171039b32ef48bc8364ac55b139834d0fd40",
+      "stage": "ui-focused",
+      "started_at_utc": "2026-10-29T04:26:23.389530Z"
+    },
+    {
+      "completed_at_utc": "2026-10-29T04:27:09.966148Z",
+      "exit_code": 0,
+      "output_sha256": "9572a9ce25192c0febb1d34c05d8736010f90fd1b51327213396662de0218ba6",
+      "stage": "stats-final",
+      "started_at_utc": "2026-10-29T04:26:13.706902Z"
+    }
+  ]
+}
