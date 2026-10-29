@@ -1,0 +1,26 @@
+{
+  "author": "Atlas",
+  "change_id": "20261029T114138Z-abafb4f99e9e475aa9989806acb3aeb1",
+  "files": [
+    "ml/stock_trader/horizon_broker.py",
+    "ml/intraday/account_execution.py",
+    "tests/test_order_history_diagnostics.py",
+    "tests/check_order_history_diagnostics_package.py"
+  ],
+  "limitations": [
+    "Historical omitted order identity remains unknown; this diagnostics repair does not resolve uncertain orders.",
+    "Natural diagnostic capture on a future omission is distinct from installation/loading; no recurrence artificially induced.",
+    "No local model policy, symbol list, schedule, manual control or order evidence changed."
+  ],
+  "main_commit": "b323d93397b98c7a45d0a71de1a078f8a07c17c1",
+  "peer_applicability": "Either PC using bounded exact-ID own-order history capture; preserve each local model policy, bindings and independent trader state.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Seal reviewed complete local source/dependencies for normal in-session renewal. No initial start, launcher, scheduler, process, broker, provider, cancellation, stop-clear or model operation.",
+  "scope": "shared",
+  "source_commit": "603e370dd3903c19321b596d23d63094709c1e25",
+  "summary": "Atlas bounded order-history failures retain exact private missing-order diagnostics",
+  "tests": [
+    "215 final exact local installed-consumer regressions passed, including real temporary-ledger preservation and UNKNOWN fences.",
+    "92 network/private-input denied portable checks passed at author, queue, isolated source and main stages."
+  ]
+}
