@@ -8,6 +8,7 @@ import threading
 import time
 import tkinter as tk
 import webbrowser
+from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from tkinter import messagebox, ttk
@@ -15,6 +16,8 @@ from tkinter import messagebox, ttk
 from app.ui.gameplan_widgets import label as _label, panel as _panel, Tooltip as _Tooltip
 from app.ui.gameplan_execution_data import GameplanExecutionSnapshot, execution_sessions, load_gameplan_execution
 from app.ui.gameplan_execution_widgets import GameplanExecutionPanel
+from app.services.rolling_price_change import load_rolling_price_change, unavailable_snapshot
+from app.ui.rolling_price_widgets import RollingPricePanel
 from app.ui.scout_stats_data import ScoutStatsSnapshot, load_scout_stats, scout_stats_sessions
 from app.ui.scout_stats_widgets import ScoutStatsPanel
 from app.ui.scout_stats_history import HorizonHistorySnapshot, horizon_history_sessions, load_horizon_history
@@ -49,7 +52,7 @@ def brier_text(value: float | None) -> str:
 
 class GameplanStatsTab:
     def __init__(self, root: tk.Tk, parent: ttk.Frame, *, datastore_root: Path | None = None,
-                 auto_load: bool = True):
+                 auto_load: bool = True, price_loader=None):
         self.root, self.parent, self.datastore_root = root, parent, datastore_root
         self.review: GameplanStatsReview | None = None
         self.selected_symbol: str | None = None
@@ -59,6 +62,9 @@ class GameplanStatsTab:
         self.values = {name: tk.StringVar(master=root, value="—") for name in ("accuracy", "brier", "bullish", "bearish")}
         self.captions = {name: tk.StringVar(master=root, value="No scored calls") for name in self.values}
         self._request_id = 0
+        self._price_request_id = 0
+        self._price_loader = price_loader or load_rolling_price_change
+        self._price_loading = False
         self._closed = False
         self._loading = False
         self._follow_latest = True
@@ -95,7 +101,7 @@ class GameplanStatsTab:
         self.report_button.pack(side="left", padx=(0, 8))
         self.refresh_button = ttk.Button(self.controls, text="Refresh", command=self.refresh)
         self.refresh_button.pack(side="left")
-        _label(self.page, "Gameplan horizons + Scout 15-Minute · All times Pacific · Saved evidence only",
+        _label(self.page, "Gameplan horizons + Scout 15-Minute · All times Pacific · Predictions/orders: saved evidence only",
                color=MUTED_TEXT, background=BACKGROUND).pack(anchor="w", pady=(3, 1))
         self.status_label = _label(self.page, textvariable=self.status, size=9, color=MUTED_TEXT,
                                    background=BACKGROUND, wraplength=1100, justify="left")
@@ -118,6 +124,8 @@ class GameplanStatsTab:
         self.prediction_panel.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
         self.execution = GameplanExecutionPanel(self.workspace, self.root)
         self.execution.frame.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+        self.rolling_prices = RollingPricePanel(self.execution.frame)
+        self.rolling_prices.frame.pack(fill="x", padx=12, pady=(0, 12))
         _label(self.prediction_panel, "Prediction accuracy", size=19, bold=True).pack(anchor="w", padx=14, pady=(12, 2))
         prediction_controls = tk.Frame(self.prediction_panel, background=SURFACE)
         prediction_controls.pack(fill="x", padx=14, pady=(0, 10))
@@ -258,8 +266,9 @@ class GameplanStatsTab:
     def _bind_wheel(self, widget):
         if isinstance(widget, (ttk.Treeview, tk.Text, ttk.Combobox, ttk.Scrollbar)):
             return
-        if widget not in (self.score_canvas, self.grid_canvas):
+        if widget not in (self.score_canvas, self.grid_canvas) and not getattr(widget, "_stats_wheel_bound", False):
             widget.bind("<MouseWheel>", self._wheel, add="+")
+            widget._stats_wheel_bound = True
         for child in widget.winfo_children():
             self._bind_wheel(child)
 
@@ -312,6 +321,7 @@ class GameplanStatsTab:
     def refresh(self):
         if self._closed:
             return
+        self._refresh_prices()
         self._request_id += 1
         request = self._request_id
         selected = None if self._follow_latest else self.session.get() or None
@@ -329,7 +339,6 @@ class GameplanStatsTab:
         self.scout_horizons.set_snapshot(None)
 
         def work():
-            dates, review, error, execution, scout = (), None, None, None, None
             try:
                 prediction_dates = review_sessions(self.datastore_root)
             except Exception:
@@ -338,6 +347,31 @@ class GameplanStatsTab:
                 execution_dates = execution_sessions(self.datastore_root)
             except Exception:
                 execution_dates = ()
+            dates = tuple(sorted(set(prediction_dates) | set(execution_dates), reverse=True))
+
+            def primary(session, available_dates):
+                review, error, execution = None, None, None
+                try:
+                    review = load_gameplan_stats(self.datastore_root, session)
+                except Exception as exc:
+                    error = exc
+                execution_session = review.session if review is not None else session
+                if execution_session:
+                    # This reader opens only the separate saved summary.
+                    try:
+                        execution = load_gameplan_execution(self.datastore_root, execution_session)
+                    except Exception:
+                        execution = GameplanExecutionSnapshot(execution_session, "unreadable",
+                            "Saved execution summary could not be read. Prediction results remain available.")
+                self._messages.put(("prediction", request, available_dates, review, error,
+                                    execution, execution_session))
+                return execution_session
+
+            requested_session = selected or (dates[0] if dates else None)
+            execution_session = primary(requested_session, dates)
+            # Optional Scout discovery and history can inspect much larger saved
+            # populations. Publish the verified Gameplan first so those readers
+            # never hold its metrics or report action behind their completion.
             try:
                 scout_dates = scout_stats_sessions(self.datastore_root)
             except Exception:
@@ -348,20 +382,13 @@ class GameplanStatsTab:
                 horizon_dates = ()
             dates = tuple(sorted(set(prediction_dates) | set(execution_dates) | set(scout_dates)
                                  | set(horizon_dates), reverse=True))
-            requested_session = selected or (dates[0] if dates else None)
-            try:
-                review = load_gameplan_stats(self.datastore_root, requested_session)
-            except Exception as exc:
-                error = exc
-            execution_session = review.session if review is not None else requested_session
-            if execution_session:
-                # This reader opens only the separate saved summary. Execution availability
-                # never gates prediction review or triggers broker/ledger reads in the UI.
-                try:
-                    execution = load_gameplan_execution(self.datastore_root, execution_session)
-                except Exception:
-                    execution = GameplanExecutionSnapshot(execution_session, "unreadable",
-                        "Saved execution summary could not be read. Prediction results remain available.")
+            resolved_session = selected or (dates[0] if dates else None)
+            if resolved_session != requested_session:
+                # Latest still includes optional-only sessions. Resolve that
+                # date explicitly; never put the earlier metrics under it.
+                execution_session = primary(resolved_session, dates)
+            else:
+                self._messages.put(("dates", request, dates))
             try:
                 scout = load_scout_stats(self.datastore_root, execution_session)
             except Exception:
@@ -375,9 +402,31 @@ class GameplanStatsTab:
                 horizons = HorizonHistorySnapshot(session=execution_session, status="unreadable",
                     message="Saved Scout Gameplan forecast history could not be verified. Refresh to retry.")
             self._messages.put(("horizons", request, dates, horizons))
-            self._messages.put((request, dates, review, error, execution, scout))
+            self._messages.put(("complete", request))
 
         threading.Thread(target=work, name="gameplan-stats-read", daemon=True).start()
+
+    def _refresh_prices(self):
+        """A separate lane: neither price I/O nor saved-history I/O waits on the other."""
+        if self._closed:
+            return
+        self._price_request_id += 1
+        request = self._price_request_id
+        as_of = datetime.now(timezone.utc)
+        self._price_loading = True
+        self.rolling_prices.set_loading()
+        self.rolling_prices.set_session_context(self.session.get() or None)
+        # Do not retain Tk widgets in the worker or call Tk from this thread.
+        loader, messages = self._price_loader, self._messages
+
+        def work():
+            try:
+                snapshot = loader(as_of=as_of)
+            except Exception:
+                snapshot = unavailable_snapshot(as_of=as_of, error="Market-price evidence could not be read. Refresh to retry.")
+            messages.put(("prices", request, snapshot))
+
+        threading.Thread(target=work, name="gameplan-rolling-prices", daemon=True).start()
 
     def _poll(self):
         if self._closed:
@@ -385,25 +434,51 @@ class GameplanStatsTab:
         try:
             while True:
                 message = self._messages.get_nowait()
+                if message[0] == "prices":
+                    if message[1] == self._price_request_id:
+                        self._price_loading = False
+                        self.rolling_prices.set_snapshot(message[2])
+                        self.rolling_prices.set_session_context(self.session.get() or None)
+                        self._bind_wheel(self.rolling_prices.frame)
+                    continue
+                if message[0] == "complete":
+                    if message[1] == self._request_id:
+                        self._loading = False
+                        self.refresh_button.configure(state="normal")
+                        self._last_load = time.monotonic()
+                    continue
+                if message[0] == "dates":
+                    if message[1] == self._request_id:
+                        self.date_box.configure(values=message[2])
+                    continue
                 if message[0] in {"scout", "horizons"}:
                     kind, request, dates, saved = message
-                    if request == self._request_id:
+                    if (request == self._request_id and (saved is None
+                            or not saved.session or saved.session == self.session.get())):
                         (self.scout if kind == "scout" else self.scout_horizons).set_snapshot(saved)
                         self.date_box.configure(values=dates)
-                        if saved is not None and saved.session:
-                            self.session.set(saved.session)
                     continue
-                request, dates, review, error = message[:4]
+                progressive = message[0] == "prediction"
+                if progressive:
+                    _, request, dates, review, error, execution, displayed_session = message
+                    message = (request, dates, review, error, execution)
+                else:
+                    request, dates, review, error = message[:4]
+                    displayed_session = None
                 if request != self._request_id:
                     continue
-                self._loading = False
+                if not progressive:
+                    self._loading = False
                 self.refresh_button.configure(state="normal")
                 self.set_execution(message[4] if len(message) > 4 else None)
-                self.scout.set_snapshot(message[5] if len(message) > 5 else None)
-                if self.scout.snapshot is not None and self.scout.snapshot.session:
-                    self.session.set(self.scout.snapshot.session)
+                if not progressive:
+                    self.scout.set_snapshot(message[5] if len(message) > 5 else None)
+                    if self.scout.snapshot is not None and self.scout.snapshot.session:
+                        self.session.set(self.scout.snapshot.session)
                 if self.execution.snapshot is not None:
                     self.session.set(self.execution.snapshot.session)
+                elif progressive:
+                    self.session.set(displayed_session or "")
                 if error is not None:
                     self.review = None
                     self.heading.configure(text="Gameplan Stats")
@@ -444,6 +519,7 @@ class GameplanStatsTab:
         self.execution.set_snapshot(snapshot)
 
     def render(self):
+        self.rolling_prices.set_session_context(self.session.get() or None)
         metrics = self.review.metrics(self.selected_horizon) if self.review else prediction_metrics(())
         self.values["accuracy"].set(percent(metrics.accuracy))
         self.values["brier"].set(brier_text(metrics.brier))
@@ -705,13 +781,13 @@ class GameplanStatsTab:
             messagebox.showerror("Could not open report", str(exc), parent=self.root)
 
     def _mapped(self, event):
-        if self._auto_enabled and event.widget is self.parent and not self._loading and time.monotonic()-self._last_load > 30:
-            self.refresh()
+        if self._auto_enabled and event.widget is self.parent and time.monotonic()-self._last_load > 30:
+            self._refresh_prices() if self._loading else self.refresh()
 
     def _auto_refresh(self):
         if not self._closed:
-            if self._auto_enabled and self.parent.winfo_ismapped() and not self._loading:
-                self.refresh()
+            if self._auto_enabled and self.parent.winfo_ismapped():
+                self._refresh_prices() if self._loading else self.refresh()
             self._auto_job = self.parent.after(AUTO_REFRESH_MS, self._auto_refresh)
 
     def _destroy(self, event):
@@ -719,6 +795,7 @@ class GameplanStatsTab:
             return
         self._closed = True
         self._request_id += 1
+        self._price_request_id += 1
         # Release Tk images on their owning thread, before a background reader
         # can collect a retained view/widget cycle after the tab is destroyed.
         self._photos.clear()

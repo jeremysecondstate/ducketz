@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gc
 from datetime import datetime, timezone
+import threading
 import time
 import tkinter as tk
 import weakref
@@ -25,7 +26,8 @@ def tab(tmp_path):
     root.withdraw()
     frame = ttk.Frame(root)
     frame.pack(fill="both", expand=True)
-    view = stats_ui.GameplanStatsTab(root, frame, datastore_root=tmp_path, auto_load=False)
+    view = stats_ui.GameplanStatsTab(root, frame, datastore_root=tmp_path, auto_load=False,
+        price_loader=lambda **kwargs: stats_ui.unavailable_snapshot(**kwargs, error="Offline fixture"))
     write_review(tmp_path)
     view.set_review(load_gameplan_stats(tmp_path))
     reference = weakref.ref(view)
@@ -92,6 +94,38 @@ def test_yg_stats_identifies_raw_probability_target(tab, tmp_path):
     assert tab.values["brier"].get() == "0.010"
 
 
+def test_stats_details_show_frozen_policy_and_definitions_cover_every_trader(tab, tmp_path, monkeypatch):
+    from ml.stock_direction_policy import STOCK_DIRECTION_POLICY_VERSION
+    row = forecast(probability=.4872)
+    row.update(direction_policy_version=STOCK_DIRECTION_POLICY_VERSION,
+               direction_up_threshold=.5001, direction_down_threshold=.4999)
+    write_review(tmp_path, [row], version="exact-policy")
+    tab.set_review(load_gameplan_stats(tmp_path))
+    shown = []
+    monkeypatch.setattr(tab, "_text_dialog", lambda title, text: shown.append(text))
+    tab._show_outcome("AAPL", 0, tab.review.outcomes[0])
+    assert "BUY at 50.01% or higher; SELL at 49.99% or lower; HOLD between" in shown[-1]
+    assert STOCK_DIRECTION_POLICY_VERSION in shown[-1]
+    tab.show_definitions()
+    assert "both 15-minute traders" in shown[-1]
+    assert "original saved calls without relabeling" in shown[-1]
+
+
+def test_stats_detail_explains_unrounded_probability_inside_exact_hold_gap(tab, tmp_path, monkeypatch):
+    from ml.stock_direction_policy import STOCK_DIRECTION_POLICY_VERSION
+    row = forecast(probability=.500099, direction="NO_EDGE")
+    row.update(direction_policy_version=STOCK_DIRECTION_POLICY_VERSION,
+               direction_up_threshold=.5001, direction_down_threshold=.4999)
+    write_review(tmp_path, [row], version="unrounded-policy")
+    tab.set_review(load_gameplan_stats(tmp_path))
+    shown = []
+    monkeypatch.setattr(tab, "_text_dialog", lambda title, text: shown.append(text))
+    tab._show_outcome("AAPL", 0, tab.review.outcomes[0])
+    assert "Saved call: Neutral" in shown[-1]
+    assert "Saved model probability: 50.01%" in shown[-1]
+    assert "Original unrounded P(up): 50.0099% (the exact policy uses this value)" in shown[-1]
+
+
 def test_date_change_clears_old_values_and_loads_requested_publication(tab, tmp_path):
     write_review(tmp_path, [forecast(session="2026-09-10")], session="2026-09-10", latest=False)
     tab.session.set("2026-09-10")
@@ -111,6 +145,62 @@ def test_default_refresh_follows_newly_published_session(tab, tmp_path):
     assert tab.review.session == tab.session.get() == "2026-09-14"
     assert tab.review.run_directory == newer
     assert tab.values["accuracy"].get() == "0.0%"
+
+
+@pytest.mark.parametrize("reader", ["scout_stats_sessions", "horizon_history_sessions",
+                                   "load_scout_stats", "load_horizon_history"])
+def test_verified_gameplan_paints_before_optional_reader_finishes(tab, tmp_path, monkeypatch, reader):
+    newest = write_review(tmp_path, [forecast(change=.01)], version="ready-before-optional")
+    entered, release = threading.Event(), threading.Event()
+    original = getattr(stats_ui, reader)
+
+    def blocked(*args):
+        entered.set()
+        assert release.wait(10), "Optional reader was not released by the test"
+        return original(*args)
+
+    monkeypatch.setattr(stats_ui, reader, blocked)
+    tab.refresh()
+    try:
+        deadline = time.monotonic() + 3
+        while (not entered.is_set() or tab.review.run_directory != newest) and time.monotonic() < deadline:
+            tab.root.update()
+            time.sleep(.01)
+        assert entered.is_set()
+        assert tab._loading  # Optional work still owns this refresh.
+        assert tab.review.run_directory == newest
+        assert tab.session.get() == tab.review.session == "2026-09-11"
+        assert tab.values["accuracy"].get() == "0.0%"
+        assert "disabled" not in tab.report_button.state()
+        assert "Verifying saved results" not in tab.status.get()
+    finally:
+        release.set()
+        _finish_refresh(tab)
+
+
+def test_optional_progress_cannot_relabel_main_or_finish_a_newer_request(tab, tmp_path, monkeypatch):
+    newest = write_review(tmp_path, [forecast(session="2026-09-14", change=.01)], session="2026-09-14")
+    review = load_gameplan_stats(tmp_path)
+    monkeypatch.setattr(stats_ui.threading, "Thread", lambda **kwargs: SimpleNamespace(start=lambda: None))
+    tab.refresh()
+    request = tab._request_id
+    dates = ("2026-09-14", "2026-09-11")
+    tab._messages.put(("prediction", request, dates, review, None, None, review.session))
+    wrong_scout = stats_ui.ScoutStatsSnapshot(session="2026-09-11")
+    wrong_horizons = stats_ui.HorizonHistorySnapshot(session="2026-09-11")
+    tab._messages.put(("scout", request, dates, wrong_scout))
+    tab._messages.put(("horizons", request, dates, wrong_horizons))
+    tab._messages.put(("dates", request - 1, ("2026-09-10",)))
+    tab._messages.put(("complete", request - 1))
+    tab.root.update()
+    tab._poll()
+    assert tab._loading
+    assert tab.review.run_directory == newest
+    assert tab.session.get() == review.session
+    assert tab.scout.snapshot is None and tab.scout_horizons.snapshot is None
+    assert tuple(tab.date_box.cget("values")) == dates
+    tab._messages.put(("complete", request))
+    _finish_refresh(tab)
 
 
 def test_no_preopen_forecasts_explains_empty_review_and_preserves_history(tab, tmp_path):

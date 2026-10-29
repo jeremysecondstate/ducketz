@@ -160,9 +160,13 @@ class GameplanExecutionPanel:
         self.detail_text.pack(fill="both", expand=True, pady=(0, 6))
         self.observation_label = label(self.frame, "Last broker observation: not recorded", size=9,
                                        color=MUTED_TEXT, justify="left", wraplength=480)
-        self.observation_label.pack(fill="x", padx=14, pady=(3, 6))
         self.coverage_label = label(self.frame, "", size=9, color=MUTED_TEXT, justify="left", wraplength=480)
-        self.coverage_label.pack(fill="x", padx=14, pady=(0, 12))
+        # Keep the saved provenance available without repeating footer prose.
+        # The space beneath Order details is used by current market prices.
+        self.evidence_tooltip = Tooltip(self.detail_title, lambda:
+            self.observation_label.cget("text") + "\n\n" + self.coverage_label.cget("text"))
+        Tooltip(self.state_label, lambda:
+            self.observation_label.cget("text") + "\n\n" + self.coverage_label.cget("text"))
         self.frame.bind("<Configure>", self._resize)
 
     def _resize(self, event):
@@ -263,7 +267,7 @@ class GameplanExecutionPanel:
         if company != "All companies":
             observed = max((stamp for row in self._company_orders()
                             if (stamp := recorded_timestamp(row.get("last_observed_at"))) is not None), default=None)
-        self.observation_label.configure(text=f"{observation_scope} last recorded broker observation: {recorded_time(observed)}\nSaved evidence only · Refresh never contacts the broker.")
+        self.observation_label.configure(text=f"{observation_scope} last recorded broker observation: {recorded_time(observed)}\nSaved evidence only · Prediction/order refresh reads saved records only.")
         if snapshot is None or snapshot.report is None:
             coverage_text = "Coverage unavailable. No execution totals are inferred from missing records."
         else:
