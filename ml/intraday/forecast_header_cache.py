@@ -57,7 +57,7 @@ class DurableForecastHeaders:
 
     def _connect(self):
         db = sqlite3.connect(self.path, timeout=0)
-        deadline = time.monotonic() + min(.05, max(0, self._remaining))
+        deadline = time.monotonic() + max(0, self._remaining)
         db.set_progress_handler(lambda: int(time.monotonic() > deadline), 1000)
         return db
 
