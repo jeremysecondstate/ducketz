@@ -1,0 +1,104 @@
+{
+  "author": "Atlas",
+  "change_id": "20261029T082625Z-0c073cd57d6a421bb2fbfd06d68ddfad",
+  "changes": [
+    "A standalone standard-library helper prints the 04:00 America/Los_Angeles session target, waits with heartbeat output, then dispatches the selected existing data or trader host. Starts at or after 04:00 proceed immediately.",
+    "The pending wait pins and observes originating Windows parent-process lifetimes. Ending the launcher task or terminal cancels its pending start, preventing an orphan waiter from starting later.",
+    "The package records exact invocation-only edits for both existing launchers and preserves original newline styles and the running data wrapper byte offset. It does not claim ownership of the pre-existing full launcher or host compositions.",
+    "The two earlier published source records are preserved historical evidence; this corrected revision supersedes them because it adds cancellation of pending starts when the originating launcher ends."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "tools/intraday_session_wait.py",
+      "sha256": "55d31a91adf717042668268c0e0e628dd1bcb3b55cf9680aa8bb0d8645c7608b"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_session_wait.py",
+      "sha256": "37802a0f76b7653cae4194927d0bbdaf1de65e3175cbc777fbab6e1bc085d638"
+    },
+    {
+      "operation": "add",
+      "path": "tests/check_intraday_session_wait_package.py",
+      "sha256": "408b54591e2456297fe84f62a47b8cbcc872458ee93a2a6886f2b4ebe5546174"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/intraday-session-start.md",
+      "sha256": "495db7f91904a47cafb4f98dcce29d24db37032cf2d0dc0ffd8448109553a64e"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-session-wait.patch",
+      "sha256": "bf2aa4f730a09f8da30d01096190e19c20e7502dc0cb05228f47e96b43914c41"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/patches/intraday-session-wait.json",
+      "sha256": "a620a357a90c45d89612a210d4028b88dff498ad13815f68f36ce1348dc7d667"
+    }
+  ],
+  "limitations": [
+    "Offline checks use fake clocks and synthetic Windows parents, wrappers and hosts; they do not test market connectivity, broker behavior or live trading.",
+    "The actual scheduler tests verify pre-session waiting and cancellation. They do not claim observation of the future 03:55 trigger or 04:00 live session transition.",
+    "Source publication, common-main integration, Atlas installation and peer installation are separate facts. No peer installation or runtime deployment is asserted."
+  ],
+  "local_verification": [
+    "Both existing Atlas Windows scheduled-task launchers were exercised using the final helper before 04:00 on 2026-10-29. Both consoles displayed that they were waiting for the 04:00 Pacific session start.",
+    "Stopping the test instances automatically ended their pending Python waiters; no waiter remained and no live host, provider call or trader was started by these tests.",
+    "Both 03:55 local schedules and original task definitions were preserved; the data task IgnoreNew setting was restored. Gameplan Trader is disabled as requested.",
+    "The original running data collection instance and its process lifetime were preserved."
+  ],
+  "ownership": "Only the six listed additions are published. Existing full launchers, host modules, application source, local configuration, task definitions, raw data, models and private operating state are outside this source record.",
+  "peer_applicability": "Shared helper, tests, and reviewed launcher adapter package are available on common main. Peer installation requires local exact-byte review against its existing launcher composition and preservation of its own operating bindings; no peer installation is claimed.",
+  "producer": "Atlas intraday-session-start",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": {
+    "atlas_installed_generation": "7b9d235824fbc703d0bb329c67c40709834ab6f35110fd1b81a3c35328397fa5",
+    "behavior": "New early launcher invocations wait visibly until 04:00 Pacific. Existing data collection continues on its original process lifetime. Original independent trader behavior, session renewals, manual stops, symbols and strategy defaults are preserved.",
+    "helper_sha256": "55d31a91adf717042668268c0e0e628dd1bcb3b55cf9680aa8bb0d8645c7608b",
+    "preserved_runtime_sha256": "14a239f36a42c55ba084d2c4699764b92086a33ea4172c38e26d46ba68e3d224"
+  },
+  "scope": "shared",
+  "source": {
+    "completion_record": "20261029T082625Z-0c073cd57d6a421bb2fbfd06d68ddfad",
+    "main_sha": "48c29e2027925a456eece3bd3831de206ba203e6",
+    "source_branch": "codex/atlas/20261029T082625Z-0c073cd57d6a421bb2fbfd06d68ddfad",
+    "source_sha": "9d862fd0763201a2abb1d4bb94226cdcae15c77c",
+    "verified_remote_main_sha": "48c29e2027925a456eece3bd3831de206ba203e6"
+  },
+  "summary": "Atlas: 15-minute launchers visibly wait until 04:00 Pacific; ending the originating task cancels a pending start",
+  "supersedes": [
+    {
+      "completion_record": "20261029T080743Z-13b7904857664872a678c9a8a3af3865",
+      "source_sha": "4b080ead21284051b0bc7a735ddc997c9420ffd2"
+    },
+    {
+      "completion_record": "20261029T081611Z-c9bf9bab0b9e43d9b141d751a7ed0c11",
+      "source_sha": "f41e43e85b0cf497d55daca187c131e18a3a2d2c"
+    }
+  ],
+  "tests": [
+    {
+      "command": "python -B tests/check_intraday_session_wait_package.py",
+      "completed_at_utc": "2026-10-29T08:27:58.899051Z",
+      "exit_code": 0,
+      "output_sha256": "1c530ed1eb64315063c545a09422b272035601039d604a1c808f1e5af4907a8b",
+      "skipped": 0,
+      "stage": "isolated source candidate",
+      "started_at_utc": "2026-10-29T08:27:30.585204Z",
+      "tests_passed": 17
+    },
+    {
+      "command": "python -B tests/check_intraday_session_wait_package.py",
+      "completed_at_utc": "2026-10-29T08:32:03.861647Z",
+      "exit_code": 0,
+      "output_sha256": "5fd47894eb0208afa4fe2f0c435172edd3f870bb1e07df0285c45625e5a36aba",
+      "skipped": 0,
+      "stage": "fresh main integration candidate",
+      "started_at_utc": "2026-10-29T08:31:35.659736Z",
+      "tests_passed": 17
+    }
+  ]
+}
