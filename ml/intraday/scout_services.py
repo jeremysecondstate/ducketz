@@ -609,7 +609,8 @@ def run_data_service(*, repository, datastore, release, clock=utcnow, sleep=time
         if not after_close:
             background("scoring", lambda: scoring_loop(evidence, histories=histories, provider=provider,
                 journal=journal, session_id=session, stopped=stop, clock=clock, pause=pause, pc=pc,
-                history_source=feed.scoring_history_source))
+                history_source=feed.scoring_history_source,
+                on_persistence_retry=lambda phase, detail: record("scoring_persistence_" + phase, detail)))
         runner = ShadowRunner(store=store, pc=pc, symbols=symbols, config=config, clock=clock,
                               stopped=stop, **runtime)
         pending, completed, retry, retry_attempts = {}, set(), {}, {}

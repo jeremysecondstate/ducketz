@@ -328,7 +328,8 @@ def _outcome_already_observed(forecast, candle, revisions, *, as_of, verified_ca
 
 
 def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
-                 clock=utcnow, pause=time.sleep, pc="Atlas", history_source=None):
+                 clock=utcnow, pause=time.sleep, pc="Atlas", history_source=None,
+                 on_persistence_retry=None):
     """Fetch exact due outcomes independently, including after the last entry.
 
     Acquisition retry evidence is durable. This never submits an order, changes
@@ -341,6 +342,61 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
     from .scoring_candles import ScoringCandleReader
     if pc not in {"Atlas", "Scout"}:
         raise ContractError("Explicit Atlas or Scout scoring participant required")
+    def persist(action, pending):
+        # Only Scout's independent scoring worker retries these exact writes.
+        # Reader scans and provider acquisition stay outside the retry boundary.
+        episode = None
+        def receipt(phase):
+            if on_persistence_retry is not None:
+                try:
+                    on_persistence_retry(phase, {**pending, **episode})
+                except Exception:
+                    pass  # Optional evidence cannot mask or replay the effect.
+        while True:
+            if stopped():
+                if episode is not None:
+                    receipt("stopped")
+                return False
+            try:
+                action()
+            except Exception as exc:
+                if pc != "Scout" or not _execution_store_busy(exc):
+                    raise
+                if episode is None:
+                    episode = {"episode_id": uuid.uuid4().hex, "busy_count": 1}
+                    try:
+                        episode["diagnostics"] = _symbol_exception_diagnostics(exc)
+                    except Exception:
+                        pass  # Diagnostic construction cannot replace native BUSY.
+                    receipt("started")
+                else:
+                    episode["busy_count"] += 1
+                pause(.2)
+            else:
+                if episode is not None:
+                    receipt("recovered")
+                return True
+
+    def event(kind, payload, symbol):
+        if pc != "Scout":
+            store.event(session_id, kind, payload, symbol=symbol)
+            return True
+        frozen, recorded = json.loads(encoded(payload)), instant(utcnow()).isoformat()
+        return persist(lambda: store.event(session_id, kind, frozen, symbol=symbol, recorded_at=recorded),
+            {"operation": "scoring_event", "session_id": session_id, "kind": kind,
+             "symbol": symbol, "recorded_at": recorded, "payload_sha256": digest(frozen)})
+
+    def observe(forecast, candle, *, as_of=None):
+        observed = clock() if as_of is None else as_of
+        if pc != "Scout":
+            store.observe(forecast, as_of=observed, candle=candle, skip_newer=True)
+            return True
+        frozen_forecast, frozen_candle = json.loads(encoded(forecast)), json.loads(encoded(candle))
+        return persist(lambda: store.observe(frozen_forecast, as_of=observed, candle=frozen_candle, skip_newer=True),
+            {"operation": "scoring_observe", "session_id": session_id,
+             "forecast_id": frozen_forecast["forecast_id"], "candle_id": digest(frozen_candle),
+             "observed_at": instant(observed).isoformat()})
+
     audited = set()
     prior_notices = getattr(store, "scoring_audit_notices", None)
     notified = prior_notices(session_id) if callable(prior_notices) else set()
@@ -382,7 +438,8 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
             original_forecast = session_forecasts.original(forecast)
             if stopped():
                 return
-            store.observe(original_forecast, as_of=as_of, candle=original_candle, skip_newer=True)
+            if not observe(original_forecast, original_candle, as_of=as_of):
+                return
 
     while not stopped():
         drain_retained_targets()
@@ -405,8 +462,9 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                     # only an identical session diagnostic may be omitted.
                     notice = (candle["symbol"], key)
                     if notice not in notified:
-                        store.event(session_id,"unverified_synthetic_outcome_requires_audit",
-                                    {"candle_hash":key,"immutable_original_retained":True},symbol=candle["symbol"])
+                        if not event("unverified_synthetic_outcome_requires_audit",
+                                     {"candle_hash":key,"immutable_original_retained":True}, candle["symbol"]):
+                            return
                         notified.add(notice)
                     audited.add(key)
                 continue
@@ -421,11 +479,17 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
             revisions = store.revisions(forecast["forecast_id"])
             if (revisions and revisions[-1]["status"] == "synthetic"
                     and "outcome:" + revisions[-1]["revision_id"] not in audited):
-                audited.add("outcome:" + revisions[-1]["revision_id"])
+                audit_key = "outcome:" + revisions[-1]["revision_id"]
                 forecasts.original(forecast)
                 if stopped():
                     return
-                store.invalidate_unverified_outcome(forecast["forecast_id"], as_of=clock())
+                observed, identity = clock(), forecast["forecast_id"]
+                if not persist(lambda: store.invalidate_unverified_outcome(identity, as_of=observed),
+                        {"operation": "scoring_invalidate_unverified", "session_id": session_id,
+                         "forecast_id": identity, "revision_id": revisions[-1]["revision_id"],
+                         "observed_at": instant(observed).isoformat()}):
+                    return
+                audited.add(audit_key)
                 revisions = store.revisions(forecast["forecast_id"])
             candidates = observed_candidates.get((forecast["symbol"],instant(forecast["target_open"])), [])
             observed = next((row for row in reversed(candidates)
@@ -439,7 +503,8 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                     original_forecast = forecasts.original(forecast)
                     if stopped():
                         return
-                    store.observe(original_forecast,as_of=clock(),candle=original_candle,skip_newer=True)
+                    if not observe(original_forecast, original_candle):
+                        return
                 continue
             if revisions and revisions[-1]["status"] in {"scored", "synthetic", "unscorable"}:
                 continue
@@ -470,7 +535,8 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                 original_forecast = forecasts.original(forecast)
                 if stopped():
                     return
-                store.observe(original_forecast,as_of=clock(),candle=_jsonable(match.iloc[-1].to_dict()),skip_newer=True)
+                if not observe(original_forecast, _jsonable(match.iloc[-1].to_dict())):
+                    return
             except InterruptedError:
                 if stopped():
                     return
@@ -478,8 +544,9 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
             except Exception as exc:
                 if stopped():
                     return
-                store.event(session_id,"target_scoring_retry",{"forecast_id":forecast["forecast_id"],
-                    "error_type":type(exc).__name__,"message":str(exc)},symbol=symbol)
+                if not event("target_scoring_retry", {"forecast_id":forecast["forecast_id"],
+                    "error_type":type(exc).__name__, "message":str(exc)}, symbol):
+                    return
             finally:
                 drain_retained_targets()
         pause(3)
