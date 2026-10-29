@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T06:57:43.696338Z",
+  "id": "20261029T065743Z-4232e866fa9841beb3096db0560ecc99",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout installed and integrated the reviewed compact saved-history reader from Atlas PR510."
+}

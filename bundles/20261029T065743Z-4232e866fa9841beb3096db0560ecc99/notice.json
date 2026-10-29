@@ -1,0 +1,66 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261029T065340Z-3712e9cfba51401d9b50624d4c816178",
+  "change_id": "source:20261029T065340Z-3712e9cfba51401d9b50624d4c816178",
+  "completion_record": "20261029T065340Z-3712e9cfba51401d9b50624d4c816178",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "app/ui/intraday_data.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_display_projection.py"
+    }
+  ],
+  "limitations": [
+    "Reader portion of PR510 only; asynchronous UI and research-report changes are separate.",
+    "Source availability does not establish peer installation or code loaded in an existing desktop process.",
+    "Earlier queue replay had two intermittent Tk initialization skips; final isolated candidate passed227 without skips."
+  ],
+  "local_stage": "installed",
+  "main_sha": "bbb82cccf2074d39d7126c072b593f4010babf3d",
+  "main_stage": "main_integrated",
+  "peer_stage": "available_unverified",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/513",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed Scout reader installed for normal desktop loading. No application restart, trader deployment, provider or broker call, production training or task change.",
+  "runtime_stage": "not_deployed",
+  "scope": "Shared read-only saved-history reader applies independently to Atlas and Scout. Scout retains its existing coverage functions and database discovery; each PC keeps its UI, symbols, recipes, calibration and operating bindings.",
+  "source_sha": "25d72b56df98dc0eea058ff555b23d2ff7b285a4",
+  "source_stage": "pushed",
+  "summary": "Scout installed and integrated the reviewed compact saved-history reader from Atlas PR510.",
+  "tests": {
+    "installed": {
+      "completed_at_utc": "2026-10-29T06:54:24.418852Z",
+      "exit_code": 0,
+      "output_sha256": "ecb352711e901d628798d844c8462e21e8dbac7d6cb754f3da5aeafa1d8b60e3",
+      "result": [
+        "242 passed in 8.61s",
+        ""
+      ],
+      "started_at_utc": "2026-10-29T06:54:13.635332Z"
+    },
+    "isolated": {
+      "completed_at_utc": "2026-10-29T06:55:27.510351Z",
+      "exit_code": 0,
+      "output_sha256": "ef994e48cb1acb728cc72010f73416b3113c4525f952638b18840ce75e3eb6bc",
+      "result": [
+        "227 passed in 8.12s",
+        ""
+      ],
+      "started_at_utc": "2026-10-29T06:55:17.449759Z"
+    },
+    "main": {
+      "completed_at_utc": "2026-10-29T06:56:54.905261Z",
+      "exit_code": 0,
+      "output_sha256": "2a6348b5eb4dbd2261b248e1176f1b6b7dc5b5fddb494966646b9f24268f5c6c",
+      "result": [
+        "227 passed in 8.20s",
+        ""
+      ],
+      "started_at_utc": "2026-10-29T06:56:44.704760Z"
+    }
+  },
+  "upstream_completion_record": "20261029T040458Z-5beb37232c774e31af497e6f8db21f72"
+}
