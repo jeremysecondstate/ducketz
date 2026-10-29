@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T04:13:31.170985Z",
+  "id": "20261029T041331Z-f1fd9b97d76b423bac6557faa39c35a5",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed the complete saved 15-minute UI with native evidence and efficient exact-history reads"
+}

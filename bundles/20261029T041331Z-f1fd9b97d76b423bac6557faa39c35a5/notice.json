@@ -1,0 +1,43 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261029T040458Z-5beb37232c774e31af497e6f8db21f72",
+  "change_id": "20261029T040458Z-5beb37232c774e31af497e6f8db21f72",
+  "files": [
+    "app/ui/intraday.py",
+    "app/ui/intraday_data.py",
+    "app/ui/intraday_models.py",
+    "tests/test_intraday_ui.py",
+    "tests/test_intraday_symbol_coverage.py",
+    "tests/test_intraday_metric_cohorts.py",
+    "tests/test_intraday_input_provenance.py",
+    "tests/test_intraday_research_view.py",
+    "tests/test_intraday_responsiveness.py"
+  ],
+  "limitations": [
+    "Large historical scientific payloads make initial complete-history refresh slow; one-issue transient JSONB projection preserves complete history and exact settings.",
+    "Each PC retains its own native models, symbols, original evidence and operating controls; no private recipe or fitted artifact was exported."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/510",
+  "remote_sha": "b810c0fe42e5c1f5405dbbd56ce159cf3d7998e2",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas local UI source installed and read back by hashes. Ordinary open desktop retains its loaded code until the next normal launch. No provider or broker calls, fitting, trader actions, task changes or main integration occurred.",
+  "scope": "shared",
+  "source_identities": {
+    "atlas_adoption": "20261029T034830Z-4cd2eed10e114c3fbb945cf04725cb77",
+    "atlas_reader_revision": "20261029T040458Z-5beb37232c774e31af497e6f8db21f72",
+    "scout_commit": "bdc53fbcba393c114e5a81d28c959acc39d5cb27",
+    "scout_completion": "20261017T094752Z-d4e26814a8df43f59a78e0645ebafb1d"
+  },
+  "source_sha": "b810c0fe42e5c1f5405dbbd56ce159cf3d7998e2",
+  "summary": "Atlas installed the complete saved 15-minute UI with native evidence and efficient exact-history reads",
+  "tests": [
+    {
+      "completed_at": "2026-10-29T04:06:17.832877Z",
+      "output_sha256": "2fb5f66385353765425121e93ac00762d85d2c50274a3083658d8482fb6349d8",
+      "result": "255 passed, zero skipped in final isolated candidate",
+      "started_at": "2026-10-29T04:06:01.082872Z"
+    },
+    "Installed checkout:255 passed,one native Tcl initialization skip; the skipped case passed alone in a fresh process.",
+    "Isolated Tk native-data display verified all seven subtabs, selectors, probability bars and historical model settings; original private evidence retained."
+  ]
+}
