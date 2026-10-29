@@ -34,6 +34,53 @@ class OrderHistoryError(LedgerError):
     pass
 
 
+class _MissingOrderHistoryDetails:
+    """Only this local capture constructs trusted, scalar diagnostic fields."""
+    def __init__(self, owner, details):
+        self.owner, self.items = owner, tuple(details.items())
+
+
+def _history_identity(value, maximum=256):
+    # Withhold unusual/oversized identities rather than truncating an exact ID
+    # or invoking an arbitrary object's string representation.
+    if (type(value) is str and 0 < len(value) <= maximum
+            and all(c.isascii() and (c.isalnum() or c in "-_.:") for c in value)):
+        return value
+    return None
+
+
+def _remember_missing_order_history(error, reservation, *, boundary, observed,
+                                   response_count, unique_count, pending_count,
+                                   observation_clock_used):
+    identities = {"reservation_id": _history_identity(reservation.reservation_id),
+        "broker_order_id": _history_identity(reservation.broker_order_id),
+        "symbol": _history_identity(reservation.symbol, 32),
+        "side": _history_identity(reservation.side, 16),
+        "reservation_status": _history_identity(reservation.status, 32)}
+    details = {"schema_version": "bounded-order-history-missing-v1", **identities,
+        "identity_fields_unavailable": any(value is None for value in identities.values()),
+        "query_from_entered_time": (boundary - timedelta(days=14)).isoformat(),
+        "query_to_entered_time": boundary.isoformat(), "observed_at": observed,
+        "observation_clock_used": observation_clock_used,
+        "max_results": ORDER_HISTORY_LIMIT, "response_count": response_count,
+        "walked_unique_id_count": unique_count, "pending_count": pending_count}
+    error._missing_order_history_details = _MissingOrderHistoryDetails(error, details)
+
+
+def order_history_failure_evidence(error):
+    """Copy trusted private capture details; plain exception attributes confer none."""
+    try:
+        if (type(error) is not OrderHistoryError
+                or error.args != ("TRACKED_ORDER_MISSING_FROM_BOUNDED_HISTORY",)):
+            return None
+        saved = getattr(error, "_missing_order_history_details", None)
+        if type(saved) is _MissingOrderHistoryDetails and saved.owner is error:
+            return dict(saved.items)
+    except Exception:
+        pass
+    return None
+
+
 class OrderHistorySession(Protocol):
     def stable_account_fingerprint(self) -> str: ...
     def get_orders(self, *, from_entered_time: datetime, to_entered_time: datetime,
@@ -287,7 +334,16 @@ def capture_order_evidence(session: OrderHistorySession, ledger: HorizonLedger, 
     for reservation in pending:
         row = by_id.get(reservation.broker_order_id)
         if row is None:
-            raise OrderHistoryError("TRACKED_ORDER_MISSING_FROM_BOUNDED_HISTORY")
+            error = OrderHistoryError("TRACKED_ORDER_MISSING_FROM_BOUNDED_HISTORY")
+            try:
+                _remember_missing_order_history(error, reservation, boundary=boundary, observed=observed,
+                    response_count=len(raw), unique_count=len(by_id), pending_count=len(pending),
+                    observation_clock_used=observation_clock is not None)
+            except Exception:
+                # Optional diagnostics cannot replace the original fail-closed
+                # error, change matching, or induce another history request.
+                pass
+            raise error
         evidence.append(normalize_order_evidence(row, reservation, account_fingerprint=account_fingerprint,
                                                  observed_at=observed))
     return tuple(evidence)

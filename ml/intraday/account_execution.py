@@ -20,7 +20,7 @@ from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.account_gameplan.authority import (AccountAuthority, AuthorityBinding, AuthorityError,
     IntradayCapacitySnapshot, IntradayReservationRequest, Fill, OrderEvidence, OPEN, SubmissionNotStarted,
     lease_acquisition_failure_evidence, lease_acquisition_success_evidence, receipt_recovery_details_evidence)
-from ml.stock_trader.horizon_broker import capture_order_evidence
+from ml.stock_trader.horizon_broker import capture_order_evidence, order_history_failure_evidence
 from ml.stock_trader.horizon_ledger import LedgerError, PortfolioEvidence
 from .local_execution import (load_local_binding, IntradayLedger as HorizonLedger, NATIVE_PATH, AUTHORITY_PATH, LOCK_PATH, broker_pending)
 from ml.stock_trader.state import capture_portfolio_state
@@ -101,6 +101,12 @@ def _submission_failure_evidence(exc, stage):
         acquisition = lease_acquisition_failure_evidence(current)
         if acquisition is not None:
             item["lease_acquisition"] = acquisition
+        try:
+            history = order_history_failure_evidence(current)
+        except Exception:
+            history = None
+        if history is not None:
+            item["order_history"] = history
         if isinstance(current, sqlite3.Error):
             code = getattr(current, "sqlite_errorcode", None)
             name = getattr(current, "sqlite_errorname", None)
