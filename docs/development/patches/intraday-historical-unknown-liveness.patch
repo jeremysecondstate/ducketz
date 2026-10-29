@@ -1,0 +1,238 @@
+--- a/ml/intraday/account_execution.py
++++ b/ml/intraday/account_execution.py
+@@ -1059,6 +1059,24 @@
+         return not matches or all(r["status"] == "NOT_SUBMITTED" and r["broker_order_id"] is None
+                                   and not r["filled_quantity"] for r in matches)
+ 
++    def _requires_prior_intention_reconciliation(self, native):
++        """Keep uncertain commitments without permanently blocking a symbol.
++
++        A new manual session may act on fresh forecasts while an ID-less attempt
++        from a prior Pacific day retains its full cash/share commitment. Capture
++        has already validated both original records; neither is retired, released
++        or declared unsent here. Current-session uncertainty and known orders
++        keep their existing reconciliation path.
++        """
++        if (native.status not in {"RESERVED", "UNKNOWN"} or native.broker_order_id
++                or native.filled_quantity or native.target_end is None):
++            return True
++        try:
++            target_day = instant(native.target_end).astimezone(PACIFIC).date()
++        except (TypeError, ValueError):
++            return True
++        return target_day >= self.session_started_at.astimezone(PACIFIC).date()
++
+     def _newer_forecasts(self, forecast):
+         """Per-symbol publication can supersede a queue item during account IO."""
+         return [f["forecast_id"] for f in self.store.execution_forecast_headers(pc=self.actor, symbol=forecast["symbol"])
+@@ -1299,7 +1317,8 @@
+             self._execution_stage("post_sizing_pending_read")
+             pending = [r for r in self.ledger.pending_reservations()
+                        if self.ledger.reservation_stream(r.reservation_id) == self.stream
+-                       and r.symbol == forecast["symbol"] and r.forecast_id != forecast["forecast_id"]]
++                       and r.symbol == forecast["symbol"] and r.forecast_id != forecast["forecast_id"]
++                       and self._requires_prior_intention_reconciliation(r)]
+             if pending:
+                 def before_cancel(context, reservation):
+                     self._assert_current()
+--- /dev/null
++++ b/tests/test_intraday_historical_unknown_liveness.py
+@@ -0,0 +1,198 @@
++"""Old unknown commitments retain their money without starving later sessions.
++
++All observations and submissions are fake; only temporary fixture stores change.
++"""
++from dataclasses import asdict, replace
++
++import pandas as pd
++import pytest
++
++from ml.intraday import account_execution as execution
++import test_intraday_account_execution as fixtures
++from test_intraday_account_execution import env, native, account
++
++
++def unknown_buy(env, *, status="UNKNOWN"):
++    env.cash = 250.
++    forecast = env.forecast()
++    if status == "RESERVED":
++        submit = env.broker.submit_prepared_order
++
++        def interrupted(payload, context, *, before_post):
++            before_post()
++            env.broker.submissions.append(payload)
++            raise KeyboardInterrupt()
++
++        env.broker.submit_prepared_order = interrupted
++        try:
++            with pytest.raises(KeyboardInterrupt):
++                env.executor.step(forecast)
++        finally:
++            env.broker.submit_prepared_order = submit
++    else:
++        env.broker.unknown_submission = True
++        assert env.executor.step(forecast)["disposition"] == "submission_recovery_required"
++        env.broker.unknown_submission = False
++    order = native(env).snapshot().reservations[0]
++    assert order.status == status and order.broker_order_id is None
++    authority = account(env).read_state()["reservations"][0]
++    assert authority["status"] == "UNKNOWN" and authority["broker_order_id"] is None
++    return forecast, order, authority
++
++
++def later_forecast(env, *, offset=1440, probability=.72, new_session=True):
++    # The shared offset helper shifts observations, while its synthetic session
++    # envelope stays fixed. Move that fixture envelope as well for a new day.
++    sizing_fixture = fixtures.sizing_fixture
++
++    def dated_fixture(**kwargs):
++        raw, snapshot, equity, quote = sizing_fixture(**kwargs)
++        delta = pd.Timedelta(minutes=offset)
++        for candle in snapshot["candles"]:
++            for name in ("session_open", "session_close"):
++                candle[name] = (pd.Timestamp(candle[name]) + delta).isoformat()
++            candle["session_id"] = (pd.Timestamp(candle["session_id"]) + delta).date().isoformat()
++        return raw, snapshot, equity, quote
++
++    with pytest.MonkeyPatch.context() as patch:
++        patch.setattr(fixtures, "sizing_fixture", dated_fixture)
++        forecast = env.forecast(offset=offset, probability=probability)
++    env.now = pd.Timestamp(forecast["issued_at"])
++    if new_session:
++        env.session_started_at = env.now - pd.Timedelta(seconds=30)
++        env.executor = execution.IntradayAccountExecutor(
++            datastore=env.root, store=env.store, broker=env.broker,
++            local_symbols=env.config.symbols, session_started_at=env.session_started_at,
++            clock=env.clock, manual_authority=lambda: env.active)
++    return forecast
++
++
++def unchanged_unknown(env, original, before, authority_before):
++    assert asdict(native(env).lookup_reservation(before.reservation_id)) == asdict(before)
++    records = account(env).read_state()["reservations"]
++    assert next(r for r in records if r["request"]["native_reservation_id"] == before.reservation_id) == authority_before
++    assert env.store.forecast(original["cycle_id"], original["symbol"]) == original
++    assert not env.broker.cancellations
++
++
++@pytest.mark.parametrize("status", ["UNKNOWN", "RESERVED"])
++def test_next_manual_day_buy_uses_only_cash_left_after_old_unknown(env, status):
++    original, pending, authority_before = unknown_buy(env, status=status)
++    assert pending.quantity == 4 and pending.limit_price == "50.00"
++    forecast = later_forecast(env)
++    result = env.executor.step(forecast)
++    assert result["disposition"] == "submitted"
++    assert result["desired_quantity"] == 4 and result["adjusted_quantity"] == 1
++    assert len(env.broker.submissions) == 2
++    assert env.broker.submissions[-1]["orderLegCollection"][0]["quantity"] == 1
++    unchanged_unknown(env, original, pending, authority_before)
++
++    # A later session cannot revive the original forecast or synthesize its fill.
++    replay = env.executor.step(original)
++    assert replay["disposition"] == "forecast_precedes_manual_start"
++    assert len(env.broker.submissions) == 2
++    unchanged_unknown(env, original, pending, authority_before)
++
++
++@pytest.mark.parametrize("status", ["UNKNOWN", "RESERVED"])
++def test_next_manual_day_sell_uses_actual_inventory_and_keeps_unknown_buy(env, status):
++    original, pending, authority_before = unknown_buy(env, status=status)
++    env.held["AAPL"] = 1.
++    forecast = later_forecast(env, probability=.2)
++    result = env.executor.step(forecast)
++    assert result["disposition"] == "submitted" and result["side"] == "SELL"
++    assert result["adjusted_quantity"] == 1
++    assert len(env.broker.submissions) == 2
++    assert env.broker.submissions[-1]["orderLegCollection"][0]["instruction"] == "SELL"
++    unchanged_unknown(env, original, pending, authority_before)
++
++
++def test_next_manual_day_has_no_sell_capacity_without_actual_holdings(env):
++    original, pending, authority_before = unknown_buy(env)
++    forecast = later_forecast(env, probability=.2)
++    result = env.executor.step(forecast)
++    assert result["disposition"] == "no_eligible_uncommitted_shares"
++    assert result["adjusted_quantity"] == 0
++    assert len(env.broker.submissions) == 1
++    unchanged_unknown(env, original, pending, authority_before)
++
++
++def test_next_manual_day_keeps_full_unknown_sell_share_commitment(env):
++    env.held["AAPL"] = 5.
++    original = env.forecast(probability=.2)
++    env.broker.unknown_submission = True
++    assert env.executor.step(original)["disposition"] == "submission_recovery_required"
++    env.broker.unknown_submission = False
++    pending = native(env).snapshot().reservations[0]
++    authority_before = account(env).read_state()["reservations"][0]
++    assert pending.side == "SELL" and pending.quantity > 0
++    env.held["AAPL"] = pending.quantity + 1
++    forecast = later_forecast(env, probability=.2)
++    result = env.executor.step(forecast)
++    assert result["disposition"] == "submitted" and result["adjusted_quantity"] == 1
++    assert len(env.broker.submissions) == 2
++    unchanged_unknown(env, original, pending, authority_before)
++
++
++def test_new_manual_session_on_same_day_still_waits_on_unknown(env):
++    original, pending, authority_before = unknown_buy(env)
++    forecast = later_forecast(env, offset=15)
++    result = env.executor.step(forecast)
++    assert result["disposition"] == "previous_intention_reconciliation"
++    assert result["evidence"]["reason_code"] == "EXACT_BROKER_ORDER_ID_UNAVAILABLE"
++    assert len(env.broker.submissions) == 1
++    unchanged_unknown(env, original, pending, authority_before)
++
++
++def test_clock_crossing_day_does_not_relax_original_manual_session(env):
++    original, pending, authority_before = unknown_buy(env)
++    started = env.executor.session_started_at
++    forecast = later_forecast(env, new_session=False)
++    result = env.executor.step(forecast)
++    assert env.executor.session_started_at == started
++    assert result["disposition"] == "previous_intention_reconciliation"
++    assert len(env.broker.submissions) == 1
++    unchanged_unknown(env, original, pending, authority_before)
++
++
++def test_previous_day_known_working_order_still_requires_exact_cancellation(env):
++    old = env.forecast()
++    assert env.executor.step(old)["disposition"] == "submitted"
++    pending = native(env).snapshot().reservations[0]
++    forecast = later_forecast(env)
++    result = env.executor.step(forecast)
++    assert result["disposition"] == "previous_intention_reconciliation"
++    assert env.broker.cancellations == [pending.broker_order_id]
++    assert len(env.broker.submissions) == 1
++    assert native(env).lookup_reservation(pending.reservation_id).broker_order_id == pending.broker_order_id
++
++
++@pytest.mark.parametrize("target_end", [None, "", "not-a-time", "2026-10-08T18:30:00"])
++def test_missing_or_malformed_target_does_not_qualify_as_historical(env, target_end):
++    _, pending, _ = unknown_buy(env)
++    later_forecast(env)
++    assert env.executor._requires_prior_intention_reconciliation(replace(pending, target_end=target_end))
++
++
++@pytest.mark.parametrize("changes", [
++    {"broker_order_id": "fixture-exact-id"},
++    {"filled_quantity": 1},
++    {"status": "SUBMITTED"},
++    {"status": "WORKING"},
++    {"status": "PARTIAL"},
++])
++def test_historical_exemption_never_covers_confirmed_order_or_fills(env, changes):
++    _, pending, _ = unknown_buy(env)
++    later_forecast(env)
++    assert env.executor._requires_prior_intention_reconciliation(replace(pending, **changes))
++
++
++def test_historical_boundary_uses_pacific_date_not_utc_date(env):
++    _, pending, _ = unknown_buy(env)
++    env.executor.session_started_at = pd.Timestamp("2026-10-09T06:30:00Z").to_pydatetime()
++    # Both timestamps are still October 8 in Pacific time.
++    assert env.executor._requires_prior_intention_reconciliation(
++        replace(pending, target_end="2026-10-09T00:00:00Z"))
++    env.executor.session_started_at = pd.Timestamp("2026-10-09T07:00:00Z").to_pydatetime()
++    assert not env.executor._requires_prior_intention_reconciliation(
++        replace(pending, target_end="2026-10-09T06:59:59Z"))
