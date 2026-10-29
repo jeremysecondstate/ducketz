@@ -630,6 +630,12 @@ def test_tk_report_symbols_are_selectable_before_any_manual_trader_start(tmp_pat
         tab = IntradayTab(root, frame, datastore_root=tmp_path, local_pc="Scout",
                           model_research_directory=directory, auto_load=False)
         tab.refresh()
+        import time
+        deadline = time.monotonic() + 2
+        while tab._loading and time.monotonic() < deadline:
+            root.update()
+            time.sleep(.005)
+        assert not tab._loading
         assert tab.snapshot.forecasts == () and tab.consensus_rows == {}
         assert set(tab.boxes["symbol"].cget("values")) == {"All", "ABCL", "DBX"}
         assert set(tab.boxes["pc"].cget("values")) == {"All", "Scout"}

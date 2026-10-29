@@ -736,6 +736,110 @@ def regime_metrics(rows: Sequence[Mapping[str, Any]]) -> tuple[dict[str, Any], .
                  for (dimension, bucket), values in sorted(groups.items()))
 
 
+def cycle_symbol_evidence(snapshot: IntradaySnapshot) -> tuple[dict[str, Any], ...]:
+    """Project recorded symbol scope, without assuming today's local watchlist.
+
+    Local cycles retain their intended symbols and failure details. Sanitized
+    peer cycles can retain only failed symbol names; that is partial coverage,
+    and an absent dataset must remain unrecorded rather than be inferred from
+    another cycle or the current machine's settings.
+    """
+    datasets: dict[tuple[Any, ...], set[str]] = defaultdict(set)
+    for row in snapshot.forecasts:
+        datasets[(row.get("source_label"), row.get("pc"), row.get("cycle_id"))].add(source_dataset_label(row))
+    result = []
+    for cycle in snapshot.cycles:
+        identity = cycle.get("id", cycle.get("cycle_id"))
+        failures = cycle.get("failures")
+        failures = failures if isinstance(failures, Mapping) else {}
+        symbols = set(failures)
+        for field in ("symbols", "failed_symbol_names"):
+            values = cycle.get(field)
+            if isinstance(values, (list, tuple)):
+                symbols.update(value for value in values if isinstance(value, str))
+        configuration = cycle.get("configuration")
+        configured_source = configuration.get("source_dataset") if isinstance(configuration, Mapping) else None
+        sources = ({str(configured_source)} if configured_source else
+                   datasets.get((cycle.get("source_label"), cycle.get("pc"), identity), {"Unrecorded"}))
+        for symbol in sorted(value for value in symbols if isinstance(value, str) and value):
+            error = failures.get(symbol)
+            failed = symbol in failures or symbol in (cycle.get("failed_symbol_names") or [])
+            if isinstance(error, Mapping):
+                parts = []
+                for field, limit in (("type", 64), ("message", 400)):
+                    value = " ".join(str(error.get(field) or "").split())
+                    if value:
+                        parts.append(value[:limit] + ("…" if len(value) > limit else ""))
+                reason = ": ".join(parts)
+                recorded = error.get("recorded_at")
+            else:
+                reason, recorded = "", None
+            if failed:
+                reason = reason or "Saved cycle reports a failure; failure details unavailable."
+            elif cycle.get("status") == "running":
+                reason = "No saved forecast from the latest recorded cycle, which is running."
+            else:
+                reason = "No saved forecast for a symbol included in the saved cycle."
+            for source in sorted(sources):
+                result.append(dict(pc=cycle.get("pc"), symbol=symbol, source_dataset=source,
+                    mode=cycle.get("mode", "shadow"), cycle_id=identity,
+                    reference_at=cycle.get("reference_at"), started_at=cycle.get("started_at"),
+                    evidence_at=recorded or cycle.get("completed_at") or cycle.get("started_at"),
+                    coverage_status="failed" if failed else "pending" if cycle.get("status") == "running" else "unavailable",
+                    coverage_reason=reason))
+    return tuple(result)
+
+
+def symbol_coverage(snapshot: IntradaySnapshot, *, pc: str = "All", symbol: str = "All",
+                    session: str = "All", mode: str = "shadow", reference_slot: str = "All",
+                    source_dataset: str = "All") -> tuple[dict[str, Any], ...]:
+    """Display saved issues beside missing-cycle evidence; never create forecasts.
+
+    Saved issues retain their issue-date session semantics. A cycle with no
+    issue is scoped by its saved start date, explicitly shown in the display.
+    A later failure annotates an older saved issue rather than replacing it.
+    """
+    filters = dict(pc=pc, symbol=symbol, session=session, mode=mode,
+                   reference_slot=reference_slot, source_dataset=source_dataset)
+    def key(row):
+        return (row.get("pc"), row.get("symbol"), source_dataset_label(row), row.get("mode", "shadow"))
+    displays = {key(row): dict(pc=row.get("pc"), symbol=row.get("symbol"),
+                source_dataset=source_dataset_label(row), mode=row.get("mode", "shadow"),
+                forecast=row, coverage_status="saved", coverage_reason="")
+                for row in latest_matrix(filter_forecasts(snapshot, **filters))}
+    cycle_starts = {(cycle.get("source_label"), cycle.get("pc"), cycle.get("id", cycle.get("cycle_id"))):
+                    timestamp(cycle.get("started_at")) for cycle in snapshot.cycles}
+    evidence = cycle_symbol_evidence(snapshot)
+    # Reuse exact filter semantics with the cycle's start in the issue-time slot.
+    scoped = filter_forecasts(IntradaySnapshot(snapshot.loaded_at,
+        tuple(dict(row, issued_at=row.get("started_at")) for row in evidence)), **filters)
+    latest = {}
+    for row in sorted(scoped, key=lambda item: (
+            timestamp(item.get("reference_at")) or datetime.min.replace(tzinfo=UTC),
+            timestamp(item.get("started_at")) or datetime.min.replace(tzinfo=UTC), str(item.get("cycle_id")))):
+        latest[key(row)] = row
+    for identity, row in latest.items():
+        display = displays.get(identity)
+        forecast = display["forecast"] if display else None
+        if forecast is not None:
+            if forecast.get("cycle_id") == row.get("cycle_id"):
+                continue  # A persisted issue supersedes stale failure evidence in its own cycle.
+            forecast_reference, cycle_reference = timestamp(forecast.get("reference_at")), timestamp(row.get("reference_at"))
+            if forecast_reference and cycle_reference and cycle_reference < forecast_reference:
+                continue
+            if forecast_reference and cycle_reference == forecast_reference:
+                forecast_started = cycle_starts.get((forecast.get("source_label"), forecast.get("pc"), forecast.get("cycle_id")))
+                candidate_started = timestamp(row.get("started_at"))
+                if forecast_started and candidate_started and candidate_started <= forecast_started:
+                    continue
+                if forecast_started is None:
+                    evidence_at, issued_at = timestamp(row.get("evidence_at")), timestamp(forecast.get("issued_at"))
+                    if evidence_at and issued_at and evidence_at <= issued_at:
+                        continue
+        displays[identity] = {**row, "forecast": forecast}
+    return tuple(displays[identity] for identity in sorted(displays))
+
+
 def latest_matrix(rows: Sequence[Mapping[str, Any]]) -> tuple[Mapping[str, Any], ...]:
     latest = {}
     for row in sorted(rows, key=lambda row: timestamp(row.get("issued_at")) or datetime.min.replace(tzinfo=UTC)):
