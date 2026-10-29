@@ -1,0 +1,35 @@
+{
+  "author": "Scout",
+  "change_id": "output:20261029T052531Z-scout-stats-through-20261028-caea13f2",
+  "completion_id": "20261029T052531Z-scout-stats-through-20261028-caea13f2",
+  "delivery_route": "Existing private CODEXSTORE nightly exchange; financial rows are not in Git",
+  "files": [
+    "display/scout-15m-stats/v1/pc-new/20261029T052531Z-scout-stats-through-20261028-caea13f2/manifest.json",
+    "display/scout-15m-stats/v1/pc-new/20261029T052531Z-scout-stats-through-20261028-caea13f2/index.json",
+    "display/scout-15m-stats/v1/pc-new/20261029T052531Z-scout-stats-through-20261028-caea13f2/gameplan-horizons/index.json"
+  ],
+  "limitations": [
+    "Saved evidence retains missing and pending outcomes",
+    "Gameplan revisions are alternatives and must not be summed",
+    "Private delivery verified; actual Atlas UI installation remains unverified"
+  ],
+  "manifest_sha256": "7b9a22b182a7692e9766e3bab444496244a371e2323dfc1b6afbb459f5762c01",
+  "peer_applicability": "Atlas recipient: verify the pinned private bundle, copy only manifest-listed files into local display-history archive, verify again and write the local receipt; load both separate Scout Stats panels",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Local display archive import and Gameplan Stats Refresh; existing operating state and model recipes preserved",
+  "scope": "symbol-specific",
+  "summary": "Scout delivered the requested saved Scout Stats privately for Atlas Gameplan Stats display import.",
+  "task": "send-scout-stats-to-atlas",
+  "tests": [
+    {
+      "evidence_sha256": "d8ae07d0040ca57dca0589bbb000231bf18d908d8ec88d0bd34d20cb47d1db98",
+      "result": "PASS",
+      "suite": "Strict whole-bundle validation, isolated recipient import and display acceptance"
+    },
+    {
+      "completed_at_utc": "2026-10-29T05:28:45.254511+00:00",
+      "result": "PASS",
+      "suite": "Final raw and decoded private-value scans and exact private-channel readback"
+    }
+  ]
+}

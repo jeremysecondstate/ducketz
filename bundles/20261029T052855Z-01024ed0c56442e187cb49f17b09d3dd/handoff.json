@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T05:28:55.431584Z",
+  "id": "20261029T052855Z-01024ed0c56442e187cb49f17b09d3dd",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout delivered the requested saved Scout Stats privately for Atlas Gameplan Stats display import."
+}
