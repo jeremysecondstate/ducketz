@@ -27,7 +27,7 @@ from .runtime import ModelPersistenceStopped
 _METRIC_LOCK = threading.Lock()
 
 
-def _data_worker_retry_detail(worker, error, attempt, *, pc, source_session, release):
+def _data_worker_retry_detail(worker, error, attempt, *, pc, source_session, release, collector=None):
     """Bounded cause evidence only; diagnostic failure cannot stop a retry."""
     detail = {"worker": worker, "error_type": type(error).__name__, "attempt": attempt,
               "role": "data", "pc": pc, "source_session": source_session,
@@ -46,6 +46,12 @@ def _data_worker_retry_detail(worker, error, attempt, *, pc, source_session, rel
             ("schema_version", "exception_chain", "chain_truncated")}
     except Exception:
         detail["diagnostics_unavailable"] = True
+    if worker == "context" and collector is not None and "diagnostics" in detail:
+        try:
+            from .market_collection import collection_failure_diagnostics
+            detail["diagnostics"]["market_collection"] = collection_failure_diagnostics(collector, error)
+        except BaseException:
+            pass  # Optional observations cannot replace the existing worker retry.
     return detail
 
 
@@ -599,7 +605,8 @@ def run_data_service(*, repository, datastore, release, clock=utcnow, sleep=time
                     except Exception as exc:
                         attempts += 1
                         detail = _data_worker_retry_detail(name, exc, attempts, pc=pc,
-                            source_session=session, release=release)
+                            source_session=session, release=release,
+                            collector=collector if name == "context" else None)
                         errors.append(detail)
                         del errors[:-32]
                         try:
