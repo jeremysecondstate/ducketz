@@ -1,0 +1,23 @@
+{
+  "author": "Scout",
+  "change_id": "20261029T072017Z-b5199838cb8c4106ac3c46f019efc012",
+  "files": [
+    "ml/gameplan_model_feedback.py",
+    "ml/gameplan_stats_handoff.py",
+    "tests/test_gameplan_model_feedback.py",
+    "tests/test_gameplan_stats_handoff.py"
+  ],
+  "limitations": [
+    "Offline fixtures only; remaining orchestration and exchange work is separate. Peer installation and loaded runtime are unverified."
+  ],
+  "main_commit": "f774e64f409e031dc77a9d3501d12a03bd6f1a6c",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/515",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source affects future saved-Stats review and export; equivalent Scout behavior was already present. No new installation or runtime loading is claimed.",
+  "scope": "Shared source for Atlas and Scout. Extracted from Completion-Record 20261029T004256Z-12f02ad8d44b4d48aa97fc5bb151c9c2; its remaining work retains its original identity.",
+  "source_commit": "5aa2dde4d16cf54e0a6895368e9cf4088e08541a",
+  "summary": "Scout saved-Stats review and export retains the explicitly selected run",
+  "tests": [
+    "Isolated source candidate: 64 passed; isolated common-main candidate: 64 passed, 2026-10-29 UTC."
+  ]
+}
