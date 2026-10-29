@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T21:13:40.479764Z",
+  "id": "20261029T211340Z-1e2b081565ba4539af75610e7a5f7da6",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Prospective1A lossless chunk writing enabled in reviewed local generation; original bytes and historicalobjects retained"
+}

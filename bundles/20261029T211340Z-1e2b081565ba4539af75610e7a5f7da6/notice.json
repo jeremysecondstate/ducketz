@@ -1,0 +1,31 @@
+{
+  "actor_task": "Atlas atlas-trader-representative",
+  "author": "Atlas",
+  "change_id": "20261029T211001Z-0617cb17ba414346b105c7bdc6548b08",
+  "files": [
+    "tests/test_intraday_snapshot_chunk_activation.py",
+    "tests/check_isolated_intraday_snapshot_chunk_activation.py",
+    "tests/test_intraday_snapshot_chunk_activation_package.py",
+    "docs/development/patches/intraday-snapshot-chunk-activation.patch",
+    "docs/development/patches/intraday-snapshot-chunk-activation.json"
+  ],
+  "limitations": [
+    "Publicsourcepacket is based on reviewedcodec PR527; combined PR528 contains bothsourcechanges and isdraft, unmerged",
+    "Onlyfuture1A snapshots usechunks; oldraw/inline/firstclaims andactive databases preserved; no migration/deletion/compaction/compression",
+    "No historicalspace reclaimed or futurephysicalstorage savings claimed; naturallyobserved runtimeexercise separate",
+    "Exact localadapter preimages required; eachPC preserves localreader/science/manualcontrol applicability",
+    "Unowned concurrent workingtree changes preserved, not includedin this installedcomposition"
+  ],
+  "peer_applicability": "Shared correctness/storage format; preserve local symbols, originalscientific policy, currentreaders andindependentoperations; sourcepublication does notchange nativeconfiguration",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/528",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Complete551source generation 47885cac41c2499ea021d16d4227fb15a29de2bed9a7bfbb6bc3857f9fad69b7 sealed successfully;549parent sources andoriginalruntime retained. Standard safe renewal mayload1A futurechunkwriting. No initialstart/restart/trader/provider/model/launcher/native task operation usedforverification; no peer/publicationgate.",
+  "scope": "shared",
+  "source_commit": "41a743ce3cd56a28269e54f3da9cd6844ce2125e",
+  "summary": "Prospective1A lossless chunk writing enabled in reviewed local generation; original bytes and historicalobjects retained",
+  "tests": [
+    "Complete551source localcomposition184offlinechecks pass with zero network/processattempts",
+    "Publiccandidate10pass7explicit absent-adapter integration skips; exactsourcebytes and dependencyclosure verified",
+    "Independent fullsixconstructor AST/packet review plus exactLF/CRLF dependencyvariant negativechecks passed"
+  ]
+}
