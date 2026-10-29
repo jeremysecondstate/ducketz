@@ -308,7 +308,7 @@ class _ModelServiceStore(ServiceStore):
 
     def event(self, cycle_id, kind, payload, *, symbol=None, recorded_at=None):
         failure_progress = kind == "cycle_progress" and "failures" in payload
-        if kind not in ("symbol_failure", "cycle_started", "cycle_attempt_measured", "forecast_persisted") and not failure_progress:
+        if kind not in ("symbol_failure", "cycle_started", "cycle_attempt_measured", "forecast_persisted", "models_completed") and not failure_progress:
             return super().event(cycle_id, kind, payload, symbol=symbol, recorded_at=recorded_at)
         # Freeze the original payload and row clock before the first attempt.
         frozen = json.loads(encoded(payload))
@@ -321,6 +321,7 @@ class _ModelServiceStore(ServiceStore):
                      "cycle_started": "model_cycle_started_event",
                      "cycle_attempt_measured": "model_cycle_attempt_event",
                      "forecast_persisted": "model_forecast_persisted_event",
+                      "models_completed": "model_models_completed_event",
                      "cycle_progress": "model_failure_progress_event"}[kind]
         pending = {"operation":operation, "cycle_id":cycle_id, "symbol":symbol,
                    "kind":kind, "recorded_at":recorded, "payload":frozen}
