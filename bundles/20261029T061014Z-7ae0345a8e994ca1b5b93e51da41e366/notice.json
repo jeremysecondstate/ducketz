@@ -1,0 +1,55 @@
+{
+  "author": "Scout",
+  "change_id": "scout-peer-adoption-20261029T044046Z-fef36c90ec434474b7cbb29f5a792f82",
+  "files": [
+    {
+      "operation": "add",
+      "path": "tests/test_rolling_price_atlas_composition.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_rolling_price_widgets.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/visual_rolling_stats_fixture.py"
+    }
+  ],
+  "limitations": [
+    "Test-only handoff; main integration remains separate with its rolling application dependency closure.",
+    "Initial missing test scratch directory and a transient native Tcl startup failure were retained; final separate-process suites passed without skips.",
+    "Initial installed review exposed one additional existing local imported module; final review and checks bind it."
+  ],
+  "local_installation": "verified exact peer bytes and current Scout offline checks",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Three test files installed. No application behavior, model recipe, symbol selection, binding, task activation or running process changed.",
+  "scope": "shared",
+  "source_commit": "059365f7e38b06ee36743765e3d739b627ff1e4a",
+  "source_publication": "Original Atlas publication retained; no duplicate source authored or published.",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/512",
+  "summary": "Scout installed and verified the shared rolling-price layout test handoff",
+  "tests": [
+    {
+      "bound_files": 118,
+      "fixture_cli_passed": true,
+      "kind": "isolated exact peer source",
+      "passed": 193
+    },
+    {
+      "bound_files": 119,
+      "completed_at_utc": "2026-10-29T06:09:49.019304Z",
+      "fixture_cli_passed": true,
+      "kind": "current Scout installed composition",
+      "output_sha256": [
+        "5bd036290eb7da1321ede134fa5dab04f5483fc6da2bc064fe41ce5e0933e3e2",
+        "eb4619eb89983860bef279029e0672c82bae758fe643c67c7be7010644eb3837",
+        "99ed9e64203523b39d0fa03c89f1dc7e2b830009f3c15a9b91299be795ec7722",
+        "2777e920114507c8d35e6ee7c6d461b60d2d2ca2da558b2bf1e7eba069029fa5",
+        "8370f74afe12e20384691e42e96eadee9fac00ee2248a9765a7989ed09386f72",
+        "eb2d103f587a262bfeaa6a8193aedfe545efab7332a5abc17136351ce181c9d1"
+      ],
+      "passed": 193
+    }
+  ],
+  "upstream_completion_record": "20261029T044046Z-fef36c90ec434474b7cbb29f5a792f82"
+}
