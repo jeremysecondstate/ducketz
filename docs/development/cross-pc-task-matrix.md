@@ -1,5 +1,20 @@
 # Cross-PC task inventory and adoption
 
+## Current recurring authority
+
+Jeremy's October 29, 2026 direction retires Gameplan production, Gameplan Stats,
+Gameplan model review, synthesis, exchange and delivery. Current nightly support
+serves the independent 15-minute systems. Follow [nightly operations](nightly-operations.md)
+and [independent traders](independent-traders.md). Data-only catch-up, model
+supervision, trader repair and source reconciliation retain their separate owners.
+Existing schedules, private recipes, independent execution and activation/stop
+boundaries remain local. A catalog or peer notice cannot revive retired work.
+
+The dated inventory below records historical scheduler observations, including
+former active Gameplan purposes. It is not the current operating schedule.
+Retired Gameplan purposes must remain paused/disabled; missing counterparts must
+not be created. Current source publication and privacy procedures continue.
+
 Contract: `cross-pc-v2`. The portable catalog is
 [`coordination/task-catalog.json`](../../coordination/task-catalog.json).
 Atlas inspected all twelve saved native definitions on October 1, 2026.
@@ -7,7 +22,7 @@ Scout evidence is the human-relayed preparation report from that date; Atlas
 has not inspected Scout's native scheduler. An inventory entry is not proof
 of source installation, current execution, or operating parity.
 
-## Atlas inventory and Scout mismatches
+## Historical October 1 inventory and Scout mismatches
 
 All wall-clock schedules use America/Los_Angeles. Intervals and original
 native recurrence strings remain unchanged during prompt adoption. "Chat
