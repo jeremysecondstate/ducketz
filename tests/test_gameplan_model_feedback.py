@@ -62,8 +62,12 @@ def test_stats_republication_code_change_and_future_reviews_require_new_review(t
     write_review(tmp_path, version="02")
     with pytest.raises(ValueError, match="implementation changed"):
         load_feedback_review(tmp_path, path)
-    with pytest.raises(ValueError, match="exact newest"):
-        prepare_feedback(tmp_path, review_run=stats, now=NOW)
+    frozen = prepare_feedback(tmp_path, review_run=stats, now=NOW)
+    frozen_diagnostics = json.loads((frozen / "diagnostics.json").read_text())
+    assert frozen_diagnostics["stats"]["run_path"] == stats.relative_to(tmp_path).as_posix()
+    assert frozen_diagnostics["stats_selection"] == "FROZEN_SAVED_PASS"
+    saved = save_feedback_review(tmp_path, frozen, proposal(frozen), now=NOW)
+    assert load_feedback_review(tmp_path, saved)["stats"] == frozen_diagnostics["stats"]
 
 
 @pytest.mark.parametrize("candidate", [
@@ -251,3 +255,19 @@ def test_frozen_feedback_survives_display_replacement_but_training_stays_latest(
     (stats / "forecast-results.parquet").write_bytes(b"changed original evidence")
     with pytest.raises((ValueError, RuntimeError), match="verify|checksum|changed|mismatch"):
         load_feedback_review(tmp_path, path, require_latest_stats=False)
+
+
+def test_checkpoint_receipt_hash_is_required_even_after_pointer_changes(tmp_path):
+    from ml.artifacts import file_checksum
+    from app.ui.gameplan_stats_data import GameplanStatsError
+    stats = write_review(tmp_path)
+    expected = file_checksum(stats / "receipt.json")
+    write_review(tmp_path, version="02")
+    run = prepare_feedback(tmp_path, review_run=stats, expected_receipt_sha256=expected, now=NOW)
+    binding = json.loads((run / "diagnostics.json").read_text())["stats"]
+    assert binding["receipt_sha256"] == expected
+    assert binding["run_path"] == stats.relative_to(tmp_path).as_posix()
+    with pytest.raises(GameplanStatsError, match="receipt does not match"):
+        prepare_feedback(tmp_path, review_run=stats, expected_receipt_sha256="0" * 64, now=NOW)
+    with pytest.raises(ValueError, match="explicit saved run"):
+        prepare_feedback(tmp_path, expected_receipt_sha256=expected, now=NOW)
