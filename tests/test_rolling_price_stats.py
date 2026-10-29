@@ -66,6 +66,30 @@ def test_current_price_population_and_value_ignore_all_saved_filters(view):
     assert "last recorded broker observation" in view.execution.evidence_tooltip.text()
 
 
+def test_panel_refresh_fetches_new_prices_without_reloading_saved_stats(view, monkeypatch):
+    cutoffs = []
+    def loader(*, as_of):
+        cutoffs.append(as_of)
+        return snapshot(as_of, len(cutoffs) * 1.25)
+    def forbidden(*_):
+        pytest.fail("The price panel's Refresh must not reload saved Stats results")
+    view._price_loader = loader
+    for name in ("review_sessions", "execution_sessions", "load_gameplan_stats", "load_gameplan_execution"):
+        monkeypatch.setattr(stats, name, forbidden)
+    view.session.set("2020-01-02")
+    saved_request = view._request_id
+    for count in (1, 2):
+        view.rolling_prices.refresh_button.invoke()
+        assert "disabled" in view.rolling_prices.refresh_button.state()
+        pump(view, lambda: not view._price_loading)
+        assert len(cutoffs) == count
+        assert view._request_id == saved_request and not view._loading
+        assert view.session.get() == "2020-01-02"
+        assert view.rolling_prices.snapshot.average_pct == count * 1.25
+        assert "disabled" not in view.rolling_prices.refresh_button.state()
+    assert cutoffs[1] >= cutoffs[0]
+
+
 def test_slow_saved_reader_does_not_block_prices_and_auto_refresh(view, monkeypatch):
     entered, release = threading.Event(), threading.Event()
     def slow(*_):

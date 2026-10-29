@@ -44,7 +44,7 @@ def view(tk_root):
     tk_root.withdraw()
     frame = tk.Frame(tk_root)
     frame.pack(fill="both", expand=True)
-    widget = RollingPricePanel(frame)
+    widget = RollingPricePanel(frame, on_refresh=lambda: None)
     widget.frame.pack(fill="both", expand=True)
     try:
         yield widget
@@ -103,6 +103,62 @@ def test_historical_session_label_never_changes_current_market_snapshot(view):
     assert not view.loading
 
 
+def test_panel_refresh_invokes_only_its_callback_and_blocks_duplicate_clicks(view):
+    snapshot = fixture_snapshot()
+    view.set_snapshot(snapshot)
+    calls = []
+    view.on_refresh = lambda: calls.append("prices")
+    view.refresh_button.invoke()
+    assert calls == ["prices"]
+    assert view.loading and view.snapshot is snapshot
+    assert view.refresh_button.cget("text") == "Refreshing…"
+    assert "disabled" in view.refresh_button.state()
+    view.refresh_button.invoke()
+    assert calls == ["prices"]
+    view.set_snapshot(snapshot)
+    assert not view.loading
+    assert view.refresh_button.cget("text") == "Refresh"
+    assert "disabled" not in view.refresh_button.state()
+
+
+def test_unavailable_reply_restores_panel_refresh_button(view):
+    view.set_loading()
+    snapshot = fixture_snapshot(missing=True)
+    snapshot.error = "Fixture provider timeout"
+    view.set_snapshot(snapshot)
+    assert not view.loading
+    assert "disabled" not in view.refresh_button.state()
+    assert view.refresh_button.cget("text") == "Refresh"
+    assert "Price data unavailable" in view.status_label.cget("text")
+
+
+def test_refresh_callback_start_failure_restores_button_without_changing_prices(view):
+    snapshot = fixture_snapshot()
+    view.set_snapshot(snapshot)
+
+    def fail():
+        raise RuntimeError("Fixture worker start failed")
+
+    view.on_refresh = fail
+    with pytest.raises(RuntimeError, match="worker start failed"):
+        view._request_refresh()
+    assert not view.loading and view.snapshot is snapshot
+    assert "disabled" not in view.refresh_button.state()
+    assert view.refresh_button.cget("text") == "Refresh"
+
+
+def test_panel_without_refresh_binding_has_visible_disabled_button(tk_root):
+    widget = RollingPricePanel(tk_root)
+    try:
+        assert "disabled" in widget.refresh_button.state()
+        assert widget.refresh_button.winfo_manager() == "grid"
+        widget.set_loading()
+        widget.set_snapshot(fixture_snapshot())
+        assert "disabled" in widget.refresh_button.state()
+    finally:
+        widget.frame.destroy()
+
+
 @pytest.mark.parametrize("width,columns", [(860, 4), (560, 3), (430, 2), (280, 1)])
 def test_responsive_symbol_grid_keeps_every_symbol_in_bounds(view, width, columns):
     view.set_snapshot(fixture_snapshot())
@@ -111,6 +167,13 @@ def test_responsive_symbol_grid_keeps_every_symbol_in_bounds(view, width, column
     root.deiconify()
     root.update()
     assert view._columns == columns
+    assert view.title_label.winfo_x() + view.title_label.winfo_width() <= view.refresh_button.winfo_x()
+    assert view.refresh_button.winfo_x() + view.refresh_button.winfo_width() <= view.header.winfo_width()
+    if width < 360:
+        assert view.average_value.grid_info()["row"] == 1
+        assert view.average_title.winfo_width() >= view.average_title.winfo_reqwidth()
+    else:
+        assert view.average_value.grid_info()["row"] == 0
     assert len({tile.grid_info()["row"] for tile in view.tiles}) == (11 + columns - 1) // columns
     for symbol, tile in zip(view.symbol_labels, view.tiles):
         assert tile.winfo_x() >= 0
@@ -119,6 +182,10 @@ def test_responsive_symbol_grid_keeps_every_symbol_in_bounds(view, width, column
         ticker = view.symbol_labels[symbol]
         assert ticker.winfo_x() + ticker.winfo_width() <= value.winfo_x()
         assert value.winfo_x() + value.winfo_width() <= tile.winfo_width()
+    view.set_loading()
+    root.update()
+    assert view.title_label.winfo_x() + view.title_label.winfo_width() <= view.refresh_button.winfo_x()
+    assert view.refresh_button.winfo_x() + view.refresh_button.winfo_width() <= view.header.winfo_width()
 
 
 def test_member_replacement_removes_old_tiles_and_loading_never_fabricates_values(view):

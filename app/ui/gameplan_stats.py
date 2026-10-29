@@ -124,7 +124,7 @@ class GameplanStatsTab:
         self.prediction_panel.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
         self.execution = GameplanExecutionPanel(self.workspace, self.root)
         self.execution.frame.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
-        self.rolling_prices = RollingPricePanel(self.execution.frame)
+        self.rolling_prices = RollingPricePanel(self.execution.frame, on_refresh=self._refresh_prices)
         self.rolling_prices.frame.pack(fill="x", padx=12, pady=(0, 12))
         _label(self.prediction_panel, "Prediction accuracy", size=19, bold=True).pack(anchor="w", padx=14, pady=(12, 2))
         prediction_controls = tk.Frame(self.prediction_panel, background=SURFACE)

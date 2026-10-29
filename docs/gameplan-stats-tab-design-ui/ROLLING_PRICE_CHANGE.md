@@ -50,14 +50,22 @@ holidays, DST and early closes. The conservative native-history envelope is
 closes. Other shortened sessions use their regular exchange interval. The
 early-close extension follows Schwab's [holiday trading FAQ](https://www.schwab.com/stocks/extended-hours-trading).
 
-At each cutoff, the latest eligible completed candle is selected. More than ten
-expected trading minutes between its completion and the cutoff makes that
-endpoint stale. Closed time does not consume this allowance. Both cutoffs may
-therefore legitimately use Friday's final observation during a weekend, with
-an explicit closed/as-of status and actual Friday timestamps. Missing Friday
-afternoon evidence remains stale after the weekend. Evidence older than the
-bounded ten-calendar-day history request is never considered fresh. There is
-no interpolation, synthetic price, missing-as-zero substitution or unlabelled
+At each cutoff, the latest eligible completed candle is selected. A fresh,
+successful provider response may contain sparse extended-hours trades; the
+absence of a trade near 20:00 does not by itself mean the feed is stale. The
+refresh path assesses missing time against the regular exchange session, with
+a ten-minute allowance. Extended-hours observations remain eligible prices;
+their absence does not consume that allowance. Actual price timestamps remain
+visible in the tooltips, so a 16:11 trade carried into the evening is identified
+as that actual observation rather than a new 20:00 price.
+
+Both cutoffs may legitimately use Friday's final observation during a weekend,
+with an explicit closed/as-of status and actual Friday timestamps. Missing
+Friday afternoon regular-session evidence remains stale after the weekend.
+Evidence older than the bounded ten-calendar-day history request is never
+considered fresh. This policy requires a new successful server request on each
+refresh; old saved files cannot establish fresh coverage. There is no
+interpolation, synthetic price, missing-as-zero substitution or unlabelled
 multi-day carry.
 
 ## Display and refresh
@@ -72,8 +80,12 @@ source, split basis and the closure policy. A compact Pacific as-of label and
 current-price/session-independent context remain visible for historical Stats
 sessions.
 
-Initial load, Refresh and the existing five-minute visible-tab timer request new
-evidence. A separate daemon price lane has its own request ID and never waits
+The Refresh button inside the rolling-price panel requests fresh prices only,
+without reloading saved Stats predictions, orders or history. It shows
+Refreshing… while the request runs and becomes available again after success
+or failure. Initial load, the page-level Refresh and the existing five-minute
+visible-tab timer also request new evidence. A separate daemon price lane has
+its own request ID and never waits
 for saved prediction/order/history readers. Three reader threads bound request
 fan-out; existing Schwab history and FMP calls each use ten-second HTTP timeouts.
 A 45-second batch deadline returns explicit unavailable rows for unfinished

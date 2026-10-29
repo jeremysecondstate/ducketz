@@ -35,9 +35,9 @@ def observations(*rows, as_of=AS_OF):
     return prices.observations_from_payload(payload(*rows), sessions=prices.market_sessions(as_of))
 
 
-def calculate(*rows, as_of=AS_OF):
+def calculate(*rows, as_of=AS_OF, fresh_history=False):
     return prices.calculate_change("TEST", observations(*rows, as_of=as_of),
-                                   as_of=as_of, sessions=prices.market_sessions(as_of))
+                                   as_of=as_of, sessions=prices.market_sessions(as_of), fresh_history=fresh_history)
 
 
 def write_profile(root, symbols, *, local=True):
@@ -139,6 +139,44 @@ def test_missing_early_premarket_cannot_be_mislabeled_closed():
     assert row.status == "stale" and row.change_pct is None
 
 
+def test_fresh_server_reply_keeps_sparse_premarket_actual_price_without_fabrication():
+    stamp = instant("2026-10-28T10:30:00Z")
+    row = calculate(candle("2026-10-27T10:30:00Z", 100), candle("2026-10-28T08:01:00Z", 101),
+                    as_of=stamp, fresh_history=True)
+    assert row.status == "available" and row.change_pct == pytest.approx(1)
+    assert row.current.observed_at == instant("2026-10-28T08:01:00Z")
+    assert "Fresh server history" in row.reason
+
+
+def test_fresh_sparse_after_hours_reply_preserves_actual_close_at_each_cutoff():
+    stamp = instant("2026-10-29T04:03:00Z")  # Oct28,21:03 Pacific.
+    row = calculate(candle("2026-10-27T23:28:00Z", 100), candle("2026-10-28T20:11:00Z", 101),
+                    as_of=stamp, fresh_history=True)
+    assert row.status == "closed" and row.change_pct == pytest.approx(1)
+    assert row.current.observed_at == instant("2026-10-28T20:11:00Z")
+    assert row.previous.observed_at == instant("2026-10-27T23:28:00Z")
+    assert "sparse extended hours" in row.reason
+
+
+def test_old_unverified_observations_do_not_gain_fresh_server_exemption():
+    stamp = instant("2026-10-29T04:03:00Z")
+    row = calculate(candle("2026-10-27T23:28:00Z", 100), candle("2026-10-28T20:11:00Z", 101), as_of=stamp)
+    assert row.status == "stale" and row.change_pct is None
+
+
+@pytest.mark.parametrize("stamp", ["2026-10-29T04:03:00Z", "2026-11-01T18:00:00Z"])
+def test_fresh_server_reply_does_not_hide_a_missed_full_regular_session(stamp):
+    row = calculate(candle("2026-10-26T23:00:00Z", 100), candle("2026-10-27T23:00:00Z", 101),
+                    as_of=instant(stamp), fresh_history=True)
+    assert row.status == "stale" and row.change_pct is None
+    assert "regular-session" in row.reason
+
+
+def test_fresh_reply_regular_session_age_limit_still_applies():
+    row = calculate(candle("2026-10-27T17:00:00Z", 100), candle("2026-10-28T16:49:00Z", 101), fresh_history=True)
+    assert row.status == "stale" and row.change_pct is None
+
+
 def test_more_than_ten_open_minutes_is_stale_but_ten_is_permitted():
     okay = calculate(candle("2026-10-27T17:00:00Z", 100), candle("2026-10-28T16:51:00Z", 101))
     stale = calculate(candle("2026-10-27T17:00:00Z", 100), candle("2026-10-28T16:50:00Z", 101))
@@ -212,6 +250,32 @@ def test_load_reads_fresh_history_every_time_and_never_depends_on_order_or_revie
         assert request["frequency"] == 1 and request["frequency_type"] == "minute"
         assert request["need_extended_hours_data"] is True and request["period"] is None
         assert request["end_datetime"] == AS_OF
+
+
+def test_fresh_server_sparse_eleven_symbol_after_hours_snapshot_has_full_average(tmp_path):
+    symbols = ("DOCU", "DBX", "SDGR", "QBTS", "PYPL", "GLOB", "OUST", "ABCL", "MRNA", "RR", "PDYN")
+    write_profile(tmp_path, symbols)
+    stamp = instant("2026-10-29T04:03:00Z")
+    current_times = {symbol: "23:58:00" for symbol in symbols}
+    current_times.update(DBX="20:11:00", GLOB="20:55:00")
+    previous_times = {symbol: "23:58:00" for symbol in symbols}
+    previous_times.update(SDGR="23:28:00", PYPL="23:49:00", ABCL="23:42:00", PDYN="23:37:00")
+    requests = []
+
+    class Session:
+        def get_price_history(self, symbol, **kwargs):
+            requests.append((symbol, kwargs["end_datetime"]))
+            return payload(candle(f"2026-10-27T{previous_times[symbol]}Z", 100),
+                           candle(f"2026-10-28T{current_times[symbol]}Z", 101), symbol=symbol)
+
+    snapshot = prices.load_rolling_price_change(as_of=stamp, repository_root=tmp_path,
+        session_factory=Session, split_fetcher=lambda _: [])
+    assert snapshot.available_count == snapshot.total_count == 11
+    assert snapshot.average_pct == pytest.approx(1)
+    assert all(row.status == "closed" for row in snapshot.rows)
+    dbx = next(row for row in snapshot.rows if row.symbol == "DBX")
+    assert dbx.current.observed_at == instant("2026-10-28T20:11:00Z")
+    assert set(requests) == {(symbol, stamp) for symbol in symbols}
 
 
 def test_provider_failure_preserves_membership_and_missing_average(tmp_path):

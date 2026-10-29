@@ -18,13 +18,16 @@ candles are admitted. No interpolation or synthetic carry-forward candles.
 The closure policy uses the installed XNAS calendar (holidays/DST/early closes).
 Expected native equity history sessions are 04:00--20:00 Eastern on full days
 and 04:00--17:00 on 13:00 early-close days (the provider's holiday FAQ).
-This conservative market-data envelope includes premarket observations rather
-than treating the broker's later order-entry opening as a market closure. A price is stale
-after ten *expected trading minutes* have elapsed without an observation. Closed
-time does not consume that allowance, but missing open-session evidence does.
-Thus a weekend can legitimately carry Friday's close at both cutoffs; a missing
-Friday afternoon cannot be disguised as a weekend closure. Actual endpoints and
-their ages remain available to the UI. This is a price return, not total return.
+This market-data envelope includes premarket observations. Each refresh requests
+new server history through T; a successful response may contain a sparse last
+trade during extended hours. Such an actual close remains eligible across
+sparse extended-hours activity. For fresh server replies, staleness
+counts only regular-session minutes: more than ten missing regular minutes is
+stale. This preserves closure/weekend carries and sparse after-hours trades,
+while rejecting a missed regular session or a multi-day open-market data gap.
+Unverified observations retain the conservative full-session age check. Actual
+endpoint timestamps remain visible; no timestamps or prices are advanced to T.
+This is a price return, not total return.
 
 Calendar/source references (policy, not runtime network dependencies):
 https://www.schwab.com/stocks/extended-hours-trading
@@ -51,8 +54,9 @@ SOURCE = "Schwab · native 1-minute history · extended hours · FMP split valid
 PRICE_SOURCE = "schwab:pricehistory:1m"
 PRICE_BASIS = "Schwab same-response historical scale; fresh FMP split check; reported splits normalized"
 POLICY = ("T minus 24 elapsed UTC hours; latest completed positive-volume 1m close at/before each cutoff. "
-          "XNAS holidays; 04–20 Eastern, early-close days 04–17. Closed time may carry the last actual close; "
-          "over 10 expected trading minutes missing is stale. Same-response native history; freshly checked FMP splits "
+          "Fresh server history through T on every refresh. XNAS holidays; 04–20 Eastern, early-close days 04–17. "
+          "Sparse extended-hours/closed time may retain the last actual close; over 10 missing regular-session minutes is stale. "
+          "Same-response native history; freshly checked FMP splits "
           "normalized, ambiguous boundaries unavailable. No interpolation or dividend total return.")
 MINUTE = timedelta(minutes=1)
 MAX_OPEN_AGE = timedelta(minutes=10)
@@ -127,6 +131,8 @@ class MarketSession:
     expected_open: datetime
     expected_close: datetime
     eligible_open: datetime
+    regular_open: datetime
+    regular_close: datetime
 
 
 def market_sessions(as_of: datetime) -> tuple[MarketSession, ...]:
@@ -152,12 +158,17 @@ def market_sessions(as_of: datetime) -> tuple[MarketSession, ...]:
         else:
             # An unusual emergency short session has no assumed extension.
             expected_open, expected_close, eligible_open = opened, closed, opened
-        result.append(MarketSession(utc(expected_open), utc(expected_close), utc(eligible_open)))
+        result.append(MarketSession(utc(expected_open), utc(expected_close), utc(eligible_open), utc(opened), utc(closed)))
     return tuple(result)
 
 
 def _open_elapsed(start: datetime, end: datetime, sessions: Iterable[MarketSession]) -> timedelta:
     return sum((max(timedelta(0), min(end, session.expected_close) - max(start, session.expected_open))
+                for session in sessions), timedelta(0))
+
+
+def _regular_elapsed(start: datetime, end: datetime, sessions: Iterable[MarketSession]) -> timedelta:
+    return sum((max(timedelta(0), min(end, session.regular_close) - max(start, session.regular_open))
                 for session in sessions), timedelta(0))
 
 
@@ -286,7 +297,7 @@ def _fetch_split_payload(symbol: str):
 
 
 def calculate_change(symbol: str, observations: Iterable[PriceObservation], *, as_of: datetime,
-                     sessions: tuple[MarketSession, ...]) -> SymbolPriceChange:
+                     sessions: tuple[MarketSession, ...], fresh_history: bool = False) -> SymbolPriceChange:
     stamp = utc(as_of)
     previous_cutoff = stamp - timedelta(hours=24)
     ordered = sorted((observation for observation in observations
@@ -298,18 +309,25 @@ def calculate_change(symbol: str, observations: Iterable[PriceObservation], *, a
         return SymbolPriceChange(symbol, None, "unavailable", "Missing eligible price at one or both cutoffs", current, previous)
     if current.source != previous.source or current.basis != previous.basis:
         return SymbolPriceChange(symbol, None, "unavailable", "Prices have incompatible source or adjustment basis", current, previous)
+    sparse_extended = False
     for name, observation, cutoff in (("Current", current, stamp), ("24h reference", previous, previous_cutoff)):
         observed = utc(observation.observed_at)
         if observed < stamp - LOOKBACK:
             return SymbolPriceChange(symbol, None, "stale", f"{name} exceeds bounded history policy", current, previous)
-        if _open_elapsed(observed, cutoff, sessions) > MAX_OPEN_AGE:
-            return SymbolPriceChange(symbol, None, "stale", f"{name} is over 10 expected market minutes old", current, previous)
+        elapsed = _regular_elapsed(observed, cutoff, sessions) if fresh_history else _open_elapsed(observed, cutoff, sessions)
+        if elapsed > MAX_OPEN_AGE:
+            scope = "regular-session" if fresh_history else "expected market"
+            return SymbolPriceChange(symbol, None, "stale", f"{name} is over 10 {scope} minutes old", current, previous)
+        sparse_extended |= fresh_history and _open_elapsed(observed, cutoff, sessions) > MAX_OPEN_AGE
     change = 100.0 * (current.price / previous.price - 1.0)
     if not math.isfinite(change):
         return SymbolPriceChange(symbol, None, "unavailable", "Price ratio is not finite", current, previous)
     closed = _is_closed(stamp, sessions) or _is_closed(previous_cutoff, sessions)
-    reason = ("Market closed at a cutoff; latest eligible actual close carried across closed time"
-              if closed else "Latest eligible completed native close at each UTC cutoff")
+    if sparse_extended:
+        reason = "Fresh server history; latest returned actual close retained across sparse extended hours / closed time"
+    else:
+        reason = ("Market closed at a cutoff; latest eligible actual close carried across closed time"
+                  if closed else "Latest eligible completed native close at each UTC cutoff")
     return SymbolPriceChange(symbol, change, "closed" if closed else "available", reason, current, previous)
 
 
@@ -403,7 +421,7 @@ def load_rolling_price_change(*, as_of: datetime | None = None, repository_root:
                     continue
                 raw = normalize_known_splits(raw, events=split_events, as_of=stamp)
                 observations = observations_from_payload(raw, sessions=sessions)
-                result = calculate_change(symbol, observations, as_of=stamp, sessions=sessions)
+                result = calculate_change(symbol, observations, as_of=stamp, sessions=sessions, fresh_history=True)
             except Exception as exc:
                 result = SymbolPriceChange(symbol, None, "unavailable", f"Market history unavailable ({type(exc).__name__})")
             replies.put(result)

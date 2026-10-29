@@ -4,6 +4,7 @@ from __future__ import annotations
 import math
 import tkinter as tk
 from datetime import datetime, timedelta
+from tkinter import ttk
 from zoneinfo import ZoneInfo
 
 from app.ui.gameplan_widgets import Tooltip, label, panel
@@ -34,8 +35,9 @@ def pacific_time(value: datetime | None, *, seconds: bool = False) -> str:
 class RollingPricePanel:
     """Presentation only: callers provide independent background-loaded snapshots."""
 
-    def __init__(self, parent):
+    def __init__(self, parent, *, on_refresh=None):
         self.frame = panel(parent)
+        self.on_refresh = on_refresh
         self.snapshot = None
         self.selected_session = None
         self.loading = False
@@ -44,9 +46,17 @@ class RollingPricePanel:
         self.value_labels = {}
         self.state_labels = {}
         self._columns = 0
+        self._summary_stacked = None
 
-        self.title_label = label(self.frame, "Rolling 24-Hour Price Change", size=13, bold=True)
-        self.title_label.pack(anchor="w", padx=12, pady=(9, 3))
+        self.header = tk.Frame(self.frame, background=SURFACE)
+        self.header.pack(fill="x", padx=12, pady=(9, 3))
+        self.header.columnconfigure(0, weight=1)
+        self.title_label = label(self.header, "Rolling 24-Hour Price Change", size=13, bold=True, justify="left")
+        self.title_label.grid(row=0, column=0, sticky="w")
+        self.refresh_button = ttk.Button(self.header, text="Refresh", command=self._request_refresh,
+                                         state="normal" if on_refresh is not None else "disabled")
+        self.refresh_button.grid(row=0, column=1, sticky="ne", padx=(8, 0))
+        Tooltip(self.refresh_button, "Request current market-price evidence and recompute this rolling panel.")
         self.summary = tk.Frame(self.frame, background=SURFACE)
         self.summary.pack(fill="x", padx=12)
         self.summary.columnconfigure(0, weight=1)
@@ -72,10 +82,28 @@ class RollingPricePanel:
 
     def set_loading(self):
         self.loading = True
+        self.refresh_button.configure(text="Refreshing…", state="disabled")
         if self.snapshot is None:
             self.status_label.configure(text="Current market prices · Loading…")
         else:
             self.status_label.configure(text=f"As of {pacific_time(self.snapshot.as_of)} · Refreshing…")
+        self._resize()
+
+    def _request_refresh(self):
+        if self.loading or self.on_refresh is None:
+            return
+        self.set_loading()
+        try:
+            self.on_refresh()
+        except Exception:
+            self.loading = False
+            self._restore_refresh_button()
+            self.status_label.configure(text="Current market prices · Refresh could not start")
+            raise
+
+    def _restore_refresh_button(self):
+        self.refresh_button.configure(text="Refresh", state="normal" if self.on_refresh is not None else "disabled")
+        self._resize()
 
     def set_session_context(self, session):
         self.selected_session = session or None
@@ -84,6 +112,7 @@ class RollingPricePanel:
     def set_snapshot(self, snapshot):
         self.snapshot = snapshot
         self.loading = False
+        self._restore_refresh_button()
         symbols = tuple(row.symbol for row in snapshot.rows)
         if tuple(self.symbol_labels) != symbols:
             for child in self.grid_frame.winfo_children():
@@ -157,7 +186,14 @@ class RollingPricePanel:
         wraplength = max(120, width - 28)
         self.status_label.configure(wraplength=wraplength)
         self.context_label.configure(wraplength=wraplength)
-        self.title_label.configure(wraplength=wraplength)
+        self.title_label.configure(wraplength=max(80, wraplength - self.refresh_button.winfo_reqwidth() - 8))
+        stacked = width < 360
+        if stacked != self._summary_stacked:
+            self.average_title.grid_configure(columnspan=2 if stacked else 1)
+            self.average_value.grid_configure(row=1 if stacked else 0, column=0 if stacked else 1,
+                                              columnspan=2 if stacked else 1, sticky="w" if stacked else "e")
+            self.coverage_label.grid_configure(row=2 if stacked else 1)
+            self._summary_stacked = stacked
 
     def _average_detail(self):
         if self.snapshot is None:
