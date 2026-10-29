@@ -1,4 +1,5 @@
 """Offline 1A start/display tests. All tasks and service files are fixtures."""
+from datetime import datetime, timedelta
 from pathlib import Path
 import hashlib
 import json
@@ -313,3 +314,80 @@ def test_windows_console_title_is_explicit_and_best_effort(monkeypatch, availabl
     REAL_SET_TITLE()
     assert calls == ["Scout 15m 1A - Data and Preparation"]
     assert setter.argtypes == [fake.c_wchar_p] and setter.restype == fake.c_int
+
+
+@pytest.mark.parametrize("wake,zone", [("2026-10-29T11:00:00+00:00", "PDT"),
+                                      ("2026-11-02T12:00:00+00:00", "PST")])
+def test_waiting_message_changes_at_session_start_without_claiming_service_started(tmp_path, wake, zone):
+    wake_at = datetime.fromisoformat(wake)
+    observed = [wake_at - timedelta(seconds=1)]
+    saved = {"status": "STARTING", "wake_at": wake, "deadline": (wake_at + timedelta(hours=13)).isoformat(),
+             "startup_progress": {"stage": "initializing"}, "errors": [], "heartbeat_at": "saved"}
+    path = tmp_path / "data-status.json"
+    save(path, saved)
+    before = path.read_bytes()
+    rows = []
+    viewer = candidate.DataConsole(tmp_path, sink=rows.append, monotonic=lambda: 0, clock=lambda: observed[0])
+    viewer.poll()
+    status = next(row for row in rows if row["event"] == "system_1a_status")
+    assert status["message"] == f"Waiting until 4:00 a.m. Pacific session start on {wake[:10]} ({zone})."
+    assert status["status"] == "STARTING" and "liveness not inferred" in status["evidence"]
+    rows.clear()
+    viewer.poll()
+    assert rows == []
+    observed[0] = wake_at
+    viewer.poll()
+    assert rows[-1]["message"] == f"4:00 a.m. Pacific session start reached on {wake[:10]} ({zone}); awaiting service progress."
+    assert rows[-1]["status"] == "STARTING" and rows[-1]["service_heartbeat_at"] == "saved"
+    assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize("patch", [
+    {"status": "STOPPED"}, {"status": "FAILED"}, {"status": "DEGRADED"}, {"status": "RUNNING"},
+    {"errors": [{"error_type": "saved failure"}]},
+    {"startup_progress": {"stage": "native_feed_initializing"}},
+    {"status": {}}, {"startup_progress": {"stage": []}},
+    {"wake_at": "invalid"}, {"wake_at": "2026-10-29T04:00:00"},
+    {"deadline": "2026-10-28T23:00:00+00:00"},
+])
+def test_terminal_failed_stale_or_invalid_evidence_is_not_displayed_as_waiting(tmp_path, patch):
+    saved = {"status": "STARTING", "wake_at": "2026-10-29T11:00:00+00:00", "errors": [], **patch}
+    save(tmp_path / "data-status.json", saved)
+    rows = []
+    viewer = candidate.DataConsole(tmp_path, sink=rows.append,
+        clock=lambda: datetime.fromisoformat("2026-10-29T10:55:00+00:00"))
+    viewer.poll()
+    status = next(row for row in rows if row["event"] == "system_1a_status")
+    assert "message" not in status
+    assert status["status"] == saved["status"]
+
+
+def test_once_prints_waiting_message_without_native_operation_or_file_changes(tmp_path, monkeypatch, capsys):
+    save(tmp_path / "data-status.json", {"status": "STARTING", "wake_at": "2026-10-29T11:00:00+00:00",
+        "startup_progress": {"stage": "initializing"}, "errors": []})
+    before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Waiting display reached native task control")
+    monkeypatch.setattr(candidate, "task_operation", forbidden)
+    monkeypatch.setattr(candidate, "start_existing_task", forbidden)
+    assert candidate.main(["--root", str(tmp_path), "--once"],
+        clock=lambda: datetime.fromisoformat("2026-10-29T10:55:00+00:00")) == 0
+    rows = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    status = next(row for row in rows if row["event"] == "system_1a_status")
+    assert status["message"] == "Waiting until 4:00 a.m. Pacific session start on 2026-10-29 (PDT)."
+    assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
+
+
+def test_human_readable_once_prints_standalone_waiting_line_and_retains_json(tmp_path, capsys):
+    save(tmp_path / "data-status.json", {"status": "STARTING", "wake_at": "2026-10-29T11:00:00+00:00",
+        "startup_progress": {"stage": "initializing"}, "errors": []})
+    assert candidate.main(["--root", str(tmp_path), "--once", "--human-readable"],
+        clock=lambda: datetime.fromisoformat("2026-10-29T10:55:00+00:00")) == 0
+    lines = capsys.readouterr().out.splitlines()
+    message = "Waiting until 4:00 a.m. Pacific session start on 2026-10-29 (PDT)."
+    readable = "[Scout 1A saved status] " + message
+    assert lines.count(readable) == 1
+    rows = [json.loads(line) for line in lines if line != readable]
+    status = next(row for row in rows if row["event"] == "system_1a_status")
+    assert status["message"] == message and "liveness not inferred" in status["evidence"]
+    assert json.loads(lines[lines.index(readable) + 1]) == status

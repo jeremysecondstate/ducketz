@@ -148,6 +148,77 @@ class Harness:
         return self.owner.run(lock_factory=lambda *_: nullcontext())
 
 
+class CapturedConsole:
+    def __init__(self):
+        self.messages = []
+
+    def emit(self, message):
+        self.messages.append(message)
+
+    def close(self):
+        pass
+
+
+@pytest.mark.parametrize("wake,zone", [("2026-10-29T11:00:00Z", "PDT"),
+                                     ("2026-11-02T12:00:00Z", "PST")])
+def test_early_start_reports_pacific_session_and_waits_for_both_workers(tmp_path, wake, zone):
+    h = Harness(tmp_path, "slow")
+    opening = services.instant(wake)
+    h.clock.now = opening - timedelta(seconds=1)
+    h.owner.state.update(wake_at=opening.isoformat(), deadline=(opening + timedelta(seconds=1)).isoformat())
+    console = CapturedConsole()
+    h.owner.console.close()
+    h.owner.console = console
+    starts = []
+    factory = h.owner.worker_factory
+    def make_worker(*args, **kwargs):
+        starts.append(h.clock())
+        assert h.clock() >= opening
+        return factory(*args, **kwargs)
+    h.owner.worker_factory = make_worker
+    def advance(seconds):
+        if h.clock() < opening:
+            assert not h.workers
+        h.clock.sleep(seconds)
+    h.owner.sleep = advance
+    assert h.run() == 0
+    assert {w.role for w in h.workers} == {"trading", "model"}
+    assert starts and all(value == opening for value in starts)
+    rows = [json.loads(text) for text in console.messages if text.startswith("{")]
+    waiting = next(row for row in rows if row["status"] == "WAITING")
+    assert waiting["message"] == f"Waiting until 4:00 a.m. Pacific session start on {opening.date()} ({zone})."
+    assert "[Scout 1B] " + waiting["message"] in console.messages
+    assert waiting["wake_at"] == opening.isoformat()
+    assert any("session start reached" in (row["message"] or "") for row in rows if row["status"] == "STARTING")
+
+
+def test_manual_stop_while_waiting_never_starts_workers(tmp_path):
+    h = Harness(tmp_path)
+    h.owner.state["wake_at"] = (h.clock() + timedelta(minutes=5)).isoformat()
+    h.owner.state["deadline"] = (h.clock() + timedelta(hours=13)).isoformat()
+    def stop_during_wait(seconds):
+        assert not h.workers
+        h.clock.sleep(seconds)
+        h.owner.request_stop()
+    h.owner.sleep = stop_during_wait
+    assert h.run() == 0
+    assert not h.workers
+    assert h.owner.state["stop_reason"] == "manual_stop"
+
+
+def test_late_launch_and_stopped_state_do_not_claim_waiting(tmp_path):
+    h = Harness(tmp_path)
+    h.owner.console.close()
+    h.owner.console = CapturedConsole()
+    h.owner.state["wake_at"] = (h.clock() - timedelta(minutes=1)).isoformat()
+    h.owner._console_status(force=True)
+    row = json.loads(h.owner.console.messages[-1])
+    assert "reached" in row["message"] and "Waiting until" not in row["message"]
+    h.owner.state["status"] = "STOPPED"
+    h.owner._console_status(force=True)
+    assert json.loads(h.owner.console.messages[-1])["message"] is None
+
+
 def test_full_iteration_rotates_model_and_trading_with_original_run_identity(tmp_path):
     h = Harness(tmp_path)
     assert h.run() == 0
