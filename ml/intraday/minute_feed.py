@@ -15,7 +15,7 @@ import uuid
 import pandas as pd
 
 from . import data
-from .prediction import ContractError, PACIFIC, STEP, digest, instant
+from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant
 from .store import utcnow
 
 
@@ -40,7 +40,11 @@ class _HistorySource:
 class QuarterHourMinuteFeed:
     def __init__(self, *, provider, store, journal, histories, pc, symbols,
                  session_id, clock=utcnow, start_reference=None,
-                 publication_offset_seconds=0, on_closed=None, native_interval_symbols=(), reference_fill_policy=None):
+                 publication_offset_seconds=0, on_closed=None, native_interval_symbols=(), reference_fill_policy=None,
+                 event_persistence_stopped=None, event_persistence_pause=None, on_event_persistence_retry=None):
+        self._event_persistence_stopped = event_persistence_stopped
+        self._event_persistence_pause = event_persistence_pause
+        self._on_event_persistence_retry = on_event_persistence_retry
         self.provider, self.store, self.journal = provider, store, journal
         self.histories, self.clock = histories, clock
         self.pc, self.symbols, self.session_id = pc, tuple(symbols), session_id
@@ -139,8 +143,49 @@ class QuarterHourMinuteFeed:
             self._restore_reference_rechecks()
 
     def _event(self, kind, value, symbol=None):
-        self.store.event(self.identity, kind, value, symbol=symbol,
-                         recorded_at=instant(self.clock()).isoformat())
+        stopped, pause = self._event_persistence_stopped, self._event_persistence_pause
+        if self.pc != "Scout" or stopped is None or pause is None:
+            return self.store.event(self.identity, kind, value, symbol=symbol,
+                                    recorded_at=instant(self.clock()).isoformat())
+        # Journaled responses, cursor changes and completed acquisition stay in
+        # this stack frame while only the original event INSERT is retried.
+        frozen, recorded = json.loads(encoded(value)), instant(self.clock()).isoformat()
+        pending = {"operation": "minute_feed_event", "feed_id": self.identity,
+                   "source_session": self.session_id, "pc": self.pc, "kind": kind,
+                   "symbol": symbol, "recorded_at": recorded, "payload_sha256": digest(frozen)}
+        episode = None
+        def receipt(phase):
+            if self._on_event_persistence_retry is not None:
+                try:
+                    self._on_event_persistence_retry(phase, {**pending, **episode})
+                except Exception:
+                    pass  # Optional evidence cannot replay or mask the effect.
+        while True:
+            if stopped():
+                if episode is not None:
+                    receipt("stopped")
+                raise InterruptedError("Minute feed stopped with original event pending")
+            try:
+                result = self.store.event(self.identity, kind, frozen, symbol=symbol, recorded_at=recorded)
+            except Exception as exc:
+                from .live_session import _execution_store_busy
+                if not _execution_store_busy(exc):
+                    raise
+                if episode is None:
+                    episode = {"episode_id": uuid.uuid4().hex, "busy_count": 1}
+                    try:
+                        from .runtime import _symbol_exception_diagnostics
+                        episode["diagnostics"] = _symbol_exception_diagnostics(exc)
+                    except Exception:
+                        pass
+                    receipt("started")
+                else:
+                    episode["busy_count"] += 1
+                pause(.2)
+            else:
+                if episode is not None:
+                    receipt("recovered")
+                return result
 
     def _fill_id(self, symbol, reference):
         return digest({"pc": self.pc, "symbol": symbol, "reference_at": reference.isoformat(),
