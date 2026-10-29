@@ -59,7 +59,8 @@ def main():
     result = pytest.main(["-q", "--noconftest", "-p", "no:cacheprovider",
         "--rootdir", str(candidate), "--basetemp", str(basetemp),
         str(candidate / "tests/test_intraday_partial_sizing_reads.py"),
-        str(candidate / "tests/test_intraday_sizing_cache_diagnostics.py")])
+        str(candidate / "tests/test_intraday_sizing_cache_diagnostics.py"),
+        str(candidate / "tests/test_intraday_sizing_read_deadline.py")])
     closure = {}
     for module in list(sys.modules.values()):
         filename = getattr(module, "__file__", None)
