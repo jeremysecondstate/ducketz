@@ -1,0 +1,134 @@
+--- a/ml/intraday/store.py
++++ b/ml/intraday/store.py
+@@ -83,8 +83,14 @@
+ 
+ 
+ class ShadowStore:
+-    def __init__(self, path):
++    def __init__(self, path, *, snapshot_directory=None):
+         self.path = Path(path)
++        # Only independent 1A preparation opts in. Forecast/execution stores
++        # retain their original inline representation and readers.
++        self.snapshot_objects = None
++        if snapshot_directory is not None:
++            from .snapshot_objects import SnapshotObjects
++            self.snapshot_objects = SnapshotObjects(snapshot_directory)
+         self.path.parent.mkdir(parents=True, exist_ok=True)
+         with self.connect() as db:
+             db.executescript("""
+@@ -165,6 +171,23 @@
+             raise ContractError("Persisted snapshot evidence hash changed")
+         return value
+ 
++    def _input_value(self, key, raw):
++        value = json.loads(raw)
++        # Legacy inline snapshots may contain any scientific dictionary keys.
++        # Their original semantic identity takes precedence over the codec tag.
++        if isinstance(value, dict) and digest(value) == key:
++            return value
++        if isinstance(value, dict) and "snapshot_storage" in value:
++            if (set(value) != {"snapshot_storage", "sha256", "bytes"}
++                    or value["snapshot_storage"] != "intraday-input-reference-v1"
++                    or value["sha256"] != key
++                    or type(value["bytes"]) is not int or value["bytes"] < 0
++                    or self.snapshot_objects is None):
++                raise ContractError("Persisted snapshot reference is invalid or unbound")
++            raw = self.snapshot_objects.read(key, expected_bytes=value["bytes"])
++            return self._snapshot_value(key, raw)
++        raise ContractError("Persisted snapshot evidence hash changed")
++
+     @staticmethod
+     def _forecast_value(row):
+         key, pc, symbol, cycle_id, reference_at, issued_at, raw = row
+@@ -234,6 +257,20 @@
+         payload = json.loads(encoded(payload))
+         canonical = encoded(payload)
+         key = hashlib.sha256(canonical.encode()).hexdigest()
++        stored = canonical
++        if self.snapshot_objects is not None:
++            previous = self.inputs(cycle_id, symbol)
++            if previous is not None:
++                return previous
++            # Complete original bytes become durable before any DB reference.
++            # ReadySnapshots publishes these same bytes/hash without a copy.
++            # A crash before the DB commit can leave an unreferenced object;
++            # it never exposes incomplete inputs or rewrites prior evidence.
++            raw = canonical.encode()
++            if self.snapshot_objects.write(raw) != key:
++                raise ContractError("Snapshot object identity changed")
++            stored = encoded({"snapshot_storage": "intraday-input-reference-v1",
++                              "sha256": key, "bytes": len(raw)})
+         with self.connect() as db:
+             db.execute("BEGIN IMMEDIATE")
+             old = db.execute("SELECT snapshot_id FROM symbol_inputs WHERE cycle_id=? AND symbol=?", (cycle_id, symbol)).fetchone()
+@@ -241,23 +278,23 @@
+                 row = db.execute("SELECT payload FROM snapshots WHERE id=?", old).fetchone()
+                 if row is None:
+                     raise ContractError("Persisted snapshot evidence is missing")
+-                return old[0], self._snapshot_value(old[0], row[0])
+-            db.execute("INSERT OR IGNORE INTO snapshots VALUES(?,?)", (key, canonical))
++                return old[0], self._input_value(old[0], row[0])
++            db.execute("INSERT OR IGNORE INTO snapshots VALUES(?,?)", (key, stored))
+             recorded = db.execute("SELECT payload FROM snapshots WHERE id=?", (key,)).fetchone()[0]
+             # The normalized payload and canonical bytes were validated before
+             # entering the writer. Exact readback preserves that proof without
+             # decoding and re-encoding the same scientific snapshot again.
+             # Existing/colliding or changed stored bytes still take the full
+             # original semantic-hash validation path.
+-            if recorded != canonical or not isinstance(payload, dict):
+-                self._snapshot_value(key, recorded)
++            if recorded != stored or not isinstance(payload, dict):
++                self._input_value(key, recorded)
+             db.execute("INSERT INTO symbol_inputs VALUES(?,?,?)", (cycle_id, symbol, key))
+         return key, payload
+ 
+     def inputs(self, cycle_id, symbol):
+         with self.connect() as db:
+             row = db.execute("SELECT s.id,s.payload FROM snapshots s JOIN symbol_inputs i ON i.snapshot_id=s.id WHERE i.cycle_id=? AND i.symbol=?", (cycle_id, symbol)).fetchone()
+-        return (row[0], self._snapshot_value(row[0], row[1])) if row else None
++        return (row[0], self._input_value(row[0], row[1])) if row else None
+ 
+     def forecast_symbols(self, cycle_id):
+         """Indexed presence for scheduling; consumption still validates originals."""
+--- a/ml/intraday/data_renewal.py
++++ b/ml/intraday/data_renewal.py
+@@ -219,7 +219,7 @@
+     symbol = next_symbol(assigned, renewal.state.get("last_symbol"), ready)
+     if symbol is None:
+         _checkpoint(renewal, renewal.state, close, clock, 3)
+-    common = ShadowRunner(store=ShadowStore(base / "preparation.sqlite3"), pc=session["actor"],
++    common = ShadowRunner(store=ShadowStore(base / "preparation.sqlite3", snapshot_directory=base / "ready/snapshots"), pc=session["actor"],
+         symbols=session["symbols"], config=config, clock=clock, datastore=root, stopped=renewal.stopped,
+         selected_config_path=root / "intraday/model-supervision/active.json")
+     # Only the short policy-envelope creation is serialized. Provider work and
+@@ -234,7 +234,8 @@
+                                               "original_target_close": (reference + 3 * STEP).isoformat()})
+             with common.store.connect() as db:
+                 old = db.execute("SELECT payload FROM cycles WHERE id=?", (cycle_id,)).fetchone()
+-    runner = ShadowRunner(store=ShadowStore(base / ("preparation-" + symbol + ".sqlite3")),
++    runner = ShadowRunner(store=ShadowStore(base / ("preparation-" + symbol + ".sqlite3"),
++                                          snapshot_directory=base / "ready/snapshots"),
+         pc=session["actor"], symbols=session["symbols"], config=config, clock=clock, datastore=root,
+         stopped=renewal.stopped, selected_config_path=root / "intraday/model-supervision/active.json")
+     runner.store.begin_cycle(cycle_id, json.loads(old[0]))
+--- a/ml/intraday/split_service.py
++++ b/ml/intraday/split_service.py
+@@ -273,7 +273,7 @@
+         load_dotenv(repository / ".env", override=False)
+         configure_local_repository(repository)
+         os.environ["DUCKETS_PRODUCTION_WATCHLIST"] = str(watchlist)
+-        store = ShadowStore(base / "preparation.sqlite3")
++        store = ShadowStore(base / "preparation.sqlite3", snapshot_directory=base / "ready/snapshots")
+         collection_store = ShadowStore(base / "collection.sqlite3")
+         with collection_store.connect() as db:
+             db.execute("CREATE TABLE IF NOT EXISTS system_1a_collection_days("
+@@ -306,7 +306,8 @@
+                     restore_eagerly=False, datastore=root)
+             return incoming
+         def service_for_symbol(symbol):
+-            lane_runner = ShadowRunner(store=ShadowStore(base / ("preparation-" + symbol + ".sqlite3")),
++            lane_runner = ShadowRunner(store=ShadowStore(base / ("preparation-" + symbol + ".sqlite3"),
++                                                        snapshot_directory=base / "ready/snapshots"),
+                 pc=actor, symbols=symbols, config=config, clock=clock, datastore=root,
+                 stopped=shutdown.is_set, selected_config_path=root / "intraday/model-supervision/active.json")
+             return DataService(runner=lane_runner, handoff=handoff, incoming=incoming_for_lane(),
