@@ -20,6 +20,7 @@ import sys
 import threading
 import time
 import uuid
+from zoneinfo import ZoneInfo
 
 import psutil
 
@@ -40,6 +41,19 @@ CHECKPOINT_SCHEMA = "scout-independent-model-checkpoint-v1"
 PLANNED_EXIT = 75
 TRADING_ROTATION_VERSION = "scout-trading-rotation-v1"
 TRADING_CHECKPOINT_SCHEMA = "scout-independent-trading-checkpoint-v1"
+
+
+def session_start_message(wake_at, now):
+    """Describe the selected session gate without changing its calendar or authority."""
+    wake = instant(wake_at)
+    local = wake.astimezone(ZoneInfo("America/Los_Angeles"))
+    hour = local.hour % 12 or 12
+    meridiem = "a.m." if local.hour < 12 else "p.m."
+    start = f"{hour}:{local.minute:02d} {meridiem} Pacific session start"
+    date = f"on {local.date().isoformat()} ({local.tzname()})"
+    if instant(now) < wake:
+        return f"Waiting until {start} {date}."
+    return f"{start} reached {date}."
 
 
 def selected_release(selector):
@@ -324,13 +338,19 @@ class ServiceController:
                        "error": str(value.get("error") or value.get("result", {}).get("error") or "")[:2048],
                        "log": str(self.root / role / str(value["generation"]) / (role + ".log"))}
                  for role, value in self.state["roles"].items()}
-        signature = json.dumps([self.state["status"], roles, self.state.get("stop_reason")], sort_keys=True)
+        observed_at = instant(self.clock())
+        message = (session_start_message(self.state["wake_at"], observed_at)
+                   if self.state["status"] in {"WAITING", "STARTING"} else None)
+        signature = json.dumps([self.state["status"], roles, self.state.get("stop_reason"), message], sort_keys=True)
         now = self.monotonic()
         if (force or signature != self._reported_status or self._last_console is None
                 or now - self._last_console >= self.heartbeat_seconds):
+            if message:
+                display(self.console, "[Scout 1B] " + message)
             display(self.console, json.dumps({"event": "scout_controller_status",
-                "recorded_at": instant(self.clock()).isoformat(), "session_id": self.run_id,
+                "recorded_at": observed_at.isoformat(), "session_id": self.run_id,
                 "status": self.state["status"], "roles": roles,
+                "message": message, "wake_at": self.state["wake_at"],
                 "deadline": self.state["deadline"], "stop_reason": self.state.get("stop_reason")}, sort_keys=True))
             self._reported_status, self._last_console = signature, now
 
@@ -738,6 +758,7 @@ def main(argv=None):
     selected = selected_release(args.selector)
     if args.check:
         prepared = probe(selected, args.datastore, args.repository / "scratch/scout-independent-probes")
+        prepared["session_start_message"] = session_start_message(prepared["wake_at"], utcnow())
         print(json.dumps(prepared, sort_keys=True))
         return 0
     console = ConsoleDisplay()

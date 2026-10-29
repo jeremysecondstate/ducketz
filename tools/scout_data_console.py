@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 import subprocess
 import time
+from zoneinfo import ZoneInfo
 
 MAX_JSON = 65536
 MAX_READ = 65536
@@ -172,9 +173,37 @@ def read_status(path):
     return value
 
 
+def session_start_message(saved, now):
+    """Describe a saved pre-session record without claiming service liveness."""
+    if saved.get("status") not in ("STARTING", "WAITING") or saved.get("errors"):
+        return None
+    progress = saved.get("startup_progress") or {}
+    if not isinstance(progress, dict) or progress.get("stage") not in (None, "initializing", "waiting_for_session"):
+        return None
+    try:
+        wake = datetime.fromisoformat(saved["wake_at"].replace("Z", "+00:00"))
+        if wake.tzinfo is None or now.tzinfo is None:
+            return None
+        if saved.get("deadline"):
+            deadline = datetime.fromisoformat(saved["deadline"].replace("Z", "+00:00"))
+            if deadline.tzinfo is None or now >= deadline:
+                return None
+        local = wake.astimezone(ZoneInfo("America/Los_Angeles"))
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return None
+    hour = local.hour % 12 or 12
+    meridiem = "a.m." if local.hour < 12 else "p.m."
+    start = f"{hour}:{local.minute:02d} {meridiem} Pacific session start"
+    day = f"{local.date().isoformat()} ({local.tzname()})"
+    if now < wake:
+        return f"Waiting until {start} on {day}."
+    return f"{start} reached on {day}; awaiting service progress."
+
+
 class DataConsole:
-    def __init__(self, root, *, sink=emit, monotonic=time.monotonic, heartbeat_seconds=30):
+    def __init__(self, root, *, sink=emit, monotonic=time.monotonic, heartbeat_seconds=30, clock=None):
         self.root, self.sink, self.monotonic = Path(root), sink, monotonic
+        self.clock = clock if clock is not None else lambda: datetime.now(timezone.utc)
         self.heartbeat_seconds = heartbeat_seconds
         self.tails = {name: FileTail(self.root / name, recent=name == "data-metrics.jsonl")
                       for name in ("data-metrics.jsonl", "data.stdout.log", "data.stderr.log")}
@@ -195,6 +224,9 @@ class DataConsole:
                 "startup_progress": saved.get("startup_progress"), "error_count": len(errors),
                 "latest_saved_error": errors[-1] if errors else None,
                 "source": str(self.root / "data-status.json")}
+            message = session_start_message(saved, self.clock())
+            if message is not None:
+                value["message"] = message
         except (OSError, ValueError, UnicodeError) as exc:
             value = {"event": "system_1a_status_unavailable", "reason": type(exc).__name__,
                      "source": str(self.root / "data-status.json")}
@@ -236,12 +268,13 @@ def set_console_title():
         pass  # A missing/detached console cannot affect the independent service.
 
 
-def main(argv=None):
+def main(argv=None, *, clock=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", required=True, type=Path)
     parser.add_argument("--task-name", help="Exact local native data task; required only with --start")
     parser.add_argument("--start", action="store_true", help="One explicit start of existing enabled data task")
     parser.add_argument("--once", action="store_true", help="One bounded read-only display capture")
+    parser.add_argument("--human-readable", action="store_true", help="Show session waiting messages above the JSON status")
     args = parser.parse_args(argv)
     if args.start and not args.task_name:
         parser.error("--task-name is required with --start")
@@ -256,7 +289,11 @@ def main(argv=None):
             emit({"event": "system_1a_start_failed", "error_type": type(exc).__name__, "error": str(exc)[:2048],
                   "automatic_retry": False, "task_name": args.task_name})
             return 1
-    viewer = DataConsole(args.root)
+    def status_sink(value):
+        if args.human_readable and value.get("message"):
+            print("[Scout 1A saved status] " + value["message"], flush=True)
+        emit(value)
+    viewer = DataConsole(args.root, clock=clock, sink=status_sink)
     try:
         while True:
             viewer.poll()

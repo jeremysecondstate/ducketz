@@ -218,7 +218,8 @@ def test_probe_error_forwards_retained_log_and_uses_unbuffered_utf8(tmp_path, mo
 
 def test_check_keeps_one_json_response_and_never_starts_console_or_trader(tmp_path, monkeypatch, capsys):
     selected = selection(tmp_path)
-    prepared = {"wake_at": "fixture", "deadline": "fixture", "trader_started": False}
+    prepared = {"wake_at": "2026-10-29T11:00:00Z", "deadline": "2026-10-30T00:00:00Z", "trader_started": False}
+    monkeypatch.setattr(candidate, "utcnow", lambda: candidate.instant("2026-10-29T10:55:00Z"))
     monkeypatch.setattr(candidate, "selected_release", lambda _: selected)
     monkeypatch.setattr(candidate, "probe", lambda *args: prepared)
     def forbidden(*args, **kwargs):
@@ -227,7 +228,9 @@ def test_check_keeps_one_json_response_and_never_starts_console_or_trader(tmp_pa
     monkeypatch.setattr(candidate, "ServiceController", forbidden)
     assert candidate.main(["--check", "--repository", str(tmp_path), "--datastore", str(tmp_path),
                            "--selector", str(tmp_path / "selected.json")]) == 0
-    assert json.loads(capsys.readouterr().out) == prepared
+    output = json.loads(capsys.readouterr().out)
+    assert output == prepared
+    assert output["session_start_message"] == "Waiting until 4:00 a.m. Pacific session start on 2026-10-29 (PDT)."
 
 
 def test_console_thread_resources_cannot_become_a_launch_prerequisite(monkeypatch):
