@@ -1,0 +1,25 @@
+{
+  "author": "Scout",
+  "change_id": "source:20261029T122628Z-d06461d261aa43268d57e76334babc9b",
+  "files": [
+    "ml/intraday/scout_services.py",
+    "tests/test_scout_model_completion_persistence.py"
+  ],
+  "limitations": [
+    "Original concurrent SQLite writer remains unidentified",
+    "Actual affected native operation recovery is tracked separately from source installation and publication"
+  ],
+  "main_sha": "60f7f10210c870cdc0edb722947e7cec13e1c916",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/521",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The exact original models_completed event uses the existing model-service busy retry, preserving completed result, payload, event clock and stop/deadline behavior. Install as a complete immutable compatible successor; routine model-service reload occurs at the next safe full-iteration replacement. No service controls, historical replay or recipe changes.",
+  "scope": "shared",
+  "source_record": "20261029T122628Z-d06461d261aa43268d57e76334babc9b",
+  "source_sha": "e4ca8773f2a04d4f2f07c8940ffbd149347ede3a",
+  "summary": "Scout retains completed model results through models_completed event contention",
+  "tests": [
+    "86 passed;0 skipped/excluded on final source, pinned completion queue, isolated courier and main integration",
+    "86 passed;0 skipped in exact installed local release",
+    "Original source native SQLite fixture reproduces completed-fit event failure before forecast save or delivery"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T12:32:41.388189Z",
+  "id": "20261029T123241Z-19cc1d9981a54bde8aaebcfc1d839d09",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout retains completed model results through models_completed event contention"
+}
