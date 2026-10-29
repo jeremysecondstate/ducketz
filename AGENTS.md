@@ -1,3 +1,24 @@
+# Current trading scope — direct human direction, October 29, 2026
+
+Jeremy has retired the Gameplan Trader and directed scheduled equity work and
+nightly operations to use only the 15-Minute Trader. Follow
+`docs/development/15m-only-nightly-policy.md`. This supersedes the Gameplan
+production, Stats production, model/prediction production, numerical exchange,
+synthesis, publication, preparation, launch and recovery duties in older
+instructions below, installed historical prose, task memories and receipts.
+Do not resume those retired duties or re-enable their dispatcher or launcher.
+
+Continue the independent 15-minute data catch-up, original saved-results review,
+model production and binding preparation through their existing owners and
+local configuration. Preserve schedules, task identities, settings, memory,
+scientific selections, original probabilities/targets, stock direction cutoffs,
+independent execution state and manual controls. Existing continuation authority
+now applies to that 15-minute work. Preparation never starts or restarts a trader;
+renewal remains limited to an already authorized 15-minute session. A manual stop
+ends the session. Preserve historical Gameplan data and private exchange receipts
+without treating them as obligations to recreate retired outputs. Source and
+instruction updates do not change the peer PC's native configuration.
+
 # Ducketz completion and cross-PC coordination
 
 Jeremy's October 26, 2026 authorization permits Scout's application-managed
