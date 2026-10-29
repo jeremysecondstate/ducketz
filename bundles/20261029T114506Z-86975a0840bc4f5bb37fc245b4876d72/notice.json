@@ -1,0 +1,26 @@
+{
+  "author": "Scout",
+  "change_id": "source:20261029T113735Z-7567c588074949e68060221b4f22b88e",
+  "files": [
+    "ml/intraday/live_session.py",
+    "ml/intraday/scout_services.py",
+    "tests/test_scout_scoring_persistence.py"
+  ],
+  "limitations": [
+    "Native runtime scoring-write recovery remains pending normal independent data-worker activation",
+    "Preexisting fixture failures and unrelated pytest global-temp cleanup exception retained; successful retry used isolated process-local temp root",
+    "No peer tuning, account evidence or fitted models exported"
+  ],
+  "main_sha": "7c0ccd4d81c46b5b1bc9131212389276a61745c1",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/518",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No activation or process controls. Compatible1B loads at next safe iteration; independent1A at next normal authorized activation. Preserve each PC private model recipe.",
+  "scope": "shared",
+  "source_record": "20261029T113735Z-7567c588074949e68060221b4f22b88e",
+  "source_sha": "ba8bf1a67774dc20d8b75638150477b853ed4a9d",
+  "summary": "Scout scoring preserves exact pending SQLite writes and original acquisition errors",
+  "tests": [
+    "355 passed;4 explicit pristine-main fixture exclusions in source, isolated courier and main integration",
+    "Local saved-recipe adapter:212 passed;0 skipped;10 original-source regressions fail"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T11:45:06.578803Z",
+  "id": "20261029T114506Z-86975a0840bc4f5bb37fc245b4876d72",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout scoring preserves exact pending SQLite writes and original acquisition errors"
+}
