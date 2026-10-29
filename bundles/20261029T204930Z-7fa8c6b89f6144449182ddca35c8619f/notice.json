@@ -1,0 +1,77 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261029T204815Z-353e35a569d24ad499ea27fe0d89b0da",
+  "change_id": "20261029T204815Z-353e35a569d24ad499ea27fe0d89b0da",
+  "commit_sha": "15bd74d63cdafcbfd80033385cbd3eba7f8ef5f0",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/independent-traders.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/nightly-operations.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/nightly-workflow.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/nightly-exchange.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/intraday-nightly-supervision.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/loops-system-analysis/NIGHTLY_STOCK_POLICY_INSTRUCTIONS.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/cross-pc-task-matrix.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "coordination/task-catalog.json"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_cross_pc_tasks.py"
+    }
+  ],
+  "limitations": [
+    "Offline task-catalog and documentation validation; no provider requests, fits, orders or runtime launches.",
+    "Local native task retirement verified separately; peer native adoption and loaded runtime state are not asserted.",
+    "Draft PR is unmerged; peer native task state is not asserted."
+  ],
+  "local_installation": "Nine saved prompts updated; thirteen prompt mirrors verified exact; native settings preserved. Seven Gameplan tasks remain paused and the legacy Windows dispatcher remains disabled.",
+  "overlap_resolution": "Atlas main retirement authority was retained unchanged; Scout omitted its overlapping AGENTS edit and renewed review and checks at the newer base.",
+  "peer_applicability": "Review portable runbooks and disabled Gameplan catalog roles under existing local authority; preserve independent symbols, model recipes, bindings and controls.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/526",
+  "remote_sha": "15bd74d63cdafcbfd80033385cbd3eba7f8ef5f0",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Updates operating instructions and portable task roles only; no trading engine or model changes. Retired local schedules remain paused or disabled, while each PC preserves existing authorized 15-minute operation.",
+  "scope": "shared",
+  "summary": "Scout completed 15-minute-only task retirement and portable nightly runbooks, preserving the reviewed Atlas authority already on main.",
+  "tests": [
+    {
+      "command": "python -B -m pytest tests/test_cross_pc_tasks.py -q -p no:cacheprovider",
+      "completed_at_utc": "2026-10-29T20:48:45.509412Z",
+      "exit_code": 0,
+      "output_sha256": "6e54f0ffa979704a9d27116dec45d76b691befb21b8f5faeb41ec7a56b51fdc3",
+      "result": "45 passed",
+      "started_at_utc": "2026-10-29T20:48:44.263746Z"
+    }
+  ]
+}
