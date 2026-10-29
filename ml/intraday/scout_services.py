@@ -566,11 +566,21 @@ def run_data_service(*, repository, datastore, release, clock=utcnow, sleep=time
         provider = prepare_minute_provider(runtime, datastore=datastore, pc=pc,
             symbols=symbols, source_dataset=config.source_dataset, clock=clock)
         journal = AcquisitionJournal(Path(datastore) / "intraday/acquisition.sqlite3")
-        feed = QuarterHourMinuteFeed(provider=provider, store=evidence, journal=journal,
-            histories=histories, pc=pc, symbols=symbols, session_id=session, clock=clock,
-            publication_offset_seconds=config.publication_offset_seconds, native_interval_symbols=native,
-            start_reference=start_reference,
-            reference_fill_policy=getattr(runtime["dataset_builder"], "reference_fill_policy", None))
+        try:
+            feed = QuarterHourMinuteFeed(provider=provider, store=evidence, journal=journal,
+                histories=histories, pc=pc, symbols=symbols, session_id=session, clock=clock,
+                publication_offset_seconds=config.publication_offset_seconds, native_interval_symbols=native,
+                start_reference=start_reference,
+                reference_fill_policy=getattr(runtime["dataset_builder"], "reference_fill_policy", None),
+                event_persistence_stopped=stop, event_persistence_pause=pause,
+                on_event_persistence_retry=lambda phase, detail: record("minute_event_persistence_" + phase,
+                    {**detail, "source_session": session, "manifest_sha256": release["manifest_sha256"], "role": "data"}))
+        except InterruptedError:
+            if not stop():
+                raise
+            # Constructor event persistence starts before any owned worker.
+            status("STOPPED")
+            return {"status": "STOPPED", "source_session": session}
         collector = (None if after_close else prepare_market_collection(runtime, datastore=datastore, pc=pc, symbols=symbols,
                                               clock=clock, stopped=stop, pause=pause))
         def background(name, action):
