@@ -1,0 +1,33 @@
+{
+  "actor_task": "Atlas atlas-trader-representative",
+  "author": "Atlas",
+  "change_id": "20261029T195721Z-e292bf4e03c74051b9c46247469112bc",
+  "files": [
+    "docs/development/patches/intraday-supervisor-event-storage.json",
+    "docs/development/patches/intraday-supervisor-event-storage.patch",
+    "tests/check_isolated_intraday_supervisor_event_storage.py",
+    "tests/test_intraday_supervisor_event_storage.py",
+    "tests/test_intraday_supervisor_event_storage_integration.py"
+  ],
+  "limitations": [
+    "Existing events/reports/databases and originals untouched; no current historical space reclamation",
+    "Cumulative report checkpoint increases write I/O while avoiding retained full event duplicates",
+    "Exact composed target absent from main; apply after its exact preimage/hunk and local policy review",
+    "Future nightly supervisor loading and naturally observed storage savings remain unproved"
+  ],
+  "peer_applicability": "Generic diagnostic persistence only; no local statistical tuning transferred",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/523",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas source/dependency generation sealed; no service start/restart/training/broker/trader/task operation. Preserve each PC local model selections and independent controls; notices convey no operating authority.",
+  "scope": "shared",
+  "source_commit": "93da57a606a3aa6d394c47f5ebb69838e8dc6110",
+  "summary": "Atlas: prospective compact supervisor events retain crash-durable full result reports",
+  "supersedes": [
+    "20261029T195452Z-d5299a5a52384c0d9ecc4978fa88b9db",
+    "20261029T195013Z-ace07ceb023c4e5a8e579f35994cfcf7"
+  ],
+  "tests": [
+    "Final isolated main-based packet: 8 passed, 1 explicit local-composition module skip, zero network/process attempts",
+    "Exact complete 550-source local composition: 36 passed; both updated integration cases passed afterward"
+  ]
+}
