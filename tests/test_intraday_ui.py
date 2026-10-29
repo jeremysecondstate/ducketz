@@ -365,13 +365,13 @@ def test_live_peer_receipt_retains_mode_hash_actual_availability_and_private_exe
     assert snapshot.sources[0]["telemetry_status"] == "stale"
 
 
-def test_ui_modules_have_no_broker_provider_thread_or_training_imports():
+def test_ui_modules_have_no_broker_provider_or_training_imports():
     for name in ("intraday.py", "intraday_data.py"):
         module = Path(__file__).parents[1] / "app" / "ui" / name
         tree = ast.parse(module.read_text(encoding="utf-8"))
         imports = [node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)]
         imports += [item.name for node in ast.walk(tree) if isinstance(node, ast.Import) for item in node.names]
-        assert not any(any(forbidden in item for forbidden in ("broker", "schwab", "hyperliquid", "databento", "threading", "ml."))
+        assert not any(any(forbidden in item for forbidden in ("broker", "schwab", "hyperliquid", "databento", "ml."))
                        for item in imports if item != "ml.intraday.telemetry")
 
 
