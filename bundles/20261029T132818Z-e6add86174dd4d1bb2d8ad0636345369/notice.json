@@ -1,0 +1,26 @@
+{
+  "author": "Atlas",
+  "change_id": "20261029T132314Z-dad30655f9f14f29a3153eb80466e970",
+  "files": [
+    "tools/intraday_data_host.py",
+    "tools/intraday_data_renewal.py",
+    "tests/test_intraday_data_failure_evidence.py",
+    "tests/check_intraday_data_failure_evidence.py"
+  ],
+  "limitations": [
+    "Original candles1363 worker cause remains unknown; historical failure is not reconstructed or relabeled.",
+    "Bootstrap and Renewal-constructor failures are outside the admitted worker recorder. Full/unwritable storage or external termination can still leave absent or partial diagnostics; absence is not recovery proof.",
+    "No data/trader launch, restart, stop-clear, provider/broker/model operation or storage purge. Failed services remain ended; natural loading and affected recovery unexercised."
+  ],
+  "main_commit": "375484983c9f7af1d2ecc05f44f9879ce378d6c8",
+  "peer_applicability": "Both PCs using data-only continuation; preserve local science, bindings, independent operation and manual controls. Diagnostic evidence never authorizes renewal.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Seal exact reviewed complete parent generation plus two owned source changes and unchanged dependencies. New lifecycle bytes enter only at next normal authorized launch; no task, binding, schedule, controls or operating lifetime change.",
+  "scope": "shared",
+  "source_commit": "c0826a400b3c53f5c0282324204073c22238748e",
+  "summary": "Atlas 15m retains original data worker failures and exact child exit status",
+  "tests": [
+    "97 complete installed-consumer offline regressions passed; zero external/private attempts or escaped application imports.",
+    "34 confined diagnostic regressions pass at queued,isolated andmain stages."
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T13:28:18.648114Z",
+  "id": "20261029T132818Z-e6add86174dd4d1bb2d8ad0636345369",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas 15m retains original data worker failures and exact child exit status"
+}
