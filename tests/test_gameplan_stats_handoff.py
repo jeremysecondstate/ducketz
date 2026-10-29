@@ -489,3 +489,17 @@ def test_pointer_advance_during_export_keeps_the_original_immutable_run(tmp_path
     assert payload["source_receipt_sha256"] == receipt_hash
     assert payload["source_results_sha256"] == results_hash
     assert len(frame) == 2 and frame.iloc[0].calibrated_probability == .2
+
+
+def test_explicit_saved_run_survives_pointer_advance_before_export(tmp_path, packages):
+    _, owners = packages
+    root = tmp_path / "Scout"
+    selected = load_gameplan_stats(root).run_directory
+    receipt_hash = file_checksum(selected / "receipt.json")
+    write_review(root, [forecast("DOCU", probability=.3)], version="02")
+
+    path = export_stats_package(root, producer="Scout", symbols=owners["Scout"],
+                                review_run=selected, destination=tmp_path / "original.json")
+    payload, frame = read_stats_package(path, expected_sha256=file_checksum(path))
+    assert payload["source_receipt_sha256"] == receipt_hash
+    assert len(frame) == 2 and frame.iloc[0].calibrated_probability == .2
