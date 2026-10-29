@@ -1,0 +1,25 @@
+{
+  "author": "Scout",
+  "change_id": "source:20261029T201207Z-0f9e8b985d6c4372b25ad83932aad6bf",
+  "files": [
+    "ml/intraday/scout_services.py",
+    "tests/test_scout_context_worker_diagnostics.py"
+  ],
+  "limitations": [
+    "The historical timeout mechanism remains unproved; this change preserves existing observations only",
+    "Actual enriched native context retry receipt on the loaded successor is tracked separately from installation and source publication"
+  ],
+  "main_sha": "2e22d70b1f990f21b47366a21a242eeb64e53155",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/524",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Pass only the current context collector to its existing bounded diagnostic helper; optional observer failure retains original worker detail and retry. Install a complete immutable successor preserving local recipes. Independent data service loads the startup-cached repair at next normal authorized activation. No service controls, policy changes or historical replay.",
+  "scope": "shared",
+  "source_record": "20261029T201207Z-0f9e8b985d6c4372b25ad83932aad6bf",
+  "source_sha": "7c67a4d3e7949fdae882b6e66022f1fd78bc1328",
+  "summary": "Scout preserves existing collector diagnostics in outer context worker retry receipts",
+  "tests": [
+    "40 passed;0 skipped/excluded on final shared source, pinned queue, isolated courier and fresh main candidate",
+    "40 passed;0 skipped on exact installed local successor, separately recorded",
+    "Native queue-lock and duplicate timeout identity fixtures preserve original errors, queue bytes, provider call count and retry control flow"
+  ]
+}
