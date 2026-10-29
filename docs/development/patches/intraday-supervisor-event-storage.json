@@ -1,0 +1,40 @@
+{
+  "schema": "intraday-supervisor-event-storage-v1",
+  "scope": "Shared prospective diagnostic storage only; local scientific selections and model policy remain unchanged",
+  "target": "ml/intraday/supervisor.py",
+  "operation": "modify",
+  "patch_path": "docs/development/patches/intraday-supervisor-event-storage.patch",
+  "patch_sha256": "219c7dbca09ad7c04443db8ab5566503ea3aaa560705f8da59aace85e5d9150e",
+  "local_before_sha256": "2f75aaa076105dc5f875ec973ab94547dd0e9e5fb2be245b50175f5794206171",
+  "local_after_sha256": "80c756d91e6285b2d8ee7582c5ee69019e1b734b8f20cee50791647800ecc539",
+  "before_ast": {
+    "_json": "5394d73fa8b692fe250ffe7d7a4f1beeaab2e537b64feac05428ea4bdd97067f",
+    "_hash": "08d79551a3819e1e380e7d2a4c3028f787a17dac1b8aa1137d85168eb1d61e2c",
+    "_failure": "104044e29b0e89134512cca8af41ec3131f46c71491dee2fa61a70ff3f260daf",
+    "_atomic_json": "63acc03472bb64d8a57f542f8525befb7a6a8fa20136591ba45bf7a6ac2e47df",
+    "AuditLog": "7818341a1300e2ceb0039c36415ce8f8be79cdf556044bb06b87c86fd0853192",
+    "supervise": "dbe6be23b14063a20b6f6c0645fe913f545c15cb860dcf3199fc9310b8e4151b"
+  },
+  "after_ast": {
+    "_json": "5394d73fa8b692fe250ffe7d7a4f1beeaab2e537b64feac05428ea4bdd97067f",
+    "_hash": "08d79551a3819e1e380e7d2a4c3028f787a17dac1b8aa1137d85168eb1d61e2c",
+    "_failure": "104044e29b0e89134512cca8af41ec3131f46c71491dee2fa61a70ff3f260daf",
+    "_atomic_json": "63acc03472bb64d8a57f542f8525befb7a6a8fa20136591ba45bf7a6ac2e47df",
+    "AuditLog": "827f5135da8ea55cc4863a72d314218b27357f5bff7795b3d5c067573800db40",
+    "supervise": "86dcd32d1d99b8d5a3644100106155bb1e8e899674e51e1d2889393567af13bd"
+  },
+  "retained_consumers": [
+    "app/ui/intraday_models.py:load_model_research validates existing report schema and partial symbol mappings; optional status includes running",
+    "tools/intraday_model_diagnostics.py:diagnose reads explicit report symbols and previous_session; no completed status required",
+    "Operating selected-config readers use active.json; events.jsonl is no operating input"
+  ],
+  "behavior": "Before each compact symbol event, fsync the cumulative existing run report with running status. Event retains scalar outcome and canonical digest plus report filename and symbols/symbol path. Final full report schema/scientific results remain unchanged. Audit I/O exceptions occur outside the scientific try/except, so an already appended completed result cannot be relabelled by a later append/fsync error.",
+  "limitations": [
+    "Prospective only: existing reports,events,databases,raw observations and fitted objects are untouched.",
+    "A running report is an atomic cumulative checkpoint; previously completed symbol entries and their digests remain unchanged as later symbols finish.",
+    "Checkpointing rewrites cumulative report per completed symbol and requires temporary space up to the next report size; retained full diagnostics are stored only in the existing report.",
+    "Common main lacks this composed supervisor: portable tests execute exact reviewed helper/class projections and verify both full source callsites. Local composition additionally runs existing supervisor suite.",
+    "Publication and sealed installation do not prove next nightly supervisor loading or naturally observed storage savings. No provider,model fit,trader,start,restart or maintenance operation is authorized by this patch.",
+    "Atomic checkpoint/event failures propagate as real audit errors. They preserve the completed scientific result and cannot create a contradictory second failed-symbol event after an uncertain append."
+  ]
+}

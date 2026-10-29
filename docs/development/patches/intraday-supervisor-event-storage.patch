@@ -1,0 +1,227 @@
+--- a/ml/intraday/supervisor.py
++++ b/ml/intraday/supervisor.py
+@@ -43,47 +43,66 @@
+ def _json(value):
+     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+ 
+ 
+ def _hash(value):
+     return hashlib.sha256(_json(value).encode("utf-8")).hexdigest()
+ 
+ 
+ def _failure(exc):
+     """Useful local repair details with credential-bearing fragments removed."""
+     message = str(exc)
+     for key, value in os.environ.items():
+         if len(value) >= 6 and re.search(r"KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL", key, re.I):
+             message = message.replace(value, "[redacted]")
+     message = re.sub(r"(?i)(bearer\s+)[A-Za-z0-9_.~+/-]+", r"\1[redacted]", message)
+     message = re.sub(r"(?i)(api[_-]?key|token|password|secret)(\s*[:=]\s*)\S+", r"\1\2[redacted]", message)
+     return {"failure_type": type(exc).__name__, "message": message[:1000]}
+ 
+ 
+ def _atomic_json(path, value):
+     """Publish a complete fsynced document; readers retain an old or new file."""
+     path = Path(path)
+     path.parent.mkdir(parents=True, exist_ok=True)
+     fd, temporary = tempfile.mkstemp(prefix=path.name + ".", suffix=".pending", dir=path.parent)
+     try:
+         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+             handle.write(_json(value) + "\n")
+             handle.flush()
+             os.fsync(handle.fileno())
+         os.replace(temporary, path)
+     finally:
+         Path(temporary).unlink(missing_ok=True)
+ 
+ 
+ class AuditLog:
+     def __init__(self, root, run_id, clock):
+         self.root, self.run_id, self.clock = Path(root), run_id, clock
+         self.root.mkdir(parents=True, exist_ok=True)
+ 
+     def event(self, kind, **details):
+         value = {"schema_version": VERSION, "run_id": self.run_id,
+                  "recorded_at": utc(self.clock()).isoformat(), "kind": kind, **details}
+         with (self.root / "events.jsonl").open("a", encoding="utf-8", newline="\n") as handle:
+             handle.write(_json(value) + "\n")
+             handle.flush()
+             os.fsync(handle.fileno())
+         return value
++
++    def symbol_result(self, report, symbol):
++        """Checkpoint full diagnostics once; append only their stable reference.
++
++        Completed symbol entries never change as later symbols are added. Their
++        canonical digest therefore stays valid in both an interrupted running
++        report and the final report, without hashing a changing parent document.
++        Publish and fsync the report before its event so interruption cannot
++        leave a completed event whose detailed result was never durable.
++        """
++        result = report["symbols"][symbol]
++        filename = self.run_id + ".json"
++        _atomic_json(self.root / filename, {**report, "status": "running"})
++        summary = {key: result[key] for key in
++                   ("status", "incumbent_retained", "selection_id", "failure_type", "message")
++                   if key in result}
++        return self.event("symbol_failed" if result["status"] == "error" else "symbol_completed",
++            symbol=symbol, result=summary, result_sha256=_hash(result), report_file=filename,
++            result_path=["symbols", symbol], result_storage="run_report_symbol_sha256_v1")
+@@ -423,154 +442,155 @@
+ def supervise(*, datastore, profile, watchlist, config=None, log_dir=None,
+               refresh: Callable = refresh_ohlcv, history_loader: Callable = load_local_history,
+               selector: Callable | None = None, clock: Callable = _now, only_symbols=None):
+     """One recoverable wake, all symbols independent; old selections survive errors."""
+     from .models import configured_models
+     from .full_model_selection import SelectionConfig, select_models
+     from .runtime import local_symbols
+ 
+     config = dict(config or {})
+     allowed = {"schema_version", "source_dataset", "lookback_days", "synthetic_policy", "selection", "candidates"}
+     if set(config) - allowed:
+         raise ContractError("Unknown supervisor configuration fields")
+     source_dataset, synthetic_policy = config.get("source_dataset", "EQUS.MINI"), config.get("synthetic_policy", "include")
+     if synthetic_policy not in {"include", "exclude"}:
+         raise ContractError("Explicit synthetic training policy must be include or exclude")
+     lookback_days = config.get("lookback_days")
+     if lookback_days is not None and (type(lookback_days) is not int or lookback_days < 1):
+         raise ContractError("Model supervision lookback_days requires a positive integer or all history")
+     actor, symbols = local_symbols(profile, watchlist, datastore)
+     configured_symbols = symbols
+     if only_symbols is not None:
+         if isinstance(only_symbols, str):
+             raise ContractError("Preparation subset must be an explicit symbol sequence")
+         requested = tuple(only_symbols)
+         if (not requested or len(set(requested)) != len(requested)
+                 or not set(requested) <= set(configured_symbols)):
+             raise ContractError("Preparation subset must contain unique configured symbols")
+         symbols = tuple(symbol for symbol in configured_symbols if symbol in requested)
+     root, begun = Path(datastore), utc(clock())
+     from .coverage import load_data_policy, RECOVERY_POPULATION_CONTRACT
+     data_policy = load_data_policy(root)
+     population_contract = data_policy.get("population_contract")
+     if data_policy.get("source_dataset", source_dataset) != source_dataset:
+         raise ContractError("Local data policy differs from supervised source")
+     night = begun.tz_convert(PACIFIC).date().isoformat()
+     run_id = begun.strftime("%Y%m%dT%H%M%SZ") + "-" + uuid.uuid4().hex[:12]
+     audit = AuditLog(log_dir or root / "intraday/model-supervision/logs", run_id, clock)
+     report = {"schema_version": VERSION, "run_id": run_id, "actor": actor, "night": night,
+               "started_at": begun.isoformat(), "source_dataset": source_dataset,
+               "installed_source": installed_source(profile), "training_inputs": list(DEFAULT_INPUTS),
+               "manual_start_only": True, "trader_started": False, "broker_calls": 0, "symbols": {}}
+     report["configured_symbols"] = list(configured_symbols)
+     report["preparation_scope"] = list(symbols)
+     report["data_policy"] = data_policy
+     if data_policy.get("market_inputs_enabled", False):
+         report["training_inputs"] = [*DEFAULT_INPUTS, "receipt_causal_market_context"]
+     from ml.market_provenance import capture_runtime
+     from . import feature_support
+     report["runtime_provenance"] = capture_runtime(
+         [__name__, "ml.intraday.data", "ml.intraday.coverage", "ml.intraday.models", "ml.intraday.full_model_selection",
+          feature_support.__name__],
+         object_root=root / "intraday/model-supervision/source-objects")
+     audit.event("run_started", actor=actor, symbols=list(symbols), source_dataset=source_dataset)
+     active_path, state_path = root / ACTIVE_PATH, root / STATE_PATH
+     empty_active = {"schema_version": VERSION, "actor": actor, "source_dataset": source_dataset,
+                     "target_version": TARGET_VERSION, "symbols": {}}
+     active, active_error = _recover_metadata(active_path,
+         lambda: _load_active(active_path, actor, source_dataset), empty_active, audit)
+     state, state_error = _recover_metadata(state_path, lambda: _load_state(state_path, actor),
+         {"schema_version": VERSION, "actor": actor, "nights": {}}, audit)
+     if active_error or state_error:
+         report["metadata_repairs"] = {"active": active_error, "state": state_error}
+     if state_error:
+         for symbol, value in active["symbols"].items():
+             if value.get("holdout_night") == night and value.get("holdout_start"):
+                 state["nights"].setdefault(night, {})[symbol] = value["holdout_start"]
+         report["holdout_history_limitation"] = "Preserved damaged state; restored known active boundaries, other prior inspected holdouts are unknown"
+     session = latest_completed_session(begun)
+     report["previous_session"] = asdict(session)
+     selection_config = SelectionConfig(**config.get("selection", {}))
+     candidates = configured_models(config["candidates"]) if config.get("candidates") is not None else None
+     selector = selector or select_models
+     try:
+         refreshed = refresh(root, symbols, source_dataset=source_dataset, clock=clock)
+         audit.event("refresh_completed", results=refreshed)
+     except Exception as exc:
+         refreshed = {symbol: {"status": "error", **_failure(exc)} for symbol in symbols}
+         audit.event("refresh_failed", **_failure(exc))
+     frozen_cutoff = utc(clock())
+     report["training_cutoff"] = frozen_cutoff.isoformat()
+     for symbol in symbols:
+         item = {"refresh": refreshed.get(symbol, {"status": "error", "failure_type": "MissingRefreshResult"}),
+                 "incumbent_retained": symbol in active["symbols"]}
+         report["symbols"][symbol] = item
+         try:
+             item["previous_session_results"] = session_results(root, actor, symbol, session)
+         except Exception as exc:
+             item["previous_session_results"] = {"status": "error", **_failure(exc),
+                                                 "session_id": session.session_id}
+         try:
+             if item["refresh"].get("status") != "refreshed":
+                 raise ContractError("OHLCV refresh failed for this symbol")
+             requested_through = item["refresh"].get("requested_through")
+             if requested_through is None or utc(requested_through) < utc(session.closed_at):
+                 raise ContractError("Provider coverage does not reach the latest completed trading session")
+             history_options = {"source_dataset": source_dataset, "end": frozen_cutoff}
+             if population_contract == RECOVERY_POPULATION_CONTRACT:
+                 history_options["recovery_cutoff"] = frozen_cutoff
+             if population_contract is not None:
+                 history_options["population_contract"] = population_contract
+             history = history_loader(root, symbol, **history_options)
+             item["freshness"] = {"provider_available_through": requested_through,
+                 "provider_lag_seconds": max(0.0, (frozen_cutoff - utc(requested_through)).total_seconds()),
+                 "freshest_observed_minute": history.manifest.get("last_minute_open"),
+                 "freshest_observed_candle": history.manifest.get("last_candle_open"),
+                 "missing_intervals": history.manifest.get("aggregation", {}).get("incomplete_intervals"),
+                 "policy": "refreshed_to_latest_advertised_provider_data_no_gap_fabrication"}
+             try:
+                 item["previous_session_results"] = session_results(root, actor, symbol, session, history=history)
+             except Exception as exc:
+                 item["previous_session_results"] = {"status": "error", **_failure(exc),
+                                                     "session_id": session.session_id}
+             snapshot = training_snapshot(history, cutoff=frozen_cutoff, lookback_days=config.get("lookback_days"),
+                                          synthetic_policy=synthetic_policy, population_contract=population_contract)
+             if data_policy.get("market_inputs_enabled", False):
+                 snapshot = attach_market_inputs(snapshot, root, symbol, cutoff=frozen_cutoff)
+             item["training_snapshot"] = snapshot.manifest
+             prior_holdout = state["nights"].get(night, {}).get(symbol)
+             chosen = selector(snapshot, candidates=candidates, config=selection_config, previous_holdout_start=prior_holdout)
+             item["selection"] = chosen.report
+             if chosen.holdout_start:
+                 state["nights"].setdefault(night, {})[symbol] = chosen.holdout_start
+                 _atomic_json(state_path, state)
+             if chosen.selected_models:
+                 selected_at = utc(clock()).isoformat()
+                 chosen_config = {"models": [asdict(model) for model in chosen.selected_models],
+                     "selected_at": selected_at, "holdout_start": chosen.holdout_start, "holdout_night": night,
+                     "feature_names": list(snapshot.feature_names), "feature_version": FEATURE_VERSION,
+                     "target_version": TARGET_VERSION, "source_dataset": source_dataset,
+                     "training_cutoff": frozen_cutoff.isoformat(), "synthetic_policy": synthetic_policy,
+                     "lookback_days": config.get("lookback_days"), "max_training_rows": selection_config.max_rows,
+                     "report_sha256": _hash(chosen.report)}
+                 chosen_config.update(population_contract=population_contract,
+                     feature_contract=snapshot.manifest.get("feature_contract", {"price": FEATURE_VERSION}),
+                     market_input_version=snapshot.manifest.get("market_input_version"))
+                 selection_id = _hash(chosen_config)
+                 chosen_config["selection_id"] = selection_id
+                 next_active = json.loads(_json(active))
+                 next_active["symbols"][symbol] = chosen_config
+                 next_active["updated_at"] = selected_at
+                 _atomic_json(active_path, next_active)
+                 active = next_active
+                 item.update(status="activated", selection_id=selection_id, incumbent_retained=False)
+             else:
+                 item["status"] = "incumbent_retained" if item["incumbent_retained"] else "no_selection"
+-            audit.event("symbol_completed", symbol=symbol, result=item)
+         except Exception as exc:
+             item.update(status="error", **_failure(exc))
+-            audit.event("symbol_failed", symbol=symbol, result=item)
++        # Audit I/O cannot relabel an already completed scientific result. In
++        # particular, an append/fsync error may follow a durable event line.
++        audit.symbol_result(report, symbol)
+     report.update(completed_at=utc(clock()).isoformat(),
+                   status="partial" if any(item["status"] == "error" for item in report["symbols"].values()) else "complete")
+     _atomic_json(audit.root / (run_id + ".json"), report)
+     audit.event("run_completed", status=report["status"], actor=actor)
+     return report
