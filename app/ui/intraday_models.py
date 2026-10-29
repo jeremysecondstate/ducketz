@@ -14,7 +14,10 @@ from zoneinfo import ZoneInfo
 
 REPORT_NAME = re.compile(r"\d{8}T\d{6}Z-[a-f0-9]{12}\.json")
 SCOUT_RUN_NAME = re.compile(r"\d{8}T\d{12}Z\.json")
-MAX_REPORT_BYTES = 10 * 1024 * 1024
+# Native Atlas reports retain per-symbol training/input provenance and can
+# exceed 150 MiB even though their displayable research results are small.
+# Keep a finite bound while admitting those existing immutable reports.
+MAX_REPORT_BYTES = 256 * 1024 * 1024
 
 
 def _is_scout(report):
@@ -172,6 +175,14 @@ def load_model_research(directory, *, actor):
                 or not isinstance(report.get("symbols"), dict)):
             raise ValueError("Saved model research report differs from this PC's research identity")
         _validate_report(report)
+        if not _is_scout(report):
+            # These duplicated native Atlas source snapshots are not consumed
+            # by this view. Discard them only after validating the report;
+            # retain every saved score, specification, status and timestamp.
+            # The original report remains untouched on disk.
+            for item in report["symbols"].values():
+                item.pop("training_snapshot", None)
+                item.get("selection", {}).pop("source", None)
         return {"status": "loaded", "report": report}
     except OSError:
         return {"status": "error", "message": "Saved model research report could not be read."}

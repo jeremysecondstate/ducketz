@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import hashlib
 import json
+import time
 
 import pytest
 
@@ -182,6 +184,49 @@ def test_report_size_limit_is_checked_before_reading(tmp_path, legacy_report, mo
     assert saved["status"] == "error" and "limit" in saved["message"]
 
 
+def test_large_native_atlas_report_preserves_display_evidence_and_original_bytes(tmp_path, legacy_report):
+    report = deepcopy(legacy_report)
+    item = report["symbols"]["AAPL"]
+    selection = item["selection"]
+    selection["candidates"][0]["spec"]["parameters"] = {"alpha": 0.125}
+    # Native Atlas reports duplicate detailed training/input provenance in
+    # these two locations. Displaying their saved research must not refit it
+    # or retain that bulk after loading the much smaller result evidence.
+    source = {"source_history": {"fixture_provenance": "x" * (6 * 1024 * 1024)},
+              "synthetic_policy": "observed_only"}
+    item["training_snapshot"] = source
+    selection["source"] = source
+    path = write_report(tmp_path, NEWER, report)
+    assert path.stat().st_size > 10 * 1024 * 1024
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    expected_view = research_view({"status": "loaded", "report": report}, pc="Atlas", symbol="AAPL")
+
+    saved = load_model_research(tmp_path, actor="Atlas")
+
+    assert saved["status"] == "loaded"
+    expected = deepcopy(report)
+    expected["symbols"]["AAPL"].pop("training_snapshot")
+    expected["symbols"]["AAPL"]["selection"].pop("source")
+    assert saved["report"] == expected
+    assert research_view(saved, pc="Atlas", symbol="AAPL") == expected_view
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+    assert set(tmp_path.iterdir()) == {path}
+
+
+def test_large_newest_atlas_report_still_rejects_malformed_saved_scores(tmp_path, legacy_report):
+    write_report(tmp_path, OLDER, legacy_report)
+    report = deepcopy(legacy_report)
+    item = report["symbols"]["AAPL"]
+    item["training_snapshot"] = {"source_history": "x" * (11 * 1024 * 1024)}
+    item["selection"]["candidates"][0]["summary"]["mean_brier"] = "bad"
+    write_report(tmp_path, NEWER, report)
+
+    saved = load_model_research(tmp_path, actor="Atlas")
+
+    assert saved["status"] == "error" and "report" not in saved
+    assert research_view(saved, pc="Atlas", symbol="AAPL")["rows"] == ()
+
+
 def test_legacy_21_results_show_selection_and_holdout_separately(legacy_report):
     original = deepcopy(legacy_report)
     view = research_view({"status": "loaded", "report": legacy_report},
@@ -291,13 +336,13 @@ def test_ui_unrecorded_forecast_cannot_show_different_source_research(legacy_rep
         consensus_rows={"legacy": {"pc": "Atlas", "symbol": "AAPL", "models": [],
                                     "forecast_id": "legacy", "outcome_status": "pending"}},
         consensus_choice=SimpleNamespace(get=lambda: "legacy"), local_pc="Atlas",
-        snapshot=SimpleNamespace(loaded_at=intraday.timestamp("2026-10-16T08:00:00Z")),
         symbol=SimpleNamespace(get=lambda: "AAPL"),
         model_research={"status": "loaded", "report": legacy_report},
         research_status=SimpleNamespace(configure=lambda **values: labels.update(values)),
         research_table=object(), consensus_value=SimpleNamespace(configure=lambda **values: None),
-        consensus_context=SimpleNamespace(configure=lambda **values: None),
         consensus_meta=SimpleNamespace(configure=lambda **values: None),
+        consensus_context=SimpleNamespace(configure=lambda **values: None),
+        snapshot=SimpleNamespace(loaded_at=intraday.timestamp("2026-10-16T08:00:00Z")),
     )
     monkeypatch.setattr(intraday, "_replace", lambda tree, rows: rendered.extend(rows))
     intraday.IntradayTab._render_consensus(view)
@@ -630,6 +675,11 @@ def test_tk_report_symbols_are_selectable_before_any_manual_trader_start(tmp_pat
         tab = IntradayTab(root, frame, datastore_root=tmp_path, local_pc="Scout",
                           model_research_directory=directory, auto_load=False)
         tab.refresh()
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and not tab.status.get().startswith(("Loaded ", "Refresh failed")):
+            root.update()
+            time.sleep(0.01)
+        assert tab.status.get().startswith("Loaded "), tab.status.get()
         assert tab.snapshot.forecasts == () and tab.consensus_rows == {}
         assert set(tab.boxes["symbol"].cget("values")) == {"All", "ABCL", "DBX"}
         assert set(tab.boxes["pc"].cget("values")) == {"All", "Scout"}
@@ -646,3 +696,43 @@ def test_tk_report_symbols_are_selectable_before_any_manual_trader_start(tmp_pat
     finally:
         root.destroy()
 
+
+
+def test_atlas_saved_research_is_selectable_without_a_forecast(legacy_report):
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+    from app.ui.intraday import IntradayTab
+    from app.ui.intraday_data import IntradaySnapshot
+    options = {}
+    class Variable:
+        def __init__(self, value="All"): self.value = value
+        def get(self): return self.value
+        def set(self, value): self.value = value
+    fields = ("pc", "symbol", "source_dataset", "session", "reference_slot")
+    view = SimpleNamespace(model_research={"status": "loaded", "report": legacy_report},
+        _closed=False, _view_revision=0,
+        boxes={name: SimpleNamespace(configure=lambda *, values, name=name: options.update({name: values})) for name in fields},
+        status=Variable(), render=lambda **kwargs: None, **{name: Variable() for name in fields})
+    IntradayTab.set_snapshot(view, IntradaySnapshot(datetime.now(timezone.utc)))
+    assert options["pc"] == ["All", "Atlas"]
+    assert options["symbol"] == ["All", "AAPL"]
+    assert options["source_dataset"] == ["All", "EQUS.MINI"]
+
+
+@pytest.mark.parametrize("pc,source", [("Scout", "EQUS.MINI"), ("Atlas", "OTHER.DATASET")])
+def test_atlas_research_without_forecasts_honors_filters(legacy_report, monkeypatch, pc, source):
+    from types import SimpleNamespace
+    from app.ui import intraday
+    rendered = []
+    view = SimpleNamespace(models_frame=SimpleNamespace(winfo_children=lambda: []), consensus_rows={},
+        consensus_choice=SimpleNamespace(get=lambda: ""), local_pc="Atlas",
+        pc=SimpleNamespace(get=lambda: pc), source_dataset=SimpleNamespace(get=lambda: source),
+        symbol=SimpleNamespace(get=lambda: "AAPL"), model_research={"status": "loaded", "report": legacy_report},
+        research_status=SimpleNamespace(configure=lambda **kw: None),
+        research_table=SimpleNamespace(heading=lambda *a, **kw: None),
+        consensus_value=SimpleNamespace(configure=lambda **kw: None),
+        consensus_context=SimpleNamespace(configure=lambda **kw: None),
+        consensus_meta=SimpleNamespace(configure=lambda **kw: None))
+    monkeypatch.setattr(intraday, "_replace", lambda table, rows: rendered.extend(rows))
+    intraday.IntradayTab._render_consensus(view)
+    assert rendered == []
