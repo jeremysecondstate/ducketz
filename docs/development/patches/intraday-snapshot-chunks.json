@@ -1,0 +1,109 @@
+{
+  "schema": "intraday-snapshot-chunks-v1",
+  "scope": "Shared lossless immutable snapshot decoder and explicitly opt-in writer; local scientific selections unchanged",
+  "patch_path": "docs/development/patches/intraday-snapshot-chunks.patch",
+  "patch_sha256": "ba72d9c48c7749c508a9a5d1e42243122ede8cbc9627923ea061133f58b26bd5",
+  "targets": {
+    "ml/intraday/store.py": {
+      "operation": "modify",
+      "before_sha256": "be8d6f8bdc04d94c2029f31fad2a65adc173c9b54fbd143a693fde54cc1c56f2",
+      "after_sha256": "72634a524305b67edf694345bfc1ab4d8d1a4129240e158c95d0289c4ddac860",
+      "before_bytes": 52391,
+      "after_bytes": 52586,
+      "hunks": [
+        {
+          "old_start": 83,
+          "old_count": 14,
+          "new_start": 83,
+          "new_count": 14,
+          "old_sha256": "d1e24c491c59bc409b23f2a56f35b9a38e79af550fc0d11864be983badfc4e28",
+          "new_sha256": "705a8f7409872dda2560d0d01f94b941df29964b7b96ba44293079d412dca182"
+        },
+        {
+          "old_start": 267,
+          "old_count": 7,
+          "new_start": 267,
+          "new_count": 9,
+          "old_sha256": "2852154ec11b9f21f0bb0c37e86e70f144e8d455680eb5a55ed6221e942b447b",
+          "new_sha256": "a5061b2f8a376322bd70f7eb23491418282cd85c305101c72fa727bef67608a6"
+        }
+      ]
+    },
+    "ml/intraday/split_handoff.py": {
+      "operation": "modify",
+      "before_sha256": "070dbbfa97fa9a6cf872dbb43a57377a60c2ea80d3bf7546decae474afd03362",
+      "after_sha256": "ba80a180bd271555fd6c17841e16864ab32e550c609c143d99e82faebd2457a6",
+      "before_bytes": 18595,
+      "after_bytes": 19296,
+      "hunks": [
+        {
+          "old_start": 19,
+          "old_count": 6,
+          "new_start": 19,
+          "new_count": 7,
+          "old_sha256": "a7b061bf2fbe0f7cf332649086358fabc8e1d10fafab686f47a7e05dbd4877c6",
+          "new_sha256": "a989f13b02fc2b037aa1ac142b962d5aa276a5a107b6a892410e6ecb6ba70282"
+        },
+        {
+          "old_start": 60,
+          "old_count": 8,
+          "new_start": 61,
+          "new_count": 11,
+          "old_sha256": "2aead65db2d038df9b6ee18d3023634273e8c04d4a5c22fc12b3e42f206934b2",
+          "new_sha256": "0dea82401313521e60ecd6b63a315e813e8ef1acb9a53b8b4aef70b2fbed44a0"
+        },
+        {
+          "old_start": 103,
+          "old_count": 6,
+          "new_start": 107,
+          "new_count": 8,
+          "old_sha256": "5f61f713fa7da419cbb8397bd41e453ac72ab1df8b922288e9ed8017d429b1a4",
+          "new_sha256": "2b334aef0544ed75da902d747084fd5860a5d923144d3c736aea60844af5b942"
+        },
+        {
+          "old_start": 110,
+          "old_count": 9,
+          "new_start": 116,
+          "new_count": 12,
+          "old_sha256": "b31aec58adcd4ad4f8f7c3b2b27f39b2860e748ad3a0a03cc466ba4f5067b8b2",
+          "new_sha256": "73a07047ec6c654524020933b5fde319e165415c2ddb7d24716810d706ab82bf"
+        },
+        {
+          "old_start": 200,
+          "old_count": 7,
+          "new_start": 209,
+          "new_count": 8,
+          "old_sha256": "fea2a4b2f0d570d2ee092742e50d421158a22be3ea7d92181f6626abd74c4526",
+          "new_sha256": "eaa6885c3ad77572c976119eec6b19a628a4458be8592a19887574ebc6840dd3"
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "ml/intraday/snapshot_objects.py": {
+      "operation": "add",
+      "sha256": "4da1ebbac0daaf2c434155dc7fa38a23b95f765ed3f02d0b0d3d60f38a97ede7",
+      "bytes": 9760
+    },
+    "tests/test_intraday_snapshot_chunks.py": {
+      "operation": "add",
+      "sha256": "2f97463eeca1b2cc48a976ce24f324f366e4344274fc79d7c992dd38dd360ae9",
+      "bytes": 22169
+    }
+  },
+  "predecessor": "Existing opt-in preparation snapshot references composition is required where those adapters are installed; retain its reviewed source and receipts rather than replaying either packet blindly.",
+  "behavior": "Bounded content-addressed chunks reconstruct complete original canonical bytes and original scientific SHA/length. Default writers remain raw; chunked_snapshots defaults False and no operating constructor enables it.",
+  "retained_consumers": [
+    "ShadowStore resolves original inline inputs and immutable references without scientific changes.",
+    "ReadySnapshots delegates exact snapshot byte loading to the shared decoder and preserves its existing full ready/scientific/causal validation.",
+    "Existing raw JSON objects, first snapshot claims, histories, independent execution state and manual controls are retained."
+  ],
+  "limitations": [
+    "Prospective opt-in capability only; writer activation is not part of this packet.",
+    "No database or historical object migration, raw mutation, deletion, compaction or compression.",
+    "Main may lack locally composed adapter preimages; public checks validate helper behavior and patch projections and explicitly skip absent integration.",
+    "A crash may leave complete unreferenced chunks; no automatic cleanup.",
+    "Old loaded readers do not support manifest-only objects, so default writers remain raw.",
+    "Publication, sealed installation, actual loading and naturally observed storage outcomes are separate facts."
+  ]
+}
