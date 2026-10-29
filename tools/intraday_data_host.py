@@ -159,6 +159,28 @@ def _record_loaded(renewal, selected, *, full=False):
     atomic_json(renewal.request_path.with_suffix(".loaded.json"), value)
 
 
+def _record_worker_failure(renewal, selected, exc, phase):
+    """Best-effort original failure evidence; never a response or renewal grant."""
+    try:
+        from tools.intraday_data_renewal import PROTOCOL, birth, failure_diagnostics
+        value = failure_diagnostics(exc, {"operation": phase,
+            "role": renewal.request["role"], "turn": renewal.request["turn"],
+            "generation": renewal.request["generation"],
+            "worker_source_generation": selected["generation"]})
+        value.update(schema_version="intraday-data-worker-failure-v1", protocol=PROTOCOL, diagnostic_only=True,
+            trading_authority=False, at=datetime.now(timezone.utc).isoformat(),
+            token=renewal.request["token"], session_id=renewal.session["session_id"],
+            request_sha256=hashlib.sha256(renewal.request_path.read_bytes()).hexdigest(),
+            worker_pid=os.getpid(), worker_birth=birth(os.getpid()))
+        raw = (json.dumps(value, sort_keys=True, allow_nan=False) + "\n").encode("utf-8")
+        with renewal.request_path.with_suffix(".failure.json").open("xb") as stream:
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+    except BaseException:
+        pass  # Missing/full/unwritable diagnostics must preserve the original error.
+
+
 def run_controller(options, *, selected=None, continuation=None):
     from tools.intraday_data_renewal import bind_kernel_lifetime, own_data_session, run_protocol, resume_controller
     lifetime = "data-" + uuid.uuid4().hex
@@ -244,15 +266,24 @@ def run_generation(generation, options):
             _record_loaded(renewal, selected, full=bool(getattr(options, "full_verify", False)))
         except Exception as exc:
             print("Data loaded-source evidence unavailable: " + type(exc).__name__, file=sys.stderr)
+        phase = "wait_due"
         try:
             renewal.wait_due()
+            phase = "stopped_check"
             if renewal.stopped():
                 return 1
-            result = importlib.import_module("ml.intraday.data_renewal").run(renewal)
+            phase = "service_import"
+            service = importlib.import_module("ml.intraday.data_renewal")
+            phase = "service_run"
+            result = service.run(renewal)
+            phase = "receipt_publish"
             renewal.finish(result)
             return 0
         except PlannedRenewal:
             return PLANNED_EXIT
+        except BaseException as exc:
+            _record_worker_failure(renewal, selected, exc, phase)
+            raise
     if getattr(options, "continuation", None) is not None:
         return run_controller(options, selected=selected, continuation=options.continuation)
     if getattr(options, "controller", False):

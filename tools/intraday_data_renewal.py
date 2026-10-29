@@ -73,16 +73,21 @@ def failure_diagnostics(exc,operation):
             'operation':_diagnostic_name(operation['operation']),'exceptions':[]}
     for key in ('role','turn','controller_generation','worker_source_generation'):
         if isinstance(operation.get(key),str):result[key]=_diagnostic_name(operation[key],64)
-    if type(operation.get('generation')) is int:result['generation']=operation['generation']
+    for key in ('generation','worker_exit_code'):
+        if type(operation.get(key)) is int:result[key]=operation[key]
     seen=set();relation='raised'
     while exc is not None and len(result['exceptions'])<4:
         if id(exc) in seen:
             result['chain_truncated']='cycle';break
         seen.add(id(exc))
         value={'relation':relation,'error_type':_diagnostic_name(type(exc).__name__),'frames':[]}
-        for key in ('errno','winerror'):
+        for key in ('errno','winerror','sqlite_errorcode'):
             number=_exception_attribute(exc,key)
             if type(number) is int:value[key]=number
+        name=_exception_attribute(exc,'sqlite_errorname')
+        if (type(name) is str and name.startswith('SQLITE_') and len(name)<=80
+                and all(c in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_' for c in name)):
+            value['sqlite_errorname']=name
         stage=_exception_attribute(exc,'_intraday_data_atomic_stage')
         if isinstance(stage,str) and stage in {'create_parent','temporary_open','serialize','newline_write','flush','fsync','close','replace','cleanup'}:
             value['atomic_stage']=stage
@@ -337,6 +342,7 @@ def run_protocol(*, directory, envelope, command, poll_seconds=.05, phase=lambda
     previous={}
     loaded_generations={} if continuation is None else dict(continuation.get('loaded_generations',{}))
     operation={'operation':'controller_loop'}
+    exited={}
     def doing(name,role=None,turn=None):
         operation.clear();operation['operation']=name
         if controller_generation is not None:operation['controller_generation']=controller_generation
@@ -347,6 +353,7 @@ def run_protocol(*, directory, envelope, command, poll_seconds=.05, phase=lambda
             operation['turn']=turn
             loaded=loaded_generations.get(role,{})
             if loaded.get('turn')==turn:operation['worker_source_generation']=loaded['generation']
+            if (role,turn) in exited:operation['worker_exit_code']=exited[role,turn]
     status_path=Path(envelope['datastore'])/'intraday/system-1a/status.json'
     last_status=0.0
     def _record_status(status):
@@ -437,6 +444,7 @@ def run_protocol(*, directory, envelope, command, poll_seconds=.05, phase=lambda
                 doing('worker_poll',role,turn)
                 code=child.poll()
                 if code is None:continue
+                exited[role,turn]=code
                 doing('worker_exit_callback',role,turn)
                 del children[role];phase('exited',role)
                 doing('stop_check',role,turn)
@@ -462,6 +470,7 @@ def run_protocol(*, directory, envelope, command, poll_seconds=.05, phase=lambda
                 doing('active_checkpoint_publish',role,turn)
                 atomic_json(active_path,{**active,'session':envelope['session'],'heartbeat_at':datetime.now(timezone.utc).isoformat(),
                     'generations':turns,'completed_roles':sorted(done)})
+                exited.pop((role,turn),None)
             doing('status_record')
             if time.monotonic()-last_status>=1:record_status('RUNNING')
             if all(role in done for role in roles):reason='COMPLETED';break
