@@ -32,7 +32,8 @@ def view(tmp_path, tk_root):
     root = tk_root
     frame = ttk.Frame(root)
     frame.pack(fill="both", expand=True)
-    tab = stats_ui.GameplanStatsTab(root, frame, datastore_root=tmp_path, auto_load=False)
+    tab = stats_ui.GameplanStatsTab(root, frame, datastore_root=tmp_path, auto_load=False,
+        price_loader=lambda **kwargs: stats_ui.unavailable_snapshot(**kwargs, error="Offline fixture"))
     write_review(tmp_path)
     tab.set_review(load_gameplan_stats(tmp_path))
     reference = weakref.ref(tab)

@@ -32,7 +32,8 @@ def tk_root():
 def view(tmp_path, tk_root):
     frame = ttk.Frame(tk_root)
     frame.pack(fill="both", expand=True)
-    widget = stats_ui.GameplanStatsTab(tk_root, frame, datastore_root=tmp_path, auto_load=False)
+    widget = stats_ui.GameplanStatsTab(tk_root, frame, datastore_root=tmp_path, auto_load=False,
+        price_loader=lambda **kwargs: stats_ui.unavailable_snapshot(**kwargs, error="Offline fixture"))
     reference = weakref.ref(widget)
     try:
         yield weakref.proxy(widget)
