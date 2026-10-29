@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-29T08:35:36.892477Z",
+  "id": "20261029T083536Z-24ab26100e6c4a4d97ec9cda28e3f81e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout data console ignores out-of-range saved session wake times."
+}

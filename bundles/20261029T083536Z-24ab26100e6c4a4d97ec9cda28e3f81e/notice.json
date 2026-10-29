@@ -1,0 +1,22 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261029T083326Z-d140e0844bea453aad2226761a2e714d",
+  "change_id": "20261029T083326Z-d140e0844bea453aad2226761a2e714d",
+  "files": [
+    "tools/scout_data_console.py",
+    "tests/test_scout_data_console.py"
+  ],
+  "limitations": [
+    "Offline fixture evidence; no provider, broker, or service operation."
+  ],
+  "main_sha": "b6763583542cbf26ac2cfb659f6fe3bca6ba4c0e",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/517",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout installed the revised console for the next normal launch. Runtime loading and peer installation are unverified.",
+  "scope": "shared",
+  "source_sha": "ef3c024b4467d6a48bec3b967b108813a3a3ee65",
+  "summary": "Scout data console ignores out-of-range saved session wake times.",
+  "tests": [
+    "43 offline data-console tests passed on sealed source, isolated source candidate and main candidate on 2026-10-29 UTC."
+  ]
+}
