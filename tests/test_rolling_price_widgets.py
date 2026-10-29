@@ -11,8 +11,8 @@ from app.ui.rolling_price_widgets import RollingPricePanel, change_text
 from app.ui.theme import DANGER, MUTED_TEXT, SUCCESS, WARNING
 
 
-def fixture_snapshot(*, missing=False, closed=False):
-    symbols = ("DOCU", "DBX", "SDGR", "QBTS", "PYPL", "GLOB", "OUST", "ABCL", "MRNA", "RR", "PDYN")
+def fixture_snapshot(*, missing=False, closed=False, symbols=None):
+    symbols = symbols or ("DOCU", "DBX", "SDGR", "QBTS", "PYPL", "GLOB", "OUST", "ABCL", "MRNA", "RR", "PDYN")
     values = (2.12514, -1.237, 0., .123, -2.458, 3.484, -.48, 1.119, -3.04, 4.0001, -.987)
     rows = []
     for index, (symbol, value) in enumerate(zip(symbols, values)):

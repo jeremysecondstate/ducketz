@@ -50,6 +50,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--size", default="1860x1100")
     parser.add_argument("--missing", action="store_true")
+    parser.add_argument("--symbols", help="Comma-separated local symbol profile for mocked visual data")
     parser.add_argument("--top", action="store_true", help="Keep the initial viewport instead of scrolling to show the panel.")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -68,7 +69,10 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="ducketz-rolling-stats-visual-") as temporary:
         store = Path(temporary)
-        prices = fixture_snapshot(missing=args.missing)
+        symbols = tuple(item.strip().upper() for item in args.symbols.split(",") if item.strip()) if args.symbols else None
+        if symbols is not None and len(symbols) != 11:
+            parser.error("The visual fixture requires eleven symbols")
+        prices = fixture_snapshot(missing=args.missing, symbols=symbols)
         rows = [forecast(symbol=row.symbol, hour=hour, change=-.01 if (index + hour) % 3 else .02)
                 for index, row in enumerate(prices.rows) for hour in range(4, 10)]
         write_review(store, rows)
@@ -80,7 +84,7 @@ def main():
         tab.set_review(load_gameplan_stats(store))
         execution = execution_snapshot()
         for order in execution.report["orders"]:
-            order["symbol"] = "DOCU" if order["symbol"] == "AAPL" else "DBX"
+            order["symbol"] = prices.rows[0].symbol if order["symbol"] == "AAPL" else prices.rows[1].symbol
         tab.set_execution(execution)
         tab.rolling_prices.set_snapshot(prices)
         root.deiconify()
