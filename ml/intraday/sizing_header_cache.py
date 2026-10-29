@@ -56,7 +56,9 @@ class DurableSizingHeaders:
 
     def _connect(self):
         db = sqlite3.connect(self.path, timeout=0)
-        deadline = time.monotonic() + min(.05, max(0, self._remaining))
+        deadline = getattr(self, "_load_deadline", None)
+        if deadline is None:
+            deadline = time.monotonic() + min(.05, max(0, self._remaining))
         db.set_progress_handler(lambda: int(time.monotonic() > deadline), 1000)
         return db
 
@@ -171,7 +173,13 @@ class DurableSizingHeaders:
             if secret is None:
                 reason = "missing_key"
                 return {}
-            db = self._connect()
+            # One read inventory shares its existing whole-operation budget.
+            # Keep the stricter per-connection writer deadline unchanged.
+            self._load_deadline = started + self._remaining
+            try:
+                db = self._connect()
+            finally:
+                self.__dict__.pop("_load_deadline", None)
             db.execute("PRAGMA query_only=ON")
             db.execute("BEGIN")
             context = self._context(db)
