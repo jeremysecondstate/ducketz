@@ -1,0 +1,2589 @@
+--- a/ml/intraday/runtime.py
++++ b/ml/intraday/runtime.py
+@@ -1,1129 +1,1132 @@
+ """Explicitly invoked research/shadow runner; no order or production worker hooks."""
+ from __future__ import annotations
+ 
+ import argparse
+ from collections import deque
+ from concurrent.futures import ThreadPoolExecutor, as_completed
+ from dataclasses import asdict, dataclass, replace
+ from datetime import datetime, timedelta, timezone
+ import json
+ import math
+ from pathlib import Path
+ import re
+ import sqlite3
+ import time
+ import uuid
+ 
+ import numpy as np
+ import pandas as pd
+ import psutil
+ 
+ from .prediction import ContractError, PACIFIC, STEP, TARGET_VERSION, UnresolvedPolicy, digest, instant
+ from .store import ShadowStore, utcnow
+ 
+ # capture_runtime records unloaded names without importing or executing them.
+ # Split receipts cover their actual loaded scheduling and derivation code.
+ _SPLIT_SOURCE_MODULES = ("ml.intraday.split_service", "ml.intraday.split_handoff",
+                          "ml.intraday.split_model", "ml.intraday.split_execution")
+ 
+ 
+ @dataclass(frozen=True)
+ class ResearchConfig:
+     models: tuple = ("logistic", "gaussian_nb", "knn", "lda", "random_forest", "extra_trees",
+                      "hist_gradient_boosting", "gradient_boosting", "adaboost", "xgboost")
+     lookback_days: int | None = None
+     symbol_workers: int = 1
+     publication_offset_seconds: float = 30.0
+     synthetic_policy: str = "include"
+     source_dataset: str = "EQUS.MINI"
+     retraining_minutes: int = 15
+     # This flag controls the per-symbol model_policy lane. The existing own v1
+     # model-supervision manifest remains automatic for default live/shadow fits.
+     use_supervised_models: bool = False
+     population_contract: str | None = None
+     market_inputs_enabled: bool = False
+ 
+     def validate(self):
+         if self.retraining_minutes != 15:
+             raise ContractError("Primary benchmark fully retrains every 15 minutes")
+         if type(self.use_supervised_models) is not bool:
+             raise ContractError("Supervised model adoption must be an explicit boolean")
+         if type(self.market_inputs_enabled) is not bool:
+             raise ContractError("Market input collection must be an explicit boolean")
+         if self.population_contract is not None:
+             from .coverage import check_population_contract
+             check_population_contract(self.population_contract)
+         if type(self.symbol_workers) is not int or self.symbol_workers < 1:
+             raise ContractError("Explicit positive symbol worker count required")
+         if not 0 <= self.publication_offset_seconds < 900:
+             raise ContractError("Offset must be within one quarter-hour")
+         if self.synthetic_policy not in {"include", "exclude"}:
+             raise ContractError("Synthetic training inclusion must be explicit")
+         if self.lookback_days is not None and (type(self.lookback_days) is not int or self.lookback_days <= 0):
+             raise ContractError("Historical window must be positive or all available")
+         return self
+ 
+ 
+ class SourceIntervalEmpty(ContractError):
+     """Completed acquisition with no observations; never a zero-return candle."""
+     def __init__(self, evidence):
+         super().__init__("Exact covered source interval contains no observations")
+         self.evidence = evidence
+ 
+ 
+ def with_local_data_policy(config, datastore):
+     """Explicit private binding; historical forecasts retain their frozen policy."""
+     from .coverage import load_data_policy
+     if not (Path(datastore) / "intraday/data-policy.json").is_file():
+         return config
+     policy = load_data_policy(datastore)
+     if not policy:
+         return config
+     if policy.get("source_dataset", config.source_dataset) != config.source_dataset:
+         raise ContractError("Local data policy differs from configured source")
+     return replace(config, population_contract=policy.get("population_contract"),
+                    market_inputs_enabled=policy.get("market_inputs_enabled", False)).validate()
+ 
+ 
+ def local_symbols(profile_path, watchlist_path, datastore):
+     """Validate research membership without creating or activating trading state.
+ 
+     Only the installed local profile and its exact watchlist bind research.
+     Other trader configuration is outside this runtime.
+     """
+     profile = json.loads(Path(profile_path).read_text(encoding="utf-8"))
+     watch = tuple(x.strip() for x in Path(watchlist_path).read_text(encoding="utf-8").splitlines()
+                   if x.strip() and not x.lstrip().startswith("#"))
+     machine = profile["machine"]
+     symbols = tuple(profile["symbols"])
+     if (profile.get("actor") not in {"Atlas", "Scout"} or
+             {"Atlas": "pc-original", "Scout": "pc-new"}.get(profile.get("actor")) != machine or
+             not symbols or len(set(symbols)) != len(symbols) or
+             not watch or len(set(watch)) != len(watch) or set(watch) != set(symbols)):
+         raise ContractError("Local profile and watchlist research membership disagree")
+     pinned_watchlist = profile.get("symbol_profile_path")
+     if not pinned_watchlist or Path(pinned_watchlist).resolve() != Path(watchlist_path).resolve():
+         raise ContractError("Research requires the installed profile's exact local watchlist")
+     return profile["actor"], symbols
+ 
+ 
+ def _frame(history):
+     return history.frame if hasattr(history, "frame") else history
+ 
+ 
+ def _jsonable(value):
+     if value is pd.NA or value is pd.NaT:
+         return None
+     if isinstance(value, dict):
+         return {str(k): _jsonable(v) for k, v in value.items()}
+     if isinstance(value, (list, tuple, np.ndarray, pd.Index)):
+         return [_jsonable(v) for v in value]
+     if isinstance(value, (datetime, pd.Timestamp)):
+         return value.isoformat()
+     if isinstance(value, np.generic):
+         return _jsonable(value.item())
+     if isinstance(value, float) and not np.isfinite(value):
+         return None
+     return value
+ 
+ 
+ def _market_feature_migration(selected, current, base):
+     """Portable specifications can refit changed context without claiming assessment.
+ 
+     The price feature definitions stay ordered and exact. No fitted estimator or
+     old input matrix is reused. Only paired, explicitly missing-aware context
+     columns may differ; arbitrary feature mismatches remain errors.
+     """
+     base = list(base)
+     def context(names):
+         if list(names[:len(base)]) != base or len(set(names)) != len(names):
+             return False
+         suffix = list(names[len(base):])
+         return len(suffix) % 2 == 0 and all(
+             isinstance(name, str) and name.startswith("market_") and not name.endswith("__available")
+             and suffix[index + 1] == name + "__available"
+             for index, name in enumerate(suffix) if index % 2 == 0)
+     return context(selected) and context(current)
+ 
+ 
+ def resource_snapshot():
+     """Own process and aggregate host metrics without inspecting other traders."""
+     process = psutil.Process()
+     cpu = process.cpu_times()
+     return dict(process_rss_bytes=process.memory_info().rss, process_cpu_seconds=cpu.user + cpu.system,
+                 system_available_memory_bytes=psutil.virtual_memory().available,
+                 system_cpu_percent=psutil.cpu_percent(interval=None))
+ 
+ def regime_measurements(snapshot):
+     """Causal trailing observations; bins belong only to retrospective reporting."""
+     rows=snapshot.get("inference",{}).get("snapshot",{}).get("candles",[])[-21:]
+     if len(rows)<21:
+         return {}
+     close=np.asarray([float(r["close"]) for r in rows])
+     changes=np.abs(np.diff(close))
+     highs=np.asarray([float(r["high"]) for r in rows[1:]])
+     lows=np.asarray([float(r["low"]) for r in rows[1:]])
+     tr=np.maximum.reduce([highs-lows,np.abs(highs-close[:-1]),np.abs(lows-close[:-1])])
+     span=float(highs.max()-lows.min())
+     feature_map=dict(zip(snapshot["feature_names"],snapshot["inference_X"][0]))
+     return {"volatility":feature_map.get("volatility20_observed"),
+             "trend_strength":float(abs(close[-1]-close[0])/changes.sum()) if changes.sum() else 0.0,
+             "choppiness":100*math.log10(float(tr.sum())/span)/math.log10(20) if span>0 and tr.sum()>0 else 100.0,
+             "definition":"trailing20_observed_steps_efficiency_and_choppiness_v1"}
+ 
+ 
+ def recorded_symbol_failures(store, cycle_id):
+     """Latest immutable failure events also survive a missing cycle summary."""
+     with store.connect() as db:
+         rows=db.execute("SELECT symbol,payload FROM events WHERE cycle_id=? AND kind='symbol_failure' ORDER BY id",
+                         (cycle_id,)).fetchall()
+     return {symbol:json.loads(payload) for symbol,payload in rows}
+ 
+ 
+ def _symbol_exception_diagnostics(exc):
+     """Bounded causal locations, never locals, source lines or nested messages."""
+     chain, seen = [], set()
+     current, relation = exc, "raised"
+     while current is not None and id(current) not in seen and len(chain) < 6:
+         seen.add(id(current))
+         frames, count = deque(maxlen=8), 0
+         trace = current.__traceback__
+         while trace is not None:
+             code = trace.tb_frame.f_code
+             basename = code.co_filename.replace("\\", "/").rsplit("/", 1)[-1]
+             frames.append({"file": re.sub(r"[^A-Za-z0-9_.-]", "_", basename)[:96],
+                            "function": re.sub(r"[^A-Za-z0-9_<>.]", "_", code.co_name)[:96],
+                            "line": trace.tb_lineno})
+             count += 1
+             trace = trace.tb_next
+         item = {"type": re.sub(r"[^A-Za-z0-9_]", "_", type(current).__name__)[:96],
+                 "relation": relation, "frames": list(frames), "frames_truncated": count > len(frames)}
+         if isinstance(current, OSError):
+             # Numeric OS categories distinguish sharing contention from denied
+             # permissions without exposing filenames or authenticated messages.
+             for name in ("errno", "winerror"):
+                 code = getattr(current, name, None)
+                 if type(code) is int and 0 <= code <= 0x7fffffff:
+                     item[name] = code
+         if isinstance(current, sqlite3.Error):
+             code = getattr(current, "sqlite_errorcode", None)
+             name = getattr(current, "sqlite_errorname", None)
+             if type(code) is int and 0 <= code <= 0x7fffffff:
+                 item["sqlite_errorcode"] = code
+             if isinstance(name, str) and re.fullmatch(r"SQLITE_[A-Z0-9_]{1,64}", name):
+                 item["sqlite_errorname"] = name
+         chain.append(item)
+         if current.__cause__ is not None:
+             current, relation = current.__cause__, "cause"
+         elif not current.__suppress_context__:
+             current, relation = current.__context__, "context"
+         else:
+             current = None
+     return {"schema_version": "intraday-symbol-exception-v1", "exception_chain": chain,
+             "chain_truncated": current is not None}
+ 
+ 
+ def _dataset_scope(value):
+     if not isinstance(value, dict) or not {"synthetic_policy", "lookback_days"} <= value.keys():
+         raise ContractError("Frozen dataset scope is invalid")
+     scope = {"synthetic_policy": value.get("synthetic_policy"), "lookback_days": value.get("lookback_days")}
+     if value.get("population_contract"):
+         scope["population_contract"] = value["population_contract"]
+     if (not isinstance(scope["synthetic_policy"], str) or scope["synthetic_policy"] not in {"include", "exclude"} or
+             scope["lookback_days"] is not None and
+             (type(scope["lookback_days"]) is not int or scope["lookback_days"] <= 0)):
+         raise ContractError("Frozen dataset scope is invalid")
+     return scope
+ 
+ 
+ def _frozen_supervised_policy(saved, *, symbols):
+     policy = saved.get("supervised_model_policy")
+     if not isinstance(policy, dict):
+         raise ContractError("Supervised cycle is missing its frozen model policy")
+     evidence = {key: value for key, value in policy.items() if key != "sha256"}
+     if digest(evidence) != policy.get("sha256"):
+         raise ContractError("Frozen supervised model policy hash changed")
+     if "dataset_scope_by_symbol" not in policy:
+         # A pre-scope cycle already used its original ResearchConfig population.
+         # Its unfinished symbols must use that same population, including when
+         # active legacy policies now derive a different scope for new cycles.
+         configuration = saved.get("configuration")
+         if not isinstance(configuration, dict):
+             raise ContractError("Legacy supervised cycle is missing its original dataset configuration")
+         scope = _dataset_scope(configuration)
+         return {**policy, "dataset_scope_by_symbol": {symbol: dict(scope) for symbol in symbols}}
+     if not isinstance(policy["dataset_scope_by_symbol"], dict):
+         raise ContractError("Frozen supervised cycle dataset scopes are invalid")
+     for symbol in symbols:
+         if symbol not in policy["dataset_scope_by_symbol"]:
+             raise ContractError("Frozen supervised cycle is missing a symbol dataset scope")
+         _dataset_scope(policy["dataset_scope_by_symbol"][symbol])
+     return policy
+ 
+ 
+ def _supervised_cycle_policy(store, cycle_id, *, pc, symbols, configuration,
+                              selected_config_path=None, selected_as_of=None, use_model_policy=True,
+                              model_policy_root=None):
+     """Freeze selected specs, their policy identities and populations per cycle."""
+     with store.connect() as db:
+         row = db.execute("SELECT payload FROM cycles WHERE id=?", (cycle_id,)).fetchone()
+     if row:
+         saved = json.loads(row[0])
+         if saved.get("supervised_model_policy") is None and not use_model_policy:
+             return None
+         return _frozen_supervised_policy(saved, symbols=symbols)
+     from .data import FEATURE_NAMES
+     from .model_policy import load_active_policy
+     policy_root = Path(model_policy_root) if model_policy_root is not None else store.path.parent / "supervision"
+     policy = {"pc": pc, "feature_names": list(FEATURE_NAMES), "models_by_symbol": {},
+               "dataset_scope_by_symbol": {}, "policy_identities_by_symbol": {}}
+     default_scope = _dataset_scope(configuration)
+     selections = {}
+     if selected_config_path is not None:
+         from .selected_config import load_selected_config
+         def selected_error(symbol, exc):
+             store.event(cycle_id, "selected_configuration_error",
+                 {"error_type": type(exc).__name__, "message": str(exc),
+                  "configuration_used": "existing_own_policy_or_configured_defaults"}, symbol=symbol)
+         try:
+             selections = load_selected_config(selected_config_path, pc=pc, symbols=symbols,
+                 source_dataset=configuration["source_dataset"], as_of=selected_as_of,
+                 on_error=selected_error)
+         except (OSError, ValueError, KeyError, TypeError) as exc:
+             selected_error(None, exc)
+         if selections:
+             policy["selected_config_by_symbol"] = selections
+     if not selections and not use_model_policy:
+         return None
+     for symbol in symbols:
+         entry = selections.get(symbol)
+         if entry is not None:
+             policy["models_by_symbol"][symbol] = entry["models"]
+             policy["dataset_scope_by_symbol"][symbol] = _dataset_scope(entry)
+             if configuration.get("population_contract"):
+                 policy["dataset_scope_by_symbol"][symbol]["population_contract"] = configuration["population_contract"]
+             policy["policy_identities_by_symbol"][symbol] = entry["selection_id"]
+             # The explicitly chosen own manifest supplies this cycle. A second
+             # policy stays intact and is reported without becoming a wait or gate.
+             other = policy_root / "active" / f"{pc}-{symbol}.json"
+             if other.is_file():
+                 details = {"selected_manifest": str(selected_config_path),
+                            "selection_id": entry["selection_id"], "other_policy_path": str(other),
+                            "policy_used": "selected_manifest", "other_policy_preserved": True}
+                 try:
+                     other_value = json.loads(other.read_text(encoding="utf-8"))
+                     details["other_policy_newer"] = instant(other_value["installed_at"]) > instant(entry["selected_at"])
+                 except (OSError, ValueError, KeyError, TypeError):
+                     details["other_policy_time_unknown"] = True
+                 store.event(cycle_id, "selected_configuration_precedence", details, symbol=symbol)
+             continue
+         selected = (load_active_policy(policy_root, pc=pc, symbol=symbol,
+                                        feature_names=FEATURE_NAMES) if use_model_policy else None)
+         policy["models_by_symbol"][symbol] = [asdict(spec) for spec in selected["models"]] if selected else None
+         policy["dataset_scope_by_symbol"][symbol] = _dataset_scope(selected["dataset_scope"] if selected else default_scope)
+         if configuration.get("population_contract"):
+             policy["dataset_scope_by_symbol"][symbol]["population_contract"] = configuration["population_contract"]
+         policy["policy_identities_by_symbol"][symbol] = selected["sha256"] if selected else None
+     policy["sha256"] = digest(policy)
+     return policy
+ 
+ 
+ class ShadowRunner:
+     def __init__(self, *, store, pc, symbols, config=None, artifact_root=None, clock=utcnow,
+                  trainer=None, dataset_builder=None, stopped=lambda: False, selected_config_path=None,
+                  prepared_source=None, datastore=None, forecast_preparer=None):
+         self.store = store
+         self.pc = pc
+         self.symbols = tuple(symbols)
+         if not self.symbols or len(set(self.symbols)) != len(self.symbols):
+             raise ContractError("A nonempty unique local symbol scope is required")
+         self.config = (config or ResearchConfig()).validate()
+         self.artifact_root = Path(artifact_root) if artifact_root else self.store.path.parent / "models"
+         self.clock = clock
+         self.trainer = trainer
+         self.dataset_builder = dataset_builder
+         self.stopped = stopped
+         # A split model worker receives only an already verified immutable
+         # snapshot. It has no reason to open a market-data provider or rebuild
+         # historical features on the consumer's later information clock.
+         self.prepared_source = prepared_source
+         self.forecast_preparer = forecast_preparer
+         self.datastore = Path(datastore) if datastore is not None else self.store.path.parent.parent
+         self.model_policy_root = (self.datastore / "intraday/supervision" if datastore is not None else
+                                   self.store.path.parent / "supervision")
+         self.selected_config_path = (Path(selected_config_path) if selected_config_path is not None else
+                                      self.datastore / "intraday/model-supervision/active.json" if datastore is not None else
+                                      self.store.path.parent / "model-supervision/active.json")
+         from ml.market_provenance import capture_runtime
+         from . import data, models, coverage, feature_support
+         self.market_input_store = None
+         if self.config.market_inputs_enabled and prepared_source is None:
+             from .market_inputs import MarketInputStore
+             self.market_input_store = MarketInputStore(self.datastore)
+         self.runtime_provenance = capture_runtime(
+             [__name__, data.__name__, models.__name__, coverage.__name__, feature_support.__name__,
+              "ml.intraday.live_session", "ml.intraday.store", "ml.intraday.market_inputs",
+              "ml.intraday.market_input_research", "ml.intraday.market_input_schwab_stream",
+              "ml.intraday.market_input_stream", "ml.intraday.historical_market_inputs",
+              "ml.intraday.provider_recovery", *_SPLIT_SOURCE_MODULES],
+             object_root=self.artifact_root / "source-objects")
+ 
+     def prepare_cycle(self, histories, *, reference_at, mode="live", cutoff=None, experiment="primary",
+                       acquisition=None, on_prepared=None, retry_symbols=None):
+         """Prepare each own-symbol snapshot without fitting or issuing a forecast.
+ 
+         A complete symbol is handed off immediately. Partial preparation never
+         claims a completed forecast cycle, and retries keep the first frozen
+         recipe, causal cutoff, observations and target unchanged.
+         """
+         if self.prepared_source is not None:
+             raise ContractError("A snapshot consumer cannot act as a data producer")
+         return self.run_cycle(histories, reference_at=reference_at, mode=mode, cutoff=cutoff,
+             experiment=experiment, acquisition=acquisition, retry_symbols=retry_symbols,
+             allow_execution=False, _prepare_only=True, _on_prepared=on_prepared)
+ 
+     def run_cycle(self, histories, *, reference_at, mode="shadow", cutoff=None, experiment="primary",
+                   acquisition=None, intent_by_symbol=None, on_published=None, retry_symbols=None,
+                   allow_execution=True, _prepare_only=False, _on_prepared=None):
+         """Publish each complete symbol independently. Failure/restart never reissues.
+ 
+         A research invocation uses explicit worker count, no deadline cancellation,
+         and no prior-model fallback. The primary runner always fits fresh models.
+         Historical replay uses a separate simulated information clock and persists
+         actual computation/recording time. It cannot masquerade as a live issue.
+         """
+         reference = instant(reference_at)
+         if reference.minute % 15 or reference.second or reference.microsecond:
+             raise ContractError("Reference must be a quarter-hour opening")
+         if mode not in {"shadow", "live", "historical_replay"}:
+             raise ContractError("Explicit shadow, live or historical_replay mode required")
+         started = instant(self.clock())
+         from ml.market_provenance import capture_runtime
+         # Capture after manual-session acquisition adapters have loaded, for
+         # every forecast cycle. Constructor-time source is not a deployment claim.
+         self.runtime_provenance = capture_runtime([
+             __name__, "ml.intraday.data", "ml.intraday.models", "ml.intraday.coverage",
+             "ml.intraday.feature_support", "ml.intraday.live_session", "ml.intraday.store",
+             "ml.intraday.market_inputs", "ml.intraday.market_input_stream",
+             "ml.intraday.market_input_research", "ml.intraday.market_input_schwab_stream",
+             "ml.intraday.historical_market_inputs", "ml.intraday.provider_recovery", *_SPLIT_SOURCE_MODULES],
+             object_root=self.artifact_root / "source-objects")
+         scheduled = reference + STEP + timedelta(seconds=self.config.publication_offset_seconds)
+         training_cutoff = (instant(cutoff) if cutoff else started if mode in {"shadow", "live"} else
+                            scheduled+timedelta(seconds=float((acquisition or {}).get("seconds",0))))
+         if training_cutoff < reference + STEP or (mode in {"shadow", "live"} and training_cutoff > started):
+             raise ContractError("Training cutoff cannot precede completion or be in the future")
+         configuration = _jsonable(asdict(self.config))
+         configuration_hash = digest(configuration)
+         cycle_id = digest(dict(pc=self.pc,reference_at=reference.isoformat(),configuration_hash=configuration_hash,
+                                mode=mode,experiment=experiment))
+         from .models import DEFAULT_MODELS
+         default_models = tuple(self.config.models) == DEFAULT_MODELS
+         # Prepared snapshots already contain their exact original model policy.
+         # A later active selection must not silently retune the consumer.
+         use_model_policy = self.prepared_source is None and self.config.use_supervised_models and mode == "live"
+         use_selected_manifest = self.prepared_source is None and mode in {"live", "shadow"} and default_models
+         supervised_policy = (_supervised_cycle_policy(self.store, cycle_id, pc=self.pc, symbols=self.symbols,
+             configuration=configuration, selected_as_of=training_cutoff,
+             selected_config_path=self.selected_config_path if use_selected_manifest else None,
+             use_model_policy=use_model_policy, model_policy_root=self.model_policy_root)
+                              if use_model_policy or use_selected_manifest else None)
+         if supervised_policy is not None and supervised_policy.get("selected_config_by_symbol"):
+             # This overlay is excluded from the logical cycle identity. The
+             # first begin_cycle writer owns it; retries reuse that frozen choice.
+             configuration["selected_models_by_symbol"] = supervised_policy["selected_config_by_symbol"]
+         initial = dict(pc=self.pc,symbols=list(self.symbols),reference_at=reference.isoformat(),mode=mode,
+                        experiment=experiment,configuration_hash=configuration_hash,configuration=configuration,
+                        supervised_model_policy=supervised_policy,
+                        started_at=started.isoformat(),training_cutoff=training_cutoff.isoformat(),
+                        candle_close=(reference+STEP).isoformat(),scheduled_acquisition=scheduled.isoformat(),
+                        acquisition=acquisition or {},status="running",full_retrain=True,
+                        runtime_provenance=self.runtime_provenance,
+                        scheduling_policy="explicit_research_workers_no_timeout_no_fallback",
+                        overrun_policy="latest_completed_no_backlog_orders" if mode == "live" else
+                                       "record_overrun_no_automatic_live_execution")
+         saved = self.store.begin_cycle(cycle_id,initial)
+         supervised_policy = (_frozen_supervised_policy(saved, symbols=self.symbols)
+                              if supervised_policy is not None else None)
+         existing = ({symbol: None for symbol in self.symbols} if _prepare_only else
+                     {symbol: self.store.forecast(cycle_id, symbol) for symbol in self.symbols})
+         reused = {symbol: forecast for symbol, forecast in existing.items() if forecast is not None}
+         selected = set(self.symbols if retry_symbols is None else retry_symbols)
+         if not selected <= set(self.symbols):
+             raise ContractError("Recovery changed the configured symbol scope")
+         if not _prepare_only and saved.get("status") == "completed":
+             if len(reused) != len(self.symbols):
+                 raise ContractError("Completed cycle is missing immutable forecasts")
+             self.store.event(cycle_id,"completed_cycle_reused",{"reused_symbols":list(reused),
+                              "retrained_symbols":0,"original_measurements_preserved":True})
+             for forecast in reused.values():
+                 self._published(forecast, on_published)
+             return {"cycle_id":cycle_id,**saved,"forecasts":reused,"recovered_existing":True}
+         if hasattr(histories,"bind_cycle"):
+             histories.bind_cycle(cycle_id)
+         training_cutoff = instant(saved["training_cutoff"])
+         start_perf = time.perf_counter()
+         before = resource_snapshot()
+         results = {symbol: forecast for symbol, forecast in reused.items() if symbol not in selected}
+         prior_failures={**saved.get("failures", {}), **recorded_symbol_failures(self.store, cycle_id)}
+         failures = {symbol: error for symbol, error in prior_failures.items()
+                     if symbol not in selected and symbol not in reused}
+         with ThreadPoolExecutor(max_workers=self.config.symbol_workers,thread_name_prefix="intraday-research") as pool:
+             futures = {pool.submit(self._symbol, cycle_id, symbol, lambda s=symbol: histories.get(s), reference,
+                         training_cutoff, mode, (intent_by_symbol or {}).get(symbol), on_published, start_perf,
+                         allow_execution, supervised_policy, _prepare_only): symbol for symbol in self.symbols if symbol in selected}
+             for future in as_completed(futures):
+                 symbol = futures.pop(future)
+                 try:
+                     result = future.result()
+                     if _prepare_only:
+                         if _on_prepared is not None:
+                             _on_prepared(cycle_id, symbol, saved, result)
+                         results[symbol] = {"snapshot_hash": result[0]}
+                     else:
+                         results[symbol] = result
+                 except Exception as exc:
+                     from .data import AcquisitionPending
+                     error = {"type":type(exc).__name__,"message":str(exc),"recorded_at":instant(self.clock()).isoformat(),
+                              "diagnostics":_symbol_exception_diagnostics(exc)}
+                     if isinstance(exc, AcquisitionPending):
+                         error.update(retryable=True, reason=exc.reason,
+                                      retry_after_seconds=exc.retry_after_seconds,
+                                      retry_at=(instant(error["recorded_at"])+timedelta(seconds=exc.retry_after_seconds)).isoformat())
+                     failures[symbol] = error
+                     self.store.event(cycle_id,"symbol_failure",error,symbol=symbol)
+                     # A crash between futures must not turn a known permanent
+                     # model failure into an automatic data-prerequisite retry.
+                     self.store.update_cycle(cycle_id,{"failures":dict(failures),
+                         "pending_recovery_symbols":[s for s,e in failures.items() if e.get("retryable")]})
+         elapsed = time.perf_counter()-start_perf
+         after = resource_snapshot()
+         end = instant(self.clock())
+         if _prepare_only:
+             summary = dict(status="prepared" if not failures and len(results) == len(self.symbols)
+                            else "partial_preparation", prepared_at=end.isoformat(),
+                            preparation_seconds=elapsed, prepared_symbols=list(results),
+                            failed_symbols=len(failures), failures=failures,
+                            pending_recovery_symbols=[s for s,e in failures.items() if e.get("retryable")])
+             self.store.update_cycle(cycle_id, summary)
+             self.store.event(cycle_id, "preparation_attempt_measured", {
+                 "preparation_seconds": elapsed, "prepared_symbols": list(results),
+                 "failed_symbols": list(failures), "training_calls": 0,
+                 "resources_before": before, "resources_after": after})
+             return {"cycle_id": cycle_id, **summary, "snapshots": results}
+         acquisition_seconds=float((acquisition or {}).get("seconds",0.0))
+         total_seconds=elapsed+acquisition_seconds
+         attempt = dict(compute_persist_seconds=elapsed,acquisition_seconds=acquisition_seconds,
+                        total_cycle_seconds=total_seconds,completed_at=end.isoformat(),
+                        reused_symbols=list(reused),retrained_symbols=[s for s in results if s not in reused],
+                        failed_symbols=list(failures),resources_before=before,resources_after=after,
+                        process_cpu_seconds=after["process_cpu_seconds"]-before["process_cpu_seconds"])
+         self.store.event(cycle_id,"cycle_attempt_measured",attempt)
+         cumulative_total = total_seconds + float(saved.get("cumulative_attempt_seconds",
+             saved.get("compute_persist_seconds",0)+saved.get("acquisition_seconds",0)))
+         wall_seconds=max(0.0,(end-instant(saved["started_at"])).total_seconds())
+         total_cycle_seconds=wall_seconds if mode in {"live","shadow"} else cumulative_total
+         summary = dict(status="completed" if not failures and len(results)==len(self.symbols) else "partial_failure",completed_at=end.isoformat(),
+                        compute_persist_seconds=elapsed+float(saved.get("compute_persist_seconds",0)),
+                        acquisition_seconds=acquisition_seconds+float(saved.get("acquisition_seconds",0)),
+                        total_cycle_seconds=total_cycle_seconds,cumulative_attempt_seconds=cumulative_total,
+                        successful_symbols=len(results),failed_symbols=len(failures),
+                        symbols_published=list(results),failures=failures,resources_before=before,resources_after=after,
+                        pending_recovery_symbols=[s for s,e in failures.items() if e.get("retryable")],
+                        process_cpu_seconds=attempt["process_cpu_seconds"]+float(saved.get("process_cpu_seconds",0)),
+                        measurement_scope="wall_elapsed_with_cumulative_attempt_work_v1" if mode in {"live","shadow"}
+                            else "cumulative_attempt_work",attempt_count=int(saved.get("attempt_count",0))+1,
+                        wall_elapsed_seconds=wall_seconds,wall_exceeds_15m=wall_seconds>=900,
+                        wall_overrun_seconds=max(0,wall_seconds-900),
+                        latest_attempt=attempt,resources_initial=saved.get("resources_initial",before),
+                        exceeds_15m=total_cycle_seconds>=900,overrun_seconds=max(0,total_cycle_seconds-900))
+         self.store.update_cycle(cycle_id,summary)
+         return {"cycle_id":cycle_id,**summary,"forecasts":results}
+ 
+     def prepare_symbol(self, cycle_id, symbol, history, reference, cutoff, mode="live", *,
+                        supervised_policy=None):
+         """Run the unchanged causal preparation path through immutable freeze."""
+         return self._symbol(cycle_id, symbol, history, instant(reference), instant(cutoff), mode,
+                             None, None, time.perf_counter(), False, supervised_policy, True)
+ 
+     def _symbol(self,cycle_id,symbol,history,reference,cutoff,mode,intent,on_published,cycle_started_perf,
+                 allow_execution=True,supervised_policy=None,prepare_only=False):
+         if self.stopped():
+             raise InterruptedError("Manual stop before symbol work; no model or forecast substituted")
+         existing=None if prepare_only else self.store.forecast(cycle_id,symbol)
+         if existing:
+             self._published(existing, on_published)
+             return existing
+         local_boundary=(reference+STEP).astimezone(PACIFIC)
+         edge=(local_boundary.hour,local_boundary.minute)
+         local_target=(reference+2*STEP).astimezone(PACIFIC)
+         target_edge=(local_target.hour,local_target.minute)
+         if target_edge < (4,0) or edge >= (16,45):
+             if callable(history):
+                 history=history()
+             if history is not None:
+                 frame=_frame(history)
+                 final=frame.loc[pd.to_datetime(frame.available_at,utc=True).le(pd.Timestamp(instant(self.clock()) if mode in {"shadow", "live"} else cutoff))]
+                 self.store.freeze_inputs(cycle_id,symbol,{"status":"session_edge_policy_unresolved","reference_at":reference.isoformat(),
+                     "next_session_target":None,"candles":json.loads(final.to_json(orient="records",date_format="iso"))})
+             raise UnresolvedPolicy("Targets before04:00 and final16:45 cycle/submission are not admitted; inputs preserved")
+         if edge <= (4,0):
+             from .data import equity_sessions
+             if not any(session.contains(reference) and session.contains(reference+2*STEP)
+                        for session in equity_sessions(reference, reference+3*STEP)):
+                 raise ContractError("Opening preparation requires an eligible equity session")
+         begun=time.perf_counter()
+         frozen=self.store.inputs(cycle_id,symbol)
+         if frozen is None and self.prepared_source is not None:
+             supplied = self.prepared_source(cycle_id, symbol)
+             if (not isinstance(supplied, tuple) or len(supplied) != 2
+                     or not isinstance(supplied[1], dict) or digest(supplied[1]) != supplied[0]):
+                 raise ContractError("Prepared snapshot content does not match its immutable identity")
+             frozen = self.store.freeze_inputs(cycle_id, symbol, supplied[1])
+             if frozen[0] != supplied[0]:
+                 raise ContractError("Consumer cycle already owns a different immutable snapshot")
+         if frozen is None:
+             if callable(history):
+                 history=history()
+             if history is None:
+                 raise ContractError("No history provided for configured local symbol")
+             begun=time.perf_counter()
+             if mode in {"shadow", "live"}:
+                 cutoff=instant(self.clock())
+             from .data import build_dataset
+             builder=self.dataset_builder or build_dataset
+             scope = (supervised_policy["dataset_scope_by_symbol"][symbol] if supervised_policy is not None
+                      else _dataset_scope(asdict(self.config)))
+             dataset=builder(_frame(history),cutoff=cutoff,reference_at=reference,
+                             **scope)
+             inference=_jsonable(dataset.inference)
+             if mode in {"shadow", "live"} and inference.get("availability_kind")!="actual":
+                 raise ContractError("Current shadow cycle requires actually observed reference availability")
+             snapshot={"X":_jsonable(np.asarray(dataset.X)),"y":_jsonable(np.asarray(dataset.y)),
+                       "inference_X":_jsonable(np.asarray(dataset.inference_X)),"inference":inference,
+                       "feature_names":list(dataset.feature_names),"label_available_at":_jsonable(dataset.label_available_at),
+                       "reference_at":_jsonable(dataset.reference_at),"target_close_at":_jsonable(dataset.target_close_at),
+                       "manifest":_jsonable(dataset.manifest),"cutoff":cutoff.isoformat(),
+                       "dataset_scope": dict(scope),
+                       "source_manifest":_jsonable(getattr(history,"manifest",{}))}
+             snapshot["runtime_provenance"] = self.runtime_provenance
+             if self.market_input_store is not None:
+                 from .market_inputs import augment_snapshot
+                 snapshot = augment_snapshot(snapshot, self.market_input_store, symbol=symbol,
+                                             inference_at=cutoff, cutoff=cutoff)
+             from ml.market_provenance import capture_runtime
+             snapshot["runtime_provenance"] = capture_runtime([
+                 __name__, "ml.intraday.data", "ml.intraday.models", "ml.intraday.coverage",
+                 "ml.intraday.feature_support", "ml.intraday.live_session", "ml.intraday.store",
+                 "ml.intraday.market_inputs", "ml.intraday.historical_market_inputs",
+                 "ml.intraday.recovered_population", "ml.intraday.gap_recovery", "ml.market_gap_evidence",
+                 "ml.intraday.market_input_stream", "ml.intraday.market_input_schwab_stream",
+                 "ml.intraday.market_input_research", "ml.intraday.provider_recovery",
+                 "ml.intraday.market_input_worker", "app.services.databento_market_data", *_SPLIT_SOURCE_MODULES],
+                 object_root=self.artifact_root / "source-objects")
+             if supervised_policy is not None:
+                 selected_specs = supervised_policy["models_by_symbol"][symbol]
+                 entry = supervised_policy.get("selected_config_by_symbol", {}).get(symbol)
+                 selected_features = entry["feature_names"] if entry is not None else supervised_policy["feature_names"]
+                 if (selected_specs is not None and list(snapshot["feature_names"]) != selected_features
+                         and not (self.market_input_store is not None and _market_feature_migration(
+                             selected_features, snapshot["feature_names"], dataset.feature_names))):
+                     raise ContractError("Selected model policy features differ from the current dataset")
+                 snapshot["model_selection"] = {"models": selected_specs,
+                     "policy_sha256": supervised_policy["sha256"],
+                     "active_policy_sha256": supervised_policy.get("policy_identities_by_symbol", {}).get(symbol),
+                     "selection": "supervised" if selected_specs is not None else "configured_defaults"}
+                 snapshot["model_selection"]["qualification_context"] = (
+                     "same_population_and_features" if entry is not None
+                     and entry.get("population_contract") == scope.get("population_contract")
+                     and selected_features == snapshot["feature_names"]
+                     and entry.get("feature_contract", {"price": entry.get("feature_version")})
+                         == snapshot["manifest"].get("feature_contract", {"price": snapshot["manifest"].get("feature_version")})
+                     and entry.get("market_input_version") == snapshot["manifest"].get("market_input_version")
+                     else "specifications_retained; current_population_or_features_not_yet_assessed")
+                 if entry is not None:
+                     tail = entry["max_training_rows"]
+                     for field in ("X", "y", "label_available_at", "reference_at", "target_close_at"):
+                         snapshot[field] = snapshot[field][-tail:]
+                     if snapshot.get("market_inputs"):
+                         snapshot["market_inputs"]["training"] = snapshot["market_inputs"]["training"][-tail:]
+                         snapshot["market_inputs"]["training_rows"] = len(snapshot["X"])
+                         snapshot["market_inputs"]["training_nonmissing_rows_by_feature"] = {
+                             name: sum(row[index + 1] for row in snapshot["X"])
+                             for index, name in enumerate(snapshot["feature_names"])
+                             if name in snapshot["market_inputs"]["feature_names"] and not name.endswith("__available")}
+                     snapshot["manifest"] = {**snapshot["manifest"], "supervised_training_rows": len(snapshot["y"]),
+                         "max_training_rows": tail, "model_selection_id": entry["selection_id"]}
+                     snapshot["model_selection"].update(selection="selected_manifest", selection_id=entry["selection_id"])
+             # Retain the actual observations used, rather than only transformed features.
+             # History provenance stays in the manifests. Pandas otherwise copies
+             # bulky attrs into every column and slice during this projection.
+             frame=_frame(history).copy(deep=False)
+             frame.attrs={}
+             available=pd.to_datetime(frame.available_at,utc=True)
+             used=frame.loc[available.le(pd.Timestamp(cutoff)) & pd.to_datetime(frame.opened_at,utc=True).le(pd.Timestamp(reference))]
+             snapshot["candles"]=_jsonable(used.to_dict("records"))
+             frozen=self.store.freeze_inputs(cycle_id,symbol,snapshot)
+         snapshot_hash,snapshot=frozen
+         # Immutable inputs and their actual manifest take precedence on retry,
+         # including snapshots created before dataset scope was recorded.
+         fallback_scope = (supervised_policy["dataset_scope_by_symbol"][symbol] if supervised_policy is not None
+                           else _dataset_scope(asdict(self.config)))
+         dataset_scope = _dataset_scope({**fallback_scope, **snapshot.get("dataset_scope", {}),
+                                        **{key: snapshot["manifest"][key] for key in fallback_scope
+                                           if key in snapshot["manifest"]}})
+         prep_seconds=time.perf_counter()-begun
+         inf=snapshot["inference"]
+         if instant(inf["reference_at"]) != reference:
+             raise ContractError("Inference snapshot changed cycle reference")
+         availability_basis="observed" if inf.get("availability_kind")=="actual" else "assumed_historical"
+         if mode in {"shadow", "live"} and availability_basis!="observed":
+             raise ContractError("Current shadow cycle requires actually observed reference availability")
+         if prepare_only:
+             self.store.event(cycle_id, "symbol_prepared", {"snapshot_hash": snapshot_hash,
+                 "preparation_seconds": prep_seconds, "training_cutoff": snapshot["cutoff"],
+                 "reference_at": reference.isoformat(), "target_close": (reference+3*STEP).isoformat()},
+                 symbol=symbol)
+             return frozen
+         from .models import configured_models, fit_ensemble
+         if self.stopped():
+             raise InterruptedError("Manual stop before training; original snapshot preserved")
+         trainer=self.trainer or fit_ensemble
+         selected_specs = snapshot.get("model_selection", {}).get("models")
+         model_config = (selected_specs if snapshot.get("model_selection", {}).get("selection") == "selected_manifest"
+                         else configured_models(selected_specs)) if selected_specs is not None else self.config.models
+         attempt=uuid.uuid4().hex
+         training_start=instant(self.clock())
+         self.store.event(cycle_id,"training_started",{"attempt":attempt,"snapshot_hash":snapshot_hash,
+                          "training_cutoff":snapshot["cutoff"],"validated_data_ready":training_start.isoformat()},symbol=symbol)
++        from .snapshot_references import model_market_input_metadata
+         fitted=trainer(np.asarray(snapshot["X"],dtype=float),np.asarray(snapshot["y"]),
+                        np.asarray(snapshot["inference_X"],dtype=float),config=model_config,
+                        target_version=TARGET_VERSION,training_cutoff=snapshot["cutoff"],
+                        label_available_at=snapshot["label_available_at"],feature_names=snapshot["feature_names"],
+                        artifact_dir=self.artifact_root,run_id=f"{cycle_id[:16]}-{symbol}-{attempt}",
+                        reference_at=snapshot["reference_at"],target_close_at=snapshot["target_close_at"],
+                        dataset_metadata={**snapshot["manifest"], **dataset_scope, "dataset_scope": dataset_scope,
+                            "runtime_provenance": snapshot.get("runtime_provenance"),
+-                           "market_inputs": snapshot.get("market_inputs"),
++                           "market_inputs": model_market_input_metadata(snapshot, snapshot_hash),
+                            **({"model_selection": snapshot["model_selection"]} if "model_selection" in snapshot else {})})
+         finished=instant(self.clock())
+         self.store.event(cycle_id,"models_completed",{"attempt":attempt,"result":fitted},symbol=symbol)
+         if not fitted["successful_count"]:
+             raise ContractError("All enabled models failed; see persisted individual model failures")
+         measured=time.perf_counter()-begun
+         issued=finished if mode in {"shadow", "live"} else cutoff+timedelta(seconds=time.perf_counter()-cycle_started_perf)
+         payload={"pc":self.pc,"symbol":symbol,"cycle_id":cycle_id,"reference_at":reference.isoformat(),
+                  "reference_open":str(inf["reference_open"]),"data_through":(reference+STEP).isoformat(),
+                  "target_open":(reference+2*STEP).isoformat(),"target_close":(reference+3*STEP).isoformat(),
+                  "information_available_at":inf["information_available_at"],"training_cutoff":snapshot["cutoff"],
+                  "issued_at":issued.isoformat(),"recorded_at":finished.isoformat(),"target_version":TARGET_VERSION,
+                  "mode":mode,"availability_basis":availability_basis,"snapshot_hash":snapshot_hash,
+                  "source_dataset":inf.get("source_dataset"),"source_id":inf.get("source"),
+                  "models":fitted["outputs"],"probability_not_down":fitted["probability_not_down"],
+                  "configured_count":fitted["configured_count"],"successful_count":fitted["successful_count"],
+                  "ensemble_status":"full" if fitted["complete"] else "incomplete",
+                  "preprocessing_seconds":prep_seconds,"training_seconds":fitted["training_seconds"],
+                  "inference_seconds":fitted["inference_seconds"],"symbol_seconds_before_persistence":measured,
+                  "training_started_at":training_start.isoformat(),"training_completed_at":finished.isoformat(),
+                  "issue_after_target":issued>=reference+3*STEP,"dataset_manifest":snapshot["manifest"],
+                  "model_selection":snapshot.get("model_selection"),
+                  "model_selection_id":snapshot.get("model_selection", {}).get("selection_id"),
+                  "execution_blocked_reason":"recovered_older_cycle" if not allow_execution else
+                      "issue_after_target" if issued>=reference+3*STEP else None,
+                  "synthetic_policy":dataset_scope["synthetic_policy"],"dataset_scope":dataset_scope,
+                  "population_contract":dataset_scope.get("population_contract"),
+                  "runtime_provenance_sha256": snapshot.get("runtime_provenance", {}).get("sha256"),
+                  "model_qualification_context":snapshot.get("model_selection", {}).get("qualification_context"),
+                  "features":dict(zip(snapshot["feature_names"],snapshot["inference_X"][0])),
+                  "regime_measurements":regime_measurements(snapshot)}
+         reference_rows=[row for row in snapshot.get("candles", [])
+                         if instant(row["opened_at"]) == reference]
+         if reference_rows:
+             candle=reference_rows[-1]
+             payload["reference_provenance"]={
+                 "reference_at":reference.isoformat(),
+                 **{field:candle.get(field) for field in (
+                     "observed_constituents", "synthetic_constituents", "synthetic",
+                     "no_trade", "source_id", "availability_kind")}}
+         if self.forecast_preparer is not None:
+             execution_preparation_begun = time.perf_counter()
+             payload = self.forecast_preparer(payload, snapshot, fitted)
+             payload.update(execution_preparation_seconds=time.perf_counter()-execution_preparation_begun,
+                            symbol_seconds_before_persistence=time.perf_counter()-begun)
+             # Publication follows preparation of the complete immutable compact
+             # record. Its actual issue clock can advance; fixed target clocks
+             # and original training/availability evidence never move.
+             if mode in {"shadow", "live"}:
+                 issued = instant(self.clock())
+                 payload.update(issued_at=issued.isoformat(), recorded_at=issued.isoformat(),
+                     issue_after_target=issued >= reference+3*STEP,
+                     execution_blocked_reason="recovered_older_cycle" if not allow_execution else
+                         "issue_after_target" if issued >= reference+3*STEP else None)
+         persistence_start=time.perf_counter()
+         forecast=self.store.save_forecast(payload,intent=intent)
+         self.store.event(cycle_id,"forecast_persisted",{"forecast_id":forecast["forecast_id"],
+                          "persisted_at":instant(self.clock()).isoformat(),"persistence_seconds":time.perf_counter()-persistence_start},symbol=symbol)
+         self._published(forecast, on_published)
+         return forecast
+ 
+     def _published(self, forecast, callback):
+         if callback is None:
+             return
+         try:
+             callback(forecast)
+         except Exception as exc:
+             # Execution/intention failure cannot turn an already issued real
+             # forecast into a model failure, erase it, or trigger retraining.
+             self.store.event(forecast["cycle_id"], "publication_consumer_failure",
+                 {"forecast_id": forecast["forecast_id"], "type": type(exc).__name__,
+                  "message": str(exc), "forecast_preserved": True}, symbol=forecast["symbol"])
+ 
+     def score_available(self,histories,*,as_of,mode=None):
+         from .data import completed_15m_observation, synthetic_continuity_verified
+         results=[]
+         for forecast in self.store.forecasts(pc=self.pc):
+             if mode is not None and forecast["mode"]!=mode:
+                 continue
+             if instant(forecast["issued_at"])>instant(as_of):
+                 continue
+             revisions=self.store.revisions(forecast["forecast_id"])
+             if revisions and instant(revisions[-1]["observed_at"])>instant(as_of):
+                 # A retrospective experiment cannot overwrite later recorded
+                 # evidence or expose that future outcome at its earlier cutoff.
+                 continue
+             history=histories.get(forecast["symbol"])
+             candle=None
+             if history is not None:
+                 frame=_frame(history)
+                 sources={field:forecast[field] for field in ("source_dataset","source_id") if forecast.get(field)}
+                 for field,expected in sources.items():
+                     if field not in frame:
+                         frame=frame.iloc[:0]
+                         break
+                     frame=frame.loc[frame[field].eq(expected)]
+                 if sources and frame.empty:
+                     # Another source's history says nothing about this forecast's
+                     # outcome availability and must not revise its saved evidence.
+                     continue
+                 if forecast["mode"] in {"shadow", "live"}:
+                     frame=frame.loc[frame.availability_kind.eq("actual")]
+                 match=frame.loc[(pd.to_datetime(frame.opened_at,utc=True)==pd.Timestamp(forecast["target_open"])) &
+                                 (pd.to_datetime(frame.available_at,utc=True)<=pd.Timestamp(instant(as_of)))]
+                 match=match.loc[[completed_15m_observation(row, from_frame=True) and synthetic_continuity_verified(row)
+                                 and (row.get("population_contract") if isinstance(row.get("population_contract"), str) else None)
+                                     == forecast.get("population_contract")
+                                 for row in match.to_dict("records")]]
+                 if len(match):
+                     match=match.sort_values("available_at")
+                     candle=_jsonable(match.iloc[-1].to_dict())
+             results.append(self.store.observe(forecast,as_of=as_of,candle=candle))
+         return results
+ 
+ 
+ class LiveHistories:
+     """Read-only existing Databento access; original DATASTORE files stay intact."""
+     def __init__(self,*,histories,provider,store,journal,reference_at,clock=utcnow,sleep=time.sleep,bounded=False,
+                  stopped=None,reuse_saved=False,population_contract=None,restore_eagerly=True,datastore=None):
+         self.histories=histories
+         self.provider=provider
+         self.store=store
+         self.datastore = Path(datastore) if datastore is not None else None
+         self.journal=journal
+         self.reference=instant(reference_at)
+         self.clock=clock
+         self.sleep=sleep
+         self.bounded=bounded
+         self.stopped=stopped or (lambda: False)
+         self.reuse_saved=reuse_saved
+         self.population_contract = population_contract or next(
+             (getattr(h, "manifest", {}).get("population_contract") for h in histories.values()
+              if getattr(h, "manifest", {}).get("population_contract")), None)
+         if population_contract == "legacy":
+             self.population_contract = None
+         from .coverage import RECOVERY_POPULATION_CONTRACT
+         self.recovery_enabled = self.population_contract == RECOVERY_POPULATION_CONTRACT
+         self.candle_source_id = "multi:databento-schwab-fmp:15m" if self.recovery_enabled else f"databento:{provider.dataset}:ohlcv-1m"
+         self.candle_dataset = "MULTI_PROVIDER" if self.recovery_enabled else provider.dataset
+         self.cycle_id=None
+         # Live callers restore in get(), inside the requested symbol's worker.
+         # Restore-only callers retain the original eager constructor behavior.
+         if restore_eagerly:
+             for symbol in tuple(histories):
+                 if self.stopped():
+                     raise InterruptedError("Candle acquisition stopped before history restoration")
+                 self._refresh_symbol(symbol)
+ 
+     def _refresh_symbol(self, symbol):
+         from .data import History, completed_15m_observation, synthetic_continuity_verified
+         histories = self.histories
+         for symbol,history in ((symbol, histories[symbol]),):
+             if history.manifest.get("source_dataset")!=self.provider.dataset:
+                 raise ContractError("Existing provider binding differs from selected single historical source")
+             saved=self.store.observed_candles(symbol)
+             saved=[c for c in saved if instant(c["available_at"]) <= instant(self.clock())]
+             invalid=[c for c in saved if not synthetic_continuity_verified(c)]
+             saved=[c for c in saved if synthetic_continuity_verified(c) and completed_15m_observation(c)]
+             saved=[c for c in saved if c.get("population_contract") == self.population_contract]
+             original=_frame(history)
+             excluded=[index for index,row in original.loc[original.synthetic.eq(True)].iterrows()
+                       if not synthetic_continuity_verified(_jsonable(row.to_dict()))]
+             if invalid or excluded:
+                 self.store.event("live-history-provenance-audit","unverified_synthetic_excluded",
+                     {"saved_candle_hashes":[digest(c) for c in invalid],
+                      "history_rows_excluded":len(excluded),"immutable_originals_retained":True},symbol=symbol)
+                 original=original.drop(index=excluded).copy()
+                 histories[symbol]=history=History(original,history.manifest)
+             eligible=[completed_15m_observation(row, from_frame=True) and instant(row["available_at"]) <= instant(self.clock())
+                       and (row.get("population_contract") if isinstance(row.get("population_contract"),str) else None)
+                           == self.population_contract
+                       for row in original.to_dict("records")]
+             original=original.loc[eligible].copy()
+             original.attrs["intraday_history"]=history.manifest
+             histories[symbol]=history=History(original,history.manifest)
+             if saved:
+                 if any(c.get("source_dataset")!=self.candle_dataset for c in saved):
+                     raise ContractError("Stored observed candles have another source dataset")
+                 addition=pd.DataFrame(saved)
+                 for column in ("opened_at","available_at"):
+                     addition[column]=[pd.Timestamp(instant(value)) for value in addition[column]]
+                 merged=pd.concat([_frame(history),addition],ignore_index=True).sort_values("available_at").drop_duplicates("opened_at",keep="last").sort_values("opened_at").reset_index(drop=True)
+                 merged.attrs["intraday_history"]=history.manifest
+                 histories[symbol]=History(merged,history.manifest)
+ 
+     def bind_cycle(self,cycle_id):
+         self.cycle_id=cycle_id
+ 
+     def get(self,symbol):
+         from .data import AcquisitionPending
+         while True:
+             if self.stopped():
+                 raise InterruptedError("Candle acquisition stopped before the next attempt")
+             try:
+                 return self._get_step(symbol)
+             except AcquisitionPending as exc:
+                 if self.stopped():
+                     raise InterruptedError("Candle acquisition stopped before retry wait") from exc
+                 if self.bounded:
+                     raise
+                 self.sleep(min(4.0, exc.retry_after_seconds))
+ 
+     def _get_step(self,symbol):
+         from .data import (History,equity_sessions,recover_databento_candle_step,
+                            resolve_minute_candle,AcquisitionPending,synthetic_continuity_verified,
+                            completed_15m_observation)
+         self._refresh_symbol(symbol)
+         history=self.histories[symbol]
+         frame=_frame(history)
+         if self.stopped():
+             raise InterruptedError("Candle acquisition stopped before the next provider request")
+         if self.reuse_saved:
+             # Reuse only durable, actually received and provenance-validated
+             # observations. Historical close-time assumptions cannot satisfy
+             # a live collector's completed slot.
+             durable=next((c for c in reversed(self.store.observed_candles(symbol))
+                           if instant(c["opened_at"]) == self.reference
+                           and instant(c["available_at"]) <= instant(self.clock())
+                           and c.get("source_dataset") == self.candle_dataset
+                           and c.get("source_id") == self.candle_source_id
+                           and c.get("population_contract") == self.population_contract
+                           and completed_15m_observation(c)
+                           and synthetic_continuity_verified(c)), None)
+             if durable is not None and self.reference+STEP <= instant(self.clock()):
+                 # A later invalid same-opening row must not override the
+                 # independently validated durable 15m observation we selected.
+                 addition=pd.DataFrame([durable])
+                 for column in ("opened_at","available_at"):
+                     addition[column]=[pd.Timestamp(instant(value)) for value in addition[column]]
+                 prior=frame.loc[pd.to_datetime(frame.opened_at,utc=True).ne(pd.Timestamp(self.reference))]
+                 merged=pd.concat([prior,addition],ignore_index=True).sort_values("opened_at").reset_index(drop=True)
+                 merged.attrs["intraday_history"]=history.manifest
+                 self.histories[symbol]=History(merged,history.manifest)
+                 return self.histories[symbol]
+         sessions=equity_sessions(self.reference,self.reference+STEP)
+         session=next((s for s in sessions if s.contains(self.reference)),None)
+         if session is None:
+             raise ContractError("Requested interval is outside a genuine eligible session")
+         requested = self.reference
+         while True:
+             if self.stopped():
+                 raise InterruptedError("Candle acquisition stopped before predecessor recovery")
+             before=frame.loc[pd.to_datetime(frame.opened_at,utc=True).lt(pd.Timestamp(requested))
+                              & pd.to_datetime(frame.available_at,utc=True).le(pd.Timestamp(instant(self.clock())))]
+             previous=_jsonable(before.iloc[-1].to_dict()) if len(before) else None
+             adjacent = (previous is not None and instant(previous["opened_at"])+STEP == requested
+                         and previous.get("session_id") == session.session_id
+                         and previous.get("source_dataset") == self.provider.dataset
+                         and previous.get("source_id") == f"databento:{self.provider.dataset}:ohlcv-1m")
+             slot=dict(symbol=symbol,source_id=f"databento:{self.provider.dataset}:ohlcv-1m",
+                       interval_open=requested.isoformat(),interval_close=(requested+STEP).isoformat())
+             attempts=self.journal.responses(**slot)
+             # Only confirmed leading omissions require an external close. Walk
+             # their missing same-session predecessors using existing evidence;
+             # this call still performs at most one bounded acquisition step.
+             from .coverage import POPULATION_CONTRACT
+             primary_contract = POPULATION_CONTRACT if self.recovery_enabled else self.population_contract
+             probe=resolve_minute_candle(attempts,session=session,previous=None,
+                 **({"population_contract":primary_contract} if primary_contract else {})) if attempts and not adjacent else {}
+             if (probe.get("reason") == "no_prior_known_price" and session.contains(requested-STEP)):
+                 requested -= STEP
+                 continue
+             break
+         begin=instant(self.clock());tick=time.perf_counter()
+         kwargs=dict(symbol=symbol,opened_at=requested,journal=self.journal,session=session,
+                     previous=previous,clock=self.clock,stopped=self.stopped)
+         if self.population_contract:
+             from .coverage import POPULATION_CONTRACT
+             kwargs["population_contract"] = POPULATION_CONTRACT if self.recovery_enabled else self.population_contract
+         result=recover_databento_candle_step(self.provider,**kwargs)
+         if self.recovery_enabled:
+             from .recovered_population import wrap_primary, recovery_candle
+             if result.get("candle") is not None:
+                 result = {**result, "candle": wrap_primary(result["candle"])}
+             elif ((result.get("final") and result.get("reason") == "source_empty")
+                   or (result.get("status") == "retry" and result.get("reason") == "unavailable_coverage")):
+                 # Unpublished primary coverage does not prevent a genuine
+                 # alternate observation under the selected recovery policy.
+                 # It supplies no empty-response vote; if recovery has no
+                 # candle, retain the primary retry instead of final emptiness.
+                 from .gap_recovery import GapRecovery
+                 recovered = GapRecovery(self.datastore if self.datastore is not None else self.store.path.parent.parent, clock=self.clock,
+                     stopped=self.stopped).recover(symbol, requested, previous, result)
+                 self.store.event(self.cycle_id, "cross_provider_gap_recovery", recovered, symbol=symbol)
+                 candidate = recovery_candle(recovered["assessment"], session)
+                 if candidate is not None:
+                     result = {**result, "candle": candidate, "status": "cross_provider_recovered"}
+                 elif recovered.get("retry") or recovered.get("status") == "retry":
+                     raise AcquisitionPending("cross_provider_recovery_pending", recovered.get("retry_after_seconds", 2))
+                 else:
+                     result = {**result, "cross_provider_recovery": recovered}
+         if result.get("candle") is None:
+             if result.get("status") == "retry":
+                 raise AcquisitionPending(result.get("reason", "retry"), result.get("retry_after_seconds", 4))
+             if result.get("final") and result.get("reason") == "source_empty":
+                 raise SourceIntervalEmpty(result)
+             raise ContractError("Exact reference unavailable: "+str(result.get("reason",result.get("status"))))
+         candle=result["candle"]
+         self.store.record_candle(candle)
+         if self.recovery_enabled:
+             from .recovered_population import save_recovery_candle
+             save_recovery_candle(self.datastore if self.datastore is not None else self.store.path.parent.parent, candle)
+         addition=pd.DataFrame([candle])
+         for column in ("opened_at","available_at"):
+             addition[column]=[pd.Timestamp(instant(value)) for value in addition[column]]
+         merged=pd.concat([frame,addition],ignore_index=True).sort_values("available_at").drop_duplicates("opened_at",keep="last").sort_values("opened_at").reset_index(drop=True)
+         merged.attrs["intraday_history"]=history.manifest
+         updated=History(merged,{**history.manifest,"current_reference_availability":"actual","source_dataset":self.provider.dataset})
+         self.histories[symbol]=updated
+         self.store.event(self.cycle_id,"acquisition_completed",{"request_started_at":begin.isoformat(),
+             "validated_data_ready":instant(self.clock()).isoformat(),"first_confirmed_availability":candle["available_at"],
+             "seconds":time.perf_counter()-tick,"status":result["status"],"reference_at":requested.isoformat(),
+             "requested_reference_at":self.reference.isoformat()},symbol=symbol)
+         if requested != self.reference:
+             raise AcquisitionPending("verified_predecessor_recovered", 4)
+         return updated
+ 
+ 
+ def watch_shadow(runner,*,histories,provider,journal,start_reference,overrun_policy,clock=utcnow,sleep=time.sleep,max_cycles=None):
+     """Manual research loop, fixed quarter-hour grid and durable cursor.
+ 
+     The caller explicitly selects retain_due_cycles. Late cycles keep their
+     original target and never load an older model. This is not a trading schedule.
+     max_cycles is a bounded development-run control, never a provider retry cap.
+     """
+     if overrun_policy!="retain_due_cycles":
+         raise UnresolvedPolicy("Choose an explicit research overrun policy")
+     if max_cycles is not None and (type(max_cycles) is not int or max_cycles<1):
+         raise ContractError("Bounded shadow cycle count must be a positive integer")
+     reference=instant(start_reference)
+     identity=digest({"pc":runner.pc,"start":reference.isoformat(),"config":_jsonable(asdict(runner.config))})
+     with runner.store.connect() as db:
+         db.execute("CREATE TABLE IF NOT EXISTS research_watch(id TEXT PRIMARY KEY,next_reference TEXT)")
+         db.execute("INSERT OR IGNORE INTO research_watch VALUES(?,?)",(identity,reference.isoformat()))
+         reference=instant(db.execute("SELECT next_reference FROM research_watch WHERE id=?",(identity,)).fetchone()[0])
+     completed=0
+     while max_cycles is None or completed<max_cycles:
+         scheduled=reference+STEP+timedelta(seconds=runner.config.publication_offset_seconds)
+         remaining=(scheduled-instant(clock())).total_seconds()
+         if remaining>0:
+             sleep(min(4.0,remaining));continue
+         from .data import equity_sessions
+         local=(reference+STEP).astimezone(PACIFIC)
+         eligible=(4,0)<(local.hour,local.minute)<=(16,45) and any(s.contains(reference) for s in equity_sessions(reference,reference+STEP))
+         if eligible:
+             incoming=LiveHistories(histories=histories,provider=provider,store=runner.store,journal=journal,
+                                   reference_at=reference,clock=clock,sleep=sleep,stopped=runner.stopped,
+                                   population_contract=runner.config.population_contract)
+             result=runner.run_cycle(incoming,reference_at=reference,mode="shadow",experiment="manual_shadow_watch",
+                                     acquisition={"kind":"existing_databento_exact_interval"})
+             runner.score_available(histories,as_of=clock(),mode="shadow")
+             runner.store.event(identity,"watch_cycle_completed",{"cycle_id":result["cycle_id"],"reference_at":reference.isoformat()})
+         else:
+             runner.store.event(identity,"closed_or_unspecified_opening_slot",{"reference_at":reference.isoformat(),"no_forecast":True})
+         reference+=STEP
+         with runner.store.connect() as db:
+             db.execute("UPDATE research_watch SET next_reference=? WHERE id=?",(reference.isoformat(),identity))
+         completed+=1
+     return {"watch_id":identity,"completed_cycles":completed,"next_reference":reference.isoformat()}
+ 
+ 
+ def main(argv=None):
+     parser=argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("--datastore",required=True,type=Path)
+     parser.add_argument("--profile",required=True,type=Path)
+     parser.add_argument("--watchlist",required=True,type=Path)
+     parser.add_argument("--reference",required=True)
+     parser.add_argument("--mode",choices=["historical_replay","shadow"],default="historical_replay")
+     parser.add_argument("--lookback-days",type=int)
+     parser.add_argument("--source-dataset",choices=["EQUS.MINI","XNAS.ITCH"],default="EQUS.MINI",
+                         help="One explicit historical source; sources are never merged")
+     parser.add_argument("--symbol-workers",type=int,default=1)
+     parser.add_argument("--publication-offset-seconds",type=float,default=30)
+     parser.add_argument("--experiment",default="primary")
+     parser.add_argument("--watch",action="store_true",help="Manually run anchored shadow cycles; never installs a schedule")
+     parser.add_argument("--overrun-policy",choices=["retain_due_cycles"])
+     parser.add_argument("--cycles",type=int,help="Optional bounded shadow development run")
+     args=parser.parse_args(argv)
+     if args.source_dataset != "EQUS.MINI" and (args.watch or args.mode in {"shadow", "live"}):
+         raise ContractError("Archive source selection is historical replay only; existing shadow provider binding stays unchanged")
+     from .data import load_local_history
+     from .coverage import RECOVERY_POPULATION_CONTRACT
+     pc,symbols=local_symbols(args.profile,args.watchlist,args.datastore)
+     config=ResearchConfig(lookback_days=args.lookback_days,symbol_workers=args.symbol_workers,source_dataset=args.source_dataset,
+                           publication_offset_seconds=args.publication_offset_seconds)
+     if args.watch or args.mode in {"shadow", "live"}:
+         config=with_local_data_policy(config,args.datastore)
+     start=time.perf_counter(); request_start=utcnow()
+     histories={symbol:load_local_history(args.datastore,symbol,source_dataset=config.source_dataset,
+         **({"population_contract":config.population_contract} if config.population_contract else {}),
+         **({"recovery_cutoff":request_start} if config.population_contract == RECOVERY_POPULATION_CONTRACT else {})) for symbol in symbols}
+     acquisition={"kind":"existing_local_single_source_history","request_start":request_start,"request_end":utcnow(),
+                  "seconds":time.perf_counter()-start,"provider_requests":0}
+-    runner=ShadowRunner(store=ShadowStore(args.datastore/"intraday/shadow.sqlite3"),pc=pc,symbols=symbols,config=config)
++    runner=ShadowRunner(store=ShadowStore(args.datastore/"intraday/shadow.sqlite3",
++        snapshot_directory=args.datastore/"intraday/system-1a/ready/snapshots", chunked_snapshots=True),
++        pc=pc,symbols=symbols,config=config)
+     if args.watch or args.mode in {"shadow", "live"}:
+         from dotenv import load_dotenv
+         from app.services.databento_market_data import DatabentoMarketDataProvider
+         from .data import AcquisitionJournal
+         load_dotenv(Path(__file__).resolve().parents[2]/".env")
+         provider=DatabentoMarketDataProvider()
+         if provider.dataset!=config.source_dataset:
+             raise ContractError("Existing provider binding differs from selected single historical source")
+         journal=AcquisitionJournal(args.datastore/"intraday/acquisition.sqlite3")
+         if args.watch:
+             result=watch_shadow(runner,histories=histories,provider=provider,journal=journal,start_reference=args.reference,
+                                 overrun_policy=args.overrun_policy, max_cycles=args.cycles)
+             print(json.dumps(result,indent=2));return 0
+         incoming=LiveHistories(histories=histories,provider=provider,store=runner.store,journal=journal,reference_at=args.reference)
+     else:
+         incoming=histories
+     result=runner.run_cycle(incoming,reference_at=args.reference,mode=args.mode,experiment=args.experiment,acquisition=acquisition)
+     score_time=utcnow() if args.mode in {"shadow", "live"} else (instant(args.reference)+3*STEP+timedelta(seconds=config.publication_offset_seconds)).isoformat()
+     scores=runner.score_available(histories,as_of=score_time,mode=args.mode)
+     report={k:v for k,v in result.items() if k!="forecasts"}
+     report["acquisition"]=acquisition
+     report["scoring_status_counts"]={s:sum(o["status"]==s for o in scores) for s in {o["status"] for o in scores}}
+     print(json.dumps(report,indent=2))
+     return 1 if result["failed_symbols"] else 0
+ 
+ 
+ if __name__=="__main__":
+     raise SystemExit(main())
+--- a/ml/intraday/snapshot_references.py
++++ b/ml/intraday/snapshot_references.py
+@@ -1,49 +1,106 @@
+ """Decode immutable input evidence without opening or initializing a database."""
+ from __future__ import annotations
+ 
+ import json
+ from pathlib import Path
+ import re
+ 
+ from .prediction import ContractError, digest
++
++
++MARKET_TRAINING_REFERENCE = "intraday-market-training-reference-v1"
++
++
++def model_market_input_metadata(snapshot, snapshot_hash):
++    """Keep repeated model metadata small; the frozen snapshot owns every row.
++
++    Training receipt histories are evidence, not estimator inputs. Copying them
++    into each model, completed-model event and fitted export multiplies storage
++    by the number of models. The original immutable snapshot already retains
++    the exact history. Inference provenance and all compact policy/support
++    metadata remain inline, while this reference binds the original array.
++    """
++    value = snapshot.get("market_inputs")
++    if not isinstance(value, dict) or "training" not in value:
++        return value
++    training = value["training"]
++    if (not isinstance(training, list) or "training_reference" in value
++            or digest(snapshot) != snapshot_hash):
++        raise ContractError("Model market provenance differs from frozen inputs")
++    result = {key: item for key, item in value.items() if key != "training"}
++    result["training_reference"] = {
++        "schema": MARKET_TRAINING_REFERENCE,
++        "snapshot_hash": snapshot_hash,
++        "field": "market_inputs.training",
++        "rows": len(training),
++        "sha256": digest(training),
++    }
++    return result
++
++
++def resolve_model_market_input_metadata(value, snapshot):
++    """Recover original model provenance from an exact caller-loaded snapshot.
++
++    This pure reader accepts historical inline metadata too. It opens no file,
++    database or provider and never changes the snapshot or model metadata.
++    """
++    if not isinstance(value, dict) or "training_reference" not in value:
++        return value
++    reference = value["training_reference"]
++    if (not isinstance(reference, dict)
++            or set(reference) != {"schema", "snapshot_hash", "field", "rows", "sha256"}
++            or reference["schema"] != MARKET_TRAINING_REFERENCE
++            or reference["field"] != "market_inputs.training"
++            or type(reference["rows"]) is not int or reference["rows"] < 0
++            or "training" in value or not isinstance(snapshot, dict)
++            or digest(snapshot) != reference["snapshot_hash"]):
++        raise ContractError("Invalid model market provenance reference")
++    original = snapshot.get("market_inputs")
++    training = original.get("training") if isinstance(original, dict) else None
++    if (not isinstance(training, list) or len(training) != reference["rows"]
++            or digest(training) != reference["sha256"]
++            or {key: item for key, item in original.items() if key != "training"}
++               != {key: item for key, item in value.items() if key != "training_reference"}):
++        raise ContractError("Model market provenance differs from frozen inputs")
++    return dict(original)
+ 
+ 
+ def canonical_snapshot_directory(path):
+     """Read binding for established intraday layouts; never enables writes."""
+     path = Path(path).resolve()
+     if path.parent.name == "intraday" and path.name == "shadow.sqlite3":
+         root = path.parent
+     elif path.parent.parent.name == "intraday" and (
+             path.parent.name == "system-1a"
+             and re.fullmatch(r"preparation(?:-[A-Z][A-Z0-9.-]{0,15})?\.sqlite3", path.name)
+             or path.parent.name == "system-1b"
+             and re.fullmatch(r"models(?:-[0-9]+)?\.sqlite3", path.name)):
+         root = path.parent.parent
+     else:
+         return None
+     return root / "system-1a/ready/snapshots"
+ 
+ 
+ def read_reference_bytes(key, value, *, snapshot_objects):
+     """Validate a descriptor and verify its complete original bytes."""
+     if (not isinstance(value, dict) or set(value) != {"snapshot_storage", "sha256", "bytes"}
+             or value["snapshot_storage"] != "intraday-input-reference-v1"
+             or value["sha256"] != key
+             or type(value["bytes"]) is not int or value["bytes"] < 0
+             or snapshot_objects is None):
+         raise ContractError("Persisted snapshot reference is invalid or unbound")
+     return snapshot_objects.read(key, expected_bytes=value["bytes"])
+ 
+ 
+ def read_input_value(key, raw, *, snapshot_objects=None):
+     value = json.loads(raw)
+     # Legacy inline snapshots may contain any scientific dictionary keys.
+     # Their original semantic identity takes precedence over the codec tag.
+     if isinstance(value, dict) and digest(value) == key:
+         return value
+     if isinstance(value, dict) and "snapshot_storage" in value:
+         raw = read_reference_bytes(key, value, snapshot_objects=snapshot_objects)
+         value = json.loads(raw)
+         if isinstance(value, dict) and digest(value) == key:
+             return value
+     raise ContractError("Persisted snapshot evidence hash changed")
+--- a/ml/intraday/live_session.py
++++ b/ml/intraday/live_session.py
+@@ -1,1143 +1,1145 @@
+ """Human-started local 15m session. No scheduler or autostart.
+ 
+ The default command only reports readiness. --live is explicit manual operating
+ intent. Forecast/model work and serialized broker steps run independently, with
+ durable forecast identities, retry times and original targets.
+ """
+ import argparse
+ from datetime import datetime, timedelta, timezone
+ import json
+ import os
+ import re
+ from pathlib import Path
+ import sqlite3
+ import threading
+ import time
+ import uuid
+ 
+ from datafetching.runtime_lock import exclusive_runtime_lock
+ from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant
+ from .runtime import ResearchConfig, ShadowRunner, LiveHistories, SourceIntervalEmpty, local_symbols, recorded_symbol_failures, with_local_data_policy
+ from .store import ShadowStore, utcnow
+ from .renewal_storage import retry_renewal_storage_setup
+ from .candle_collection import collection_loop, market_close_at, _storage_failure_evidence
+ from .scoring_storage import retry_scoring_storage, record_scoring_worker_failure, scoring_failure_evidence
+ 
+ VERSION = "manual-local-15m-session-v2"
+ 
+ 
+ def latest_completed_reference(now, *, publication_offset_seconds):
+     offset = float(publication_offset_seconds)
+     if not 0 <= offset < 900:
+         raise ContractError("Publication offset must lie within one quarter-hour")
+     adjusted = instant(now) - timedelta(seconds=offset)
+     boundary = adjusted.replace(minute=adjusted.minute // 15 * 15, second=0, microsecond=0)
+     return boundary - STEP
+ 
+ 
+ def eligible_reference(reference):
+     from .data import equity_sessions
+     reference = instant(reference)
+     boundary = (reference + STEP).astimezone(PACIFIC)
+     target = (reference + 2*STEP).astimezone(PACIFIC)
+     return ((target.hour,target.minute) >= (4,0)
+             and (boundary.hour,boundary.minute) < (16,45)
+             and any(session.contains(reference) and session.contains(reference + 2*STEP)
+                     for session in equity_sessions(reference, reference + 3*STEP)))
+ 
+ 
+ class ExecutionQueue:
+     def __init__(self, store, session_id, actor="Atlas"):
+         self.store, self.session_id, self.actor = store, session_id, actor
+         with store.connect() as db:
+             db.executescript("""
+               CREATE TABLE IF NOT EXISTS intraday_live_queue(
+                 forecast_id TEXT PRIMARY KEY,session_id TEXT NOT NULL,symbol TEXT NOT NULL,
+                 issued_at TEXT NOT NULL,next_attempt_at TEXT NOT NULL,status TEXT NOT NULL);
+               CREATE TABLE IF NOT EXISTS intraday_live_retry(
+                 scope TEXT PRIMARY KEY,next_attempt_at TEXT NOT NULL);
+             """)
+             from .split_queue import install_indexes
+             install_indexes(db)
+ 
+     def enqueue(self, forecast):
+         if forecast["mode"] != "live":
+             raise ContractError("Only newly issued live forecasts enter manual execution")
+         if forecast.get("execution_blocked_reason") or instant(forecast["issued_at"]) >= instant(forecast["target_close"]):
+             self.store.event(forecast["cycle_id"], "forecast_execution_blocked",
+                 {"forecast_id":forecast["forecast_id"], "reason":forecast.get("execution_blocked_reason") or "issue_after_target",
+                  "forecast_preserved":True}, symbol=forecast["symbol"])
+             return
+         with self.store.connect() as db:
+             cycle = db.execute("SELECT payload FROM cycles WHERE id=?", (forecast["cycle_id"],)).fetchone()
+             if cycle is not None and json.loads(cycle[0]).get("experiment") != self.session_id:
+                 raise ContractError("Forecast belongs to another manual session")
+             db.execute("BEGIN IMMEDIATE")
+             row = db.execute("SELECT session_id,symbol,issued_at FROM intraday_live_queue WHERE forecast_id=?",
+                              (forecast["forecast_id"],)).fetchone()
+             value = (self.session_id,forecast["symbol"],instant(forecast["issued_at"]).isoformat())
+             if row is not None and row != value:
+                 raise ContractError("Forecast already belongs to another manual session")
+             inserted = db.execute("INSERT OR IGNORE INTO intraday_live_queue VALUES(?,?,?,?,?,'pending')",
+                        (forecast["forecast_id"],*value,value[2])).rowcount
+         if inserted:
+             print(json.dumps({"event":"forecast_published","symbol":forecast["symbol"],
+                 "issued_at":forecast["issued_at"],"reference_at":forecast["reference_at"],
+                 "target_close":forecast["target_close"],"probability_not_down":forecast["probability_not_down"],
+                 "successful_models":forecast["successful_count"],"configured_models":forecast["configured_count"],
+                 "ensemble_status":forecast["ensemble_status"]}),flush=True)
+ 
+     def due(self, now):
+         return list(self.iter_due(now))
+ 
+     def iter_due(self, now, *, stopped=lambda: False):
+         from .split_queue import due_forecasts
+         return due_forecasts(self, now, stopped=stopped)
+ 
+     def broker_due(self, now):
+         with self.store.connect() as db:
+             retry = db.execute("SELECT next_attempt_at FROM intraday_live_retry WHERE scope='broker'").fetchone()
+         return retry is None or instant(retry[0]) <= instant(now)
+ 
+     def broker_wait(self, *, now, seconds):
+         due = (instant(now)+timedelta(seconds=max(3.0,float(seconds)))).isoformat()
+         with self.store.connect() as db:
+             db.execute("INSERT INTO intraday_live_retry VALUES('broker',?) ON CONFLICT(scope) DO UPDATE SET next_attempt_at=max(next_attempt_at,excluded.next_attempt_at)", (due,))
+ 
+     def defer(self, forecast_id, *, now, seconds, broker_wait=False):
+         due = (instant(now) + timedelta(seconds=max(3.0,float(seconds)))).isoformat()
+         with self.store.connect() as db:
+             db.execute("UPDATE intraday_live_queue SET next_attempt_at=? WHERE forecast_id=? AND session_id=?",
+                        (due,forecast_id,self.session_id))
+         if broker_wait:
+             self.broker_wait(now=now,seconds=seconds)
+ 
+     def complete(self, forecast_id, status):
+         with self.store.connect() as db:
+             db.execute("UPDATE intraday_live_queue SET status=? WHERE forecast_id=? AND session_id=?",
+                        (status,forecast_id,self.session_id))
+ 
+ 
+ def _session_cycles(store, session_id):
+     # Recovery identity lives in the existing cycle payload, not a lost Python
+     # cursor. Never adopt another human session's pending work for execution.
+     with store.connect() as db:
+         rows = db.execute("SELECT id,payload FROM cycles ORDER BY rowid").fetchall()
+     return [(identity, value) for identity, raw in rows
+             if (value := json.loads(raw)).get("mode") == "live"
+             and value.get("pc") in {"Atlas", "Scout"} and value.get("experiment") == session_id]
+ 
+ 
+ def _pending_cycle_passes(store, session_id, now):
+     result = []
+     for identity, cycle in _session_cycles(store, session_id):
+         if cycle.get("status") == "completed":
+             continue
+         published = store.forecast_symbols(identity)
+         missing = [symbol for symbol in cycle["symbols"] if symbol not in published]
+         failures = dict(cycle.get("failures", {}))
+         # The failure event is durable even if a crash preceded the cycle-map
+         # update. Latest events override that possibly older summary.
+         failures.update(recorded_symbol_failures(store, identity))
+         due = [s for s in missing if (
+             cycle.get("status") == "running" and s not in failures
+         ) or (failures.get(s, {}).get("retryable") is True
+               and instant(failures[s]["retry_at"]) <= instant(now))]
+         if due:
+             result.append((identity, cycle, due))
+     return sorted(result, key=lambda item: (
+         item[1].get("last_recovery_attempt_at", item[1].get("completed_at", item[1]["started_at"])),
+         item[1]["reference_at"]))
+ 
+ 
+ def _forecast_failure_evidence(exc):
+     """Bounded local code locations and SQLite codes, without private messages."""
+     from collections import deque
+ 
+     chain, seen = [], set()
+     current = exc
+     while current is not None and id(current) not in seen and len(chain) < 8:
+         seen.add(id(current))
+         frames = deque(maxlen=8)
+         trace = current.__traceback__
+         while trace is not None:
+             code = trace.tb_frame.f_code
+             frames.append({"file": code.co_filename.replace("\\", "/").rsplit("/", 1)[-1][:120],
+                            "function": code.co_name[:120], "line": trace.tb_lineno})
+             trace = trace.tb_next
+         item = {"error_type": type(current).__name__[:80], "frames": list(frames)}
+         code = getattr(current, "sqlite_errorcode", None)
+         name = getattr(current, "sqlite_errorname", None)
+         if (isinstance(current, sqlite3.Error) and type(code) is int and type(name) is str
+                 and name.startswith("SQLITE_") and getattr(sqlite3, name, None) == code):
+             item.update(sqlite_errorcode=code, sqlite_errorname=name)
+         chain.append(item)
+         current = (current.__cause__ if current.__cause__ is not None else
+                    None if current.__suppress_context__ else current.__context__)
+     return {"exception_chain": chain, "root_cause": chain[-1],
+             "exception_chain_truncated": current is not None}
+ 
+ 
+ def _retry_forecast_storage(action, *, store, session_id, operation, stopped, pause):
+     """Resume the exact interrupted cycle operation after transient contention.
+ 
+     Each action opens fresh store transactions. Repeating run_cycle reuses its
+     immutable outputs and original reference; repeating finalization never
+     retrains. Other storage errors retain their original failure path.
+     """
+     retries, failure = 0, None
+     while not stopped():
+         try:
+             result = action()
+         except sqlite3.OperationalError as exc:
+             code = getattr(exc, "sqlite_errorcode", None)
+             if type(code) is not int or code & 255 != sqlite3.SQLITE_BUSY:
+                 raise
+             retries += 1
+             failure = _forecast_failure_evidence(exc)
+             # The same busy database cannot be required to save its own error.
+             print(encoded({"event": "forecast_storage_contention", "operation": operation,
+                            "retry_count": retries, "diagnostics": failure}), flush=True)
+             pause(1)
+             continue
+         if retries:
+             evidence = {"operation": operation, "retry_count": retries,
+                         "last_failure": failure, "operation_returned_normally": True}
+             try:
+                 store.event(session_id, "forecast_storage_retry_completed", evidence)
+             except Exception as exc:
+                 print(encoded({"event": "forecast_storage_retry_diagnostic_unavailable",
+                                "operation": operation, "diagnostics": _forecast_failure_evidence(exc)}),
+                       flush=True)
+         return result
+     raise InterruptedError("Manual session stopped; forecast storage continuation retained")
+ 
+ 
+ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
+                      clock=utcnow, pause=time.sleep, close_at=None, renewal=None):
+     """New quarters receive a turn before one due recovery symbol.
+ 
+     Only missing data prerequisites retry automatically. Already issued model
+     outputs remain immutable, and older recovered outputs never enter execution.
+     No missed-quarter forecast or older fitted model is invented.
+     """
+     saved = _session_cycles(runner.store, queue.session_id)
+     saved_last = max((instant(c["reference_at"]) for _, c in saved), default=None)
+     continuation = renewal.state if renewal is not None else {}
+     last = instant(continuation["last_reference"]) if continuation.get("last_reference") else saved_last
+     recovery_due = bool(continuation.get("recovery_due", False))
+     def completed_pass():
+         if renewal is not None:
+             renewal.checkpoint({"last_reference": last.isoformat() if last else None,
+                                 "recovery_due": recovery_due},
+                                (instant(clock()) + timedelta(seconds=1)).isoformat())
+         pause(1)
+     storage_stopped = lambda: stopped() or (close_at is not None and instant(clock()) >= instant(close_at))
+     while not stopped():
+         if close_at is not None and instant(clock()) >= instant(close_at):
+             return
+         newest = latest_completed_reference(clock(), publication_offset_seconds=runner.config.publication_offset_seconds)
+         retry_symbols = None
+         recovery_symbol = None
+         # A long new-quarter pass can cross the next boundary every time.
+         # Reserve one symbol's recovery turn so those boundaries cannot starve
+         # already saved scientific work. The next fresh quarter follows it.
+         fair = _pending_cycle_passes(runner.store, queue.session_id, clock()) if recovery_due else []
+         if fair:
+             _, cycle, due = fair[0]
+             symbols = cycle["symbols"]
+             previous = cycle.get("last_recovery_symbol")
+             start = symbols.index(previous) + 1 if previous in symbols else 0
+             retry_symbols = [next(symbol for symbol in symbols[start:] + symbols[:start] if symbol in due)]
+             recovery_symbol = retry_symbols[0]
+             reference = instant(cycle["reference_at"])
+             recovery_due = False
+         elif last is None or newest > last:
+             reference = newest
+             if last is not None and reference > last + STEP:
+                 runner.store.event(queue.session_id, "missed_cycle_boundaries",
+                     {"previous_reference":last.isoformat(),"next_reference":reference.isoformat(),
+                      "missed_count":int((reference-last)/STEP)-1,"policy":"latest_completed_no_backlog_orders"})
+             last = reference
+             if not eligible_reference(reference):
+                 runner.store.event(queue.session_id,"closed_or_unspecified_edge",
+                                    {"reference_at":reference.isoformat(),"orders_submitted":0})
+                 completed_pass(); continue
+         else:
+             pending = _pending_cycle_passes(runner.store, queue.session_id, clock())
+             if not pending:
+                 completed_pass(); continue
+             _, cycle, retry_symbols = pending[0]
+             reference = instant(cycle["reference_at"])
+         incoming = LiveHistories(histories=histories,provider=provider,store=runner.store,journal=journal,
+                                 reference_at=reference,clock=clock,sleep=pause,bounded=True,
+                                 stopped=lambda: stopped() or (close_at is not None and instant(clock()) >= instant(close_at)),
+                                 reuse_saved=True,population_contract=getattr(runner.config,"population_contract",None),
+                                 restore_eagerly=False)
+         if close_at is not None and instant(clock()) >= instant(close_at):
+             return
+         cycle_attempt = 0
+         def publish_retry(forecast):
+             if reference != latest_completed_reference(
+                     clock(), publication_offset_seconds=runner.config.publication_offset_seconds):
+                 runner.store.event(forecast["cycle_id"], "forecast_execution_blocked",
+                     {"forecast_id":forecast["forecast_id"], "reason":"recovered_older_cycle",
+                      "forecast_preserved":True},symbol=forecast["symbol"])
+                 return
+             queue.enqueue(forecast)
+         def run_cycle_attempt():
+             nonlocal cycle_attempt
+             cycle_attempt += 1
+             return runner.run_cycle(incoming,reference_at=reference,mode="live",experiment=queue.session_id,
+                          on_published=queue.enqueue if cycle_attempt == 1 else publish_retry,
+                          acquisition={"kind":"existing_databento_exact_interval"},
+                          retry_symbols=retry_symbols,allow_execution=reference == latest_completed_reference(
+                              clock(), publication_offset_seconds=runner.config.publication_offset_seconds))
+         result = _retry_forecast_storage(run_cycle_attempt,
+             store=runner.store,session_id=queue.session_id,operation="run_cycle",
+             stopped=storage_stopped,pause=pause)
+         if result and result.get("cycle_id"):
+             if stopped():
+                 return
+             completed_at = instant(clock()).isoformat()
+             update = {"last_recovery_attempt_at":completed_at}
+             if recovery_symbol is not None:
+                 update["last_recovery_symbol"] = recovery_symbol
+             _retry_forecast_storage(
+                 lambda: runner.store.update_cycle(result["cycle_id"], update),
+                 store=runner.store,session_id=queue.session_id,operation="cycle_finalization",
+                 stopped=storage_stopped,pause=pause)
+         if retry_symbols is None:
+             recovery_due = True
+         completed_pass()
+ 
+ 
+ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
+                  clock=utcnow, pause=time.sleep, close_at=None, actor="Atlas", renewal=None):
+     """Fetch exact due outcomes independently, including after the last entry.
+ 
+     Acquisition retry evidence is durable. This never submits an order, changes
+     an issued prediction or writes corrections into its original input snapshot.
+     Local copies of the history mapping keep scoring out of the training writer.
+     """
+     from .data import completed_15m_observation, synthetic_continuity_verified
+     audited = set(renewal.state.get("audited", ())) if renewal is not None else set()
+     interrupted = lambda: stopped() or (close_at is not None and instant(clock()) >= instant(close_at))
+     def storage(operation, action):
+         return retry_scoring_storage(action, store=store, session_id=session_id,
+             operation=operation, stopped=interrupted, pause=pause)
+     def observe(operation, forecast, **evidence):
+         observed_at = clock()
+         # Another outcome writer may commit newer evidence during contention.
+         # Keep the captured observation time and retain that validated revision.
+         return storage(operation, lambda: store.observe(
+             forecast, as_of=observed_at, skip_newer=True, **evidence))
+     def drain_retained_targets():
+         if interrupted():
+             return
+         as_of = clock()
+         ready = storage("retained_targets", lambda: list(store.retained_session_scoring_targets(
+             pc=actor, session_id=session_id, as_of=as_of, stopped=interrupted)))
+         for forecast, observed in ready:
+             if interrupted():
+                 return
+             observe("observe_retained_target", forecast, candle=observed)
+     while not stopped():
+         if close_at is not None and instant(clock()) >= instant(close_at):
+             return
+         drain_retained_targets()
+         if stopped() or (close_at is not None and instant(clock()) >= instant(close_at)):
+             return
+         observed_candidates = {}
+         for candle in storage("observed_candles", lambda: list(store.observed_candles())):
+             if not synthetic_continuity_verified(candle):
+                 key=digest(candle)
+                 if key not in audited:
+                     storage("audit_synthetic_outcome", lambda: store.event(
+                         session_id,"unverified_synthetic_outcome_requires_audit",
+                         {"candle_hash":key,"immutable_original_retained":True},symbol=candle["symbol"]))
+                     audited.add(key)
+                 continue
+             if not completed_15m_observation(candle) or instant(candle["available_at"]) > instant(clock()):
+                 continue
+             observed_candidates.setdefault((candle["symbol"],instant(candle["opened_at"])), []).append(candle)
+         as_of = clock()
+         forecasts = storage("scoring_forecasts", lambda: list(store.scoring_forecasts(
+             pc=actor, observed_candidates=observed_candidates, as_of=as_of, stopped=interrupted)))
+         for forecast in forecasts:
+             if stopped():
+                 return
+             if close_at is not None and instant(clock()) >= instant(close_at):
+                 return
+             drain_retained_targets()
+             if stopped() or (close_at is not None and instant(clock()) >= instant(close_at)):
+                 return
+             if forecast["mode"] != "live" or instant(forecast["target_close"]) > instant(clock()):
+                 continue
+             revisions = storage("outcome_revisions", lambda: list(store.revisions(forecast["forecast_id"])))
+             candidates = observed_candidates.get((forecast["symbol"],instant(forecast["target_open"])), [])
+             observed = next((row for row in reversed(candidates)
+                 if row.get("population_contract") == forecast.get("population_contract")
+                 and all(not forecast.get(field) or row.get(field) == forecast[field]
+                        for field in ("source_dataset", "source_id"))), None)
+             if observed is not None and instant(observed["available_at"]) <= instant(clock()):
+                 observe("observe_saved_target", forecast, candle=observed)
+                 continue
+             if revisions and revisions[-1]["status"] in {"scored", "synthetic", "unscorable"}:
+                 continue
+             symbol = forecast["symbol"]
+             if symbol not in histories:
+                 continue
+             incoming = LiveHistories(histories={symbol:histories[symbol]},provider=provider,store=store,journal=journal,
+                 reference_at=forecast["target_open"],clock=clock,sleep=pause,bounded=True,
+                 stopped=lambda: stopped() or (close_at is not None and instant(clock()) >= instant(close_at)),
+                 reuse_saved=True,population_contract=forecast.get("population_contract") or "legacy",
+                 restore_eagerly=False)
+             incoming.bind_cycle("score:" + forecast["forecast_id"])
+             try:
+                 history = incoming.get(symbol)
+                 match = history.frame.loc[history.frame.opened_at.eq(instant(forecast["target_open"]))]
+                 match = match.loc[[completed_15m_observation(row, from_frame=True) and synthetic_continuity_verified(row)
+                     and (row.get("population_contract") if isinstance(row.get("population_contract"), str) else None)
+                         == forecast.get("population_contract")
+                     and instant(row["available_at"]) <= instant(clock())
+                     and row.get("availability_kind") == "actual"
+                     and all(not forecast.get(field) or row.get(field) == forecast[field]
+                             for field in ("source_dataset", "source_id"))
+                     for row in match.to_dict("records")]]
+                 if match.empty:
+                     raise ContractError("Exact target interval unavailable after acquisition")
+                 match = match.sort_values("available_at")
+                 from .runtime import _jsonable
+                 observed = _jsonable(match.iloc[-1].to_dict())
+             except SourceIntervalEmpty as exc:
+                 storage("source_empty_event", lambda: store.event(
+                     session_id,"target_source_empty",{"forecast_id":forecast["forecast_id"],
+                     "evidence":exc.evidence,"no_market_wide_no_trade_claim":True},symbol=symbol))
+                 observe("observe_source_empty", forecast,
+                     unavailable_reason="covered_source_empty; no observed outcome price or market-wide no-trade proof")
+             except InterruptedError:
+                 if stopped() or (close_at is not None and instant(clock()) >= instant(close_at)):
+                     return
+                 raise
+             except Exception as exc:
+                 storage("scoring_retry_event", lambda: store.event(
+                     session_id,"target_scoring_retry",{"forecast_id":forecast["forecast_id"],
+                     "error_type":type(exc).__name__,"message":str(exc),
+                     "diagnostics":scoring_failure_evidence(exc)},symbol=symbol))
+             else:
+                 observe("observe_acquired_target", forecast, candle=observed)
+             finally:
+                 drain_retained_targets()
+         if renewal is not None:
+             renewal.checkpoint({"audited": sorted(audited)},
+                                (instant(clock()) + timedelta(seconds=3)).isoformat())
+         pause(3)
+ 
+ 
+ def score_saved_session_outcomes(store, *, session_id, actor, symbols, as_of, stopped=lambda: False):
+     """Finalize persisted own outcomes using unchanged-original revision proofs."""
+     from .final_scoring import score_saved_session_outcomes as finalize
+     return finalize(store, session_id=session_id, actor=actor, symbols=symbols,
+                     as_of=as_of, stopped=stopped)
+ 
+ 
+ def initialize_renewal_session(*, repository, datastore, profile, watchlist, config, clock=utcnow):
+     """Freeze one manually admitted session, without opening any provider.
+ 
+     The controller owns the existing manual-session lock for this entire
+     lifetime. A successor receives this envelope; it never calls this function
+     again or changes the scientific configuration of an unfinished cycle.
+     """
+     from dataclasses import asdict
+     from .local_execution import load_local_binding
+ 
+     root = Path(datastore)
+     effective = with_local_data_policy(config, root).validate()
+     pc, symbols = local_symbols(profile, watchlist, root)
+     binding = load_local_binding(root)
+     if binding.actor != pc or set(binding.symbols) != set(symbols):
+         raise ContractError("Independent local execution binding does not match profile")
+     if effective.source_dataset != "EQUS.MINI":
+         raise ContractError("Existing single-source live provider binding required")
+     started = instant(clock())
+     session = dict(session_id="manual-" + pc.lower() + "-15m:" + uuid.uuid4().hex,
+                 started_at=started.isoformat(), close_at=market_close_at(started).isoformat(),
+                 actor=pc, symbols=list(symbols), config=asdict(effective),
+                 binding_fingerprint=binding.fingerprint)
+     if pc == "Atlas":
+         from .split_model import ARCHITECTURE
+         session["architecture"] = ARCHITECTURE
+     return session
+ 
+ 
+ def _renewal_histories(root, store, session, config):
+     """Load retained observations only when an admitted pass needs a symbol.
+ 
+     Idle fresh interpreters must not repeatedly read every original history.
+     Within a generation the existing acquisition code can augment the mapping;
+     the original session cutoff and each cycle's frozen inputs stay unchanged.
+     """
+     from .data import AcquisitionPending, load_local_history
+     from .coverage import RECOVERY_POPULATION_CONTRACT
+ 
+     class Histories(dict):
+         def __init__(self):
+             super().__init__()
+             self.missing = set()
+             self.loading = threading.RLock()
+ 
+         def _load(self, symbol):
+             with self.loading:
+                 if super().__contains__(symbol) or symbol in self.missing or symbol not in session["symbols"]:
+                     return
+                 try:
+                     self[symbol] = load_local_history(root, symbol, source_dataset=config.source_dataset,
+                         **({"population_contract": config.population_contract} if config.population_contract else {}),
+                         **({"recovery_cutoff": instant(session["started_at"])}
+                            if config.population_contract == RECOVERY_POPULATION_CONTRACT else {}))
+                 except Exception as exc:
+                     code = getattr(exc, "sqlite_errorcode", None)
+                     if (isinstance(exc, sqlite3.OperationalError) and type(code) is int
+                             and code & 255 in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)):
+                         # A busy local catalog has not established missing data.
+                         # Preserve the exact cycle and retry through acquisition.
+                         raise AcquisitionPending("local_history_storage_contention", retry_after_seconds=1) from exc
+                     self.missing.add(symbol)
+                     store.event(session["session_id"], "history_unavailable",
+                                 {"error_type": type(exc).__name__, "message": str(exc)}, symbol=symbol)
+ 
+         def __getitem__(self, symbol):
+             self._load(symbol)
+             return super().__getitem__(symbol)
+ 
+         def __contains__(self, symbol):
+             self._load(symbol)
+             return super().__contains__(symbol)
+ 
+         def get(self, symbol, default=None):
+             self._load(symbol)
+             return super().get(symbol, default)
+ 
+         def values(self):
+             # Legacy LiveHistories can infer its population contract from the
+             # retained manifests, but only after a real cycle was admitted.
+             for symbol in session["symbols"]:
+                 self._load(symbol)
+             return super().values()
+ 
+         def __iter__(self):
+             for symbol in session["symbols"]:
+                 self._load(symbol)
+             return super().__iter__()
+ 
+     return Histories()
+ 
+ 
+ def _renewal_execution_pass(*, store, queue, executor, renewal, clock):
+     """One complete multi-symbol execution sweep and due own-order recovery.
+ 
+     Each step has already committed its intentions, reservations, receipts and
+     fills and released its execution lease before this function checkpoints.
+     Resting or UNKNOWN orders do not delay renewal or get resubmitted by it.
+     """
+     from .account_execution import execution_failure_evidence
+     from .cancellation import retry_delay
+     from .split_queue import broker_due_for_pass, due_for_pass
+ 
+     session = renewal.session
+     close_at = instant(session["close_at"])
+     next_recovery = instant(renewal.state.get("next_recovery", session["started_at"]))
+     if renewal.stopped():
+         return {"status": "STOPPED", "role": "execution"}
+     if instant(clock()) >= close_at:
+         return {"status": "COMPLETED", "role": "execution"}
+     queue_storage_retries = []
+     due = due_for_pass(queue, clock(),
+         stopped=lambda: renewal.stopped() or instant(clock()) >= close_at, retries=queue_storage_retries)
+     for forecast in due:
+         if (renewal.stopped() or instant(clock()) >= close_at
+                 or not broker_due_for_pass(queue, clock(), retries=queue_storage_retries)):
+             break
+         try:
+             step_started_at, step_started_perf = instant(clock()), time.perf_counter()
+             result = executor.step(forecast)
+             if session.get("architecture") == "independent-1a1b-v1":
+                 try:
+                     completed_at = instant(clock())
+                     submitted = result.get("disposition") == "submitted"
+                     store.event(session["session_id"], "system_1b_execution_measured", {
+                         "forecast_id": forecast["forecast_id"],
+                         "forecast_to_step_seconds": max(0., (step_started_at - instant(forecast["issued_at"])).total_seconds()),
+                         "execution_step_seconds": time.perf_counter() - step_started_perf,
+                         "forecast_to_order_result_seconds": (max(0., (completed_at - instant(forecast["issued_at"])).total_seconds())
+                                                              if submitted else None),
+                         "order_result": "submitted" if submitted else "unknown_or_recovery_required"
+                             if result.get("disposition") == "submission_recovery_required" else "no_confirmed_new_submission",
+                         "target_deadline_missed": completed_at >= instant(forecast["target_close"]),
+                     }, symbol=forecast["symbol"])
+                 except Exception:
+                     pass  # Timing evidence cannot alter manual controls or order state.
+             store.event(session["session_id"], "execution_step", result, symbol=forecast["symbol"])
+             print(json.dumps({"event": "execution_disposition", "symbol": forecast["symbol"],
+                 **{key: result.get(key) for key in ("side", "desired_quantity", "adjusted_quantity",
+                     "disposition", "submission_status", "submitted_quantity", "filled_quantity")}}), flush=True)
+             disposition = result["disposition"]
+             if disposition == "previous_intention_reconciliation" or result["evidence"].get("proven_unsent_retry_eligible"):
+                 unknown_without_broker_wait = (
+                     disposition == "previous_intention_reconciliation"
+                     and result["evidence"].get("reason_code") == "EXACT_BROKER_ORDER_ID_UNAVAILABLE"
+                     and result["evidence"].get("retry_after_seconds") is None
+                     and not result["evidence"].get("proven_unsent_retry_eligible"))
+                 queue.defer(forecast["forecast_id"], now=clock(),
+                     seconds=result["evidence"].get("retry_after_seconds") or 3,
+                     broker_wait=not unknown_without_broker_wait)
+             elif disposition == "submission_recovery_required":
+                 queue.broker_wait(now=clock(), seconds=result["evidence"].get("retry_after_seconds") or 3)
+                 queue.complete(forecast["forecast_id"], disposition)
+             elif result["kind"] == "sizing_unavailable":
+                 if disposition == "quote_stale_or_future" and instant(clock()) < instant(forecast["target_close"]):
+                     queue.defer(forecast["forecast_id"], now=clock(), seconds=3, broker_wait=False)
+                 else:
+                     queue.complete(forecast["forecast_id"], "sizing_unavailable")
+             else:
+                 queue.complete(forecast["forecast_id"], disposition)
+         except Exception as exc:
+             delay = retry_delay(exc, clock())
+             queue.defer(forecast["forecast_id"], now=clock(), seconds=delay, broker_wait=True)
+             store.event(session["session_id"], "execution_retry", {
+                 "forecast_id": forecast["forecast_id"], "error_type": type(exc).__name__,
+                 "message": str(exc), "retry_after_seconds": delay,
+                 "diagnostics": execution_failure_evidence(exc)}, symbol=forecast["symbol"])
+             break
+     if (not renewal.stopped() and instant(clock()) < close_at
+             and instant(clock()) >= next_recovery
+             and broker_due_for_pass(queue, clock(), retries=queue_storage_retries)):
+         try:
+             executor.recover()
+             delay = 3
+         except Exception as exc:
+             delay = retry_delay(exc, clock())
+             queue.broker_wait(now=clock(), seconds=delay)
+             store.event(session["session_id"], "order_recovery_retry", {
+                 "error_type": type(exc).__name__, "message": str(exc), "retry_after_seconds": delay,
+                 "diagnostics": execution_failure_evidence(exc)})
+         next_recovery = instant(clock()) + timedelta(seconds=delay)
+     if renewal.stopped():
+         return {"status": "STOPPED", "role": "execution"}
+     if instant(clock()) >= close_at:
+         return {"status": "COMPLETED", "role": "execution"}
+     continuation = {"next_recovery": next_recovery.isoformat()}
+     if queue_storage_retries:
+         continuation["queue_storage_retries"] = queue_storage_retries
+     renewal.checkpoint(continuation,
+                        (instant(clock()) + timedelta(seconds=3 if queue_storage_retries else 1)).isoformat())
+     raise RuntimeError("Renewal checkpoint must end the worker")
+ 
+ 
+ def run_renewal_lane(role, *, repository, datastore, profile, watchlist, renewal,
+                      clock=utcnow, sleep=time.sleep):
+     """Run one independently renewable lane in an already manual session.
+ 
+     Only the execution lane constructs a broker or has execution authority.
+     Research, scoring and collection can finish their full passes concurrently
+     without blocking execution or restarting between individual symbols.
+     """
+     from .local_execution import load_local_binding
+     from dotenv import load_dotenv
+ 
+     if role not in {"execution", "forecast", "scoring", "candles", "market_inputs"} and not re.fullmatch(r"forecast-[0-9]+", role):
+         raise ContractError("Unknown manual-session renewal lane")
+     root, repository = Path(datastore), Path(repository)
+     session = renewal.session
+     pc, symbols = local_symbols(profile, watchlist, root)
+     binding = load_local_binding(root)
+     if (pc != session["actor"] or list(symbols) != session["symbols"]
+             or binding.actor != pc or set(binding.symbols) != set(symbols)
+             or binding.fingerprint != session["binding_fingerprint"]):
+         raise ContractError("Manual session local membership changed")
+     if renewal.stopped():
+         return {"status": "STOPPED", "role": role}
+     config_fields = dict(session["config"])
+     config_fields["models"] = tuple(config_fields["models"])
+     config = ResearchConfig(**config_fields).validate()
+     close_at = instant(session["close_at"])
+     split_scoring = pc == "Atlas" and session.get("architecture") == "independent-1a1b-v1" and role == "scoring"
+     if role != "candles" and not split_scoring and instant(clock()) >= close_at:
+         return {"status": "COMPLETED", "role": role}
+     load_dotenv(repository / ".env")
+ 
+     def pause(seconds):
+         end = time.monotonic() + max(0, float(seconds))
+         while time.monotonic() < end:
+             if renewal.stopped():
+                 raise InterruptedError("Manual session stopped; durable work retained")
+             sleep(min(1, max(0, end - time.monotonic())))
+ 
+     def setup():
+-        store = ShadowStore(root / "intraday/shadow.sqlite3")
++        store = ShadowStore(root / "intraday/shadow.sqlite3",
++            snapshot_directory=root / "intraday/system-1a/ready/snapshots", chunked_snapshots=True)
+         return store, ExecutionQueue(store, session["session_id"], actor=pc)
+ 
+     try:
+         store, queue = retry_renewal_storage_setup(setup, role=role, stopped=renewal.stopped,
+             permitted=lambda: role == "candles" or split_scoring or instant(clock()) < close_at, pause=pause)
+     except InterruptedError:
+         if not renewal.stopped() and (role == "candles" or split_scoring or instant(clock()) < close_at):
+             raise
+         return {"status": "STOPPED" if renewal.stopped() else "COMPLETED", "role": role}
+ 
+     if role == "execution":
+         from .account_execution import IntradayAccountExecutor
+         from app.services.schwab import SchwabSession
+         executor = IntradayAccountExecutor(datastore=root, store=store, broker=SchwabSession(),
+             local_symbols=symbols, session_started_at=instant(session["started_at"]), clock=clock,
+             manual_authority=lambda: not renewal.stopped() and instant(clock()) < close_at,
+             actor=pc, stopped=renewal.stopped, diagnostic_session_id=session["session_id"])
+         renewal.wait_due(clock=clock, sleep=sleep)
+         return _renewal_execution_pass(store=store, queue=queue, executor=executor, renewal=renewal, clock=clock)
+ 
+     # New Atlas sessions consume the independent data service's immutable
+     # handoff. Branch before constructing any provider or retained history.
+     # Existing sessions retain their original lifecycle until the normal next
+     # manually authorized launch selects the installed architecture.
+     from .split_model import ARCHITECTURE
+     if pc == "Atlas" and session.get("architecture") == ARCHITECTURE:
+         if role in {"candles", "market_inputs"}:
+             return {"status": "COMPLETED", "role": role, "owner": "independent_system_1a"}
+         if role == "scoring":
+             from .split_scoring import renewal_scoring_pass
+             renewal.wait_due(clock=clock, sleep=sleep)
+             return renewal_scoring_pass(root=root, store=store, renewal=renewal, config=config, clock=clock)
+         if role == "forecast" or role.startswith("forecast-"):
+             from .split_model import renewal_model_pass
+             index = int(role.split("-", 1)[1]) if role.startswith("forecast-") else 0
+             count = min(config.symbol_workers, len(symbols))
+             if not 0 <= index < count:
+                 raise ContractError("Model lane differs from this session's frozen concurrency")
+             renewal.wait_due(clock=clock, sleep=sleep)
+             return renewal_model_pass(root=root, store=store, queue=queue, renewal=renewal,
+                                       config=config, clock=clock, lane_index=index, lane_count=count)
+     elif role.startswith("forecast-"):
+         raise ContractError("Partitioned model lanes require an independently split Atlas session")
+ 
+     if role == "market_inputs":
+         if not config.market_inputs_enabled:
+             return {"status": "COMPLETED", "role": role}
+         from .market_input_runtime import renewal_market_input_pass
+         try:
+             return renewal_market_input_pass(root=root, symbols=symbols, store=store,
+                 renewal=renewal, clock=clock, config=config, sleep=sleep)
+         except Exception as exc:
+             if renewal.stopped():
+                 return {"status": "STOPPED", "role": role}
+             # This lane was optional in the original threaded session: source
+             # failures never revoke core forecast/order authority. Record the
+             # failure and end this lane; do not manufacture a blind retry loop.
+             evidence = {"error_type": type(exc).__name__, "core_forecasts_continue": True,
+                         "automatic_lane_restart": False}
+             try:
+                 store.event(session["session_id"], "market_input_worker_failed", evidence)
+             except Exception:
+                 print(encoded({"event": "market_input_worker_failed", **evidence}), flush=True)
+             return {"status": "COMPLETED", "role": role, "optional_input_status": "FAILED", **evidence}
+ 
+     from .data import AcquisitionJournal
+     from app.services.databento_market_data import DatabentoMarketDataProvider
+     histories = _renewal_histories(root, store, session, config)
+     provider = DatabentoMarketDataProvider()
+     if provider.dataset != config.source_dataset:
+         raise ContractError("Provider binding differs from selected single source")
+     journal = AcquisitionJournal(root / "intraday/acquisition.sqlite3")
+     renewal.wait_due(clock=clock, sleep=sleep)
+     try:
+         if role == "forecast":
+             runner = ShadowRunner(store=store, pc=pc, symbols=symbols, config=config, clock=clock,
+                 stopped=lambda: renewal.stopped() or instant(clock()) >= close_at)
+             forecasting_loop(runner, histories=histories, provider=provider, journal=journal, queue=queue,
+                 stopped=renewal.stopped, clock=clock, pause=pause, close_at=close_at, renewal=renewal)
+         elif role == "scoring":
+             scoring_loop(store, histories=histories, provider=provider, journal=journal,
+                 session_id=session["session_id"], stopped=renewal.stopped, clock=clock, pause=pause,
+                 close_at=close_at, actor=pc, renewal=renewal)
+         else:
+             from .candle_runtime import renewal_candle_pass
+             return renewal_candle_pass(store=store, histories=histories, provider=provider, journal=journal,
+                 renewal=renewal, config=config, clock=clock, pause=pause)
+     except InterruptedError:
+         if not renewal.stopped() and (role == "candles" or instant(clock()) < close_at):
+             raise
+     return {"status": "STOPPED" if renewal.stopped() else "COMPLETED", "role": role}
+ 
+ 
+ _STARTUP_STAGES = frozenset({
+     "environment", "history_load", "provider_setup", "acquisition_journal",
+     "runner_setup", "market_inputs_start", "broker_session", "executor_setup",
+     "market_inputs_close",
+ })
+ 
+ 
+ def _startup_failure_evidence(exc, *, stage):
+     """Save bounded code metadata and OS codes, never messages, paths or locals."""
+     from collections import deque
+ 
+     chain, seen = [], set()
+     current = exc
+     while current is not None and id(current) not in seen and len(chain) < 8:
+         seen.add(id(current))
+         frames = deque(maxlen=8)
+         trace = current.__traceback__
+         while trace is not None:
+             code = trace.tb_frame.f_code
+             frames.append({"file": code.co_filename.replace("\\", "/").rsplit("/", 1)[-1][:120],
+                            "function": code.co_name[:120], "line": trace.tb_lineno})
+             trace = trace.tb_next
+         item = {"error_type": type(current).__name__[:80], "frames": list(frames)}
+         if isinstance(current, OSError):
+             for name in ("errno", "winerror"):
+                 value = getattr(current, name, None)
+                 if type(value) is int:
+                     item[name] = value
+         chain.append(item)
+         current = (current.__cause__ if current.__cause__ is not None else
+                    None if current.__suppress_context__ else current.__context__)
+     return {"startup_stage": stage if stage in _STARTUP_STAGES else "unknown",
+             "exception_chain": chain, "root_cause": chain[-1],
+             "exception_chain_truncated": current is not None}
+ 
+ 
+ def _replace_session_status(temporary, status_path):
+     """Allow a brief Windows reader to release the same serialized status file."""
+     for attempt in range(4):
+         try:
+             os.replace(temporary, status_path)
+             return
+         except PermissionError as exc:
+             if (os.name != "nt" or getattr(exc, "winerror", None) not in (5, 32)
+                     or attempt == 3):
+                 raise
+             time.sleep(0.02 * (attempt + 1))
+ 
+ 
+ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcnow, sleep=time.sleep):
+     from .account_execution import IntradayAccountExecutor, execution_failure_evidence
+     from .local_execution import load_local_binding
+     from .data import AcquisitionJournal, load_local_history
+     from .coverage import RECOVERY_POPULATION_CONTRACT
+     from .cancellation import retry_delay
+     from app.services.schwab import SchwabSession
+     from app.services.databento_market_data import DatabentoMarketDataProvider
+     from dotenv import load_dotenv
+     root, repository = Path(datastore),Path(repository)
+     config = with_local_data_policy(config, root)
+     pc,symbols = local_symbols(profile,watchlist,root)
+     binding = load_local_binding(root)
+     if binding.actor != pc or set(binding.symbols) != set(symbols):
+         raise ContractError("Independent local execution binding does not match profile")
+     config.validate()
+     if config.source_dataset != "EQUS.MINI":
+         raise ContractError("Existing single-source live provider binding required")
+     started = instant(clock())
+     close_at = market_close_at(started)
+     session_id = "manual-" + pc.lower() + "-15m:" + uuid.uuid4().hex
+     stopped = threading.Event()
+     final_collection_complete = threading.Event()
+     worker_errors = []
+     market_collector = None
+-    store = ShadowStore(root / "intraday/shadow.sqlite3")
++    store = ShadowStore(root / "intraday/shadow.sqlite3",
++        snapshot_directory=root / "intraday/system-1a/ready/snapshots", chunked_snapshots=True)
+     queue = ExecutionQueue(store,session_id,actor=pc)
+     status_path = root / "intraday/manual-session.json"
+     def status(state, **extra):
+         value = dict(schema_version=VERSION,session_id=session_id,pid=os.getpid(),started_at=started.isoformat(),
+                      heartbeat_at=instant(clock()).isoformat(),status=state,manual_start=True,
+                      market_close_at=close_at.isoformat(),final_collection_complete=final_collection_complete.is_set(),**extra)
+         temporary = status_path.with_name(status_path.name + "." + uuid.uuid4().hex + ".tmp")
+         temporary.write_text(encoded(value),encoding="utf-8")
+         _replace_session_status(temporary, status_path)
+     def manual_authority():
+         try:
+             value = json.loads(status_path.read_text(encoding="utf-8"))
+             return (value["session_id"] == session_id and value["pid"] == os.getpid()
+                     and value["status"] == "RUNNING" and not stopped.is_set() and instant(clock()) < close_at)
+         except (OSError,ValueError,KeyError):
+             return False
+     def pause(seconds):
+         end = time.monotonic() + max(0,float(seconds))
+         while time.monotonic() < end:
+             if stopped.is_set():
+                 raise InterruptedError("Manual session stopped; acquisition recovery retained")
+             sleep(min(1,max(0,end-time.monotonic())))
+     with exclusive_runtime_lock(root / "locks/intraday-manual-session.lock",process_name="intraday-manual-session"):
+         status("STARTING")
+         startup_stage = "environment"
+         try:
+             load_dotenv(repository / ".env")
+             startup_stage = "history_load"
+             histories = {}
+             history_load_cutoff = instant(clock())
+             for symbol in symbols:
+                 try:
+                     histories[symbol] = load_local_history(root,symbol,source_dataset=config.source_dataset,
+                         **({"population_contract":config.population_contract} if config.population_contract else {}),
+                         **({"recovery_cutoff":history_load_cutoff} if config.population_contract == RECOVERY_POPULATION_CONTRACT else {}))
+                 except Exception as exc:
+                     store.event(session_id,"history_unavailable",{"error_type":type(exc).__name__,"message":str(exc)},symbol=symbol)
+             startup_stage = "provider_setup"
+             provider = DatabentoMarketDataProvider()
+             if provider.dataset != config.source_dataset:
+                 raise ContractError("Provider binding differs from selected single source")
+             startup_stage = "acquisition_journal"
+             journal = AcquisitionJournal(root / "intraday/acquisition.sqlite3")
+             startup_stage = "runner_setup"
+             runner = ShadowRunner(store=store,pc=pc,symbols=symbols,config=config,clock=clock,
+                 stopped=lambda: stopped.is_set() or instant(clock()) >= close_at)
+             if config.market_inputs_enabled:
+                 startup_stage = "market_inputs_start"
+                 try:
+                     from .market_inputs import MarketInputCollector
+                     market_collector = MarketInputCollector(root, symbols)
+                     startup = market_collector.start()
+                     store.event(session_id,"market_input_streams_started",{"status_by_dataset":startup})
+                 except Exception as exc:
+                     store.event(session_id,"market_inputs_start_error",{"error_type":type(exc).__name__,
+                         "core_forecasts_continue":True})
+             startup_stage = "broker_session"
+             broker = SchwabSession()
+             startup_stage = "executor_setup"
+             executor = IntradayAccountExecutor(datastore=root,store=store,broker=broker,local_symbols=symbols,
+                 session_started_at=started,clock=clock,manual_authority=manual_authority,actor=pc,stopped=stopped.is_set,
+                 diagnostic_session_id=session_id)
+         except BaseException as exc:
+             diagnostics = _startup_failure_evidence(exc, stage=startup_stage)
+             cleanup_diagnostics = None
+             if market_collector is not None:
+                 try:
+                     market_collector.close()
+                 except Exception as cleanup_exc:
+                     cleanup_diagnostics = _startup_failure_evidence(cleanup_exc, stage="market_inputs_close")
+             stopped.set()
+             status("STOPPED" if isinstance(exc,KeyboardInterrupt) else "FAILED",
+                    stop_reason="manual_stop" if isinstance(exc,KeyboardInterrupt) else "startup_failure",
+                    error_type=type(exc).__name__,broker_orders_automatically_cancelled=False)
+             failure = {"error_type":type(exc).__name__,
+                        "message":"Startup interrupted" if isinstance(exc,KeyboardInterrupt) else "Startup failed",
+                        "diagnostics":diagnostics}
+             if cleanup_diagnostics is not None:
+                 failure["cleanup_diagnostics"] = cleanup_diagnostics
+             store.event(session_id,"manual_startup_stopped",failure)
+             if isinstance(exc,KeyboardInterrupt):
+                 return {"session_id":session_id,"status":"STOPPED"}
+             raise
+         status("CLOSING" if instant(clock()) >= close_at else "RUNNING")
+         def market_input_work():
+             """Optional feeds run independently; missing inputs never stop core work."""
+             from .market_input_worker import run_market_input_worker
+             run_market_input_worker(market_collector, clock=clock, stopped=stopped.is_set, pause=sleep,
+                 reference_for=lambda value: latest_completed_reference(value, publication_offset_seconds=config.publication_offset_seconds),
+                 event=lambda kind, value: store.event(session_id, kind, value))
+         input_worker = threading.Thread(target=market_input_work,name="intraday-market-inputs",daemon=True)
+         def forecast_work():
+             try:
+                 forecasting_loop(runner,histories=histories,provider=provider,journal=journal,queue=queue,
+                                  stopped=stopped.is_set,clock=clock,pause=pause,close_at=close_at)
+             except BaseException as exc:
+                 if isinstance(exc, InterruptedError) and instant(clock()) >= close_at and not stopped.is_set():
+                     store.event(session_id,"forecasting_closed", {"closed_at":close_at.isoformat(),
+                         "final_candle_collection_continues":True})
+                     return
+                 diagnostics = _forecast_failure_evidence(exc)
+                 if not (isinstance(exc,InterruptedError) and stopped.is_set()):
+                     worker_errors.append({"worker":"forecast","error_type":type(exc).__name__,
+                         "message":str(exc),"diagnostics":diagnostics})
+                 stopped.set()
+                 try:
+                     store.event(session_id,"forecast_worker_stopped",{"error_type":type(exc).__name__,
+                         "message":str(exc),"diagnostics":diagnostics})
+                 except Exception as diagnostic_exc:
+                     print(encoded({"event":"forecast_worker_stopped", "diagnostics":diagnostics,
+                         "diagnostic_failure":_forecast_failure_evidence(diagnostic_exc)}),flush=True)
+         worker = threading.Thread(target=forecast_work,name="intraday-manual-forecast",daemon=True)
+         def score_work():
+             try:
+                 scoring_loop(store,histories=histories,provider=provider,journal=journal,session_id=session_id,
+                              stopped=stopped.is_set,clock=clock,pause=pause,close_at=close_at,actor=pc)
+             except BaseException as exc:
+                 if isinstance(exc, InterruptedError) and (stopped.is_set() or instant(clock()) >= close_at):
+                     return
+                 record_scoring_worker_failure(exc, store=store, session_id=session_id,
+                     worker_errors=worker_errors, stopped=stopped)
+         scorer = threading.Thread(target=score_work,name="intraday-manual-scoring",daemon=True)
+         def collection_completed(result):
+             if stopped.is_set():
+                 return
+             scored = score_saved_session_outcomes(store, session_id=session_id, actor=pc, symbols=symbols,
+                 as_of=clock(), stopped=stopped.is_set)
+             store.event(session_id, "final_saved_outcomes_scored", scored)
+             if stopped.is_set():
+                 return
+             final_collection_complete.set()
+             stopped.set()
+         def collect_work():
+             try:
+                 collection_loop(store, histories=histories, provider=provider, journal=journal, symbols=symbols,
+                     session_id=session_id, started_at=started, close_at=close_at,
+                     publication_offset_seconds=config.publication_offset_seconds,
+                     population_contract=config.population_contract,
+                     clock=clock, stopped=stopped.is_set, pause=pause, on_completed=collection_completed)
+             except BaseException as exc:
+                 if isinstance(exc, InterruptedError) and stopped.is_set():
+                     return
+                 diagnostics = _storage_failure_evidence(exc)
+                 failure = {"error_type":type(exc).__name__,"message":str(exc),"diagnostics":diagnostics}
+                 worker_errors.append({"worker":"collection",**failure})
+                 stopped.set()
+                 try:
+                     store.event(session_id,"collection_worker_stopped",failure)
+                 except Exception as diagnostic_exc:
+                     print(encoded({"event":"collection_worker_stopped", "diagnostics":diagnostics,
+                         "diagnostic_failure":_storage_failure_evidence(diagnostic_exc)}),flush=True)
+         collector = threading.Thread(target=collect_work,name="intraday-manual-candles",daemon=True)
+         if market_collector is not None:
+             input_worker.start()
+         worker.start()
+         scorer.start()
+         collector.start()
+         print(f"{pc} 15m manual session running. New predictions can submit real orders. Ctrl-C stops this worker; resting orders retain their broker identities.",flush=True)
+         next_recovery = instant(clock())
+         closing_announced = False
+         manual_stop_requested = False
+         try:
+             while not stopped.is_set():
+                 if instant(clock()) >= close_at:
+                     status("CLOSING", broker_orders_automatically_cancelled=False,
+                            waiting_for_final_candles=True)
+                     if not closing_announced:
+                         store.event(session_id,"market_close_collection_pending", {
+                             "closed_at":close_at.isoformat(), "final_reference_at":(close_at-STEP).isoformat(),
+                             "symbols":list(symbols), "new_forecasts_and_orders_disabled":True})
+                         closing_announced = True
+                     sleep(1)
+                     continue
+                 status("RUNNING")
+                 for forecast in queue.due(clock()):
+                     # A prior symbol in this snapshot may have just received a
+                     # longer provider wait. No later symbol bypasses that wait.
+                     if instant(clock()) >= close_at or not queue.broker_due(clock()):
+                         break
+                     try:
+                         result = executor.step(forecast)
+                         store.event(session_id,"execution_step",result,symbol=forecast["symbol"])
+                         print(json.dumps({"event":"execution_disposition","symbol":forecast["symbol"],
+                             **{key:result.get(key) for key in ("side","desired_quantity","adjusted_quantity",
+                                 "disposition","submission_status","submitted_quantity","filled_quantity")}}),flush=True)
+                         disposition = result["disposition"]
+                         if disposition == "previous_intention_reconciliation" or result["evidence"].get("proven_unsent_retry_eligible"):
+                             # Missing original order identity is local evidence,
+                             # not a provider cooldown for every other symbol.
+                             # Keep that commitment and retry only this forecast.
+                             unknown_without_broker_wait = (
+                                 disposition == "previous_intention_reconciliation"
+                                 and result["evidence"].get("reason_code") == "EXACT_BROKER_ORDER_ID_UNAVAILABLE"
+                                 and result["evidence"].get("retry_after_seconds") is None
+                                 and not result["evidence"].get("proven_unsent_retry_eligible"))
+                             queue.defer(forecast["forecast_id"],now=clock(),
+                                 seconds=result["evidence"].get("retry_after_seconds") or 3,
+                                 broker_wait=not unknown_without_broker_wait)
+                         elif disposition == "submission_recovery_required":
+                             # UNKNOWN is never requeued for submission. Status
+                             # recovery and other symbols still honor its wait.
+                             queue.broker_wait(now=clock(),seconds=result["evidence"].get("retry_after_seconds") or 3)
+                             queue.complete(forecast["forecast_id"],disposition)
+                         elif result["kind"] == "sizing_unavailable":
+                             if (disposition == "quote_stale_or_future"
+                                     and instant(clock()) < instant(forecast["target_close"])):
+                                 # No desired quantity exists yet. Retain the failed
+                                 # observation and retry fresh evidence for this
+                                 # signal; the executor still enforces its expiry.
+                                 queue.defer(forecast["forecast_id"],now=clock(),
+                                     seconds=3,broker_wait=False)
+                             else:
+                                 queue.complete(forecast["forecast_id"],"sizing_unavailable")
+                         else:
+                             queue.complete(forecast["forecast_id"],disposition)
+                     except Exception as exc:
+                         delay = retry_delay(exc,clock())
+                         queue.defer(forecast["forecast_id"],now=clock(),seconds=delay,broker_wait=True)
+                         store.event(session_id,"execution_retry",{"forecast_id":forecast["forecast_id"],
+                             "error_type":type(exc).__name__,"message":str(exc),"retry_after_seconds":delay,
+                             "diagnostics":execution_failure_evidence(exc)},symbol=forecast["symbol"])
+                         break
+                 if instant(clock()) < close_at and instant(clock()) >= next_recovery and queue.broker_due(clock()):
+                     try:
+                         executor.recover()
+                         delay = 3
+                     except Exception as exc:
+                         delay = retry_delay(exc,clock())
+                         queue.broker_wait(now=clock(),seconds=delay)
+                         store.event(session_id,"order_recovery_retry",{"error_type":type(exc).__name__,
+                             "message":str(exc),"retry_after_seconds":delay,
+                             "diagnostics":execution_failure_evidence(exc)})
+                     next_recovery = instant(clock()) + timedelta(seconds=delay)
+                 sleep(1)
+         except KeyboardInterrupt:
+             manual_stop_requested = True
+             stopped.set()
+         except BaseException as exc:
+             worker_errors.append({"worker":"execution","error_type":type(exc).__name__,"message":str(exc)})
+             raise
+         finally:
+             stopped.set()
+             if market_collector is not None:
+                 market_collector.close()
+             stop_reason = ("worker_failure" if worker_errors else
+                            "market_close" if final_collection_complete.is_set() and not manual_stop_requested else "manual_stop")
+             status("STOPPING",broker_orders_automatically_cancelled=False,
+                    stop_reason=stop_reason)
+             print("15m order authority stopped. Waiting for active computation to finish; pending broker identities are retained.",flush=True)
+             while worker.is_alive() or scorer.is_alive() or collector.is_alive() or input_worker.is_alive():
+                 worker.join(timeout=1)
+                 scorer.join(timeout=1)
+                 collector.join(timeout=1)
+                 if input_worker.is_alive():
+                     input_worker.join(timeout=1)
+                 status("STOPPING",broker_orders_automatically_cancelled=False,
+                        stop_reason=stop_reason)
+             stop_reason = ("worker_failure" if worker_errors else
+                            "market_close" if final_collection_complete.is_set() and not manual_stop_requested else "manual_stop")
+             status("FAILED" if worker_errors else "STOPPED",broker_orders_automatically_cancelled=False,
+                    stop_reason=stop_reason,worker_errors=worker_errors)
+             store.event(session_id,"manual_session_stopped",{"pending_order_identity_preserved":True,
+                         "stop_reason":stop_reason,"worker_errors":worker_errors})
+         return {"session_id":session_id,"status":"FAILED" if worker_errors else "STOPPED", "stop_reason":stop_reason}
+ 
+ 
+ def main(argv=None):
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("--repository",type=Path,default=Path(__file__).resolve().parents[2])
+     parser.add_argument("--datastore",type=Path,default=Path("C:/DATASTORE"))
+     parser.add_argument("--profile",type=Path)
+     parser.add_argument("--watchlist",type=Path)
+     parser.add_argument("--live",action="store_true")
+     parser.add_argument("--publication-offset-seconds",type=float,default=30)
+     parser.add_argument("--symbol-workers",type=int,default=None)
+     parser.add_argument("--lookback-days",type=int)
+     args = parser.parse_args(argv)
+     profile = args.profile or args.repository / "scratch/cross-pc/local-profile.json"
+     watchlist = args.watchlist or args.repository / "datafetching/watchlist.local.txt"
+     if not args.live:
+         from .readiness import inspect_readiness
+         result = inspect_readiness(repository=args.repository,datastore=args.datastore,
+             profile=profile,watchlist=watchlist)
+         print(json.dumps(result,sort_keys=True))
+         return 0 if result.get("manual_live_start_ready") else 2
+     from .resource_policy import manual_symbol_workers
+     actor, _ = local_symbols(profile, watchlist, args.datastore)
+     workers = manual_symbol_workers(args.datastore, actor=actor, explicit=args.symbol_workers)
+     result = run_manual(repository=args.repository,datastore=args.datastore,profile=profile,watchlist=watchlist,
+         config=ResearchConfig(publication_offset_seconds=args.publication_offset_seconds,
+             symbol_workers=workers,lookback_days=args.lookback_days))
+     print(json.dumps(result,sort_keys=True))
+     return 1 if result["status"] == "FAILED" else 0
+ 
+ 
+ if __name__ == "__main__":
+     raise SystemExit(main())
+--- a/ml/intraday/split_execution.py
++++ b/ml/intraday/split_execution.py
+@@ -1,156 +1,190 @@
+ """Immutable small execution derivatives, prepared outside the broker process.
+ 
+ Full model diagnostics and full indicator observations remain retrievable by
+ content hash. This is a new immutable derivative, never a mutable journal cache.
+ """
+ from __future__ import annotations
+ 
+ from dataclasses import asdict
+ import hashlib
+ import json
+ import os
+ from pathlib import Path
+ import re
+ import tempfile
+ 
+ from .prediction import ContractError, digest, encoded, instant, number
+ 
+ VERSION = "intraday-split-execution-v1"
++MODEL_EVENT_REFERENCE = "intraday-model-event-reference-v1"
+ _SHA = re.compile(r"[a-f0-9]{64}")
+ _MODEL_FIELDS = frozenset({
+     "name", "family", "probability_not_down", "status", "version", "error",
+     "artifact_path", "artifact_sha256", "artifact_persisted_at", "artifact_persistence_seconds",
+     "training_started_at", "training_completed_at", "training_seconds", "failed_at",
+     "inference_started_at", "inference_completed_at", "inference_seconds", "warnings",
+ })
+ 
+ 
+ def _file_hash(path):
+     checksum = hashlib.sha256()
+     with Path(path).open("rb") as stream:
+         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+             checksum.update(chunk)
+     return checksum.hexdigest()
+ 
+ 
+ def seal_evidence(root, value):
+     """Atomically publish canonical JSON; existing objects always revalidate."""
+     root = Path(root)
+     root.mkdir(parents=True, exist_ok=True)
+     descriptor, name = tempfile.mkstemp(prefix=".partial-", suffix=".json", dir=root)
+     temporary = Path(name)
+     checksum, count = hashlib.sha256(), 0
+     try:
+         with os.fdopen(descriptor, "wb") as stream:
+             encoder = json.JSONEncoder(sort_keys=True, separators=(",", ":"), allow_nan=False)
+             for part in encoder.iterencode(value):
+                 raw = part.encode("utf-8")
+                 stream.write(raw)
+                 checksum.update(raw)
+                 count += len(raw)
+             stream.flush()
+             os.fsync(stream.fileno())
+         sha = checksum.hexdigest()
+         target = root / (sha + ".json")
+         try:
+             os.link(temporary, target)
+         except FileExistsError:
+             pass
+         if _file_hash(target) != sha or target.stat().st_size != count:
+             raise ContractError("Immutable split execution evidence changed")
+         return {"sha256": sha, "file": target.name, "bytes": count}
+     finally:
+         temporary.unlink(missing_ok=True)
+ 
+ 
+ def read_evidence(root, reference):
+     """Explicit full-evidence inspection/reuse always checks original bytes."""
+     _validate_reference(reference)
+     path = Path(root) / reference["file"]
+     raw = path.read_bytes()
+     if len(raw) != reference["bytes"] or hashlib.sha256(raw).hexdigest() != reference["sha256"]:
+         raise ContractError("Immutable split execution evidence changed")
+     return json.loads(raw)
++
++
++def read_model_event(raw, *, evidence_root):
++    """Read original or losslessly compacted completed-model event bytes.
++
++    A compact historical event references the same full fitted evidence already
++    named by its published forecast. Reconstruction must reproduce its exact
++    original canonical bytes, not merely an equivalent subset of fields.
++    """
++    try:
++        value = json.loads(raw)
++    except (ValueError, TypeError, UnicodeDecodeError) as exc:
++        raise ContractError("Invalid completed-model event") from exc
++    if not isinstance(value, dict):
++        raise ContractError("Invalid completed-model event")
++    if "schema" not in value:
++        return value
++    if (set(value) != {"schema", "attempt", "original_sha256", "original_bytes", "full_models"}
++            or value["schema"] != MODEL_EVENT_REFERENCE
++            or not isinstance(value["attempt"], str)
++            or not isinstance(value["original_sha256"], str)
++            or not _SHA.fullmatch(value["original_sha256"])
++            or type(value["original_bytes"]) is not int or value["original_bytes"] < 1):
++        raise ContractError("Invalid completed-model event reference")
++    evidence = read_evidence(evidence_root, value["full_models"])
++    if not isinstance(evidence, dict) or not isinstance(evidence.get("fitted"), dict):
++        raise ContractError("Completed-model evidence is missing its original result")
++    original = {"attempt": value["attempt"], "result": evidence["fitted"]}
++    reconstructed = encoded(original).encode()
++    if (len(reconstructed) != value["original_bytes"]
++            or hashlib.sha256(reconstructed).hexdigest() != value["original_sha256"]):
++        raise ContractError("Completed-model event original bytes changed")
++    return original
+ 
+ 
+ def _validate_reference(value):
+     if (not isinstance(value, dict) or set(value) != {"sha256", "file", "bytes"}
+             or not isinstance(value["sha256"], str) or not _SHA.fullmatch(value["sha256"])
+             or value["file"] != value["sha256"] + ".json"
+             or type(value["bytes"]) is not int or value["bytes"] < 1):
+         raise ContractError("Exact immutable split evidence reference required")
+ 
+ 
+ def prepare_forecast(payload, snapshot, fitted, *, evidence_root):
+     """Keep original probabilities/recipes and precompute the exact TA inputs."""
+     from .starter_sizing import starter_policy
+     from .technical_sizing import indicator_snapshot
+     from ml.market_provenance import capture_runtime
+ 
+     if digest(snapshot) != payload["snapshot_hash"]:
+         raise ContractError("Prepared execution snapshot differs from its forecast")
+     policy = starter_policy(payload["symbol"])
+     indicators = indicator_snapshot(snapshot["candles"], symbol=policy.symbol,
+         reference_at=payload["reference_at"], data_cutoff=payload["training_cutoff"],
+         indicator_specs=policy.indicators, window_policy=policy.window,
+         forecast_snapshot=snapshot, forecast_snapshot_hash=payload["snapshot_hash"])
+     full = indicators.payload()
+     indicator_evidence = seal_evidence(evidence_root, full)
+     derivation_provenance = capture_runtime([
+         __name__, "ml.intraday.starter_sizing", "ml.intraday.technical_sizing",
+         "technicals.hyperliquid_features"], object_root=Path(evidence_root) / "source-objects")
+     model_evidence = seal_evidence(evidence_root, {
+         "schema": VERSION, "snapshot_hash": payload["snapshot_hash"], "symbol": payload["symbol"],
+         "cycle_id": payload["cycle_id"], "reference_at": payload["reference_at"],
+         "training_cutoff": payload["training_cutoff"], "fitted": fitted,
+         "execution_preparation_provenance": derivation_provenance})
+     compact = {key: value for key, value in full.items() if key != "candles"}
+     compact.update(candles=[], full_indicator_evidence=indicator_evidence,
+                    candles_storage="immutable_full_indicator_evidence")
+     result = dict(payload)
+     result["models"] = [{key: value for key, value in item.items() if key in _MODEL_FIELDS}
+                         for item in payload["models"]]
+     result["split_execution"] = {
+         "schema": VERSION, "policy_hash": digest(asdict(policy)),
+         "indicator_hash": digest(compact), "indicator": compact,
+         "full_indicator": indicator_evidence, "full_models": model_evidence}
+     return result
+ 
+ 
+ def execution_indicators(forecast):
+     """Validate the small immutable original derivative on every consumption."""
+     from .starter_sizing import starter_policy
+     from .technical_sizing import IndicatorSnapshot, VERSION as INDICATOR_VERSION, _indicator_config
+ 
+     original = dict(forecast)
+     forecast_id = original.pop("forecast_id", None)
+     if digest(original) != forecast_id:
+         raise ContractError("Compact execution needs an original immutable forecast")
+     record = forecast.get("split_execution")
+     if (not isinstance(record, dict)
+             or set(record) != {"schema", "policy_hash", "indicator_hash", "indicator", "full_indicator", "full_models"}
+             or record["schema"] != VERSION):
+         raise ContractError("Exact compact execution contract required")
+     _validate_reference(record["full_indicator"])
+     _validate_reference(record["full_models"])
+     value = record["indicator"]
+     policy = starter_policy(forecast["symbol"])
+     if (not isinstance(value, dict) or digest(value) != record["indicator_hash"]
+             or record["policy_hash"] != digest(asdict(policy))
+             or value.get("version") != INDICATOR_VERSION
+             or value.get("candles") != []
+             or value.get("candles_storage") != "immutable_full_indicator_evidence"
+             or value.get("full_indicator_evidence") != record["full_indicator"]
+             or value.get("forecast_snapshot_hash") != forecast["snapshot_hash"]
+             or value.get("symbol") != forecast["symbol"]
+             or instant(value.get("reference_at")) != instant(forecast["reference_at"])
+             or instant(value.get("data_cutoff")) != instant(forecast["training_cutoff"])
+             or value.get("indicator_config") != _indicator_config(policy.indicators, policy.window)
+             or value.get("indicator_config_hash") != digest(value["indicator_config"])):
+         raise ContractError("Compact execution indicators changed or belong to another forecast")
+     if value.get("status") == "ready":
+         if (value.get("source_id") != forecast.get("source_id")
+                 or value.get("source_dataset") != forecast.get("source_dataset")
+                 or number(value.get("reference_open")) != number(forecast["reference_open"])):
+             raise ContractError("Compact execution source or original reference differs")
+     return IndicatorSnapshot(record["indicator_hash"], encoded(value))
