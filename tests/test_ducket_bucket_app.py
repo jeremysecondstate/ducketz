@@ -58,7 +58,7 @@ def test_desktop_app_mounts_the_eight_active_workspaces(monkeypatch) -> None:
         view_factory("Hyperliquid Duckets"),
     )
     monkeypatch.setattr(ducket_bucket_ui, "HyperWorkspace", view_factory("H.Y.P.E.R."))
-    monkeypatch.setattr(ducket_bucket_ui, "GameplanStatsTab", view_factory("Gameplan Stats"))
+    monkeypatch.setattr(ducket_bucket_ui, "StatsTab", view_factory("Stats"))
     monkeypatch.setattr(ducket_bucket_ui, "GameplanTab", view_factory("Gameplan"))
     monkeypatch.setattr(ducket_bucket_ui, "IntradayTab", view_factory("15-Minute Duckets"))
 
@@ -74,7 +74,7 @@ def test_desktop_app_mounts_the_eight_active_workspaces(monkeypatch) -> None:
         "Schwab Duckets",
         "Hyperliquid Duckets",
         "H.Y.P.E.R.",
-        "Gameplan Stats",
+        "Stats",
         "Gameplan",
         "15-Minute Duckets",
     ]
