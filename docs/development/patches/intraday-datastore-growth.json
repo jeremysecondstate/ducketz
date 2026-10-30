@@ -1,0 +1,49 @@
+{
+  "schema": "intraday-datastore-growth-v1",
+  "scope": "shared",
+  "patch": "docs/development/patches/intraday-datastore-growth.patch",
+  "patch_sha256": "7772a16e8cfb167a0f1471d9ec3daa0083a8ebeebd5520268203fd393f9f4510",
+  "files": [
+    {
+      "path": "ml/intraday/runtime.py",
+      "operation": "modify",
+      "before_raw_sha256": "62b67d6b1aa221db6f7b3a6e8b739888fe69054580838705af0c21f7194a506e",
+      "before_sha256": "eb46474844773eb7c6f57d74b1c11ef1c2fa3e0bdd8cb788152120b671be3e5e",
+      "after_raw_sha256": "04bc6337ecb6db8faa27ad7bef65d65694d68a04cd718d51652956efefdaf5f5",
+      "after_sha256": "dd9f51fde386b7e8c5e520056a77f8a6a9f6821a71c2efc05445237ecfd6f634"
+    },
+    {
+      "path": "ml/intraday/snapshot_references.py",
+      "operation": "modify",
+      "before_raw_sha256": "a828093775b817e95058a863257bf0f7cdb4203d4c9bc3f4fe0dac2f27a233cb",
+      "before_sha256": "a828093775b817e95058a863257bf0f7cdb4203d4c9bc3f4fe0dac2f27a233cb",
+      "after_raw_sha256": "e757792eed6e62b1ee9a4735cab9496287102c26c153676cca310ff2ce18b2d7",
+      "after_sha256": "e757792eed6e62b1ee9a4735cab9496287102c26c153676cca310ff2ce18b2d7"
+    },
+    {
+      "path": "ml/intraday/live_session.py",
+      "operation": "modify",
+      "before_raw_sha256": "d9d7d964d5deddc861b0ad1c3ab3ebae20e4fb36ee033e12b744026a7cc7464f",
+      "before_sha256": "d9d7d964d5deddc861b0ad1c3ab3ebae20e4fb36ee033e12b744026a7cc7464f",
+      "after_raw_sha256": "04840b822e19fa186a445bd640084de8a41d626b0175a030e31a0fbdf5a7bf4c",
+      "after_sha256": "04840b822e19fa186a445bd640084de8a41d626b0175a030e31a0fbdf5a7bf4c"
+    },
+    {
+      "path": "ml/intraday/split_execution.py",
+      "operation": "modify",
+      "before_raw_sha256": "44448cfb7a2cdabb04905e86afa6e78b637fb752fd0c4fa44071c9455efb902c",
+      "before_sha256": "44448cfb7a2cdabb04905e86afa6e78b637fb752fd0c4fa44071c9455efb902c",
+      "after_raw_sha256": "f727361520c4b92c3d233c45049bd203da979bd84e26f538e3d71ddead5270bd",
+      "after_sha256": "f727361520c4b92c3d233c45049bd203da979bd84e26f538e3d71ddead5270bd"
+    }
+  ],
+  "direct_files": {
+    "tests/check_intraday_datastore_growth_package.py": "efcdb33ca816533ea8e07247df9fb4f96ac96947199b405f111e62bc60dfa4ef",
+    "tests/test_intraday_model_provenance_references.py": "70bc8335b60d3e9ae6dd523194c645420376a79bdb8e89b88532010507b70c9f"
+  },
+  "limitations": [
+    "Portable tests validate exact composed patches and execute provenance and archived-event reference readers; full local integration tests run against the complete installed candidate.",
+    "Existing original data, scientific selections, probabilities and targets remain unchanged. References reconstruct canonical originals.",
+    "Publication does not migrate historical databases or operate a trader; reviewed local generation sealing is separate."
+  ]
+}
