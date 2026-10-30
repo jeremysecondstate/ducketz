@@ -1,0 +1,59 @@
+{
+  "schema": "intraday-opening-policy-v1",
+  "scope": "shared",
+  "patch": "docs/development/patches/intraday-opening-policy.patch",
+  "patch_sha256": "691c373fd5a910d2c44dfc2ec9c2cc2e7d2185937a3b3d94697fdad21f4ce105",
+  "files": [
+    {
+      "path": "ml/intraday/live_session.py",
+      "operation": "modify",
+      "before_sha256": "925a7ea14d0ba91f604b18d2bef00306b7998778dcd6be4551fcec2cf68d16f6",
+      "after_sha256": "d9d7d964d5deddc861b0ad1c3ab3ebae20e4fb36ee033e12b744026a7cc7464f"
+    },
+    {
+      "path": "ml/intraday/runtime.py",
+      "operation": "modify",
+      "before_sha256": "d5c4a4cf48e3bd1ae15e8a73d45387bea0e026527f3c45357b94ebc10dff0ac7",
+      "after_sha256": "62b67d6b1aa221db6f7b3a6e8b739888fe69054580838705af0c21f7194a506e"
+    },
+    {
+      "path": "ml/intraday/prediction.py",
+      "operation": "modify",
+      "before_sha256": "37e3c7d9c16fea801625e2231ab34d5fc4e18ca78cef768f22db565dd4dfa95c",
+      "after_sha256": "996e155041906c44dd50e08a6f3a3389916a6bfdb3feefb2670bb8948d967756"
+    },
+    {
+      "path": "ml/intraday/execution_policy.py",
+      "operation": "modify",
+      "before_sha256": "48f29958464fa40726e98744ac60bd94a10f847e1cc43bea73e07828e71ea356",
+      "after_sha256": "7a25d6823f268b9f7639fe43e6b170d2d4a69ea313683026e775cd7c2bba7b71"
+    },
+    {
+      "path": "tests/test_intraday_prediction.py",
+      "operation": "modify",
+      "before_sha256": "e75a03b69a172fecb316b7ea49c488b728c25b501e55be31fe2721cfdd3ecca8",
+      "after_sha256": "450b7ae70350acf88a26f4a80f98393f64fa6db461b7da67d05112487caf8c67"
+    },
+    {
+      "path": "tests/test_intraday_live_session.py",
+      "operation": "modify",
+      "before_sha256": "69d5e1af931ff25105dcc9f4a229e0a3f2d659d20a1b66d3e3f46c1e76102c5f",
+      "after_sha256": "98c43ef7a25ece1e5cb051f19892e468cc1e3ca6f11aa4944fe145994cf315f0"
+    },
+    {
+      "path": "tests/test_intraday_execution_policy.py",
+      "operation": "modify",
+      "before_sha256": "45b51ebd5e15a3277276e271d41146b04ad94a599914b7fe04cddb810ee0d625",
+      "after_sha256": "5cd2479137aedf405c11207096b505bdb61e19f99768b371c1fd535729ac5fff"
+    }
+  ],
+  "direct_files": {
+    "tests/test_intraday_opening_policy.py": "10b7527d12adba3fdc945f409a9a26a6705c3916b9c8e9a6f8c5059edaca0011",
+    "tests/check_intraday_opening_policy_package.py": "fa7f4c59e84310e1a3195eed5d016b71bcd8c8ee3dc496615e784120aaacffad"
+  },
+  "limitations": [
+    "Portable checks execute reconstructed policy nodes with a deterministic calendar; full local integration uses the actual equity calendar and runtime.",
+    "Opening fitting/adoption and preopening executor short-circuit are required companion changes.",
+    "Neither native registration nor loaded-runtime behavior is established by source publication."
+  ]
+}

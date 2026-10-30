@@ -1,0 +1,30 @@
+{
+  "schema": "intraday-opening-preparation-package-v1",
+  "scope": "shared",
+  "patch": "docs/development/patches/intraday-opening-preparation.patch",
+  "patch_sha256": "2c73088dea39e07fb490b92df0c561dcd13b1ee2e0e8db2931aef22a68db0cf7",
+  "files": [
+    {
+      "path": "ml/intraday/split_model.py",
+      "operation": "modify",
+      "before_sha256": "a4d20c26c640a86bde6637edc85496ebeb1a6426f1500e699029f09c1084b3bc",
+      "after_sha256": "8e00b0c05c0e1c90c11af20488dd36b46bf3e19667c26355819b0e23e5285742"
+    },
+    {
+      "path": "ml/intraday/account_execution.py",
+      "operation": "modify",
+      "before_sha256": "91967ffa2be15e408b5f1314f17bee922c8f02ebbe3fafc5ed7ce6df32b97acc",
+      "after_sha256": "e57216006fb79b84172803bda0fd9ddecb3caee698f9937bc00ef3bc4b8bbef7"
+    }
+  ],
+  "direct_files": {
+    "ml/intraday/opening_preparation.py": "96d5abc5d9302b9c377febec7ea55319372e97cb4d0b8fa82bece3a8c879ba5f",
+    "tests/test_intraday_opening_preparation.py": "1588e6ef0ada5a2ada4c5b4b9e241d829c52ad818eca87a2cb3ec15247476b3a",
+    "tests/check_intraday_opening_preparation_package.py": "20c9e0f6609c59a9d6699243720bd4958f6cc6647dee05c80196f8f20e993992"
+  },
+  "limitations": [
+    "Portable package verifies exact owned deltas and opening clock/provenance functions; full integration requires the complete reviewed local runtime.",
+    "Native schedules and local model/data configuration are not part of this shared source package.",
+    "Preparation retains original full fits and target clocks; actual provider/model latency may leave some predictions unavailable at04:00."
+  ]
+}

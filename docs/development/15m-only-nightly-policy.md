@@ -38,9 +38,13 @@ Refocus existing task instructions and display names while preserving identities
 schedules, active/paused settings, models, reasoning effort, notification
 preferences, targets, bindings and task memory. Retain after-midnight companions
 as continuation of the same logical owner. Create no duplicate producer.
-Retired Gameplan launcher and direct Gameplan dispatcher registrations stay
-disabled; their retained definitions are historical, not fallback launch paths.
-Preserve existing 15-minute registrations and their local admission rules.
+Delete retired Gameplan launcher and direct Gameplan dispatcher registrations;
+retain their exported definitions as history, never fallback launch paths.
+Preserve existing 15-minute registration identities and manual admission rules.
+The authorized opening preparation begins before 04:00 for the unchanged
+04:00–04:15 target; see [opening preparation](15m-opening-preparation.md).
+Atlas's data-only wake is 03:40 while its trader launcher retains 03:55 and
+waits until 04:00. Remove redundant paused legacy owners; retain task history.
 
 Nightly preparation never starts or restarts a trader, places or cancels an
 order, clears a manual stop or extends a session. Planned worker renewal is

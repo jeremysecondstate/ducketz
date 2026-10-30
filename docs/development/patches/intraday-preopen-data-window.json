@@ -1,0 +1,30 @@
+{
+  "schema": "intraday-preopen-data-window-v1",
+  "scope": "shared",
+  "patch": "docs/development/patches/intraday-preopen-data-window.patch",
+  "patch_sha256": "80acffcf5d33da7dd8d18f156a6dd9675405ea59073844ff9f98cd1f0c8224ef",
+  "files": [
+    {
+      "path": "tools/intraday_session_wait.py",
+      "operation": "modify",
+      "before_sha256": "55d31a91adf717042668268c0e0e628dd1bcb3b55cf9680aa8bb0d8645c7608b",
+      "after_sha256": "716bdf3eedce74630fc72a976da24687e9a2096a93532553205c7c52e18f38d1"
+    },
+    {
+      "path": "tests/test_intraday_session_wait.py",
+      "operation": "modify",
+      "before_sha256": "37802a0f76b7653cae4194927d0bbdaf1de65e3175cbc777fbab6e1bc085d638",
+      "after_sha256": "653a9314ac322ff37b5a99ae03ffbfdb3c3639acbea249b5709f733e44355bcb"
+    }
+  ],
+  "direct_files": {
+    "tests/check_intraday_preopen_data_window_package.py": "4f3923cdcc90c02ed3a097a9ac4d4dbee9c613f1e04027a15efb21035ea6ca96"
+  },
+  "ownership": "Only data-role release time and corresponding release/stop tests are owned. Full context reconstructs existing local composition; review and apply only changed hunks on another installation.",
+  "runtime_implications": "Data-only initial launch now waits until 03:40 Pacific. Trader initial launch still waits until 04:00; existing running workers and manual controls are unchanged.",
+  "limitations": [
+    "Native data trigger, daily rollover binding and task description are separately reviewed local changes, not changed by this package.",
+    "The portable checker runs fake-clock and copied-host SessionWindowTests; the broader local suite also exercises disposable Windows processes and copied batch files.",
+    "This package does not prove live data availability or prediction completion."
+  ]
+}
