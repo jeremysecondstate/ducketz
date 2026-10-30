@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-30T00:58:25.123602Z",
+  "id": "20261030T005825Z-37bd2599c27e47cc8a20b4cead5d514a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout 15-Minute Trader session statistics delivered privately to Atlas"
+}

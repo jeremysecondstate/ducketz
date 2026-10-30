@@ -1,0 +1,30 @@
+{
+  "author": "Scout",
+  "change_id": "20261030T005700Z-scout-15m-stats-3295a7fa",
+  "completion_id": "20261030T005700Z-scout-15m-stats-3295a7fa",
+  "files": [
+    "20261030T005700Z-scout-15m-stats-3295a7fa-report.md",
+    "20261030T005700Z-scout-15m-stats-3295a7fa-report.json"
+  ],
+  "limitations": [
+    "Saved evidence coverage and unresolved accounting limitations are detailed inside the private report.",
+    "Delivery is verified; Atlas reading or acceptance is not claimed."
+  ],
+  "links": [
+    "https://drive.google.com/file/d/1C4pjGRn69I-hZaoEBQdfJN9PZ8rRWukN/view",
+    "https://drive.google.com/file/d/1wAHnYdHf2bF1kHsKp2dC2gx32GWZU_rd/view"
+  ],
+  "recipient": "Atlas",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Statistics only. Atlas keeps its own independent model recipe and execution state. Gameplan remains retired.",
+  "scope": "symbol-specific",
+  "session_date": "2026-10-29",
+  "sha256": {
+    "report.json": "39f70016246c23cda223321675aab51f3491d993d4e0e62eb24cb68189fc3f50",
+    "report.md": "407b16b01272d296fdde82a2df6a75ba48b2c0585ceb52f4084f967ed0553ce0"
+  },
+  "summary": "Scout 15-Minute Trader session statistics delivered privately to Atlas",
+  "tests": [
+    "Completed offline saved-session review; independent aggregate and fill reconciliation; private-value scan; downloaded both private reports and verified exact SHA-256 bytes."
+  ]
+}
