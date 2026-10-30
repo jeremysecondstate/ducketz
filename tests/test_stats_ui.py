@@ -20,6 +20,8 @@ import pytest
 import app.ui.stats as stats_ui
 from app.ui.atlas_stats_data import AtlasStatsSnapshot
 from app.ui.scout_stats_data import ScoutStatsSnapshot
+from app.ui.scout_stats_report import ScoutStatsReport
+from test_scout_stats_report_ui import saved_report
 
 
 LATEST = "2026-10-29"
@@ -60,8 +62,10 @@ def tk_root():
 def view(tmp_path, tk_root, monkeypatch):
     monkeypatch.setattr(stats_ui, "atlas_stats_sessions", lambda *_: (LATEST, EARLIER))
     monkeypatch.setattr(stats_ui, "scout_stats_sessions", lambda *_: (EARLIER,))
+    monkeypatch.setattr(stats_ui, "scout_report_sessions", lambda *_: ())
     monkeypatch.setattr(stats_ui, "load_atlas_stats", lambda _root, session: saved("Atlas", session))
     monkeypatch.setattr(stats_ui, "load_scout_stats", lambda _root, session: saved("Scout", session, correct=False))
+    monkeypatch.setattr(stats_ui, "load_scout_report", lambda _root, session: ScoutStatsReport(session=session))
     frame = ttk.Frame(tk_root)
     frame.pack(fill="both", expand=True)
     widget = stats_ui.StatsTab(tk_root, frame, datastore_root=tmp_path, auto_load=False)
@@ -120,17 +124,19 @@ assert not (forbidden & sys.modules.keys()), sorted(forbidden & sys.modules.keys
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_stats_opens_directly_on_atlas_without_retired_sections(view):
+def test_stats_shows_atlas_then_scout_without_retired_sections(view):
     view.root.geometry("1280x900")
     view.root.deiconify()
     view.root.update()
     assert view.heading.cget("text") == "Stats"
-    assert view.actor.get() == "Atlas"
     assert view.atlas.frame.winfo_ismapped()
-    assert not view.scout.frame.winfo_ismapped()
+    assert view.scout.frame.winfo_ismapped()
+    assert not view.scout_report.frame.winfo_ismapped()
     assert view.atlas.frame.winfo_y() <= 2
+    assert view.scout.frame.winfo_y() >= view.atlas.frame.winfo_height()
     content = "\n".join(texts(view.parent))
     assert "Atlas 15-Minute Trader" in content
+    assert "Scout 15-Minute Trader" in content
     for retired in ("Gameplan", "All horizons", "Open full report", "1-hour prediction outcomes", "Current prices"):
         assert retired not in content
 
@@ -149,37 +155,124 @@ def test_latest_uses_only_independent_session_union_and_keeps_populations_separa
     assert "Missing fill evidence: 1" in view.atlas.fill_coverage.cget("text")
 
 
+def test_saved_scout_report_is_shown_below_atlas_without_mixing_row_populations(view, monkeypatch):
+    report = saved_report()
+    monkeypatch.setattr(stats_ui, "scout_report_sessions", lambda *_: (LATEST,))
+    monkeypatch.setattr(stats_ui, "load_scout_report", lambda *_: report)
+    view.root.deiconify()
+    view.refresh()
+    finish(view)
+    view.root.update()
+    assert view.atlas.frame.winfo_ismapped() and view.scout_report.frame.winfo_ismapped()
+    assert not view.scout.frame.winfo_ismapped()
+    assert view.atlas.frame.winfo_y() <= 2
+    assert view.scout_report.frame.winfo_y() >= view.atlas.frame.winfo_height()
+    assert view.scout_report.snapshot is report
+    assert view.atlas.accuracy_label.cget("text") == "100.0%"
+    assert view.scout_report.accuracy_label.cget("text") == "62.5%"
+    assert view.scout.snapshot.forecasts[0]["forecast_id"] == "Scout-original"
+    assert len(view.scout_report.order_tree.get_children()) == 2
+
+
+def test_report_only_session_remains_selectable(view, monkeypatch):
+    monkeypatch.setattr(stats_ui, "atlas_stats_sessions", lambda *_: ())
+    monkeypatch.setattr(stats_ui, "scout_stats_sessions", lambda *_: ())
+    monkeypatch.setattr(stats_ui, "scout_report_sessions", lambda *_: (LATEST, EARLIER))
+    monkeypatch.setattr(stats_ui, "load_scout_report", lambda _root, session: saved_report(session))
+    view.refresh()
+    finish(view)
+    assert tuple(view.date_box.cget("values")) == (LATEST, EARLIER)
+    assert view.session.get() == LATEST
+    assert view.scout_report.snapshot.session == LATEST
+
+
+def test_unreadable_report_stays_visible_without_using_other_scout_rows_as_replacement(view, monkeypatch):
+    report = ScoutStatsReport(session=LATEST, status="unreadable", message="Saved report integrity failed.")
+    monkeypatch.setattr(stats_ui, "load_scout_report", lambda *_: report)
+    view.root.deiconify()
+    view.refresh()
+    finish(view)
+    view.root.update()
+    assert view.scout_report.frame.winfo_ismapped() and not view.scout.frame.winfo_ismapped()
+    assert view.scout_report.accuracy_label.cget("text") == "—"
+    assert "integrity failed" in view.scout_report.state_label.cget("text")
+    assert view.scout.snapshot.prediction_status == "read"
+    assert view.atlas.accuracy_label.cget("text") == "100.0%"
+
+
+def test_missing_report_preserves_row_level_scout_fallback(view):
+    view.root.deiconify()
+    view.refresh()
+    finish(view)
+    view.root.update()
+    assert view.scout_report.snapshot.status == "missing"
+    assert view.scout.frame.winfo_ismapped() and not view.scout_report.frame.winfo_ismapped()
+    assert view.scout.accuracy_label.cget("text") == "0.0%"
+    assert "1 unknown" in view.scout.order_counts.cget("text")
+
+
+def test_report_displays_before_slow_row_reader_and_is_not_hidden_by_its_later_reply(view, monkeypatch):
+    release = threading.Event()
+    returned = threading.Event()
+    report = saved_report()
+    def slow_rows(_root, session):
+        try:
+            assert release.wait(10), "Offline row reader fixture was not released"
+            return saved("Scout", session, correct=False)
+        finally:
+            returned.set()
+    monkeypatch.setattr(stats_ui, "load_scout_stats", slow_rows)
+    monkeypatch.setattr(stats_ui, "load_scout_report", lambda *_: report)
+    view.root.deiconify()
+    view.refresh()
+    try:
+        wait_for(view, lambda: view.scout_report.snapshot is report)
+        view.root.update()
+        assert view._loading and view.scout.snapshot is None
+        assert view.scout_report.frame.winfo_ismapped() and not view.scout.frame.winfo_ismapped()
+    finally:
+        release.set()
+        assert returned.wait(5)
+        finish(view)
+    view.root.update()
+    assert view.scout_report.frame.winfo_ismapped() and not view.scout.frame.winfo_ismapped()
+    assert view.scout_report.snapshot is report
+
+
 def test_historical_selection_stays_pinned_until_latest_clicked(view, monkeypatch):
     calls = []
-    for actor in ("Atlas", "Scout"):
+    for actor in ("Atlas", "Scout", "Scout report"):
         def load(_root, session, actor=actor):
             calls.append((actor, session))
-            return saved(actor, session)
-        monkeypatch.setattr(stats_ui, f"load_{actor.lower()}_stats", load)
+            return ScoutStatsReport(session=session) if actor == "Scout report" else saved(actor, session)
+        name = "load_scout_report" if actor == "Scout report" else f"load_{actor.lower()}_stats"
+        monkeypatch.setattr(stats_ui, name, load)
     view.session.set(EARLIER)
     view._date_changed()
     finish(view)
     assert view.session.get() == EARLIER
-    assert set(calls) == {("Atlas", EARLIER), ("Scout", EARLIER)}
+    assert set(calls) == {("Atlas", EARLIER), ("Scout", EARLIER), ("Scout report", EARLIER)}
     calls.clear()
     view.refresh()
     finish(view)
-    assert set(calls) == {("Atlas", EARLIER), ("Scout", EARLIER)}
+    assert set(calls) == {("Atlas", EARLIER), ("Scout", EARLIER), ("Scout report", EARLIER)}
     calls.clear()
     view.follow_latest()
     finish(view)
     assert view.session.get() == LATEST
-    assert set(calls) == {("Atlas", LATEST), ("Scout", LATEST)}
+    assert set(calls) == {("Atlas", LATEST), ("Scout", LATEST), ("Scout report", LATEST)}
 
 
-def test_date_change_clears_both_panels_and_rejects_obsolete_replies(view, monkeypatch):
+def test_date_change_clears_all_panels_and_rejects_obsolete_replies(view, monkeypatch):
     view.atlas.set_snapshot(saved())
     view.scout.set_snapshot(saved("Scout"))
+    view.scout_report.set_snapshot(saved_report())
     monkeypatch.setattr(stats_ui.threading, "Thread", lambda **_: SimpleNamespace(start=lambda: None))
     view.session.set(EARLIER)
     view._date_changed()
     obsolete = view._request_id
     assert view.atlas.snapshot is None and view.scout.snapshot is None
+    assert view.scout_report.snapshot is None
     assert view.atlas.company_tree.get_children() == view.scout.company_tree.get_children() == ()
     view.session.set(LATEST)
     view._date_changed()
@@ -187,11 +280,15 @@ def test_date_change_clears_both_panels_and_rejects_obsolete_replies(view, monke
     atlas, scout = saved(), saved("Scout", correct=False)
     view._messages.put((current, "Atlas", (LATEST, EARLIER), LATEST, atlas))
     view._messages.put((current, "Scout", (LATEST, EARLIER), LATEST, scout))
+    report = saved_report(session=LATEST)
+    view._messages.put((current, "Scout report", (LATEST, EARLIER), LATEST, report))
     view._messages.put((obsolete, "Atlas", (EARLIER,), EARLIER, saved(session=EARLIER)))
     view._messages.put((obsolete, "Scout", (EARLIER,), EARLIER, saved("Scout", EARLIER)))
+    view._messages.put((obsolete, "Scout report", (EARLIER,), EARLIER, saved_report(session=EARLIER)))
     finish(view)
     assert view.session.get() == LATEST
     assert view.atlas.snapshot is atlas and view.scout.snapshot is scout
+    assert view.scout_report.snapshot is report
 
 
 @pytest.mark.parametrize("failed_actor", ("Atlas", "Scout"))
@@ -211,19 +308,20 @@ def test_reader_failure_preserves_other_actor_and_missing_is_unavailable(view, m
     assert "disabled" not in view.refresh_button.state()
 
 
-@pytest.mark.parametrize("slow_actor", ("Atlas", "Scout"))
+@pytest.mark.parametrize("slow_actor", ("Atlas", "Scout", "Scout report"))
 def test_fast_actor_appears_without_waiting_for_other_reader(view, monkeypatch, slow_actor):
     release = threading.Event()
     returned = threading.Event()
     def slow(_root, session):
         try:
             assert release.wait(10), "Offline reader fixture was not released"
-            return saved(slow_actor, session)
+            return ScoutStatsReport(session=session) if slow_actor == "Scout report" else saved(slow_actor, session)
         finally:
             returned.set()
-    monkeypatch.setattr(stats_ui, f"load_{slow_actor.lower()}_stats", slow)
+    name = "load_scout_report" if slow_actor == "Scout report" else f"load_{slow_actor.lower()}_stats"
+    monkeypatch.setattr(stats_ui, name, slow)
     fast = view.scout if slow_actor == "Atlas" else view.atlas
-    slow_panel = getattr(view, slow_actor.lower())
+    slow_panel = view.scout_report if slow_actor == "Scout report" else getattr(view, slow_actor.lower())
     view.refresh()
     try:
         wait_for(view, lambda: fast.snapshot is not None)
@@ -234,7 +332,10 @@ def test_fast_actor_appears_without_waiting_for_other_reader(view, monkeypatch, 
         release.set()
         assert returned.wait(5)
         finish(view)
-    assert slow_panel.snapshot.prediction_status == "read"
+    if slow_actor == "Scout report":
+        assert slow_panel.snapshot.status == "missing"
+    else:
+        assert slow_panel.snapshot.prediction_status == "read"
 
 
 def test_discovery_error_does_not_hide_other_actors_saved_session(view, monkeypatch):
@@ -264,41 +365,46 @@ def test_same_session_refresh_replaces_saved_revision_without_summing(view, monk
 
 
 @pytest.mark.parametrize("width", (1280, 700))
-def test_selected_actor_starts_at_top_and_tables_fit_viewport(view, width):
+@pytest.mark.parametrize("report_available", (False, True))
+def test_atlas_and_scout_stack_without_empty_area_and_tables_fit_viewport(view, width, monkeypatch, report_available):
+    if report_available:
+        monkeypatch.setattr(stats_ui, "load_scout_report", lambda *_: saved_report())
+    view.refresh()
+    finish(view)
     view.root.geometry(f"{width}x700")
     view.root.deiconify()
     view.root.update()
-    view.canvas.yview_moveto(1)
-    view.root.update()
-    view.actor.set("Scout")
-    view._actor_changed()
-    view.root.update()
-    assert not view.atlas.frame.winfo_ismapped()
-    assert view.scout.frame.winfo_ismapped()
-    assert view.scout.frame.winfo_y() <= 2
+    scout = view.scout_report if report_available else view.scout
+    assert view.atlas.frame.winfo_ismapped()
+    assert scout.frame.winfo_ismapped()
+    assert view.atlas.frame.winfo_y() <= 2
+    gap = scout.frame.winfo_y() - view.atlas.frame.winfo_height()
+    assert 0 <= gap <= 24
     assert view.canvas.yview()[0] == 0
     canvas_right = view.canvas.winfo_rootx() + view.canvas.winfo_width()
-    for widget in (view.scout.frame, view.scout.prediction_panel, view.scout.order_panel,
-                   view.scout.company_tree, view.scout.order_tree):
-        assert widget.winfo_rootx() + widget.winfo_width() <= canvas_right + 2
-    for tree in (view.scout.company_tree, view.scout.order_tree):
-        bars = [child for child in tree.master.winfo_children() if isinstance(child, ttk.Scrollbar)]
-        assert any(str(bar.cget("orient")) == "horizontal" and bar.winfo_ismapped() for bar in bars)
-    assert view.scout.order_panel.grid_info()["row"] == (1 if width < 900 else 0)
+    for panel in (view.atlas, scout):
+        for widget in (panel.frame, panel.prediction_panel, panel.order_panel,
+                       panel.company_tree, panel.order_tree):
+            assert widget.winfo_rootx() + widget.winfo_width() <= canvas_right + 2
+        for tree in (panel.company_tree, panel.order_tree):
+            bars = [child for child in tree.master.winfo_children() if isinstance(child, ttk.Scrollbar)]
+            assert any(str(bar.cget("orient")) == "horizontal" and bar.winfo_ismapped() for bar in bars)
+        assert panel.order_panel.grid_info()["row"] == (1 if width < 900 else 0)
 
 
-def test_actor_switch_uses_existing_evidence_without_reloading(view, monkeypatch):
+def test_scrolling_uses_existing_evidence_without_reloading(view, monkeypatch):
     view.refresh()
     finish(view)
     atlas, scout = view.atlas.snapshot, view.scout.snapshot
     def unexpected(*_):
-        pytest.fail("Switching the visible trader must not reload saved evidence")
+        pytest.fail("Scrolling between traders must not reload saved evidence")
     monkeypatch.setattr(stats_ui, "load_atlas_stats", unexpected)
     monkeypatch.setattr(stats_ui, "load_scout_stats", unexpected)
-    view.actor.set("Scout")
-    view._actor_changed()
-    view.actor.set("Atlas")
-    view._actor_changed()
+    monkeypatch.setattr(stats_ui, "load_scout_report", unexpected)
+    view.canvas.yview_moveto(1)
+    view.root.update()
+    view.canvas.yview_moveto(0)
+    view.root.update()
     assert view.atlas.snapshot is atlas and view.scout.snapshot is scout
     assert view.atlas.accuracy_label.cget("text") == "100.0%"
 

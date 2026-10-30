@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.ui.stats import StatsTab
 from app.ui.atlas_stats_data import AtlasStatsSnapshot
 from app.ui.ducket_bucket import DucketBucketApp
+from test_scout_stats_report_ui import saved_report
 
 
 def build(root, datastore):
@@ -44,6 +45,8 @@ def build(root, datastore):
     tab.atlas.set_snapshot(AtlasStatsSnapshot(session="2026-09-11", status="partial",
         message="Synthetic offline preview · Local saved-evidence reporting", forecasts=tuple(forecasts), orders=tuple(orders),
         prediction_status="read", execution_status="partial", warnings=("Incomplete order evidence · One request has no saved submission or fill result.",)))
+    tab.scout_report.set_snapshot(saved_report("2026-09-11"))
+    tab._show_scout()
     return tab
 
 
@@ -51,6 +54,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--size", default="1280x1000")
     parser.add_argument("--atlas", action="store_true")
+    parser.add_argument("--scout", action="store_true")
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="atlas-stats-preview-") as directory:
         root = tk.Tk()
@@ -59,10 +63,11 @@ def main():
         tab = build(root, Path(directory))
         def focus():
             root.update_idletasks()
-            if args.atlas:
+            if args.atlas or args.scout:
                 bounds = tab.canvas.bbox("all")
                 if bounds and bounds[3]:
-                    tab.canvas.yview_moveto(tab.atlas.frame.winfo_y() / bounds[3])
+                    panel = tab.scout_report if args.scout else tab.atlas
+                    tab.canvas.yview_moveto(panel.frame.winfo_y() / bounds[3])
         root.after(150, focus)
         root.after(180000, root.destroy)
         root.mainloop()
