@@ -188,7 +188,7 @@ class ExecutionQueue:
                 ORDER BY f.reference_at,q.symbol""",
                               (self.session_id,self.pc,current)).fetchall()
         ids = {row[0] for row in rows}
-        return [f for f in self.store.forecasts(pc=self.pc) if f["forecast_id"] in ids]
+        return self.store.forecasts(pc=self.pc, forecast_ids=ids)
 
     def broker_due(self, now):
         with self.store.connect() as db:
