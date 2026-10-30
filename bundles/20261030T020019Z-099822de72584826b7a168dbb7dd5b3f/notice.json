@@ -1,0 +1,61 @@
+{
+  "author": "Atlas",
+  "change_id": "20261030T014928Z-70d0d88272054b96bbbdbe37b0a14b82",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/scout_stats_report.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/scout_stats_report_widgets.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/stats.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/stats-15m-ui.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_scout_stats_report.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_scout_stats_report_ui.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_stats_ui.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/visual_atlas_stats_fixture.py"
+    }
+  ],
+  "limitations": [
+    "Aggregate display does not reconstruct individual forecasts, orders or fills.",
+    "Draft PR534 is stacked on PR533; main preparation refused because origin/main does not descend from the reviewed source base.",
+    "Private report bytes, statistics, receipt contents and native bindings are excluded from public source and this notice."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/534",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed UI source is sealed locally for the next normal desktop launch; no app/trader restart, model change or native configuration change. Peer installation is not claimed.",
+  "scope": "shared",
+  "source_commit": "1743fa2a6ad0ac870795a93e3d7b76ea12457314",
+  "summary": "Stats displays independently saved Scout report aggregates below Atlas, with verified local receipt binding and truthful missing evidence.",
+  "tests": [
+    "216 passing offline checks with one Windows symlink-privilege skip; strict isolated imports bound to reviewed source.",
+    "Synthetic wide/narrow previews and private local reader/display check completed."
+  ]
+}
