@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-30T04:40:38.527955Z",
+  "id": "20261030T044038Z-b51f70a8f406487fafdf685677634563",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout adopted the exact Atlas PR527 codec package into common main; adapters remain pending"
+}

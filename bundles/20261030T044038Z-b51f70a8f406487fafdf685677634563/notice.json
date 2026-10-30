@@ -1,0 +1,119 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261030T043700Z-cb68657d3f634b9aab3cabce283c05ae",
+  "change_id": "20261030T043700Z-cb68657d3f634b9aab3cabce283c05ae:source-main-codec",
+  "completion_record": "20261030T043700Z-cb68657d3f634b9aab3cabce283c05ae",
+  "details": [
+    "Task: scout-priority-source-reconciliation. Preserved the six original committed files and original Atlas identity.",
+    "Thirteen final source and dependency fingerprints bound the same existing offline suite at queue, isolated source and current-main stages.",
+    "Standalone codec source was installed and read back on Scout; two existing original-byte and raw-default fixtures passed against the installed helper.",
+    "Scout store preimage differs from the supplied adapter patch. No adapter, operating constructor, selected trading generation or private recipe changed."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/intraday-snapshot-chunks.json"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/intraday-snapshot-chunks.patch"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/snapshot_objects.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_isolated_intraday_snapshot_chunks.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_snapshot_chunk_package.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_snapshot_chunks.py"
+    }
+  ],
+  "limitations": [
+    "Offline codec and packet fixtures only; absent adapter integration remains explicitly skipped.",
+    "Scout store preimage differs; full adapter installation and prospective writer activation remain unfinished.",
+    "No operating database, source-data migration, historical cleanup, provider, model, broker or trader action.",
+    "The seven skipped adapter checks do not establish integration; the two installed helper fixtures do not establish active trader loading.",
+    "PR488 remains unfinished separately; its queue ownership and checkpoint issues are not resolved by this package."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/536",
+    "https://github.com/jeremysecondstate/ducketz/pull/527",
+    "https://github.com/jeremysecondstate/ducketz/commit/1543b9e9f9f8f815e268650a2293a613c582db0f"
+  ],
+  "main_sha": "1543b9e9f9f8f815e268650a2293a613c582db0f",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Codec package source availability only. Preserve raw writers and existing active generations until separately reviewed adapter composition. No trader or service action.",
+  "scope": "shared",
+  "source_sha": "2ddc475fa15f1c901d9456ef19592a16677bad21",
+  "stages": {
+    "adapter_installation": "pending composition",
+    "local_installation": "standalone codec helper source only; installed original-byte/raw-default fixtures passed",
+    "main_integration": "remote_verified",
+    "peer_availability": "published",
+    "runtime_loading": "unobserved",
+    "source_publication": "remote_verified",
+    "writer_activation": "not performed"
+  },
+  "summary": "Scout adopted the exact Atlas PR527 codec package into common main; adapters remain pending",
+  "tests": [
+    {
+      "argv": [
+        "python",
+        "-B",
+        "tests/check_isolated_intraday_snapshot_chunks.py",
+        "--basetemp",
+        "scratch/offline-snapshot-chunks-scout"
+      ],
+      "completed_at_utc": "2026-10-30T04:37:04.187225Z",
+      "exit_code": 0,
+      "output_sha256": "6373c74318eed39534c55b3844199bb8e2b4f130790ac2c05783339e77aed56a",
+      "result": "48 passed, 7 skipped for absent adapter composition; no network or child-process attempts",
+      "stage": "queue",
+      "started_at_utc": "2026-10-30T04:37:00.068141Z"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "tests/check_isolated_intraday_snapshot_chunks.py",
+        "--basetemp",
+        "scratch/offline-snapshot-chunks-scout"
+      ],
+      "completed_at_utc": "2026-10-30T04:37:29.239752Z",
+      "exit_code": 0,
+      "output_sha256": "65c9cae5ef549d93e381d07476c733b17362b6d1d30202e571fdd2c16abdb328",
+      "result": "48 passed, 7 skipped for absent adapter composition; no network or child-process attempts",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-30T04:37:25.071341Z"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "tests/check_isolated_intraday_snapshot_chunks.py",
+        "--basetemp",
+        "scratch/offline-snapshot-chunks-scout"
+      ],
+      "completed_at_utc": "2026-10-30T04:38:13.351730Z",
+      "exit_code": 0,
+      "output_sha256": "d5323f9a35ee485e58bfc26e7c873d5f67d7c9a6bfd0f2d9a4538f8adcd80e96",
+      "result": "48 passed, 7 skipped for absent adapter composition; no network or child-process attempts",
+      "stage": "main",
+      "started_at_utc": "2026-10-30T04:38:09.214619Z"
+    }
+  ],
+  "upstream_completion_record": "20261029T205105Z-af4057cb332f4048af12cc4aa44a84f0"
+}
