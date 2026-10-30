@@ -1,0 +1,80 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261030T050010Z-d611de54e1ce4276b0bc34914baa55b7",
+  "change_id": "20261030T050010Z-d611de54e1ce4276b0bc34914baa55b7:atomic-queue-source-main-install",
+  "completion_record": "20261030T050010Z-d611de54e1ce4276b0bc34914baa55b7",
+  "details": [
+    "Actor Scout; task scout-priority-source-reconciliation; compatible independent-services queue transaction repair.",
+    "An insertion and existing expiry or supersession now commit together. Retirement failure rolls both back; publication stays after commit.",
+    "Final queue, isolated source and fresh main each passed 131 offline cases with no skips and 102 bound source/dependency hashes.",
+    "Exact local hunk composition and actual installed immutable successor each passed 133 offline cases with no skips, preserving local source, private recipe and bootstrap.",
+    "Existing statuses, blocked forecast handling, retry floors and checkpoint protocol are retained. No scientific tuning, data population, task or activation changes.",
+    "Original Atlas record 20261028T072103Z-36434456609e4a5c9dc7fbf967e0167f and retained unfinished PR488 corruption candidate remain separate."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/scout_services.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_scout_queue_atomic.py"
+    }
+  ],
+  "limitations": [
+    "Offline synthetic queue, service and rotation fixtures only.",
+    "Arbitrary missing or corrupt legacy forecast originals remain the separate unfinished PR488 adaptation; no ownership or ordering is inferred.",
+    "No process loading or live behavior established.",
+    "Full legacy corruption containment remains unfinished; no missing original ownership or ordering is inferred."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/537",
+    "https://github.com/jeremysecondstate/ducketz/commit/307b014c0f6cb016d4ec2dbc3322278a25cf5dfa"
+  ],
+  "main_sha": "307b014c0f6cb016d4ec2dbc3322278a25cf5dfa",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Installed repair awaits the existing safe automatic replacement or next separately authorized initial activation. No service or trader was started, stopped or restarted.",
+  "scope": "shared",
+  "source_sha": "7bc42a832183fb0564c7ef12a09f2e56526e06f4",
+  "stages": {
+    "local_installation": "verified immutable compatible successor selected",
+    "main_integration": "remote_verified",
+    "peer_availability": "published",
+    "runtime_loading": "unobserved",
+    "source_publication": "remote_verified"
+  },
+  "summary": "Scout queued forecast insertion and existing predecessor retirement now commit atomically",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-30T05:00:31.714902Z",
+      "exit_code": 0,
+      "output_sha256": "51de4e701f1246597ae3901cec8f05c4676c127392a5903a2124288b163f30db",
+      "result": "131 passed, no skips; network disabled",
+      "stage": "queue",
+      "started_at_utc": "2026-10-30T05:00:10.949226Z"
+    },
+    {
+      "completed_at_utc": "2026-10-30T05:01:19.926396Z",
+      "exit_code": 0,
+      "output_sha256": "c4800898f7264cbd98ab20f5c0c6cb3c63f360990125a548261a2fa96701ffa8",
+      "result": "131 passed, no skips; network disabled",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-30T05:00:58.056815Z"
+    },
+    {
+      "completed_at_utc": "2026-10-30T05:02:51.545089Z",
+      "exit_code": 0,
+      "output_sha256": "aea051b809ba99fb8e86707bbbdccc5dd3134f6d9bf1a4c428dafa8b41e49fc6",
+      "result": "131 passed, no skips; network disabled",
+      "stage": "main",
+      "started_at_utc": "2026-10-30T05:02:28.972379Z"
+    }
+  ]
+}
