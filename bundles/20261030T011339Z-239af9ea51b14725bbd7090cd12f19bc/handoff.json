@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-30T01:13:39.330509Z",
+  "id": "20261030T011339Z-239af9ea51b14725bbd7090cd12f19bc",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout published and locally loaded the independent 15-minute Stats UI"
+}

@@ -1,0 +1,73 @@
+{
+  "author": "Scout",
+  "base_commit": "2e22d70b1f990f21b47366a21a242eeb64e53155",
+  "branch": "codex/scout/20261030T011014Z-7991614b2b2942dea068ab04324bfe43",
+  "change_id": "20261030T011014Z-7991614b2b2942dea068ab04324bfe43",
+  "completion_record": "20261030T011014Z-7991614b2b2942dea068ab04324bfe43",
+  "files": [
+    {
+      "operation": "add",
+      "path": "app/ui/stats.py",
+      "sha256": "c645ab7ae0dc48b4258da0af9875f118203f521b3482647583faa99e06d7ec0a"
+    },
+    {
+      "operation": "modify",
+      "path": "app/ui/ducket_bucket.py",
+      "sha256": "cd77b62047a80cfe5012ddc578359ad1fe98c96bf326103ea071fef7462d9910"
+    },
+    {
+      "operation": "modify",
+      "path": "app/ui/scout_stats_widgets.py",
+      "sha256": "35a631971ca8be92e3741739bfa69554437bf6fa523b5f061baf44708de6a2cc"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_stats_tab.py",
+      "sha256": "84fb76d3a6cfdbc83c4fa11df1599a16defc41efaf1bd94e149ce6b037e16b84"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_ducket_bucket_app.py",
+      "sha256": "a044a7cc22836e6ae7e8ed25a97e30832f79f5f38eb8c4587e7299b40e371e1d"
+    },
+    {
+      "operation": "add",
+      "path": "tests/visual_stats_fixture.py",
+      "sha256": "45ba157a7aa7ee13897e0ecd61d97e1f224318e003a96a3a8d52621dbeccf470"
+    }
+  ],
+  "limitations": [
+    "Main integration and Atlas local adoption are not claimed.",
+    "Validation used offline fixtures and read-only saved evidence; no provider, broker, model or trader calls."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/532"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout installed the scoped presentation changes, preserved its supported stats-only launcher, and visually verified the loaded Stats window using saved evidence. No trader or controller restart or deployment. Atlas applicability is shared UI only; preserve private recipes, data and operating state.",
+  "scope": "shared",
+  "source_commit": "ae7e433a430e9cce4b237e9e3d3a6c0dee668873",
+  "summary": "Scout published and locally loaded the independent 15-minute Stats UI",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-30T01:11:28.320755Z",
+      "exit_code": 0,
+      "output_sha256": "cfa6126f0a3d0ec50f886bd7e480c8de6fac566a5d5d04cb842e19a839b986b5",
+      "result": "........................................................................ [ 96%]\r\n...                                                                      [100%]\r\n75 passed in 8.69s\r\n\n",
+      "started_at_utc": "2026-10-30T01:11:17.432384Z"
+    },
+    {
+      "completed_at_utc": "2026-10-30T01:11:30.028051Z",
+      "exit_code": 0,
+      "output_sha256": "12824fa61d5b859778a2acad1bc8e87816ca388ebe9c5ffe96c3060c0ead1485",
+      "result": "......                                                                   [100%]\r\n6 passed in 0.59s\r\n\n",
+      "started_at_utc": "2026-10-30T01:11:28.513417Z"
+    }
+  ],
+  "validation_details": [
+    "Sealed source and isolated candidate: 75 focused tests plus 6 widget tests passed.",
+    "Synthetic native layouts inspected at 1240x900 and 760x900.",
+    "Scoped local installation: 10 focused tests and 3 supported launcher compatibility checks passed.",
+    "The fetched main revision changed none of the 117 bound owned/dependency paths and the merge-tree check was clean."
+  ]
+}
