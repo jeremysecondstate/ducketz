@@ -135,9 +135,13 @@ class ServiceExecutionQueue(ExecutionQueue):
 
     def retire(self, now):
         with self.store.connect() as db:
-            rows = db.execute("SELECT q.forecast_id,q.symbol,f.reference_at,f.issued_at,f.payload FROM intraday_live_queue q "
-                "JOIN forecasts f ON f.id=q.forecast_id WHERE q.session_id=? AND f.pc=? AND q.status='pending' "
-                "ORDER BY f.reference_at DESC,f.issued_at DESC", (self.session_id, self.pc)).fetchall()
+            db.execute("BEGIN IMMEDIATE")
+            self._retire(db, now)
+
+    def _retire(self, db, now):
+        rows = db.execute("SELECT q.forecast_id,q.symbol,f.reference_at,f.issued_at,f.payload FROM intraday_live_queue q "
+            "JOIN forecasts f ON f.id=q.forecast_id WHERE q.session_id=? AND f.pc=? AND q.status='pending' "
+            "ORDER BY f.reference_at DESC,f.issued_at DESC", (self.session_id, self.pc)).fetchall()
         seen, retired = set(), []
         for key, symbol, reference, issued, raw in rows:
             forecast = json.loads(raw)
@@ -147,12 +151,17 @@ class ServiceExecutionQueue(ExecutionQueue):
             if state:
                 retired.append((state, key, self.session_id))
         if retired:
-            with self.store.connect() as db:
-                db.executemany("UPDATE intraday_live_queue SET status=? WHERE forecast_id=? AND session_id=? AND status='pending'", retired)
+            db.executemany("UPDATE intraday_live_queue SET status=? WHERE forecast_id=? AND session_id=? AND status='pending'", retired)
+
+    def _after_enqueue(self, db, forecast):
+        self._retire(db, forecast["issued_at"])
 
     def enqueue(self, forecast):
         super().enqueue(forecast)
-        self.retire(forecast["issued_at"])
+        # Blocked forecasts return before the insertion hook; retain their
+        # existing opportunity to expire previously queued work.
+        if forecast.get("execution_blocked_reason") or instant(forecast["issued_at"]) >= instant(forecast["target_close"]):
+            self.retire(forecast["issued_at"])
 
     def due(self, now):
         self.retire(now)

@@ -162,6 +162,7 @@ class ExecutionQueue:
                 raise ContractError("Forecast already belongs to another manual session")
             inserted = db.execute("INSERT OR IGNORE INTO intraday_live_queue VALUES(?,?,?,?,?,'pending')",
                        (forecast["forecast_id"],*value,value[2])).rowcount
+            self._after_enqueue(db, forecast)
         if inserted:
             self.event_sink({"event":"forecast_published","symbol":forecast["symbol"],
                 "forecast_id":forecast["forecast_id"],
@@ -169,6 +170,9 @@ class ExecutionQueue:
                 "target_close":forecast["target_close"],"probability_not_down":forecast["probability_not_down"],
                 "successful_models":forecast["successful_count"],"configured_models":forecast["configured_count"],
                 "ensemble_status":forecast["ensemble_status"]})
+
+    def _after_enqueue(self, db, forecast):
+        """Apply subclass queue updates inside the insertion transaction."""
 
     def due(self, now):
         current = instant(now).isoformat()
