@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-30T06:01:43.349311Z",
+  "id": "20261030T060143Z-ebb0a6dc3af749568c6efbf8cc7f3e6d",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout validates saved original evidence before queue retirement and preserves rollback"
+}

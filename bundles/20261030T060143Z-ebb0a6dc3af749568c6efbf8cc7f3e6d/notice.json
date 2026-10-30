@@ -1,0 +1,140 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261030T055641Z-f8554b3172f14f2da9cd8135957a04fd",
+  "change_id": "20261030T055641Z-f8554b3172f14f2da9cd8135957a04fd:original-validation-source-main",
+  "completion_record": "20261030T055641Z-f8554b3172f14f2da9cd8135957a04fd",
+  "details": [
+    "Actor Scout; task scout-priority-source-reconciliation. Queue retirement applies the existing forecast hash and indexed-identity validator before deciding expiration or supersession.",
+    "Changed original evidence fails explicitly; the existing transaction rolls back retirement and any new queue insertion. Six synthetic regressions cover retire, due and enqueue. No new status, ordering, attribution or checkpoint rule.",
+    "Queued, isolated and fresh-main source each passed 161 offline tests with no skips and 103 bound source/dependency fingerprints. Local composed source and actual immutable successor each passed 139 tests with no skips. Repeated stages are not summed.",
+    "Local installation uses its five existing relevant suites. An unrelated selected-reader test fixture is absent from that generation; it was not installed or counted as a pass.",
+    "Original Atlas PR488 record 20261028T072103Z-36434456609e4a5c9dc7fbf967e0167f and its broader corruption/checkpoint candidate remain unchanged and unfinished. Completed PR537 and PR539 stages are retained.",
+    "Scout private recipe, symbols, bootstrap, bindings and manual activation/stop controls were preserved."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/scout_services.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_scout_queue_atomic.py"
+    }
+  ],
+  "limitations": [
+    "Offline synthetic stores only.",
+    "Full corrupt-queue containment and checkpoint recovery under the original peer handoff remain unfinished.",
+    "Peer installation and runtime loading remain unobserved."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/540"
+  ],
+  "main_sha": "22a30a5571bdda94b917f2305f38f54d556e0214",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The compatible Scout repair awaits the next existing authorized full-iteration replacement or separately authorized initial launch. No trader activation or restart performed; actual loading remains unobserved.",
+  "scope": "shared",
+  "source_sha": "005e0724d1c5098e7c29dedbe75061fd687e67d8",
+  "stages": {
+    "local_installation": "immutable compatible successor selected and verified",
+    "main_integration": "remote_verified",
+    "peer_availability": "published",
+    "runtime_loading": "unobserved",
+    "source_publication": "remote_verified"
+  },
+  "summary": "Scout validates saved original evidence before queue retirement and preserves rollback",
+  "tests": [
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_scout_queue_atomic.py",
+        "tests/test_scout_services.py",
+        "tests/test_scout_trading_rotation.py",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_execution_store_busy.py",
+        "tests/test_intraday_queue_selected_reads.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-30T05:57:03.915635Z",
+      "exit_code": 0,
+      "output_sha256": "a78ccbd46568abb80acdddcfb671bc9a1c7d46c6effa5fc05827184940dc289c",
+      "result": "........................................................................ [ 44%]\r\n........................................................................ [ 89%]\r\n.................                                                        [100%]\r\n161 passed in 20.47s\r\n\n",
+      "stage": "queue",
+      "started_at_utc": "2026-10-30T05:56:41.803631Z"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_scout_queue_atomic.py",
+        "tests/test_scout_services.py",
+        "tests/test_scout_trading_rotation.py",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_execution_store_busy.py",
+        "tests/test_intraday_queue_selected_reads.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-30T05:58:45.114203Z",
+      "exit_code": 0,
+      "output_sha256": "f6f68628c27a2a69c59f939a6a2f4f24043d9a0b966b51cad69c0c5ed175c98f",
+      "result": "........................................................................ [ 44%]\r\n........................................................................ [ 89%]\r\n.................                                                        [100%]\r\n161 passed in 19.59s\r\n\n",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-30T05:58:24.145603Z"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_scout_queue_atomic.py",
+        "tests/test_scout_services.py",
+        "tests/test_scout_trading_rotation.py",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_execution_store_busy.py",
+        "tests/test_intraday_queue_selected_reads.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-30T05:59:27.108211Z",
+      "exit_code": 0,
+      "output_sha256": "9ed8a01c37c90f10642617816ae0933b560dedf4ee6d509cf46b3c48d9c31f77",
+      "result": "........................................................................ [ 44%]\r\n........................................................................ [ 89%]\r\n.................                                                        [100%]\r\n161 passed in 21.64s\r\n\n",
+      "stage": "main",
+      "started_at_utc": "2026-10-30T05:59:03.850054Z"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_scout_queue_atomic.py",
+        "tests/test_scout_services.py",
+        "tests/test_scout_trading_rotation.py",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_execution_store_busy.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-30T06:00:54.509375Z",
+      "exit_code": 0,
+      "output_sha256": "8c513b5c6a6b7d7c567c3146c81c529380279d6c83f67eaa8f4884db1bf24746",
+      "result": "........................................................................ [ 51%]\r\n...................................................................      [100%]\r\n139 passed in 20.01s\r\n\n",
+      "stage": "installed_scout",
+      "started_at_utc": "2026-10-30T06:00:32.616328Z"
+    }
+  ]
+}
