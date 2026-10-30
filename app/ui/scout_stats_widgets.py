@@ -64,7 +64,7 @@ class ScoutStatsPanel:
 
     def _build(self):
         label(self.frame, "Scout 15-Minute Trader", size=19, bold=True).pack(anchor="w", padx=14, pady=(14, 3))
-        self._text(self.frame, "Live saved evidence · Separate from Gameplan horizons", color=MUTED_TEXT).pack(fill="x", padx=14)
+        self._text(self.frame, "Saved live predictions and execution evidence", color=MUTED_TEXT).pack(fill="x", padx=14)
         self.session_label = self._text(self.frame, "", size=10, bold=True)
         self.session_label.pack(fill="x", padx=14, pady=(6, 3))
         self.source_label = self._text(self.frame, "", size=10)
@@ -105,7 +105,7 @@ class ScoutStatsPanel:
         self.exclusions_label.pack(fill="x", padx=12, pady=(0, 8))
         self.company_tree = self._tree(self.prediction_panel, (
             ("symbol", "Company", 68), ("eligible", "Before open", 82), ("scored", "Scored", 60),
-            ("accuracy", "Accuracy", 75), ("missing", "Missing / unscorable", 140)), height=4)
+            ("accuracy", "Accuracy", 75), ("missing", "Missing / unscorable", 140)), height=8)
         self._text(self.prediction_panel, "Missing, unscorable, synthetic and pending outcomes do not enter accuracy or Brier.",
                    size=9, color=MUTED_TEXT).pack(fill="x", padx=12, pady=(7, 10))
 
@@ -120,7 +120,7 @@ class ScoutStatsPanel:
         self.fill_coverage.pack(fill="x", padx=12, pady=(0, 8))
         self.order_tree = self._tree(self.order_panel, (
             ("time", "Time", 48), ("symbol", "Company", 68), ("side", "Side", 45),
-            ("fill", "Filled / requested", 115), ("status", "Status", 95)), height=4)
+            ("fill", "Filled / requested", 115), ("status", "Status", 95)), height=8)
         self.order_tree.bind("<<TreeviewSelect>>", self._select_order)
         self.detail_label = self._text(self.order_panel, "Select an order to inspect saved fill evidence.", size=9, color=MUTED_TEXT)
         self.detail_label.pack(fill="x", padx=12, pady=(7, 4))
