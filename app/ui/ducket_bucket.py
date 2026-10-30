@@ -19,7 +19,7 @@ from app.services.hyperliquid_markets import display_asset
 from app.services.aggregate import DucketBucketSnapshot
 from app.ui.options_strategies import OptionsStrategiesTab
 from app.ui.rolling_forecasts import RollingForecastTab
-from app.ui.gameplan_stats import GameplanStatsTab
+from app.ui.stats import StatsTab
 from app.ui.gameplan import GameplanTab
 from app.ui.intraday import IntradayTab
 from app.ui.schwab_duckets import SchwabDucketsTab
@@ -533,7 +533,7 @@ class DucketBucketApp:
         notebook.add(schwab_frame, text="Schwab Duckets")
         notebook.add(hyperliquid_frame, text="Hyperliquid Duckets")
         notebook.add(hyper_frame, text="H.Y.P.E.R.")
-        notebook.add(stats_frame, text="Gameplan Stats")
+        notebook.add(stats_frame, text="Stats")
         notebook.add(gameplan_frame, text="Gameplan")
         notebook.add(intraday_frame, text="15-Minute Duckets")
 
@@ -561,7 +561,7 @@ class DucketBucketApp:
 
         HyperWorkspace(root=self.root, parent=hyper_frame, account_history=account_history)
 
-        GameplanStatsTab(root=self.root, parent=stats_frame)
+        StatsTab(root=self.root, parent=stats_frame)
         GameplanTab(root=self.root, parent=gameplan_frame)
         IntradayTab(root=self.root, parent=intraday_frame)
 
