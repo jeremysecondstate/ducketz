@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-30T01:13:16.502088Z",
+  "id": "20261030T011316Z-b9b97d67c5354e348db6ab69de4eb041",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Stats now shows independent 15-minute results in the full workspace; retired Gameplan areas removed."
+}

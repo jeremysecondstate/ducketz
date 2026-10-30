@@ -1,0 +1,61 @@
+{
+  "author": "Atlas",
+  "change_id": "20261030T010657Z-fd5f87f87f4946eebb0a29d1d71c07ec",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/ducket_bucket.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/scout_stats_widgets.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/stats.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/window_chrome.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/stats-15m-ui.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_ducket_bucket_app.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_stats_ui.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/visual_atlas_stats_fixture.py"
+    }
+  ],
+  "limitations": [
+    "Draft PR533 is stacked on the previously reviewed Stats-reader source branch.",
+    "Main preparation refused because origin/main does not descend from the reviewed source base; no main integration or peer installation claimed."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/533",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed local UI source installed and sealed; already open desktop loads new layout on next normal launch. No app/trader restart or native configuration change.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261030T010657Z-fd5f87f87f4946eebb0a29d1d71c07ec",
+  "source_commit": "b10ec4cb6bd0b37f30e64fe0383437c3f2b138b9",
+  "summary": "Stats now shows independent 15-minute results in the full workspace; retired Gameplan areas removed.",
+  "tests": [
+    "143 passing offline fixture tests on reviewed source and isolated candidate; dependency imports bound and network disabled.",
+    "Synthetic wide and narrow UI previews inspected."
+  ]
+}
