@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-30T05:43:27.439132Z",
+  "id": "20261030T054327Z-fdbe380d495f455791f842be1cd798c2",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout shared queue reader loads only eligible forecast IDs and preserves unrelated history"
+}
