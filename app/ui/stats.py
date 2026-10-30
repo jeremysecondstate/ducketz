@@ -11,7 +11,9 @@ from app.ui.atlas_stats_data import AtlasStatsSnapshot, atlas_stats_sessions, lo
 from app.ui.gameplan_widgets import label
 from app.ui.scout_stats_data import ScoutStatsSnapshot, load_scout_stats, scout_stats_sessions
 from app.ui.scout_stats_widgets import AtlasStatsPanel, ScoutStatsPanel
-from app.ui.theme import BACKGROUND, MUTED_TEXT, TEXT
+from app.ui.scout_stats_report import ScoutStatsReport, load_scout_report, scout_report_sessions
+from app.ui.scout_stats_report_widgets import ScoutStatsReportPanel
+from app.ui.theme import BACKGROUND, MUTED_TEXT
 
 AUTO_REFRESH_MS = 5 * 60 * 1000
 
@@ -20,7 +22,6 @@ class StatsTab:
     def __init__(self, root, parent, *, datastore_root=None, auto_load=True):
         self.root, self.parent, self.datastore_root = root, parent, datastore_root
         self.session = tk.StringVar(master=root)
-        self.actor = tk.StringVar(master=root, value="Atlas")
         self.status = tk.StringVar(master=root, value="Loading saved results…" if auto_load else "No results loaded.")
         self._messages = queue.Queue()
         self._request_id = 0
@@ -57,16 +58,6 @@ class StatsTab:
         self.subtitle = label(self.page, "Independent 15-minute results · All times Pacific · Saved evidence only",
                               color=MUTED_TEXT, background=BACKGROUND, justify="left")
         self.subtitle.pack(fill="x", pady=(4, 10))
-        self.traders = tk.Frame(self.page, background=BACKGROUND)
-        self.traders.pack(fill="x", pady=(0, 6))
-        style = ttk.Style(self.root)
-        style.configure("Stats.TRadiobutton", background=BACKGROUND, foreground=TEXT,
-                        font=("Segoe UI", 10), padding=(2, 4))
-        style.map("Stats.TRadiobutton", background=[("active", BACKGROUND)])
-        for actor in ("Atlas", "Scout"):
-            ttk.Radiobutton(self.traders, text=f"{actor} 15-Minute", variable=self.actor,
-                            value=actor, command=self._actor_changed,
-                            style="Stats.TRadiobutton").pack(side="left", padx=(0, 16))
         self.status_label = label(self.page, textvariable=self.status, size=9, color=MUTED_TEXT,
                                   background=BACKGROUND, justify="left", wraplength=1000)
         self.status_label.pack(fill="x", pady=(0, 10))
@@ -83,15 +74,17 @@ class StatsTab:
         self.canvas.bind("<Configure>", self._resize)
         self.atlas = AtlasStatsPanel(self.body, self.root)
         self.scout = ScoutStatsPanel(self.body, self.root)
-        self._actor_changed()
+        self.scout_report = ScoutStatsReportPanel(self.body, self.root)
+        self.atlas.frame.pack(fill="x")
+        self._show_scout()
         self._bind_wheel(self.body)
 
-    def _actor_changed(self):
-        self.atlas.frame.pack_forget()
+    def _show_scout(self):
         self.scout.frame.pack_forget()
-        panel = self.scout if self.actor.get() == "Scout" else self.atlas
-        panel.frame.pack(fill="x")
-        self.canvas.yview_moveto(0)
+        self.scout_report.frame.pack_forget()
+        report = self.scout_report.snapshot
+        panel = self.scout_report if report is not None and report.status != "missing" else self.scout
+        panel.frame.pack(fill="x", pady=(14, 0), after=self.atlas.frame)
 
     def _resize(self, event):
         self.canvas.itemconfigure(self._body_window, width=max(1, event.width))
@@ -138,17 +131,20 @@ class StatsTab:
         self._request_id += 1
         request = self._request_id
         selected = None if self._follow_latest else self.session.get() or None
-        self._pending = {"Atlas", "Scout"}
+        self._pending = {"Atlas", "Scout", "Scout report"}
         self._loading = True
         self.status.set("Reading saved 15-minute results…")
         self.refresh_button.configure(state="disabled")
         self.atlas.set_snapshot(None)
         self.scout.set_snapshot(None)
+        self.scout_report.set_snapshot(None)
+        self._show_scout()
         # Readers run outside Tk and retain no widgets. Each completed projection
         # can display immediately while the other trader's reader is still busy.
         messages, datastore = self._messages, self.datastore_root
         readers = (("Atlas", atlas_stats_sessions, load_atlas_stats, AtlasStatsSnapshot),
-                   ("Scout", scout_stats_sessions, load_scout_stats, ScoutStatsSnapshot))
+                   ("Scout", scout_stats_sessions, load_scout_stats, ScoutStatsSnapshot),
+                   ("Scout report", scout_report_sessions, load_scout_report, ScoutStatsReport))
 
         def work():
             dates, errors = set(), set()
@@ -169,9 +165,9 @@ class StatsTab:
                     else:
                         snapshot = loader(datastore, session)
                 except Exception:
+                    fields = {} if actor == "Scout report" else dict(prediction_status="unreadable", execution_status="unreadable")
                     snapshot = snapshot_type(session=session, status="unreadable",
-                        message=f"{actor} saved evidence could not be read. Refresh to retry.",
-                        prediction_status="unreadable", execution_status="unreadable")
+                        message=f"{actor} saved evidence could not be read. Refresh to retry.", **fields)
                 messages.put((request, actor, dates, session, snapshot))
 
             for actor, _, loader, snapshot_type in readers:
@@ -190,8 +186,9 @@ class StatsTab:
                     continue
                 self.date_box.configure(values=dates or ((session,) if session else ()))
                 self.session.set(session or "")
-                panel = self.atlas if actor == "Atlas" else self.scout
+                panel = self.atlas if actor == "Atlas" else self.scout_report if actor == "Scout report" else self.scout
                 panel.set_snapshot(snapshot)
+                self._show_scout()
                 self._pending.discard(actor)
                 self._loading = bool(self._pending)
                 if not self._loading:
@@ -199,7 +196,7 @@ class StatsTab:
                     self.refresh_button.configure(state="normal")
                 self.status.set((f"{session} · " if session else "") +
                     ("Reading " + ", ".join(sorted(self._pending)) + " saved results…" if self._pending else
-                     "Saved 15-minute evidence · Choose a trader to review its results."))
+                     "Saved 15-minute evidence · Atlas and Scout results shown separately."))
         except queue.Empty:
             pass
         self._poll_job = self.parent.after(80, self._poll)
