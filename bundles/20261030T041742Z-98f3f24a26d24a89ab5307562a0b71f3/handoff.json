@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-30T04:17:42.848562Z",
+  "id": "20261030T041742Z-98f3f24a26d24a89ab5307562a0b71f3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout integrated the independent 15-minute Stats workspace into common main"
+}

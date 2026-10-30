@@ -1,0 +1,104 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261030T011014Z-7991614b2b2942dea068ab04324bfe43",
+  "change_id": "20261030T011014Z-7991614b2b2942dea068ab04324bfe43:main-integration",
+  "completion_record": "20261030T011014Z-7991614b2b2942dea068ab04324bfe43",
+  "details": [
+    "Task: scout-priority-source-reconciliation. Retained the original source completion identity and exact six owned files.",
+    "Fresh current-main checks verified 117 source and dependency fingerprints before normal publication and remote SHA readback.",
+    "Active Stats reads saved independent 15-minute evidence, preserves unavailable populations and profit, and excludes retired Gameplan Stats readers."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/stats.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/ducket_bucket.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/scout_stats_widgets.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_stats_tab.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_ducket_bucket_app.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/visual_stats_fixture.py"
+    }
+  ],
+  "limitations": [
+    "Offline fixtures only. Prior local installation remains a separate producer result; no running application inspection or reload performed.",
+    "Peer installation remains unverified."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/532",
+    "https://github.com/jeremysecondstate/ducketz/commit/09f2f585b220b9f93f52df52ca3c42c749d5231d"
+  ],
+  "main_sha": "09f2f585b220b9f93f52df52ca3c42c749d5231d",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Presentation loads on the next ordinary UI launch. No trader, provider, model, worker, binding or schedule action.",
+  "scope": "shared",
+  "source_sha": "ae7e433a430e9cce4b237e9e3d3a6c0dee668873",
+  "stages": {
+    "local_installation": "previous producer reported installed; unchanged by this integration",
+    "main_integration": "remote_verified",
+    "peer_availability": "published",
+    "runtime_loading": "unverified by this run",
+    "source_publication": "remote_verified"
+  },
+  "summary": "Scout integrated the independent 15-minute Stats workspace into common main",
+  "tests": [
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_stats_tab.py",
+        "tests/test_ducket_bucket_app.py",
+        "tests/test_scout_stats_data.py",
+        "tests/test_scout_stats_peer.py",
+        "tests/test_scout_stats_peer_fallback.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-30T04:16:45.996063Z",
+      "exit_code": 0,
+      "output_sha256": "f89da51345547a1533b80389b0ab00cc16934244daa686ceaa1954f1a04ada6c",
+      "result": "........................................................................ [ 96%]\r\n...                                                                      [100%]\r\n75 passed in 9.01s\r\n\n",
+      "started_at_utc": "2026-10-30T04:16:35.087865Z"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_scout_stats_ui.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-30T04:16:47.227807Z",
+      "exit_code": 0,
+      "output_sha256": "f4aa47130a2d83faf6383b2e3a1db8402b1f16bd95ac64ee69ac978d2d5829bb",
+      "result": "......                                                                   [100%]\r\n6 passed in 0.35s\r\n\n",
+      "started_at_utc": "2026-10-30T04:16:46.140677Z"
+    }
+  ]
+}
