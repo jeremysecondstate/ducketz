@@ -1,0 +1,90 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261030T030304Z-e39c5b8b507e4631938f71158fbcd213",
+  "change_id": "20261030T030304Z-e39c5b8b507e4631938f71158fbcd213",
+  "files": [
+    "docs/development/patches/gameplan-scheduler-retirement.json",
+    "docs/development/patches/gameplan-scheduler-retirement.patch",
+    "tests/test_gameplan_scheduler_retirement.py",
+    "tests/check_gameplan_scheduler_retirement_package.py",
+    "docs/development/patches/intraday-preopen-data-window.json",
+    "docs/development/patches/intraday-preopen-data-window.patch",
+    "tests/check_intraday_preopen_data_window_package.py",
+    "docs/development/patches/intraday-opening-policy.json",
+    "docs/development/patches/intraday-opening-policy.patch",
+    "tests/test_intraday_opening_policy.py",
+    "tests/check_intraday_opening_policy_package.py",
+    "ml/intraday/opening_preparation.py",
+    "tests/test_intraday_opening_preparation.py",
+    "tests/check_intraday_opening_preparation_package.py",
+    "docs/development/patches/intraday-opening-preparation.json",
+    "docs/development/patches/intraday-opening-preparation.patch",
+    "tools/intraday_history_catchup.py",
+    "tests/test_intraday_history_catchup.py",
+    "tests/check_intraday_history_catchup_package.py",
+    "docs/development/patches/intraday-history-catchup.json",
+    "docs/development/15m-opening-preparation.md",
+    "docs/development/15m-only-nightly-policy.md"
+  ],
+  "limitations": [
+    "Portable package checks project gates or mock existing contracts; full dependency integration was verified separately in Atlas installed-generation candidate.",
+    "Actual data availability, opening model-production completion and live trading were not exercised.",
+    "Historical private exchange receipts remain retained; no retired numerical production resumes."
+  ],
+  "local_adoption": "Atlas deleted three retired Windows registrations and two redundant paused Codex owners, updated existing15m prompts, moved only the data window to03:40 and sealed the reviewed complete generation. Native definitions and private bindings are not exported. No trader was started or restarted.",
+  "main_sha": "91b8a7f4f6466f2b5b078ebf3faac734a65f31ed",
+  "peer_applicability": "Review and apply the exact owned source deltas with local preimage and scientific applicability review. This source notice does not change peer native schedules, symbols, fitted artifacts, model tuning or session authority. Opening preparation preserves03:30 reference to04:00–04:15 target and blocks execution before04:00 Pacific.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Opening helper performs fits/inference without trader or broker authority; an already authorized session claims exact original forecasts at opening, without changing probability, clocks, target or expiry. Missing/late evidence remains explicit. Peers install locally through their existing owners.",
+  "scope": "shared",
+  "source_sha": "0b41360271b7ec83a1c44e3f36cdca4e48ecf881",
+  "summary": "Atlas retired obsolete schedules and installed pre-opening preparation for the original 15-minute target.",
+  "tests": [
+    {
+      "check": "Six portable package/document checks rerun in source and main candidates",
+      "checks": [
+        {
+          "completed_at_utc": "2026-10-30T03:05:50.989128Z",
+          "exit_code": 0,
+          "output_sha256": "ce4c60f0c4806e841ce37c02bbe6fa57b88d9313f845437b20c3c2506b382472",
+          "started_at_utc": "2026-10-30T03:05:49.939174Z"
+        },
+        {
+          "completed_at_utc": "2026-10-30T03:06:00.700501Z",
+          "exit_code": 0,
+          "output_sha256": "205c5577d893c5dfca8d0b34d9933599f420e09919cd35115d4c332478ae92a9",
+          "started_at_utc": "2026-10-30T03:05:51.025378Z"
+        },
+        {
+          "completed_at_utc": "2026-10-30T03:06:01.239439Z",
+          "exit_code": 0,
+          "output_sha256": "6b4b8d4e704afc469bb7892fb825f3d931a6ca80afa6c86c04db59c669919e23",
+          "started_at_utc": "2026-10-30T03:06:00.735549Z"
+        },
+        {
+          "completed_at_utc": "2026-10-30T03:06:01.734865Z",
+          "exit_code": 0,
+          "output_sha256": "5a4421f29b888c980e49af96f3fa425dbf56feef2ee4d6a9de8a58bfff0d7699",
+          "started_at_utc": "2026-10-30T03:06:01.277368Z"
+        },
+        {
+          "completed_at_utc": "2026-10-30T03:06:02.389880Z",
+          "exit_code": 0,
+          "output_sha256": "ce49beb524fececb1ec6030cd6afc5adb15707051290ee0aac03b5554b86cda6",
+          "started_at_utc": "2026-10-30T03:06:01.771423Z"
+        },
+        {
+          "completed_at_utc": "2026-10-30T03:06:02.792468Z",
+          "exit_code": 0,
+          "output_sha256": "40278a4bea1f48cbda17a61f8be4e15daf4052296ee3c099b683b0e1b8b8487b",
+          "started_at_utc": "2026-10-30T03:06:02.425481Z"
+        }
+      ],
+      "result": "PASS"
+    },
+    {
+      "check": "Complete local frozen-dependency candidate",
+      "result": "283 tests and29subtests passed in full batch; missing synthetic fixture restored and the remaining test passed on unchanged runtime source. No network/private-data reads or escaped application imports."
+    }
+  ]
+}
