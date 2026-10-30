@@ -1,0 +1,86 @@
+--- a/ml/intraday/store.py
++++ b/ml/intraday/store.py
+@@ -83,14 +83,14 @@
+ 
+ 
+ class ShadowStore:
+-    def __init__(self, path, *, snapshot_directory=None):
++    def __init__(self, path, *, snapshot_directory=None, chunked_snapshots=False):
+         self.path = Path(path)
+         # Only independent 1A preparation opts in. Forecast/execution stores
+         # retain their original inline representation and readers.
+         self.snapshot_objects = None
+         if snapshot_directory is not None:
+             from .snapshot_objects import SnapshotObjects
+-            self.snapshot_objects = SnapshotObjects(snapshot_directory)
++            self.snapshot_objects = SnapshotObjects(snapshot_directory, chunked=chunked_snapshots)
+         self.path.parent.mkdir(parents=True, exist_ok=True)
+         with self.connect() as db:
+             db.executescript("""
+@@ -267,7 +267,9 @@
+             # A crash before the DB commit can leave an unreferenced object;
+             # it never exposes incomplete inputs or rewrites prior evidence.
+             raw = canonical.encode()
+-            if self.snapshot_objects.write(raw) != key:
++            written = (self.snapshot_objects.write(raw, payload=payload) if self.snapshot_objects.chunked
++                       else self.snapshot_objects.write(raw))
++            if written != key:
+                 raise ContractError("Snapshot object identity changed")
+             stored = encoded({"snapshot_storage": "intraday-input-reference-v1",
+                               "sha256": key, "bytes": len(raw)})
+--- a/ml/intraday/split_handoff.py
++++ b/ml/intraday/split_handoff.py
+@@ -19,6 +19,7 @@
+ import uuid
+ 
+ from .prediction import ContractError, STEP, TARGET_VERSION, digest, encoded, instant
++from .snapshot_objects import SnapshotObjects
+ 
+ VERSION = "independent-intraday-ready-snapshot-v1"
+ MAX_SNAPSHOT_BYTES = 1024 * 1024 * 1024
+@@ -60,8 +61,11 @@
+ 
+ 
+ class ReadySnapshots:
+-    def __init__(self, directory, *, actor, symbols, clock=_now):
++    def __init__(self, directory, *, actor, symbols, clock=_now, chunked_snapshots=False):
+         self.root = Path(directory).resolve()
++        if type(chunked_snapshots) is not bool:
++            raise ContractError("Invalid immutable snapshot writer selection")
++        self.chunked_snapshots = chunked_snapshots
+         self.actor, self.symbols, self.clock = actor, tuple(symbols), clock
+         if (actor not in {"Atlas", "Scout"} or not self.symbols
+                 or len(set(self.symbols)) != len(self.symbols)
+@@ -103,6 +107,8 @@
+         return self.root / kind / _hash(identity)[:2] / (identity + ".json")
+ 
+     def _read(self, kind, identity, bound):
++        if kind == "snapshots":
++            return SnapshotObjects(self.root / "snapshots", max_bytes=bound).read(identity)
+         path = self._path(kind, identity)
+         with path.open("rb") as stream:
+             raw = stream.read(bound + 1)
+@@ -110,9 +116,12 @@
+             raise ContractError("Incomplete or changed immutable handoff object")
+         return raw
+ 
+-    def _write(self, kind, raw, bound):
++    def _write(self, kind, raw, bound, *, payload=None):
+         if len(raw) > bound:
+             raise ContractError("Immutable handoff exceeds its resource bound")
++        if kind == "snapshots":
++            return SnapshotObjects(self.root / "snapshots", max_bytes=bound,
++                chunked=self.chunked_snapshots).write(raw, payload=payload)
+         identity = _sha(raw)
+         path = self._path(kind, identity)
+         path.parent.mkdir(parents=True, exist_ok=True)
+@@ -200,7 +209,8 @@
+         reference, cutoff = self._validate_snapshot(cycle_id, symbol, cycle, snapshot)
+         serialized = time.perf_counter()
+         raw = encoded(snapshot).encode()
+-        snapshot_hash = self._write("snapshots", raw, MAX_SNAPSHOT_BYTES)
++        snapshot_hash = (self._write("snapshots", raw, MAX_SNAPSHOT_BYTES, payload=snapshot)
++                         if self.chunked_snapshots else self._write("snapshots", raw, MAX_SNAPSHOT_BYTES))
+         cycle_hash = self._write("cycles", encoded(cycle).encode(), MAX_RECORD_BYTES)
+         claim_id = digest(dict(actor=self.actor, cycle_id=cycle_id, symbol=symbol))
+         claim_path = self._path("claims", claim_id)
