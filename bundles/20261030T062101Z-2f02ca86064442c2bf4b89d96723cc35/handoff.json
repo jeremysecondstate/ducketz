@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-30T06:21:01.276233Z",
+  "id": "20261030T062101Z-2f02ca86064442c2bf4b89d96723cc35",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout publishes and integrates portable15m retirement instructions and disabled Gameplan task roles"
+}

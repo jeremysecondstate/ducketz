@@ -1,0 +1,128 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261030T061804Z-7175c7e621854baeb840652b704d63d3",
+  "change_id": "20261030T061804Z-7175c7e621854baeb840652b704d63d3:15m-retirement-source-main",
+  "completion_record": "20261030T061804Z-7175c7e621854baeb840652b704d63d3",
+  "details": [
+    "Actor Scout; task scout-priority-source-reconciliation. Seven unchanged retirement documentation/catalog/test paths from original record20261029T204815Z-353e35a569d24ad499ea27fe0d89b0da are tested against the preserved current main policy dependency.",
+    "Original204815 and204311 source branches, identities and passing evidence remain. This subset does not supersede either whole original record.",
+    "Two newer module-removal documents remain owned by prepared retirement record20261030T025854Z-4b3f8f59c92149b39ca5ce07da817b47. Its original candidate and stages remain; its changed dependency map requires fresh composition and evidence before further publication.",
+    "Final-byte queue, isolated source and fresh main each passed the existing45 offline task-catalog cases without skips, binding16 fingerprints. Repeated stages are not summed.",
+    "Scout operating guidance and retired-role fields already contain the reviewed behavior. Preserve unrelated local catalog fields and line endings. No local source replacement, pinned helper upgrade or native-task update occurred.",
+    "Gameplan production and its old instruction incidents remain retired. Existing independent15m data/model owners, private recipes, execution and manual controls remain separate."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/independent-traders.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/nightly-operations.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/intraday-nightly-supervision.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/loops-system-analysis/NIGHTLY_STOCK_POLICY_INSTRUCTIONS.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/cross-pc-task-matrix.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "coordination/task-catalog.json"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_cross_pc_tasks.py"
+    }
+  ],
+  "limitations": [
+    "Existing offline task-catalog fixtures only.",
+    "Two module-removal documents remain with their current retirement source owner.",
+    "Peer native adoption and runtime loading are not established."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/541"
+  ],
+  "main_sha": "3d313fd5fed4de4314ba2ed9943c78aa34a244aa",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Portable documentation and task-role guidance only. Existing local instruction adoption remains separate; no native settings, broker or provider calls, model preparation, trader activation or restart.",
+  "scope": "shared",
+  "source_sha": "1f144816a768f45d0f8124449ba4e065399e7c26",
+  "stages": {
+    "local_installation": "relevant instructions and role fields already present; no local writes",
+    "main_integration": "remote_verified",
+    "peer_availability": "published",
+    "runtime_loading": "unobserved",
+    "source_publication": "remote_verified"
+  },
+  "summary": "Scout publishes and integrates portable15m retirement instructions and disabled Gameplan task roles",
+  "tests": [
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_cross_pc_tasks.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-30T06:18:05.876159Z",
+      "exit_code": 0,
+      "output_sha256": "6e54f0ffa979704a9d27116dec45d76b691befb21b8f5faeb41ec7a56b51fdc3",
+      "result": ".............................................                            [100%]\r\n45 passed in 0.18s\r\n\n",
+      "stage": "queue",
+      "started_at_utc": "2026-10-30T06:18:04.816187Z"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_cross_pc_tasks.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-30T06:19:28.024271Z",
+      "exit_code": 0,
+      "output_sha256": "babd38d8c751d1231dc39a63beacb1005db34d8d099fed6d7e0f1cc4ee002484",
+      "result": ".............................................                            [100%]\r\n45 passed in 0.16s\r\n\n",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-30T06:19:27.071723Z"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_cross_pc_tasks.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-30T06:20:13.829095Z",
+      "exit_code": 0,
+      "output_sha256": "da30901f9b6a029f828ca0e114482ac10200c0670c715dcfdddd1c38053c941c",
+      "result": ".............................................                            [100%]\r\n45 passed in 0.14s\r\n\n",
+      "stage": "main",
+      "started_at_utc": "2026-10-30T06:20:12.986531Z"
+    }
+  ]
+}
