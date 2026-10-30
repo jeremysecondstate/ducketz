@@ -5,7 +5,7 @@ import json
 import pytest
 
 from ml.intraday.live_session import ExecutionQueue
-from ml.intraday.prediction import TARGET_VERSION, instant
+from ml.intraday.prediction import ContractError, TARGET_VERSION, instant
 from ml.intraday.scout_services import ServiceExecutionQueue
 from ml.intraday.store import ShadowStore
 
@@ -119,3 +119,35 @@ def test_base_queue_keeps_existing_nonretiring_behavior(tmp_path):
     queue.enqueue(old)
     queue.enqueue(newer)
     assert statuses(queue) == {old["forecast_id"]: "pending", newer["forecast_id"]: "pending"}
+
+
+@pytest.mark.parametrize("damage", ["payload_target_close", "indexed_issued_at"])
+@pytest.mark.parametrize("operation", ["retire", "due", "enqueue"])
+def test_retirement_rejects_changed_original_and_rolls_back_queue(queue, damage, operation):
+    old = saved(queue.store, "old")
+    queue.enqueue(old)
+    newer = saved(queue.store, "new", issued_at="2026-10-08T17:17:02Z")
+    publications = []
+    queue.event_sink = publications.append
+    with queue.store.connect() as db:
+        if damage == "payload_target_close":
+            changed = {**old, "target_close": "2026-10-08T17:19:00Z"}
+            db.execute("UPDATE forecasts SET payload=? WHERE id=?",
+                       (json.dumps(changed), old["forecast_id"]))
+        else:
+            db.execute("UPDATE forecasts SET issued_at=? WHERE id=?",
+                       ("2026-10-08T17:16:03Z", old["forecast_id"]))
+        originals = db.execute("SELECT * FROM forecasts ORDER BY rowid").fetchall()
+        pending = db.execute("SELECT * FROM intraday_live_queue ORDER BY rowid").fetchall()
+
+    with pytest.raises(ContractError, match="evidence hash or indexed identity changed"):
+        if operation == "enqueue":
+            queue.enqueue(newer)
+        else:
+            getattr(queue, operation)("2026-10-08T17:20:00Z")
+
+    with queue.store.connect() as db:
+        assert db.execute("SELECT * FROM forecasts ORDER BY rowid").fetchall() == originals
+        assert db.execute("SELECT * FROM intraday_live_queue ORDER BY rowid").fetchall() == pending
+    assert statuses(queue) == {old["forecast_id"]: "pending"}
+    assert publications == []
