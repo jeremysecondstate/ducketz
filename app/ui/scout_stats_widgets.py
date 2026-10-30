@@ -65,7 +65,7 @@ class ScoutStatsPanel:
 
     def _build(self):
         label(self.frame, f"{self.actor} 15-Minute Trader", size=19, bold=True).pack(anchor="w", padx=14, pady=(14, 3))
-        self._text(self.frame, "Live saved evidence · Separate from Gameplan horizons", color=MUTED_TEXT).pack(fill="x", padx=14)
+        self._text(self.frame, "Independent forecasts, outcomes, orders and fills · Saved evidence only", color=MUTED_TEXT).pack(fill="x", padx=14)
         self.session_label = self._text(self.frame, "", size=10, bold=True)
         self.session_label.pack(fill="x", padx=14, pady=(6, 3))
         self.source_label = self._text(self.frame, "", size=9, color=MUTED_TEXT)

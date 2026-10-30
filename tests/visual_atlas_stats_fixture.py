@@ -1,4 +1,4 @@
-"""Synthetic, provider-free Gameplan Stats preview; no operating files are read."""
+"""Synthetic, provider-free Stats preview; no operating files are read."""
 from __future__ import annotations
 
 import argparse
@@ -9,18 +9,21 @@ import tkinter as tk
 from tkinter import ttk
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.ui.gameplan_stats import GameplanStatsTab
+from app.ui.stats import StatsTab
 from app.ui.atlas_stats_data import AtlasStatsSnapshot
-from app.ui.gameplan_stats_data import load_gameplan_stats
-from gameplan_stats_fixture import write_review
+from app.ui.ducket_bucket import DucketBucketApp
 
 
 def build(root, datastore):
+    theme = DucketBucketApp.__new__(DucketBucketApp)
+    theme.root = root
+    theme._apply_theme()
     frame = ttk.Frame(root)
     frame.pack(fill="both", expand=True)
-    tab = GameplanStatsTab(root, frame, datastore_root=datastore, auto_load=False)
-    write_review(datastore)
-    tab.set_review(load_gameplan_stats(datastore))
+    tab = StatsTab(root, frame, datastore_root=datastore, auto_load=False)
+    tab.session.set("2026-09-11")
+    tab.date_box.configure(values=("2026-09-11",))
+    tab.status.set("Synthetic offline preview · September 11 session")
     forecasts = []
     for index, symbol in enumerate(("TEST", "DEMO", "SAMPLE")):
         for number, status in enumerate(("scored", "scored", "missing", "synthetic", "pending")):
@@ -51,7 +54,7 @@ def main():
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="atlas-stats-preview-") as directory:
         root = tk.Tk()
-        root.title("Ducketz Atlas Stats · Synthetic offline preview")
+        root.title(f"Ducketz Stats · Synthetic offline preview · {args.size}")
         root.geometry(args.size)
         tab = build(root, Path(directory))
         def focus():

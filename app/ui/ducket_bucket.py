@@ -19,10 +19,11 @@ from app.services.hyperliquid_markets import display_asset
 from app.services.aggregate import DucketBucketSnapshot
 from app.ui.options_strategies import OptionsStrategiesTab
 from app.ui.rolling_forecasts import RollingForecastTab
-from app.ui.gameplan_stats import GameplanStatsTab
+from app.ui.stats import StatsTab as GameplanStatsTab
 from app.ui.gameplan import GameplanTab
 from app.ui.intraday import IntradayTab
 from app.ui.schwab_duckets import SchwabDucketsTab
+from app.ui.window_chrome import theme_title_bar
 from app.ui.theme import (
     ACCENT,
     BACKGROUND,
@@ -347,6 +348,7 @@ class DucketBucketApp:
         self.root.title("Duckets")
         self.root.geometry("1180x760")
         self.root.configure(background=BACKGROUND)
+        theme_title_bar(self.root)
         self._apply_theme()
 
         self._build_layout()
@@ -517,6 +519,7 @@ class DucketBucketApp:
 
     def _build_layout(self) -> None:
         notebook = ttk.Notebook(self.root)
+        self.notebook = notebook
         notebook.pack(fill=tk.BOTH, expand=True)
 
         forecasts_frame = ttk.Frame(notebook)
@@ -533,37 +536,50 @@ class DucketBucketApp:
         notebook.add(schwab_frame, text="Schwab Duckets")
         notebook.add(hyperliquid_frame, text="Hyperliquid Duckets")
         notebook.add(hyper_frame, text="H.Y.P.E.R.")
-        notebook.add(stats_frame, text="Gameplan Stats")
+        notebook.add(stats_frame, text="Stats")
         notebook.add(gameplan_frame, text="Gameplan")
         notebook.add(intraday_frame, text="15-Minute Duckets")
 
-        RollingForecastTab(
-            root=self.root,
-            parent=forecasts_frame,
-        )
+        # Hidden workspaces must not read their stores or start refresh timers
+        # during launch. Keep every tab available, and construct it once on use.
+        self._account_history = None
+        self._workspace_factories = {
+            str(frame): (frame, factory, uses_history)
+            for frame, factory, uses_history in (
+                (forecasts_frame, RollingForecastTab, False),
+                (strategies_frame, OptionsStrategiesTab, False),
+                (schwab_frame, SchwabDucketsTab, False),
+                (hyperliquid_frame, HyperliquidDucketsTab, True),
+                (hyper_frame, HyperWorkspace, True),
+                (stats_frame, GameplanStatsTab, False),
+                (gameplan_frame, GameplanTab, False),
+                (intraday_frame, IntradayTab, False),
+            )
+        }
+        self._workspaces = {}
+        notebook.bind("<<NotebookTabChanged>>", self._show_selected_workspace, add="+")
+        self.root.after_idle(self._show_selected_workspace)
 
-        OptionsStrategiesTab(
-            root=self.root,
-            parent=strategies_frame,
-        )
-
-        SchwabDucketsTab(
-            root=self.root,
-            parent=schwab_frame,
-        )
-
-        account_history = HyperliquidAccountHistoryService()
-        HyperliquidDucketsTab(
-            root=self.root,
-            parent=hyperliquid_frame,
-            account_history=account_history,
-        )
-
-        HyperWorkspace(root=self.root, parent=hyper_frame, account_history=account_history)
-
-        GameplanStatsTab(root=self.root, parent=stats_frame)
-        GameplanTab(root=self.root, parent=gameplan_frame)
-        IntradayTab(root=self.root, parent=intraday_frame)
+    def _show_selected_workspace(self, _event: object | None = None) -> None:
+        selected = self.notebook.select()
+        if selected in self._workspaces or selected not in self._workspace_factories:
+            return
+        parent, factory, uses_history = self._workspace_factories[selected]
+        # Mark before constructing: a widget's idle geometry processing can
+        # deliver a second selection event while its constructor is active.
+        self._workspaces[selected] = None
+        try:
+            kwargs = {"root": self.root, "parent": parent}
+            if uses_history:
+                if self._account_history is None:
+                    self._account_history = HyperliquidAccountHistoryService()
+                kwargs["account_history"] = self._account_history
+            self._workspaces[selected] = factory(**kwargs)
+        except Exception:
+            del self._workspaces[selected]
+            for child in parent.winfo_children():
+                child.destroy()
+            raise
 
 
 class DucketsTab:
