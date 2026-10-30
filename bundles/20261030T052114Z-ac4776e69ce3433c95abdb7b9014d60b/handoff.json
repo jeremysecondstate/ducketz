@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-30T05:21:14.766919Z",
+  "id": "20261030T052114Z-ac4776e69ce3433c95abdb7b9014d60b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout published the PR535 provenance package with a portable test-collection repair"
+}

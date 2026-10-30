@@ -1,0 +1,161 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261030T051816Z-52555d2f123048cba70ca0746045402d",
+  "change_id": "20261030T051816Z-52555d2f123048cba70ca0746045402d:source-main-package",
+  "completion_record": "20261030T051816Z-52555d2f123048cba70ca0746045402d",
+  "details": [
+    "Task: scout-priority-source-reconciliation. The four-file portable package retains the original Atlas patch and checker bytes.",
+    "The regression module now exercises hash-verified pure helpers under test-only names when adapters are absent; one actual runtime fixture remains explicitly skipped.",
+    "Eight exact source and dependency hashes were bound in queue, isolated source and current-main checks. These repeated stages are not summed coverage.",
+    "Local package installation was stopped before any file copy: the application checkout lacks the split-execution dependency. No runtime adapter was applied.",
+    "Scout ServiceStore and ReadySpool require explicit envelope and file-witness composition; Atlas constructor switches are not a Scout installation.",
+    "The retained PR488 corruption candidate remains separate and unfinished. Prospective atomic enqueue repair remains completed under its existing identity."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/intraday-datastore-growth.json"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/patches/intraday-datastore-growth.patch"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_intraday_datastore_growth_package.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_model_provenance_references.py"
+    }
+  ],
+  "limitations": [
+    "Portable pure-helper and package fixtures only; full runtime integration is explicitly skipped without composed adapters.",
+    "Atlas ShadowStore constructor bindings do not adapt Scout ServiceStore and ReadySpool; the supplied runtime patch remains unapplied.",
+    "No historical migration, storage reclamation, fitting, provider, broker or trader action.",
+    "No local adapter installation, actual storage savings or historical cleanup is established."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/538",
+    "https://github.com/jeremysecondstate/ducketz/pull/535"
+  ],
+  "main_sha": "99b1464b0c421a7b68a32b98d804003dde9ba364",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Four portable package source files only. No runtime adapter, writer default, selected generation, bootstrap or loaded behavior changes.",
+  "scope": "shared",
+  "source_sha": "70567cb4096c826793da9ce33f44b890177434c4",
+  "stages": {
+    "local_installation": "not installed; missing local split-execution dependency",
+    "main_integration": "remote_verified",
+    "peer_availability": "published",
+    "runtime_loading": "unobserved",
+    "source_publication": "remote_verified"
+  },
+  "summary": "Scout published the PR535 provenance package with a portable test-collection repair",
+  "tests": [
+    {
+      "argv": [
+        "python",
+        "-B",
+        "tests/check_intraday_datastore_growth_package.py"
+      ],
+      "completed_at_utc": "2026-10-30T05:18:17.447499Z",
+      "exit_code": 0,
+      "output_sha256": "06984997a943bead4da0d9e825336ff953efcf43195876e5be0a08442d33a84c",
+      "result": "DATASTORE_GROWTH_PACKAGE={\"checks\": 12, \"network_attempts\": 0, \"runtime_or_data_mutations\": 0, \"source_delta_verified\": true, \"targets\": 4}\r\n\n",
+      "stage": "queue",
+      "started_at_utc": "2026-10-30T05:18:17.007045Z"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_model_provenance_references.py",
+        "--noconftest",
+        "--import-mode=importlib",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-30T05:18:18.585436Z",
+      "exit_code": 0,
+      "output_sha256": "c842a653eb037786d6cf521d356745999e70bcc08a4c16fb45bf3b6622975dad",
+      "result": "........s.                                                               [100%]\r\n9 passed, 1 skipped in 0.44s\r\n\n",
+      "stage": "queue",
+      "started_at_utc": "2026-10-30T05:18:17.456987Z"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "tests/check_intraday_datastore_growth_package.py"
+      ],
+      "completed_at_utc": "2026-10-30T05:18:39.615952Z",
+      "exit_code": 0,
+      "output_sha256": "06984997a943bead4da0d9e825336ff953efcf43195876e5be0a08442d33a84c",
+      "result": "DATASTORE_GROWTH_PACKAGE={\"checks\": 12, \"network_attempts\": 0, \"runtime_or_data_mutations\": 0, \"source_delta_verified\": true, \"targets\": 4}\r\n\n",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-30T05:18:39.116819Z"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_model_provenance_references.py",
+        "--noconftest",
+        "--import-mode=importlib",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-30T05:18:40.971032Z",
+      "exit_code": 0,
+      "output_sha256": "b7dda49562ec61a6a2d0fe64ae305763bbaf975a8a2644608b249fe9a9e2e50d",
+      "result": "........s.                                                               [100%]\r\n9 passed, 1 skipped in 0.52s\r\n\n",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-30T05:18:39.626813Z"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "tests/check_intraday_datastore_growth_package.py"
+      ],
+      "completed_at_utc": "2026-10-30T05:19:18.973379Z",
+      "exit_code": 0,
+      "output_sha256": "06984997a943bead4da0d9e825336ff953efcf43195876e5be0a08442d33a84c",
+      "result": "DATASTORE_GROWTH_PACKAGE={\"checks\": 12, \"network_attempts\": 0, \"runtime_or_data_mutations\": 0, \"source_delta_verified\": true, \"targets\": 4}\r\n\n",
+      "stage": "main",
+      "started_at_utc": "2026-10-30T05:19:18.518250Z"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_model_provenance_references.py",
+        "--noconftest",
+        "--import-mode=importlib",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-30T05:19:19.995353Z",
+      "exit_code": 0,
+      "output_sha256": "a48b9b0ab8209f130e84fc4194d607e414059686e7b7c7cab6882f8c0e61b29d",
+      "result": "........s.                                                               [100%]\r\n9 passed, 1 skipped in 0.28s\r\n\n",
+      "stage": "main",
+      "started_at_utc": "2026-10-30T05:19:18.982663Z"
+    }
+  ],
+  "upstream_completion_record": "20261030T035333Z-5412518eb61c464fb88a9abd48103ef2"
+}
