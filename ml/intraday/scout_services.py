@@ -139,12 +139,12 @@ class ServiceExecutionQueue(ExecutionQueue):
             self._retire(db, now)
 
     def _retire(self, db, now):
-        rows = db.execute("SELECT q.forecast_id,q.symbol,f.reference_at,f.issued_at,f.payload FROM intraday_live_queue q "
+        rows = db.execute("SELECT q.forecast_id,q.symbol,f.id,f.pc,f.symbol,f.cycle_id,f.reference_at,f.issued_at,f.payload FROM intraday_live_queue q "
             "JOIN forecasts f ON f.id=q.forecast_id WHERE q.session_id=? AND f.pc=? AND q.status='pending' "
             "ORDER BY f.reference_at DESC,f.issued_at DESC", (self.session_id, self.pc)).fetchall()
         seen, retired = set(), []
-        for key, symbol, reference, issued, raw in rows:
-            forecast = json.loads(raw)
+        for key, symbol, *original in rows:
+            forecast = self.store._forecast_value(original)
             state = ("expired" if instant(forecast["target_close"]) <= instant(now)
                      else "superseded" if symbol in seen else None)
             seen.add(symbol)
