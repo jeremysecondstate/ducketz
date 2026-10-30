@@ -1,0 +1,22 @@
+{
+  "schema": "intraday-history-catchup-package-v1",
+  "scope": "shared",
+  "direct_files": {
+    "tools/intraday_history_catchup.py": "b8f4f59a24aa2781f0d69c1e4f42f6875624555b57c4016e1b530a0cc60f9a8b",
+    "tests/test_intraday_history_catchup.py": "fb6c6ad2315cc5d67a4714995a384eeeed1d3f622332f6ded4741ea6e680b376",
+    "tests/check_intraday_history_catchup_package.py": "2a327bdcd7d36b2af2a00e345059e4090193788e364ec853d112dbb00b1dc0e7"
+  },
+  "dependency_contracts": [
+    "datafetching.runtime_lock.exclusive_runtime_lock",
+    "ml.intraday.runtime.local_symbols",
+    "ml.intraday.prediction.ContractError",
+    "ml.intraday.supervisor.refresh_ohlcv",
+    "ml.intraday.supervisor._atomic_json",
+    "ml.intraday.supervisor._failure"
+  ],
+  "limitations": [
+    "Portable tests load the exact helper with mocked existing dependency contracts; they do not test the full refresh implementation.",
+    "Primary local pytest checks separately exercise actual local symbol validation and error redaction.",
+    "No provider, broker, model training, scheduler or runtime activation is exercised."
+  ]
+}

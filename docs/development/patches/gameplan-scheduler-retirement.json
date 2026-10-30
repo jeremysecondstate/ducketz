@@ -1,0 +1,29 @@
+{
+  "schema": "gameplan-scheduler-retirement-v1",
+  "scope": "shared",
+  "patch": "docs/development/patches/gameplan-scheduler-retirement.patch",
+  "patch_sha256": "b4cfaacfe70a2597020d1144cca55744048f7f6c80663a23e54bf189729e5da8",
+  "files": [
+    {
+      "path": "Start-Gameplan-Trader.cmd",
+      "operation": "modify",
+      "before_sha256": "a37d9429f16ba7a2c14f64ef95bad8b9d15c81756d9368df65f483a25a587869",
+      "after_sha256": "f50a003444d3e0427320c63698ecaa2a2d0736278cec9bcca87713045831873c"
+    },
+    {
+      "path": "tools/register_nightly_watchdog.ps1",
+      "operation": "modify",
+      "before_sha256": "c52dc155465428a0a9fa3381ea191fcf8ea0b5df347defb5fdf395526985feac",
+      "after_sha256": "73ccc6d6dbdf1ee64f608d7850a0466bc78a6f9638b76f8e3a6670504ad82082"
+    }
+  ],
+  "direct_files": {
+    "tests/test_gameplan_scheduler_retirement.py": "36d755a7157eb84eca1a630ef6f0e8ebc168477c2158c4b176c7210bc7d2e413",
+    "tests/check_gameplan_scheduler_retirement_package.py": "867af0926cbb69007c8156b51360c985ec9e2966d543307fffab7b241798e718"
+  },
+  "limitations": [
+    "Retains historical launcher and registration source; only early retirement guards are owned.",
+    "Native Windows task deletion is a local operation, not performed by this package.",
+    "Applying this package does not affect the peer PC native task configuration."
+  ]
+}
